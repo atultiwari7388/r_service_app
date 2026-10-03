@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import {
@@ -14,6 +14,8 @@ import {
   writeBatch,
   serverTimestamp,
 } from "firebase/firestore";
+import { useLoadScript } from "@react-google-maps/api";
+import usePlacesAutocomplete, { getGeocode } from "use-places-autocomplete";
 import { HashLoader } from "react-spinners";
 import toast from "react-hot-toast";
 import Link from "next/link";
@@ -31,6 +33,8 @@ import {
 } from "react-icons/fa";
 import { CompanyType } from "@/types/types";
 
+const GOOGLE_LIBRARIES: "places"[] = ["places"];
+
 const COUNTRY_OPTIONS = [
   "USA",
   "Canada",
@@ -38,6 +42,188 @@ const COUNTRY_OPTIONS = [
   "Australia",
   "Mexico",
 ];
+
+interface AddressAutocompleteInputProps {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onAddressSelect: (details: {
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode?: string;
+  }) => void;
+  disabled?: boolean;
+}
+
+const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
+  value,
+  onChange,
+  onAddressSelect,
+  disabled,
+}) => {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const {
+    ready,
+    suggestions: { status, data },
+    setValue: setPlacesValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({
+    requestOptions: {
+      componentRestrictions: { country: ["us", "ca", "gb", "au", "mx"] },
+    },
+    debounce: 300,
+    defaultValue: value,
+  });
+
+  // Sync external value
+  useEffect(() => {
+    setPlacesValue(value, false);
+  }, [value, setPlacesValue]);
+
+  // Click outside listener
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e);
+    setPlacesValue(e.target.value);
+    setShowDropdown(true);
+  };
+
+  const handleSelect = async (description: string) => {
+    setShowDropdown(false);
+    clearSuggestions();
+    setPlacesValue(description, false);
+
+    try {
+      const results = await getGeocode({ address: description });
+      if (results && results[0]) {
+        const components = results[0].address_components;
+        let streetNumber = "";
+        let route = "";
+        let city = "";
+        let state = "";
+        let country = "";
+        let postalCode = "";
+
+        components.forEach((c) => {
+          const types = c.types;
+          if (types.includes("street_number")) {
+            streetNumber = c.long_name;
+          }
+          if (types.includes("route")) {
+            route = c.long_name;
+          }
+          if (
+            types.includes("locality") ||
+            types.includes("sublocality") ||
+            types.includes("postal_town")
+          ) {
+            city = c.long_name;
+          }
+          if (types.includes("administrative_area_level_1")) {
+            state = c.short_name; // e.g. "TX", "CA"
+          }
+          if (types.includes("country")) {
+            if (c.short_name === "US" || c.long_name === "United States") {
+              country = "USA";
+            } else if (c.short_name === "CA" || c.long_name === "Canada") {
+              country = "Canada";
+            } else if (c.short_name === "GB" || c.long_name === "United Kingdom") {
+              country = "England";
+            } else if (c.short_name === "AU" || c.long_name === "Australia") {
+              country = "Australia";
+            } else if (c.short_name === "MX" || c.long_name === "Mexico") {
+              country = "Mexico";
+            } else {
+              country = c.long_name;
+            }
+          }
+          if (types.includes("postal_code")) {
+            postalCode = c.long_name;
+          }
+        });
+
+        const fullStreet = streetNumber
+          ? `${streetNumber} ${route}`
+          : route || description.split(",")[0];
+
+        onAddressSelect({
+          address: fullStreet || description,
+          city,
+          state,
+          country,
+          postalCode,
+        });
+      }
+    } catch (err) {
+      console.error("Geocoding failed:", err);
+      onAddressSelect({
+        address: description,
+        city: "",
+        state: "",
+        country: "",
+        postalCode: "",
+      });
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative rounded-lg shadow-sm">
+      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+        <FaMapMarkerAlt className="text-sm" />
+      </div>
+      <input
+        type="text"
+        id="address"
+        name="address"
+        placeholder="Start typing street address (e.g. 123 Main St...)"
+        value={value}
+        onChange={handleInputChange}
+        onFocus={() => setShowDropdown(true)}
+        disabled={disabled || !ready}
+        className="block w-full pl-10 pr-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent transition"
+        required
+      />
+
+      {/* Autocomplete Dropdown */}
+      {showDropdown && status === "OK" && data.length > 0 && (
+        <ul className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100">
+          {data.map(({ place_id, description, structured_formatting }) => (
+            <li
+              key={place_id}
+              onClick={() => handleSelect(description)}
+              className="px-4 py-2.5 hover:bg-red-50/60 cursor-pointer flex items-start gap-2.5 text-xs transition"
+            >
+              <FaMapMarkerAlt className="text-[#F96176] mt-0.5 shrink-0 text-sm" />
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-gray-900">
+                  {structured_formatting?.main_text || description}
+                </span>
+                <span className="text-gray-500 text-[11px]">
+                  {structured_formatting?.secondary_text || ""}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 interface CompanyFormData {
   companyName: string;
@@ -78,6 +264,15 @@ export default function MyCompaniesPage() {
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CompanyFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load Google Maps Places script
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey:
+      process.env.NEXT_PUBLIC_GOOGLE_API_KEY ||
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+      "",
+    libraries: GOOGLE_LIBRARIES,
+  });
 
   // Open action dropdown tracking
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
@@ -221,6 +416,22 @@ export default function MyCompaniesPage() {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handleAddressSelect = (details: {
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode?: string;
+  }) => {
+    setFormData((prev) => ({
+      ...prev,
+      address: details.address || prev.address,
+      city: details.city || prev.city,
+      state: details.state || prev.state,
+      country: details.country || prev.country || "USA",
+    }));
   };
 
   const handleSaveCompany = async (e: React.FormEvent) => {
@@ -702,14 +913,10 @@ export default function MyCompaniesPage() {
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   Street Address *
                 </label>
-                <input
-                  type="text"
-                  name="address"
+                <AddressAutocompleteInput
                   value={formData.address}
                   onChange={handleFormChange}
-                  placeholder="123 Commerce St"
-                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F96176] focus:border-transparent bg-gray-50"
-                  required
+                  onAddressSelect={handleAddressSelect}
                 />
               </div>
 
