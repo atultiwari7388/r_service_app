@@ -96,6 +96,25 @@ export default function ContactUsComp() {
       // Store in database
       await addDoc(collection(db, "contactSubmissions"), submissionData);
 
+      // Send email notification to owner via Resend
+      try {
+        await fetch("/api/send-contact-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            email: formData.email.trim(),
+            phone: formData.phone.trim(),
+            message: formData.message.trim(),
+            attachmentUrl: attachmentUrl || "",
+          }),
+        });
+      } catch (mailErr) {
+        console.warn("Could not dispatch contact notification email:", mailErr);
+      }
+
       toast.success("Message sent successfully!");
       setFormData({
         name: "",
