@@ -15,6 +15,7 @@ import 'package:regal_service_d_app/views/app/manageCheck/manage_check_screen.da
 import 'package:regal_service_d_app/views/app/manageTrips/manage_trips_screen.dart';
 import 'package:regal_service_d_app/views/app/myCompanies/my_companies_screen.dart';
 import 'package:regal_service_d_app/views/app/payInvoice/pay_invoice_screen.dart';
+import 'package:regal_service_d_app/views/app/otherExpenses/other_expenses_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/my_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myVehicles/my_vehicles_screen.dart';
 import 'package:regal_service_d_app/views/app/notificationScreen/notification_setting.dart';
@@ -150,11 +151,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Get.to(() => const MyCompaniesScreen());
                         }
                       }),
-                      buildListTile("assets/money.png", "Pay Invoice", () {
+                      buildListTile("assets/invoice.png", "Pay Invoice", () {
                         if (isAnonymous == true || isProfileComplete == false) {
                           Get.to(() => const RegistrationScreen());
                         } else {
                           Get.to(() => const PayInvoiceScreen());
+                        }
+                      }),
+                      buildListTile(
+                          "assets/other_expenses.png", "Other Expenses", () {
+                        if (isAnonymous == true || isProfileComplete == false) {
+                          Get.to(() => const RegistrationScreen());
+                        } else {
+                          Get.to(() => const OtherExpensesScreen());
                         }
                       }),
                     ],
