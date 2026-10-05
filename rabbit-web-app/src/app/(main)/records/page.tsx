@@ -396,45 +396,72 @@ interface MilesTabProps {
 }
 const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
   return (
-    <div className="w-full bg-white p-4 rounded-lg shadow">
-      <TableContainer>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Vehicle</TableCell>
-              <TableCell>Company</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Current Miles/Hours</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredVehicles.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  align="center"
-                  className="py-8 text-gray-500"
-                >
-                  No vehicles found matching current filter.
+    <div className="w-full bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-gray-200">
+      <div className="overflow-x-auto">
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow className="bg-gray-50/80">
+                <TableCell className="!font-bold !text-gray-700 !text-xs sm:!text-sm !py-2.5">
+                  Vehicle
+                </TableCell>
+                <TableCell className="!font-bold !text-gray-700 !text-xs sm:!text-sm !py-2.5">
+                  Company
+                </TableCell>
+                <TableCell className="!font-bold !text-gray-700 !text-xs sm:!text-sm !py-2.5">
+                  Type
+                </TableCell>
+                <TableCell className="!font-bold !text-gray-700 !text-xs sm:!text-sm !py-2.5">
+                  Current Miles/Hours
                 </TableCell>
               </TableRow>
-            ) : (
-              filteredVehicles.map((vehicle) => (
-                <TableRow key={vehicle.id}>
-                  <TableCell>{vehicle.vehicleNumber}</TableCell>
-                  <TableCell>{vehicle.companyName}</TableCell>
-                  <TableCell>{vehicle.vehicleType}</TableCell>
-                  <TableCell>
-                    {vehicle.vehicleType === "Truck"
-                      ? vehicle.currentMiles || "0"
-                      : vehicle.hoursReading || "0"}
+            </TableHead>
+            <TableBody>
+              {filteredVehicles.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    align="center"
+                    className="py-10 text-gray-500 text-sm"
+                  >
+                    No vehicles found matching current filter.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ) : (
+                filteredVehicles.map((vehicle) => (
+                  <TableRow
+                    key={vehicle.id}
+                    className="hover:bg-gray-50/60 transition"
+                  >
+                    <TableCell className="!text-xs sm:!text-sm !font-semibold !text-gray-900 !py-2.5">
+                      {vehicle.vehicleNumber}
+                    </TableCell>
+                    <TableCell className="!text-xs sm:!text-sm !text-gray-700 !py-2.5">
+                      {vehicle.companyName}
+                    </TableCell>
+                    <TableCell className="!py-2.5">
+                      <span
+                        className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-md ${
+                          vehicle.vehicleType === "Truck"
+                            ? "bg-blue-50 text-blue-700 border border-blue-200"
+                            : "bg-purple-50 text-purple-700 border border-purple-200"
+                        }`}
+                      >
+                        {vehicle.vehicleType}
+                      </span>
+                    </TableCell>
+                    <TableCell className="!text-xs sm:!text-sm !font-medium !text-gray-800 !py-2.5">
+                      {vehicle.vehicleType === "Truck"
+                        ? `${vehicle.currentMiles || "0"} mi`
+                        : `${vehicle.hoursReading || "0"} hrs`}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </div>
     </div>
   );
 };
@@ -3474,12 +3501,15 @@ export default function RecordsPage() {
         overflow: "hidden",
         backgroundColor: "#FFFFFF",
         boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05)",
+        width: "100%",
       },
     },
     muiTableContainerProps: {
       sx: {
         maxHeight: "none",
         backgroundColor: "#FFFFFF",
+        overflowX: "auto",
+        maxWidth: "100%",
       },
     },
     muiTableHeadCellProps: {
@@ -3565,9 +3595,9 @@ export default function RecordsPage() {
   }
 
   return userData?.isView ? (
-    <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
+    <div className="flex flex-col justify-center items-center p-3 sm:p-4 md:p-6 bg-gray-100 gap-4 sm:gap-6 w-full max-w-full overflow-hidden">
       {/* Button Container */}
-      <div className="flex justify-center gap-4 mb-6">
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full">
         {/** Add Record */}
 
         <button
@@ -3576,9 +3606,9 @@ export default function RecordsPage() {
               ? setShowAddRecords(true)
               : toast.error("You don't have permission to add records.")
           }
-          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]"
+          className="bg-[#F96176] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95"
         >
-          <IoMdAdd /> Add Record
+          <IoMdAdd className="text-base sm:text-lg" /> Add Record
         </button>
 
         {/** Add mile */}
@@ -3589,54 +3619,54 @@ export default function RecordsPage() {
               ? setShowAddMiles(true)
               : toast.error("You don't have permission to add miles/hours.")
           }
-          className="bg-[#8B5CF6] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#7C3AED] transition"
+          className="bg-[#8B5CF6] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#7C3AED] transition shadow-xs cursor-pointer active:scale-95"
         >
-          <IoMdAdd /> Add Miles/Hours
+          <IoMdAdd className="text-base sm:text-lg" /> Add Miles/Hours
         </button>
 
         {/** Search Functionality */}
 
         <button
           onClick={() => handleSearchFilterOpen()}
-          className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#48a374] transition"
+          className="bg-[#58BB87] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#48a374] transition shadow-xs cursor-pointer active:scale-95"
         >
-          Search <BiFilter />
+          Search <BiFilter className="text-base sm:text-lg" />
         </button>
 
         {/** Print pdf */}
         <button
           onClick={handlePrint}
-          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#e14a60] transition"
+          className="bg-[#F96176] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95"
         >
-          <FaPrint /> Print
+          <FaPrint className="text-xs sm:text-sm" /> Print
         </button>
 
         {/** Import Record Excel */}
         <Link href="/import-record" passHref>
-          <button className="bg-[#10B981] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#059669] transition">
-            <FaFileImport /> Import Excel
+          <button className="bg-[#10B981] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#059669] transition shadow-xs cursor-pointer active:scale-95">
+            <FaFileImport className="text-xs sm:text-sm" /> Import Excel
           </button>
         </Link>
 
         {/** Download All Records */}
         <button
           onClick={downloadAllRecords}
-          className="bg-[#10B981] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#059669] transition"
+          className="bg-[#10B981] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#059669] transition shadow-xs cursor-pointer active:scale-95"
         >
-          <FaDownload /> Download All
+          <FaDownload className="text-xs sm:text-sm" /> Download All
         </button>
 
         {/** Export Data (Vehicle-Wise & Service-Wise) */}
         <button
           onClick={() => setShowExportModal(true)}
-          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#e14a60] transition cursor-pointer shadow-xs"
+          className="bg-[#F96176] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95"
         >
-          <FaFileExport /> Export Data
+          <FaFileExport className="text-xs sm:text-sm" /> Export Data
         </button>
       </div>
 
       {userRole === "SubOwner" && (
-        <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+        <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg w-full">
           <p className="text-gray-700 text-sm">
             Viewing records as Co-Owner (Owner&apos;s data)
           </p>
@@ -3645,13 +3675,15 @@ export default function RecordsPage() {
 
       {/* Summary Box */}
       {(role === "Owner" || role === "Accountant" || role === "SubOwner") && (
-        <div className="w-full bg-white p-4 rounded-lg shadow-md mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Invoice Summary</h2>
-            <div className="flex gap-2">
+        <div className="w-full bg-white p-3.5 sm:p-5 rounded-xl shadow-xs border border-gray-200 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+            <h2 className="text-base sm:text-lg font-bold text-gray-800">
+              Invoice Summary
+            </h2>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
               <button
                 onClick={() => setShowVehicleFilter(!showVehicleFilter)}
-                className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-200 transition"
               >
                 {selectedVehicleTypeFilter === "all"
                   ? "All Vehicles"
@@ -3660,30 +3692,35 @@ export default function RecordsPage() {
                   : "Trailers"}
               </button>
 
-              <DatePicker
-                selected={summaryStartDate}
-                onChange={(date) => setSummaryStartDate(date)}
-                selectsStart
-                startDate={summaryStartDate}
-                endDate={summaryEndDate}
-                placeholderText="Start Date"
-                className="p-2 border rounded w-40"
-                popperPlacement="bottom-start"
-                popperClassName="!z-[9999]"
-              />
+              <div className="flex-1 sm:flex-none">
+                <DatePicker
+                  selected={summaryStartDate}
+                  onChange={(date) => setSummaryStartDate(date)}
+                  selectsStart
+                  startDate={summaryStartDate}
+                  endDate={summaryEndDate}
+                  placeholderText="Start Date"
+                  className="w-full sm:w-32 md:w-36 px-2.5 py-1.5 text-xs sm:text-sm border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#F96176] focus:outline-none"
+                  popperPlacement="bottom-start"
+                  popperClassName="!z-[9999]"
+                />
+              </div>
 
-              <DatePicker
-                selected={summaryEndDate}
-                onChange={(date) => setSummaryEndDate(date)}
-                selectsEnd
-                startDate={summaryStartDate}
-                endDate={summaryEndDate}
-                minDate={summaryStartDate ?? undefined}
-                placeholderText="End Date"
-                className="p-2 border rounded w-40"
-                popperPlacement="bottom-start"
-                popperClassName="!z-[9999]"
-              />
+              <div className="flex-1 sm:flex-none">
+                <DatePicker
+                  selected={summaryEndDate}
+                  onChange={(date) => setSummaryEndDate(date)}
+                  selectsEnd
+                  startDate={summaryStartDate}
+                  endDate={summaryEndDate}
+                  minDate={summaryStartDate ?? undefined}
+                  placeholderText="End Date"
+                  className="w-full sm:w-32 md:w-36 px-2.5 py-1.5 text-xs sm:text-sm border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#F96176] focus:outline-none"
+                  popperPlacement="bottom-start"
+                  popperClassName="!z-[9999]"
+                />
+              </div>
+
               <button
                 onClick={() => {
                   setSummaryStartDate(null);
@@ -3691,7 +3728,7 @@ export default function RecordsPage() {
                   setSelectedVehicleTypeFilter("all");
                   setSelectedVehiclesForFilter(new Set());
                 }}
-                className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-200 transition"
               >
                 Clear
               </button>
@@ -3700,34 +3737,34 @@ export default function RecordsPage() {
 
           {/* Vehicle Filter Dropdown */}
           {showVehicleFilter && (
-            <div className="mb-4 p-4 border rounded-lg bg-gray-50">
-              <div className="flex gap-4 mb-4">
+            <div className="mb-4 p-3 sm:p-4 border border-gray-200 rounded-xl bg-gray-50/70">
+              <div className="flex flex-wrap gap-2 mb-3">
                 <button
                   onClick={() => setSelectedVehicleTypeFilter("all")}
-                  className={`px-3 py-1 rounded transition ${
+                  className={`px-3 py-1 text-xs sm:text-sm font-medium rounded-lg transition ${
                     selectedVehicleTypeFilter === "all"
-                      ? "bg-[#F96176] text-white"
-                      : "bg-gray-200 hover:bg-gray-300"
+                      ? "bg-[#F96176] text-white shadow-xs"
+                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
                   }`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setSelectedVehicleTypeFilter("truck")}
-                  className={`px-3 py-1 rounded transition ${
+                  className={`px-3 py-1 text-xs sm:text-sm font-medium rounded-lg transition ${
                     selectedVehicleTypeFilter === "truck"
-                      ? "bg-[#F96176] text-white"
-                      : "bg-gray-200 hover:bg-gray-300"
+                      ? "bg-[#F96176] text-white shadow-xs"
+                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
                   }`}
                 >
                   Trucks
                 </button>
                 <button
                   onClick={() => setSelectedVehicleTypeFilter("trailer")}
-                  className={`px-3 py-1 rounded transition ${
+                  className={`px-3 py-1 text-xs sm:text-sm font-medium rounded-lg transition ${
                     selectedVehicleTypeFilter === "trailer"
-                      ? "bg-[#F96176] text-white"
-                      : "bg-gray-200 hover:bg-gray-300"
+                      ? "bg-[#F96176] text-white shadow-xs"
+                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
                   }`}
                 >
                   Trailers
@@ -3736,11 +3773,11 @@ export default function RecordsPage() {
 
               {selectedVehicleTypeFilter !== "all" && (
                 <div className="max-h-60 overflow-y-auto">
-                  <p className="text-sm font-medium mb-2">
+                  <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                     Select specific vehicles:
                   </p>
                   {/* Fixed height scrollable container */}
-                  <div className="max-h-[300px] overflow-y-auto border rounded-lg p-2">
+                  <div className="max-h-[220px] overflow-y-auto border border-gray-200 bg-white rounded-lg p-2 space-y-1">
                     {vehicles
                       .filter((v) =>
                         selectedVehicleTypeFilter === "truck"
@@ -3748,11 +3785,12 @@ export default function RecordsPage() {
                           : v.vehicleType === "Trailer"
                       )
                       .map((vehicle) => (
-                        <div
+                        <label
                           key={vehicle.id}
-                          className="flex items-center mb-2"
+                          className="flex items-center gap-2 p-1 hover:bg-gray-50 rounded cursor-pointer text-xs sm:text-sm text-gray-800"
                         >
                           <Checkbox
+                            size="small"
                             checked={selectedVehiclesForFilter.has(vehicle.id)}
                             onChange={() => {
                               const newSelected = new Set(
@@ -3766,11 +3804,10 @@ export default function RecordsPage() {
                               setSelectedVehiclesForFilter(newSelected);
                             }}
                           />
-                          <span>
+                          <span className="font-medium">
                             {vehicle.vehicleNumber} ({vehicle.companyName})
-                            {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
                           </span>
-                        </div>
+                        </label>
                       ))}
                   </div>
                 </div>
@@ -3778,53 +3815,57 @@ export default function RecordsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-4 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-500">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-blue-50/70 border border-blue-100 p-3.5 sm:p-4 rounded-xl">
+              <h3 className="text-xs sm:text-sm font-medium text-blue-700">
                 Total Invoice Amount
               </h3>
-              <p className="text-2xl font-bold">
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                 ${totalInvoiceAmount.toFixed(0)}
               </p>
             </div>
 
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-500">
+            <div className="bg-green-50/70 border border-green-100 p-3.5 sm:p-4 rounded-xl">
+              <h3 className="text-xs sm:text-sm font-medium text-green-700">
                 Truck Services
               </h3>
-              <p className="text-2xl font-bold">${truckTotal.toFixed(0)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
+                ${truckTotal.toFixed(0)}
+              </p>
             </div>
 
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-500">
+            <div className="bg-amber-50/70 border border-amber-100 p-3.5 sm:p-4 rounded-xl">
+              <h3 className="text-xs sm:text-sm font-medium text-amber-700">
                 Trailer Services
               </h3>
-              <p className="text-2xl font-bold">${trailerTotal.toFixed(0)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
+                ${trailerTotal.toFixed(0)}
+              </p>
             </div>
 
-            <div className="bg-red-50 p-4 rounded-lg flex items-center justify-between">
+            <div className="bg-rose-50/70 border border-rose-100 p-3.5 sm:p-4 rounded-xl flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
               <div>
-                <h3 className="text-sm font-medium text-gray-500">
+                <h3 className="text-xs sm:text-sm font-medium text-rose-700">
                   Other Expenses
                 </h3>
-                <p className="text-2xl font-bold">
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                   {otherExpensesNetBalance < 0
                     ? `-$${Math.abs(otherExpensesNetBalance).toFixed(0)}`
                     : `$${otherExpensesNetBalance.toFixed(0)}`}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
                 <button
                   type="button"
                   onClick={() => setIsOtherExpenseModalOpen(true)}
-                  className="px-3 py-1.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-semibold rounded-lg shadow-sm transition-all duration-200 flex items-center gap-1 cursor-pointer active:scale-95"
+                  className="px-2.5 py-1.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-semibold rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer active:scale-95"
                   title="Add Other Expense"
                 >
                   <IoMdAdd className="text-sm" /> Add
                 </button>
                 <Link
                   href="/other-expenses"
-                  className="px-3 py-1.5 bg-white hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg shadow-xs transition-colors duration-200 flex items-center gap-1"
+                  className="px-2.5 py-1.5 bg-white hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg shadow-2xs transition flex items-center gap-1"
                   title="View Other Expenses"
                 >
                   <FaEye className="text-xs text-gray-500" /> View
@@ -3836,21 +3877,21 @@ export default function RecordsPage() {
       )}
 
       {/* Tabs & Quick / Short Filter Bar */}
-      <div className="w-full flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 mb-6 bg-white p-3 md:p-3.5 rounded-xl shadow-sm border border-gray-200">
+      <div className="w-full flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 mb-6 bg-white p-3 md:p-3.5 rounded-xl shadow-xs border border-gray-200">
         {/* Left Side: Tabs Switcher */}
         <div className="flex items-center justify-between sm:justify-start gap-3">
-          <div className="inline-flex p-1 bg-gray-100 rounded-lg">
+          <div className="inline-flex p-1 bg-gray-100 rounded-lg w-full sm:w-auto">
             <button
               onClick={() => setActiveTab("records")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-md transition-all ${
                 activeTab === "records"
-                  ? "bg-[#F96176] text-white shadow-sm"
+                  ? "bg-[#F96176] text-white shadow-xs"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
               }`}
             >
               <span>Records</span>
               <span
-                className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                className={`text-2xs sm:text-xs px-2 py-0.5 rounded-full font-bold ${
                   activeTab === "records"
                     ? "bg-white/25 text-white"
                     : "bg-gray-200 text-gray-700"
@@ -3861,15 +3902,15 @@ export default function RecordsPage() {
             </button>
             <button
               onClick={() => setActiveTab("miles")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-md transition-all ${
                 activeTab === "miles"
-                  ? "bg-[#F96176] text-white shadow-sm"
+                  ? "bg-[#F96176] text-white shadow-xs"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
               }`}
             >
               <span>Miles/Hours</span>
               <span
-                className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                className={`text-2xs sm:text-xs px-2 py-0.5 rounded-full font-bold ${
                   activeTab === "miles"
                     ? "bg-white/25 text-white"
                     : "bg-gray-200 text-gray-700"
@@ -3882,9 +3923,9 @@ export default function RecordsPage() {
         </div>
 
         {/* Right Side: Quick / Short Filters */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5">
           {/* Quick Search */}
-          <div className="relative flex-1 sm:flex-none min-w-[150px] sm:min-w-[170px]">
+          <div className="relative col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[170px]">
             <input
               type="text"
               value={quickSearchText}
@@ -3908,7 +3949,7 @@ export default function RecordsPage() {
             onChange={(e: any) =>
               handleQuickCompanyFilterChange(e.target.value)
             }
-            className={`max-w-[150px] sm:max-w-[180px] truncate px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+            className={`w-full sm:w-auto sm:max-w-[170px] truncate px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
               quickCompanyFilter !== "all"
                 ? "bg-rose-50 border-[#F96176] text-[#F96176]"
                 : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
@@ -3926,7 +3967,7 @@ export default function RecordsPage() {
           <select
             value={quickVehicleFilter}
             onChange={(e: any) => setQuickVehicleFilter(e.target.value)}
-            className={`max-w-[150px] sm:max-w-[180px] truncate px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+            className={`w-full sm:w-auto sm:max-w-[170px] truncate px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
               quickVehicleFilter !== "all"
                 ? "bg-rose-50 border-[#F96176] text-[#F96176]"
                 : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
@@ -3949,7 +3990,7 @@ export default function RecordsPage() {
                   e.target.value as "all" | "paid" | "unpaid" | "partial"
                 )
               }
-              className={`px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+              className={`w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
                 quickPaymentFilter !== "all"
                   ? "bg-rose-50 border-[#F96176] text-[#F96176]"
                   : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
@@ -3967,7 +4008,7 @@ export default function RecordsPage() {
             <select
               value={quickWorkshopFilter}
               onChange={(e: any) => setQuickWorkshopFilter(e.target.value)}
-              className={`max-w-[150px] sm:max-w-[180px] truncate px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+              className={`w-full sm:w-auto sm:max-w-[170px] truncate px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
                 quickWorkshopFilter !== "all"
                   ? "bg-rose-50 border-[#F96176] text-[#F96176]"
                   : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
@@ -3988,7 +4029,7 @@ export default function RecordsPage() {
             onChange={(e: any) =>
               setQuickTypeFilter(e.target.value as "all" | "truck" | "trailer")
             }
-            className={`px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+            className={`w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
               quickTypeFilter !== "all"
                 ? "bg-rose-50 border-[#F96176] text-[#F96176]"
                 : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
@@ -4013,7 +4054,7 @@ export default function RecordsPage() {
                     | "unit_desc"
                 )
               }
-              className={`px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+              className={`w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
                 quickSortOption !== "date_desc"
                   ? "bg-rose-50 border-[#F96176] text-[#F96176]"
                   : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
@@ -4031,7 +4072,7 @@ export default function RecordsPage() {
           {isQuickFilterActive && (
             <button
               onClick={clearQuickFilters}
-              className="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition shadow-2xs"
+              className="col-span-2 sm:col-span-1 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition shadow-2xs cursor-pointer"
               title="Reset all short filters"
             >
               Clear
@@ -5039,10 +5080,12 @@ export default function RecordsPage() {
         ) : (
           <div
             ref={printRef}
-            className="w-full bg-white rounded-xl shadow-xs"
-            style={{ overflow: "visible", maxHeight: "none" }}
+            className="w-full bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden"
+            style={{ maxHeight: "none" }}
           >
-            <MaterialReactTable table={table} />
+            <div className="w-full overflow-x-auto">
+              <MaterialReactTable table={table} />
+            </div>
           </div>
         )
       ) : (
