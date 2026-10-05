@@ -6,6 +6,8 @@ import {
   doc,
   getDocs,
   setDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import toast from "react-hot-toast";
@@ -19,6 +21,11 @@ import {
   FaArrowUp,
   FaBuilding,
   FaTruck,
+  FaUsers,
+  FaUserPlus,
+  FaSearch,
+  FaUserCheck,
+  FaUserTie,
 } from "react-icons/fa";
 
 export type TransactionType = "Credit" | "Debit";
@@ -33,6 +40,11 @@ export interface OtherExpenseRecord {
   companyName?: string;
   vehicleId?: string;
   vehicleNumber?: string;
+  teamMemberId?: string;
+  teamMemberName?: string;
+  teamMemberRole?: string;
+  teamMemberEmail?: string;
+  teamMemberPhone?: string;
   date: string;
   amount: number;
   type: TransactionType;
@@ -62,6 +74,16 @@ export interface VehicleOption {
   myCompany?: string;
   companyName?: string;
   active?: boolean;
+}
+
+export interface TeamMemberOption {
+  uid: string;
+  userName: string;
+  email: string;
+  phoneNumber: string;
+  role: string;
+  profilePicture?: string;
+  active: boolean;
 }
 
 export interface AddOtherExpenseModalProps {
@@ -184,6 +206,7 @@ export default function AddOtherExpenseModal({
   );
   const [companiesList, setCompaniesList] = useState<CompanyOption[]>([]);
   const [vehiclesList, setVehiclesList] = useState<VehicleOption[]>([]);
+  const [teamList, setTeamList] = useState<TeamMemberOption[]>([]);
 
   // Form states
   const [formDate, setFormDate] = useState<string>(
@@ -196,6 +219,13 @@ export default function AddOtherExpenseModal({
   const [selectedCompanyName, setSelectedCompanyName] = useState<string>("");
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
   const [selectedVehicleNumber, setSelectedVehicleNumber] = useState<string>("");
+  const [selectedTeamMember, setSelectedTeamMember] =
+    useState<TeamMemberOption | null>(null);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState<boolean>(false);
+  const [teamSearchQuery, setTeamSearchQuery] = useState<string>("");
+  const [selectedTeamRoleFilter, setSelectedTeamRoleFilter] =
+    useState<string>("All");
+
   const [formAmount, setFormAmount] = useState<string>("");
   const [formType, setFormType] = useState<TransactionType>("Debit");
   const [formDescription, setFormDescription] = useState<string>("");
@@ -257,11 +287,11 @@ export default function AddOtherExpenseModal({
     fetchServices();
   }, [preloadedServices]);
 
-  // 2. Fetch companies and vehicles for effective user
+  // 2. Fetch companies, vehicles, and team members for effective user
   useEffect(() => {
     if (!effectiveUserId || !isOpen) return;
 
-    const fetchCompaniesAndVehicles = async () => {
+    const fetchCompaniesVehiclesAndTeam = async () => {
       try {
         // Fetch myCompanies
         const compSnapshot = await getDocs(
@@ -302,38 +332,130 @@ export default function AddOtherExpenseModal({
         });
         loadedVehicles.sort((a, b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
         setVehiclesList(loadedVehicles);
+
+        // Fetch Team Members
+        try {
+          const teamSnapshot = await getDocs(
+            query(
+              collection(db, "Users"),
+              where("createdBy", "==", effectiveUserId)
+            )
+          );
+          const loadedTeam: TeamMemberOption[] = [];
+          teamSnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.active !== false && docSnap.id !== effectiveUserId) {
+              loadedTeam.push({
+                uid: docSnap.id,
+                userName: data.userName || data.name || "Unnamed Member",
+                email: data.email || "",
+                phoneNumber: (data.phoneNumber || "")
+                  .toString()
+                  .replace(/^\+1\s*/, "")
+                  .replace(/^\+/, "")
+                  .trim(),
+                role: data.role || "Driver",
+                profilePicture: data.profilePicture || "",
+                active: data.active !== false,
+              });
+            }
+          });
+          loadedTeam.sort((a, b) => a.userName.localeCompare(b.userName));
+          setTeamList(loadedTeam);
+        } catch (teamErr) {
+          console.error("Error loading team members in modal:", teamErr);
+        }
       } catch (err) {
         console.error("Error loading companies and vehicles in modal:", err);
       }
     };
 
-    fetchCompaniesAndVehicles();
+    fetchCompaniesVehiclesAndTeam();
   }, [effectiveUserId, isOpen]);
 
-  // Filter vehicles according to selected company
-  const availableVehicles = useMemo(() => {
-    if (!selectedCompanyId) {
-      return vehiclesList;
-    }
-    const comp = companiesList.find((c) => c.id === selectedCompanyId);
-    const compNameLower = comp?.companyName?.trim().toLowerCase() || "";
-
-    return vehiclesList.filter((v) => {
-      if (v.mycomId && v.mycomId === selectedCompanyId) return true;
-      if (
-        compNameLower &&
-        v.myCompany &&
-        v.myCompany.trim().toLowerCase() === compNameLower
-      )
-        return true;
-      if (
-        compNameLower &&
-        v.companyName &&
-        v.companyName.trim().toLowerCase() === compNameLower
-      )
-        return true;
-      return false;
+  // Derived available team roles
+  const availableTeamRoles = useMemo(() => {
+    const rolesSet = new Set<string>();
+    teamList.forEach((m) => {
+      if (m.role) rolesSet.add(m.role);
     });
+
+    const standardRoles = ["Driver", "Accountant", "Manager"];
+    const otherRoles = Array.from(rolesSet).filter(
+      (r) => !standardRoles.includes(r)
+    );
+
+    return ["All", ...standardRoles, ...otherRoles];
+  }, [teamList]);
+
+  // Filtered team members for selection dialog
+  const filteredTeamMembers = useMemo(() => {
+    return teamList.filter((member) => {
+      if (
+        selectedTeamRoleFilter !== "All" &&
+        member.role.toLowerCase() !== selectedTeamRoleFilter.toLowerCase()
+      ) {
+        return false;
+      }
+      if (teamSearchQuery.trim()) {
+        const q = teamSearchQuery.toLowerCase().trim();
+        const matchName = member.userName.toLowerCase().includes(q);
+        const matchEmail = member.email.toLowerCase().includes(q);
+        const matchPhone = member.phoneNumber.toLowerCase().includes(q);
+        const matchRole = member.role.toLowerCase().includes(q);
+        if (!matchName && !matchEmail && !matchPhone && !matchRole) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [teamList, selectedTeamRoleFilter, teamSearchQuery]);
+
+  // Derived sorted services (Alphabetical A-Z, with "Other" kept at the end)
+  const sortedServices = useMemo(() => {
+    return sortServicesAlphabetical(servicesList);
+  }, [servicesList]);
+
+  // Derived sorted companies (Alphabetical A-Z)
+  const sortedCompanies = useMemo(() => {
+    return [...companiesList].sort((a, b) =>
+      a.companyName.localeCompare(b.companyName, undefined, {
+        sensitivity: "base",
+      })
+    );
+  }, [companiesList]);
+
+  // Filter vehicles according to selected company & sort alphabetically (A-Z)
+  const availableVehicles = useMemo(() => {
+    let list = vehiclesList;
+    if (selectedCompanyId) {
+      const comp = companiesList.find((c) => c.id === selectedCompanyId);
+      const compNameLower = comp?.companyName?.trim().toLowerCase() || "";
+
+      list = vehiclesList.filter((v) => {
+        if (v.mycomId && v.mycomId === selectedCompanyId) return true;
+        if (
+          compNameLower &&
+          v.myCompany &&
+          v.myCompany.trim().toLowerCase() === compNameLower
+        )
+          return true;
+        if (
+          compNameLower &&
+          v.companyName &&
+          v.companyName.trim().toLowerCase() === compNameLower
+        )
+          return true;
+        return false;
+      });
+    }
+
+    return [...list].sort((a, b) =>
+      a.vehicleNumber.localeCompare(b.vehicleNumber, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      })
+    );
   }, [vehiclesList, selectedCompanyId, companiesList]);
 
   // 3. Initialize or reset form based on editingRecord
@@ -360,6 +482,27 @@ export default function AddOtherExpenseModal({
       setSelectedVehicleId(editingRecord.vehicleId || "");
       setSelectedVehicleNumber(editingRecord.vehicleNumber || "");
 
+      // Initialize team member
+      if (editingRecord.teamMemberId || editingRecord.teamMemberName) {
+        const matchedTeam = teamList.find(
+          (t) => t.uid === editingRecord.teamMemberId
+        );
+        if (matchedTeam) {
+          setSelectedTeamMember(matchedTeam);
+        } else {
+          setSelectedTeamMember({
+            uid: editingRecord.teamMemberId || "",
+            userName: editingRecord.teamMemberName || "",
+            role: editingRecord.teamMemberRole || "Driver",
+            email: editingRecord.teamMemberEmail || "",
+            phoneNumber: editingRecord.teamMemberPhone || "",
+            active: true,
+          });
+        }
+      } else {
+        setSelectedTeamMember(null);
+      }
+
       setFormAmount(
         editingRecord.amount ? editingRecord.amount.toString() : ""
       );
@@ -384,12 +527,13 @@ export default function AddOtherExpenseModal({
 
       setSelectedVehicleId("");
       setSelectedVehicleNumber("");
+      setSelectedTeamMember(null);
       setFormAmount("");
       setFormType("Debit");
       setFormDescription("");
       setFormErrors({});
     }
-  }, [isOpen, editingRecord, servicesList, companiesList]);
+  }, [isOpen, editingRecord, servicesList, companiesList, teamList]);
 
   // Handle company change
   const handleCompanyChange = (compId: string) => {
@@ -502,6 +646,11 @@ export default function AddOtherExpenseModal({
         companyName: selectedCompanyName || "",
         vehicleId: selectedVehicleId || "",
         vehicleNumber: selectedVehicleNumber || "",
+        teamMemberId: selectedTeamMember?.uid || "",
+        teamMemberName: selectedTeamMember?.userName || "",
+        teamMemberRole: selectedTeamMember?.role || "",
+        teamMemberEmail: selectedTeamMember?.email || "",
+        teamMemberPhone: selectedTeamMember?.phoneNumber || "",
         date: dbDateFormatted,
         amount: parseFloat(formAmount) || 0,
         type: formType,
@@ -668,7 +817,7 @@ export default function AddOtherExpenseModal({
                 className="w-full p-3 bg-gray-50 hover:bg-gray-100/70 focus:bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all"
               >
                 <option value="">-- Select Company (Optional) --</option>
-                {companiesList.map((comp) => (
+                {sortedCompanies.map((comp) => (
                   <option key={comp.id} value={comp.id}>
                     {comp.companyName}
                     {comp.isDefault ? " (Default)" : ""}
@@ -726,7 +875,7 @@ export default function AddOtherExpenseModal({
               <option value="" disabled>
                 -- Select Service / Expense --
               </option>
-              {servicesList.map((s) => (
+              {sortedServices.map((s) => (
                 <option key={s.id} value={s.sName}>
                   {s.sName}
                 </option>
@@ -773,6 +922,109 @@ export default function AddOtherExpenseModal({
               )}
             </div>
           )}
+
+          {/* Team Assignment Section */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1.5">
+                  <FaUsers className="text-[#F96176] text-xs" />
+                  Team Assignment (Optional)
+                </span>
+              </label>
+              {selectedTeamMember && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedTeamMember(null)}
+                  className="text-[11px] text-red-500 hover:text-red-700 font-medium cursor-pointer"
+                >
+                  Clear team
+                </button>
+              )}
+            </div>
+
+            {selectedTeamMember ? (
+              <div className="p-3 bg-gradient-to-r from-rose-50/60 to-orange-50/40 border border-rose-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#F96176] to-[#e04f63] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden shadow-xs border border-white">
+                    {selectedTeamMember.profilePicture ? (
+                      <img
+                        src={selectedTeamMember.profilePicture}
+                        alt={selectedTeamMember.userName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      selectedTeamMember.userName.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-gray-900 truncate">
+                        {selectedTeamMember.userName}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          selectedTeamMember.role.toLowerCase() === "driver"
+                            ? "bg-blue-100 text-blue-800"
+                            : selectedTeamMember.role.toLowerCase() === "accountant"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : selectedTeamMember.role.toLowerCase() === "manager"
+                            ? "bg-purple-100 text-purple-800"
+                            : selectedTeamMember.role.toLowerCase() === "subowner"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {selectedTeamMember.role === "SubOwner"
+                          ? "Co-Owner"
+                          : selectedTeamMember.role}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                      {selectedTeamMember.email ||
+                        selectedTeamMember.phoneNumber ||
+                        "Assigned team member"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTeamSearchQuery("");
+                      setSelectedTeamRoleFilter("All");
+                      setIsTeamModalOpen(true);
+                    }}
+                    className="px-2.5 py-1 text-xs font-semibold text-[#F96176] bg-white hover:bg-rose-50 border border-rose-200 rounded-lg transition shadow-2xs cursor-pointer"
+                  >
+                    Change
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTeamMember(null)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                    title="Remove assignment"
+                  >
+                    <FaTimes className="text-xs" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setTeamSearchQuery("");
+                  setSelectedTeamRoleFilter("All");
+                  setIsTeamModalOpen(true);
+                }}
+                className="w-full py-2.5 px-3 bg-gray-50 hover:bg-rose-50/50 border border-dashed border-gray-300 hover:border-rose-300 rounded-xl text-xs font-semibold text-gray-600 hover:text-[#F96176] flex items-center justify-center gap-2 transition cursor-pointer group"
+              >
+                <FaUserPlus className="text-sm text-gray-400 group-hover:text-[#F96176] transition-colors" />
+                <span>+ Assign Team Member (Driver, Accountant, Manager...)</span>
+              </button>
+            )}
+          </div>
 
           {/* Amount */}
           <div>
@@ -856,6 +1108,207 @@ export default function AddOtherExpenseModal({
           </div>
         </form>
       </div>
+
+      {/* Nested Team Member Selection Modal */}
+      {isTeamModalOpen && (
+        <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 overflow-hidden transform transition-all animate-in fade-in duration-200 flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="px-5 py-4 bg-gray-50/90 border-b border-gray-200 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-rose-100 text-[#F96176] rounded-xl">
+                  <FaUsers className="text-base" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">
+                    Select Team Member
+                  </h4>
+                  <p className="text-[11px] text-gray-500">
+                    Assign this expense to a driver, accountant, or manager
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTeamModalOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200/60 transition cursor-pointer"
+              >
+                <FaTimes className="text-xs" />
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="p-3.5 border-b border-gray-100 bg-white shrink-0">
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+                <input
+                  type="text"
+                  value={teamSearchQuery}
+                  onChange={(e) => setTeamSearchQuery(e.target.value)}
+                  placeholder="Search by name, role, email, phone..."
+                  className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] focus:bg-white transition"
+                />
+                {teamSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setTeamSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-200"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              {/* Role Filter Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pt-2.5 pb-0.5 no-scrollbar">
+                {availableTeamRoles.map((roleName) => {
+                  const isSelected = selectedTeamRoleFilter === roleName;
+                  const count =
+                    roleName === "All"
+                      ? teamList.length
+                      : teamList.filter(
+                          (m) =>
+                            m.role.toLowerCase() === roleName.toLowerCase()
+                        ).length;
+
+                  return (
+                    <button
+                      key={roleName}
+                      type="button"
+                      onClick={() => setSelectedTeamRoleFilter(roleName)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition cursor-pointer ${
+                        isSelected
+                          ? "bg-[#F96176] text-white shadow-2xs"
+                          : "bg-gray-100 hover:bg-gray-200/80 text-gray-600"
+                      }`}
+                    >
+                      {roleName === "SubOwner" ? "Co-Owner" : roleName} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Team List Content */}
+            <div className="p-3.5 overflow-y-auto space-y-2 flex-1">
+              {filteredTeamMembers.length === 0 ? (
+                <div className="py-10 text-center text-gray-400">
+                  <FaUserTie className="text-3xl mx-auto mb-2 text-gray-300" />
+                  <p className="text-xs font-semibold text-gray-600">
+                    No team members found
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {teamSearchQuery || selectedTeamRoleFilter !== "All"
+                      ? "Try adjusting your search or role filter"
+                      : "Add team members in Account > Manage Team"}
+                  </p>
+                </div>
+              ) : (
+                filteredTeamMembers.map((member) => {
+                  const isCurrent =
+                    selectedTeamMember?.uid === member.uid;
+
+                  return (
+                    <div
+                      key={member.uid}
+                      onClick={() => {
+                        setSelectedTeamMember(member);
+                        setIsTeamModalOpen(false);
+                      }}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isCurrent
+                          ? "bg-rose-50/80 border-[#F96176] shadow-2xs"
+                          : "bg-white hover:bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 text-white flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden shadow-2xs">
+                          {member.profilePicture ? (
+                            <img
+                              src={member.profilePicture}
+                              alt={member.userName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            member.userName.charAt(0).toUpperCase()
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-gray-900 truncate">
+                              {member.userName}
+                            </span>
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                member.role.toLowerCase() === "driver"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : member.role.toLowerCase() === "accountant"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : member.role.toLowerCase() === "manager"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : member.role.toLowerCase() === "subowner"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {member.role === "SubOwner"
+                                ? "Co-Owner"
+                                : member.role}
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                            {member.email || member.phoneNumber || "No contact info"}
+                          </p>
+                          {member.phoneNumber && member.email && (
+                            <p className="text-[10px] text-gray-400 truncate">
+                              📞 {member.phoneNumber}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        {isCurrent ? (
+                          <div className="w-6 h-6 rounded-full bg-[#F96176] text-white flex items-center justify-center shadow-2xs">
+                            <FaCheck className="text-[10px]" />
+                          </div>
+                        ) : (
+                          <span className="text-xs font-semibold text-gray-400 hover:text-[#F96176] px-2 py-1 bg-gray-50 hover:bg-rose-50 rounded-lg border border-gray-200 transition">
+                            Select
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTeamMember(null);
+                  setIsTeamModalOpen(false);
+                }}
+                className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-900 font-medium rounded-lg hover:bg-gray-200/60 transition cursor-pointer"
+              >
+                Clear Selection
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsTeamModalOpen(false)}
+                className="px-4 py-1.5 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

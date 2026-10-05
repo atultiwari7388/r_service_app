@@ -415,6 +415,11 @@ export default function OtherExpensesPage() {
               companyName: data.companyName || "",
               vehicleId: data.vehicleId || "",
               vehicleNumber: data.vehicleNumber || "",
+              teamMemberId: data.teamMemberId || "",
+              teamMemberName: data.teamMemberName || "",
+              teamMemberRole: data.teamMemberRole || "",
+              teamMemberEmail: data.teamMemberEmail || "",
+              teamMemberPhone: data.teamMemberPhone || "",
               date: data.date || "",
               amount: Number(data.amount) || 0,
               type: data.type === "Credit" ? "Credit" : "Debit",
@@ -554,12 +559,16 @@ export default function OtherExpensesPage() {
         const matchesCompany = (rec.companyName || "")
           .toLowerCase()
           .includes(q);
+        const matchesTeam =
+          (rec.teamMemberName || "").toLowerCase().includes(q) ||
+          (rec.teamMemberRole || "").toLowerCase().includes(q);
         if (
           !matchesName &&
           !matchesDesc &&
           !matchesAmount &&
           !matchesVehicle &&
-          !matchesCompany
+          !matchesCompany &&
+          !matchesTeam
         ) {
           return false;
         }
@@ -729,6 +738,9 @@ export default function OtherExpensesPage() {
         "S.No": String(index + 1),
         Date: formatDateSafe(r.date),
         "Service / Expense": r.serviceName,
+        "Team Member": r.teamMemberName
+          ? `${r.teamMemberName}${r.teamMemberRole ? ` (${r.teamMemberRole})` : ""}`
+          : "-",
         Company: r.companyName || "-",
         Vehicle: r.vehicleNumber || "-",
         Type: r.type === "Credit" ? "Credit (Cash In)" : "Debit (Cash Out)",
@@ -743,6 +755,7 @@ export default function OtherExpensesPage() {
         { wch: 10 }, // S.No
         { wch: 18 }, // Date (MM-DD-YYYY)
         { wch: 32 }, // Service / Expense
+        { wch: 26 }, // Team Member
         { wch: 24 }, // Company
         { wch: 18 }, // Vehicle
         { wch: 24 }, // Type (Credit (Cash In) / Debit (Cash Out))
@@ -1212,8 +1225,20 @@ export default function OtherExpensesPage() {
                               </span>
                             )}
                           </div>
-                          {(record.vehicleNumber || record.companyName) && (
+                          {(record.vehicleNumber ||
+                            record.companyName ||
+                            record.teamMemberName) && (
                             <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              {record.teamMemberName && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium text-[10px] border border-emerald-200">
+                                  👤 {record.teamMemberName}
+                                  {record.teamMemberRole && (
+                                    <span className="text-[9px] text-emerald-600">
+                                      ({record.teamMemberRole})
+                                    </span>
+                                  )}
+                                </span>
+                              )}
                               {record.vehicleNumber && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-medium text-[10px] border border-blue-100">
                                   🚗 {record.vehicleNumber}
@@ -1473,8 +1498,21 @@ export default function OtherExpensesPage() {
                       </div>
                       {(row.vehicleNumber ||
                         row.companyName ||
+                        row.teamMemberName ||
                         row.description) && (
                         <div className="text-[10px] text-gray-500 mt-0.5">
+                          {row.teamMemberName && (
+                            <span className="font-medium text-emerald-700">
+                              👤 {row.teamMemberName}
+                              {row.teamMemberRole
+                                ? ` (${row.teamMemberRole})`
+                                : ""}
+                            </span>
+                          )}
+                          {row.teamMemberName &&
+                            (row.vehicleNumber ||
+                              row.companyName ||
+                              row.description) && <span> • </span>}
                           {row.vehicleNumber && (
                             <span className="font-medium text-gray-700">
                               Veh: {row.vehicleNumber}
