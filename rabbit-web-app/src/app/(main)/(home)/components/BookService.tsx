@@ -908,14 +908,145 @@ const BookingSection: React.FC = () => {
     }
   };
 
-  // Browser GPS auto-detection
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser");
+  // Reverse geocode lat/lng to formatted address using available services
+  const resolveAddressFromCoords = async (
+    lat: number,
+    lng: number
+  ): Promise<string> => {
+    // 1. Try Google Maps Geocoder if loaded
+    if (typeof window !== "undefined" && window.google?.maps?.Geocoder) {
+      try {
+        const geocoder = new window.google.maps.Geocoder();
+        const response = await geocoder.geocode({
+          location: { lat, lng },
+        });
+        if (response.results && response.results.length > 0) {
+          return response.results[0].formatted_address;
+        }
+      } catch (gErr) {
+        console.warn("Google Geocoder reverse geocode warning:", gErr);
+      }
+    }
+
+    // 2. Try BigDataCloud reverse geocode (Free, fast, CORS-enabled for web)
+    try {
+      const res = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+      );
+      const data = await res.json();
+      if (data) {
+        const parts = [
+          data.locality ||
+            data.city ||
+            data.localityInfo?.administrative?.[2]?.name,
+          data.principalSubdivision || data.principalSubdivisionCode,
+          data.countryName || data.countryCode,
+        ].filter(Boolean);
+        if (parts.length > 0) {
+          return parts.join(", ");
+        }
+      }
+    } catch (bdErr) {
+      console.warn("BigDataCloud reverse geocode warning:", bdErr);
+    }
+
+    // 3. Try OpenStreetMap Nominatim
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+      );
+      const data = await res.json();
+      if (data && data.display_name) {
+        return data.display_name;
+      }
+    } catch (nomErr) {
+      console.warn("Nominatim reverse geocode warning:", nomErr);
+    }
+
+    return `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
+  };
+
+  // Fallback IP Geolocation when browser GPS is unavailable, blocked or times out
+  const detectLocationFromIP = async (): Promise<{
+    address: string;
+    lat: number;
+    lng: number;
+  } | null> => {
+    // Try ipapi.co
+    try {
+      const res = await fetch("https://ipapi.co/json/");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.city && data.latitude && data.longitude) {
+          const address = [
+            data.city,
+            data.region,
+            data.country_name || data.country,
+          ]
+            .filter(Boolean)
+            .join(", ");
+          return {
+            address: address || `${data.latitude}, ${data.longitude}`,
+            lat: Number(data.latitude),
+            lng: Number(data.longitude),
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("ipapi.co fallback failed:", e);
+    }
+
+    // Try ipwho.is fallback
+    try {
+      const res = await fetch("https://ipwho.is/");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success !== false && data.latitude && data.longitude) {
+          const address = [data.city, data.region, data.country]
+            .filter(Boolean)
+            .join(", ");
+          return {
+            address: address || `${data.latitude}, ${data.longitude}`,
+            lat: Number(data.latitude),
+            lng: Number(data.longitude),
+          };
+        }
+      }
+    } catch (e2) {
+      console.warn("ipwho.is fallback failed:", e2);
+    }
+
+    return null;
+  };
+
+  // Robust Unified Location Detection (GPS first, then IP fallback)
+  const handleDetectLocation = async (isManualTap = true) => {
+    setIsDetectingLocation(true);
+
+    const applyIpFallback = async () => {
+      const ipResult = await detectLocationFromIP();
+      if (ipResult) {
+        setGuestAddress(ipResult.address);
+        setGuestLat(ipResult.lat);
+        setGuestLng(ipResult.lng);
+        if (isManualTap) {
+          toast.success("Location detected!");
+        }
+        return true;
+      }
+      return false;
+    };
+
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      const ok = await applyIpFallback();
+      setIsDetectingLocation(false);
+      if (!ok && isManualTap) {
+        toast.error("Could not detect location. Please type your location.");
+      }
       return;
     }
 
-    setIsDetectingLocation(true);
+    // Try standard browser geolocation (low accuracy first for instant speed & desktop compatibility)
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const lat = pos.coords.latitude;
@@ -924,75 +1055,42 @@ const BookingSection: React.FC = () => {
         setGuestLng(lng);
 
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-          );
-          const data = await res.json();
-          if (data && data.display_name) {
-            setGuestAddress(data.display_name);
-          } else {
-            setGuestAddress(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
+          const resolvedAddress = await resolveAddressFromCoords(lat, lng);
+          setGuestAddress(resolvedAddress);
+          if (isManualTap) {
+            toast.success("Location detected!");
           }
-          toast.success("Location detected!");
         } catch {
           setGuestAddress(`GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-          toast.success("Coordinates acquired!");
+          if (isManualTap) {
+            toast.success("Coordinates acquired!");
+          }
         } finally {
           setIsDetectingLocation(false);
         }
       },
-      (err) => {
-        setIsDetectingLocation(false);
-        console.error("Geolocation error:", err);
-        toast.error(
-          "Could not fetch GPS. Please enter your location manually."
+      async (err) => {
+        console.warn(
+          "Browser GPS unavailable or denied, attempting IP location fallback:",
+          err.message
         );
+        const ok = await applyIpFallback();
+        setIsDetectingLocation(false);
+        if (!ok && isManualTap) {
+          toast.error("Could not fetch GPS. Please search or enter your location.");
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
     );
   };
 
-  // Auto-detect GPS location on initial load without requiring user to tap the GPS button
+  // Auto-detect location on initial load without requiring manual button tap
   useEffect(() => {
     if (autoLocationAttempted.current || !isGuestMode) return;
-    if (typeof window === "undefined" || !navigator.geolocation) return;
     if (guestAddress.trim()) return;
 
     autoLocationAttempted.current = true;
-    setIsDetectingLocation(true);
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setGuestLat(lat);
-        setGuestLng(lng);
-
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-          );
-          const data = await res.json();
-          if (data && data.display_name) {
-            setGuestAddress(data.display_name);
-          } else {
-            setGuestAddress(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
-          }
-        } catch {
-          setGuestAddress(`GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-        } finally {
-          setIsDetectingLocation(false);
-        }
-      },
-      (err) => {
-        setIsDetectingLocation(false);
-        console.warn(
-          "Auto-geolocation permission not granted or unavailable on mount:",
-          err.message
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    );
+    handleDetectLocation(false);
   }, [isGuestMode, guestAddress]);
 
   // Setup reCAPTCHA verifier for Phone Auth
