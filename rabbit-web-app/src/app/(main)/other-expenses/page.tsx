@@ -42,18 +42,35 @@ import AddOtherExpenseModal, {
 } from "@/components/records/AddOtherExpenseModal";
 
 const DEFAULT_SERVICES: string[] = [
-  "Fuel / Gas Surcharge",
-  "Tolls & Permits",
-  "Driver Reimbursement",
   "Cash Advance",
-  "Equipment Rental",
-  "Loading / Unloading (Lumper)",
   "Detention / Layover",
+  "Driver Reimbursement",
+  "Equipment Rental",
+  "Fuel / Gas Surcharge",
+  "Insurance & Legal",
+  "Loading / Unloading (Lumper)",
   "Office & Misc Supplies",
   "Safety & Inspection",
-  "Insurance & Legal",
+  "Tolls & Permits",
   "Other",
 ];
+
+const sortServicesAlphabetical = (
+  services: OtherExpenseServiceOption[]
+): OtherExpenseServiceOption[] => {
+  const nonOther = services.filter(
+    (s) => s.sName.trim().toLowerCase() !== "other"
+  );
+  const other = services.filter(
+    (s) => s.sName.trim().toLowerCase() === "other"
+  );
+
+  nonOther.sort((a, b) =>
+    a.sName.localeCompare(b.sName, undefined, { sensitivity: "base" })
+  );
+
+  return [...nonOther, ...other];
+};
 
 const formatDateSafe = (dateStr?: string | null): string => {
   if (!dateStr) return "";
@@ -353,7 +370,7 @@ export default function OtherExpensesPage() {
           if (!hasOther) {
             fetchedServices.push({ id: "custom_other", sName: "Other" });
           }
-          setServicesList(fetchedServices);
+          setServicesList(sortServicesAlphabetical(fetchedServices));
         }
       } catch (error) {
         console.error("Error fetching otherExpensesServices:", error);
