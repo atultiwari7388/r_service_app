@@ -39,6 +39,13 @@ import {
 } from "react-icons/fa";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { useLoadScript } from "@react-google-maps/api";
+import usePlacesAutocomplete, {
+  getGeocode,
+  getLatLng,
+} from "use-places-autocomplete";
+
+const GOOGLE_LIBRARIES: "places"[] = ["places"];
 
 declare global {
   interface Window {
@@ -253,9 +260,180 @@ const COUNTRY_CODES = [
   { code: "+61", label: "+61 (AU)" },
 ];
 
+interface GuestLocationSearchInputProps {
+  value: string;
+  onChange: (address: string) => void;
+  onSelectPlace: (
+    address: string,
+    lat: number | null,
+    lng: number | null
+  ) => void;
+  onDetectGps: () => void;
+  isDetectingGps: boolean;
+  isGoogleLoaded: boolean;
+}
+
+const GuestLocationSearchInput: React.FC<GuestLocationSearchInputProps> = ({
+  value,
+  onChange,
+  onSelectPlace,
+  onDetectGps,
+  isDetectingGps,
+  isGoogleLoaded,
+}) => {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const {
+    ready,
+    suggestions: { status, data },
+    setValue: setPlacesValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({
+    requestOptions: {
+      componentRestrictions: { country: ["us", "ca", "gb", "au", "mx"] },
+    },
+    debounce: 300,
+    defaultValue: value,
+    initOnMount: isGoogleLoaded,
+  });
+
+  // Keep places autocomplete internal value synced with external state
+  useEffect(() => {
+    setPlacesValue(value, false);
+  }, [value, setPlacesValue]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    onChange(newVal);
+    setPlacesValue(newVal);
+    setShowDropdown(true);
+  };
+
+  const handleSelectSuggestion = async (description: string) => {
+    setShowDropdown(false);
+    clearSuggestions();
+    setPlacesValue(description, false);
+    onChange(description);
+
+    try {
+      // Basic geocoding only — NO Atmosphere Data SKU requested or billed
+      const results = await getGeocode({ address: description });
+      if (results && results[0]) {
+        const { lat, lng } = await getLatLng(results[0]);
+        const formatted = results[0].formatted_address || description;
+        onSelectPlace(formatted, lat, lng);
+      } else {
+        onSelectPlace(description, null, null);
+      }
+    } catch (err) {
+      console.warn("Geocoding lookup error:", err);
+      onSelectPlace(description, null, null);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder={
+              isDetectingGps
+                ? "Detecting your current location..."
+                : "Current Location / Search Place"
+            }
+            value={value}
+            onChange={handleInputChange}
+            onFocus={() => {
+              if (data.length > 0) setShowDropdown(true);
+            }}
+            className="w-full h-14 p-4 pr-8 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-sm text-gray-800 bg-white"
+            required
+            autoComplete="off"
+          />
+          {value && (
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setPlacesValue("", false);
+                clearSuggestions();
+                setShowDropdown(false);
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 text-xs rounded-full hover:bg-gray-100 transition cursor-pointer"
+              title="Clear address"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onDetectGps}
+          disabled={isDetectingGps}
+          className="bg-[#F96176] text-white text-xs font-semibold rounded-md hover:bg-[#eb929e] px-3 whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer transition shadow-xs disabled:opacity-50"
+          title="Refresh current GPS location"
+        >
+          {isDetectingGps ? (
+            <span className="inline-block animate-spin">⏳</span>
+          ) : (
+            <span>📍 GPS</span>
+          )}
+        </button>
+      </div>
+
+      {/* Autocomplete Predictions Dropdown */}
+      {showDropdown && status === "OK" && data.length > 0 && (
+        <ul className="absolute z-50 left-0 right-14 mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto divide-y divide-gray-100 text-left">
+          {data.map(({ place_id, description, structured_formatting }) => (
+            <li
+              key={place_id}
+              onClick={() => handleSelectSuggestion(description)}
+              className="p-3 hover:bg-rose-50/80 cursor-pointer text-xs text-gray-700 transition flex items-start gap-2.5"
+            >
+              <span className="text-[#F96176] text-sm mt-0.5 shrink-0">📍</span>
+              <div className="min-w-0 flex-1">
+                <span className="font-bold text-gray-900 block truncate">
+                  {structured_formatting?.main_text || description}
+                </span>
+                {structured_formatting?.secondary_text && (
+                  <span className="text-[11px] text-gray-500 block truncate mt-0.5">
+                    {structured_formatting.secondary_text}
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const BookingSection: React.FC = () => {
   const { user } = useAuth() || { user: null };
   const router = useRouter();
+
+  const { isLoaded: isGoogleLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",
+    libraries: GOOGLE_LIBRARIES,
+  });
 
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState<ServiceType[]>(DEFAULT_SERVICES);
@@ -301,6 +479,8 @@ const BookingSection: React.FC = () => {
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [guestCountryCode, setGuestCountryCode] = useState("+1");
   const [guestPhoneNumber, setGuestPhoneNumber] = useState("");
+
+  const autoLocationAttempted = useRef(false);
 
   // OTP Authentication State
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -771,6 +951,49 @@ const BookingSection: React.FC = () => {
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
+
+  // Auto-detect GPS location on initial load without requiring user to tap the GPS button
+  useEffect(() => {
+    if (autoLocationAttempted.current || !isGuestMode) return;
+    if (typeof window === "undefined" || !navigator.geolocation) return;
+    if (guestAddress.trim()) return;
+
+    autoLocationAttempted.current = true;
+    setIsDetectingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setGuestLat(lat);
+        setGuestLng(lng);
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+          );
+          const data = await res.json();
+          if (data && data.display_name) {
+            setGuestAddress(data.display_name);
+          } else {
+            setGuestAddress(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
+          }
+        } catch {
+          setGuestAddress(`GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        } finally {
+          setIsDetectingLocation(false);
+        }
+      },
+      (err) => {
+        setIsDetectingLocation(false);
+        console.warn(
+          "Auto-geolocation permission not granted or unavailable on mount:",
+          err.message
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }, [isGuestMode, guestAddress]);
 
   // Setup reCAPTCHA verifier for Phone Auth
   const setupRecaptcha = async (): Promise<RecaptchaVerifier> => {
@@ -1523,26 +1746,19 @@ const BookingSection: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Location with GPS */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Current Location / Address"
-                      value={guestAddress}
-                      onChange={(e) => setGuestAddress(e.target.value)}
-                      className="w-full h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-sm text-gray-800 bg-white"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={handleDetectLocation}
-                      disabled={isDetectingLocation}
-                      className="bg-[#F96176] text-white text-xs font-semibold rounded-md hover:bg-[#eb929e] px-3 whitespace-nowrap flex items-center justify-center gap-1"
-                      title="Get Current Location via GPS"
-                    >
-                      {isDetectingLocation ? "..." : "📍 GPS"}
-                    </button>
-                  </div>
+                  {/* Location with Places Autocomplete & GPS */}
+                  <GuestLocationSearchInput
+                    value={guestAddress}
+                    onChange={(val) => setGuestAddress(val)}
+                    onSelectPlace={(address, lat, lng) => {
+                      setGuestAddress(address);
+                      if (lat !== null) setGuestLat(lat);
+                      if (lng !== null) setGuestLng(lng);
+                    }}
+                    onDetectGps={handleDetectLocation}
+                    isDetectingGps={isDetectingLocation}
+                    isGoogleLoaded={isGoogleLoaded}
+                  />
 
                   {/* Mobile Number with Country Code (if unauthenticated) */}
                   {(!user || !user.phoneNumber) && (
