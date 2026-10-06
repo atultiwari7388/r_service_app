@@ -1,9 +1,7 @@
 import { NextUIProvider } from "@nextui-org/react";
-import TopBar from "@/components/TopBar";
-import NavBar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import AuthContextProvider from "@/contexts/AuthContexts";
 import { Toaster } from "react-hot-toast";
+import MainLayoutClient from "@/components/MainLayoutClient";
 
 export default function MainLayout({
   children,
@@ -14,10 +12,7 @@ export default function MainLayout({
     <AuthContextProvider>
       <Toaster />
       <NextUIProvider>
-        <TopBar />
-        <NavBar />
-        {children}
-        <Footer />
+        <MainLayoutClient>{children}</MainLayoutClient>
       </NextUIProvider>
     </AuthContextProvider>
   );
