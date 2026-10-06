@@ -69,6 +69,7 @@ import {
   FaDownload,
   FaFileImport,
   FaFilePdf,
+  FaFileImage,
   FaFileExport,
   FaTrash,
   FaCopy,
@@ -210,6 +211,13 @@ interface ServiceRecord {
     paidBy: string;
   }>;
   imageUrl: string;
+  documentName?: string;
+  fileType?: string;
+  uploadedDocuments?: Array<{
+    imageUrl: string;
+    text: string;
+    fileType?: string;
+  }>;
 }
 
 interface RecordData extends ServiceRecord {
@@ -582,6 +590,19 @@ export default function RecordsPage() {
     useState<VehicleTypes | null>(null);
 
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+
+  // Multiple Documents Upload State
+  const [recordDocuments, setRecordDocuments] = useState<
+    Array<{
+      id: string;
+      file?: File;
+      previewUrl?: string;
+      imageUrl?: string;
+      customText: string;
+      fileType?: string;
+      isExisting?: boolean;
+    }>
+  >([]);
 
   // Add Miles Form State
   const [showAddMiles, setShowAddMiles] = useState(false);
@@ -1274,81 +1295,138 @@ export default function RecordsPage() {
     });
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-
-      const isPdf =
-        file.type.toLowerCase().includes("pdf") ||
-        file.name.toLowerCase().endsWith(".pdf");
-
-      if (!isPdf) {
-        // Create image preview
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            setImagePreview(event.target.result as string);
-          }
+  const handleRecordFilesChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      const newItems = filesArray.map((file) => {
+        const isPdf =
+          file.type.toLowerCase().includes("pdf") ||
+          file.name.toLowerCase().endsWith(".pdf");
+        const cleanName = file.name.replace(/\.[^/.]+$/, "");
+        return {
+          id: Math.random().toString(36).substring(2, 9),
+          file,
+          previewUrl: isPdf ? undefined : URL.createObjectURL(file),
+          customText: cleanName,
+          fileType: isPdf ? "pdf" : "image",
+          isExisting: false,
         };
-        reader.readAsDataURL(file);
-      } else {
-        setImagePreview(null);
-      }
+      });
+      setRecordDocuments((prev) => [...prev, ...newItems]);
+      e.target.value = "";
     }
   };
 
-  const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile || !effectiveUserId) return null;
+  const handleRecordDocTextChange = (id: string, text: string) => {
+    setRecordDocuments((prev) =>
+      prev.map((doc) => (doc.id === id ? { ...doc, customText: text } : doc))
+    );
+  };
+
+  const handleRemoveRecordDoc = (id: string) => {
+    setRecordDocuments((prev) => prev.filter((doc) => doc.id !== id));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleRecordFilesChange(e);
+  };
+
+  const uploadAllRecordDocuments = async (): Promise<
+    Array<{ imageUrl: string; text: string; fileType: string }>
+  > => {
+    if (!effectiveUserId || recordDocuments.length === 0) return [];
 
     try {
       setIsUploading(true);
       setUploadProgress(0);
+      const results: Array<{
+        imageUrl: string;
+        text: string;
+        fileType: string;
+      }> = [];
 
-      const isPdf =
-        imageFile.type.toLowerCase().includes("pdf") ||
-        imageFile.name.toLowerCase().endsWith(".pdf");
+      const totalDocs = recordDocuments.length;
+      let completed = 0;
 
-      const storageRef = ref(
-        storage,
-        `service-records/${effectiveUserId}/${Date.now()}_${imageFile.name}`
-      );
-      const uploadTask = uploadBytesResumable(storageRef, imageFile, {
-        contentType:
-          imageFile.type || (isPdf ? "application/pdf" : "image/jpeg"),
-      });
+      for (const docItem of recordDocuments) {
+        if (docItem.isExisting && docItem.imageUrl) {
+          results.push({
+            imageUrl: docItem.imageUrl,
+            text: docItem.customText || "Service Document",
+            fileType:
+              docItem.fileType ||
+              (docItem.imageUrl.toLowerCase().includes(".pdf")
+                ? "pdf"
+                : "image"),
+          });
+          completed++;
+          setUploadProgress((completed / totalDocs) * 100);
+          continue;
+        }
 
-      return new Promise((resolve, reject) => {
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            const progress =
-              (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
-          },
-          (error) => {
-            console.error("Upload error:", error);
-            setIsUploading(false);
-            reject(error);
-          },
-          async () => {
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              setIsUploading(false);
-              resolve(downloadURL);
-            } catch (error) {
-              console.error("Error getting download URL:", error);
-              setIsUploading(false);
-              reject(error);
-            }
-          }
-        );
-      });
-    } catch (error) {
-      console.error("Error setting up upload:", error);
+        if (docItem.file) {
+          const isPdf =
+            docItem.file.type.toLowerCase().includes("pdf") ||
+            docItem.file.name.toLowerCase().endsWith(".pdf");
+          const storageRef = ref(
+            storage,
+            `service-records/${effectiveUserId}/${Date.now()}_${docItem.file.name}`
+          );
+          const uploadTask = uploadBytesResumable(storageRef, docItem.file, {
+            contentType:
+              docItem.file.type ||
+              (isPdf ? "application/pdf" : "image/jpeg"),
+          });
+
+          const downloadURL = await new Promise<string>((resolve, reject) => {
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => {
+                const subProgress =
+                  (snapshot.bytesTransferred / snapshot.totalBytes) *
+                  (1 / totalDocs) *
+                  100;
+                setUploadProgress((completed / totalDocs) * 100 + subProgress);
+              },
+              (err) => reject(err),
+              async () => {
+                try {
+                  const url = await getDownloadURL(uploadTask.snapshot.ref);
+                  resolve(url);
+                } catch (urlErr) {
+                  reject(urlErr);
+                }
+              }
+            );
+          });
+
+          results.push({
+            imageUrl: downloadURL,
+            text:
+              docItem.customText.trim() ||
+              docItem.file.name.replace(/\.[^/.]+$/, ""),
+            fileType: isPdf ? "pdf" : "image",
+          });
+          completed++;
+          setUploadProgress((completed / totalDocs) * 100);
+        }
+      }
+
       setIsUploading(false);
-      return null;
+      return results;
+    } catch (error) {
+      console.error("Error uploading record documents:", error);
+      setIsUploading(false);
+      throw error;
     }
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (recordDocuments.length === 0) return null;
+    const docs = await uploadAllRecordDocuments();
+    return docs.length > 0 ? docs[0].imageUrl : null;
   };
 
   // Derived unique workshop list from both workshopList state and records data
@@ -2313,16 +2391,31 @@ export default function RecordsPage() {
         return;
       }
 
-      // Upload image/pdf if exists
-      let imageUrl = existingImageUrl;
-      if (imageFile) {
-        imageUrl = await uploadImage();
-        if (!imageUrl) {
-          toast.error("Failed to upload document");
+      // Upload documents if any
+      let uploadedDocsList: Array<{
+        imageUrl: string;
+        text: string;
+        fileType: string;
+      }> = [];
+
+      if (recordDocuments.length > 0) {
+        try {
+          uploadedDocsList = await uploadAllRecordDocuments();
+        } catch (error) {
+          toast.error("Failed to upload service documents");
           setIsRecordSaving(false);
           return;
         }
       }
+
+      const primaryImageUrl =
+        uploadedDocsList.length > 0
+          ? uploadedDocsList[0].imageUrl
+          : existingImageUrl || "";
+      const primaryDocName =
+        uploadedDocsList.length > 0 ? uploadedDocsList[0].text : "";
+      const primaryFileType =
+        uploadedDocsList.length > 0 ? uploadedDocsList[0].fileType : "";
 
       // Get numeric values
       const currentMiles = Number(miles);
@@ -2516,7 +2609,10 @@ export default function RecordsPage() {
       const recordData = {
         userId: effectiveUserId,
         vehicleId: selectedVehicle,
-        imageUrl,
+        imageUrl: primaryImageUrl,
+        documentName: primaryDocName,
+        fileType: primaryFileType,
+        uploadedDocuments: uploadedDocsList,
         myCompany: myCompany,
         mycomId: mycomId,
         vehicleDetails: {
@@ -2833,10 +2929,41 @@ export default function RecordsPage() {
       setWorkshopName(record.workshopName || "");
       setInvoice(record.invoice || "");
       setInvoiceAmount(record.invoiceAmount || "");
-      setDescription(record.description || "");
-
       setExistingImageUrl(record.imageUrl || null);
       setImagePreview(record.imageUrl || null);
+
+      // Populate multiple documents
+      if (record.uploadedDocuments && record.uploadedDocuments.length > 0) {
+        setRecordDocuments(
+          record.uploadedDocuments.map((doc, idx) => ({
+            id: `existing_${idx}_${Date.now()}`,
+            imageUrl: doc.imageUrl,
+            customText: doc.text || `Document ${idx + 1}`,
+            fileType:
+              doc.fileType ||
+              (doc.imageUrl.toLowerCase().includes(".pdf") ? "pdf" : "image"),
+            isExisting: true,
+          }))
+        );
+      } else if (record.imageUrl) {
+        setRecordDocuments([
+          {
+            id: `existing_0_${Date.now()}`,
+            imageUrl: record.imageUrl,
+            customText:
+              record.documentName ||
+              (record.invoice ? `Invoice #${record.invoice}` : "Service Document"),
+            fileType:
+              record.fileType ||
+              (record.imageUrl.toLowerCase().includes(".pdf")
+                ? "pdf"
+                : "image"),
+            isExisting: true,
+          },
+        ]);
+      } else {
+        setRecordDocuments([]);
+      }
 
       setShowAddRecords(true);
     },
@@ -2976,11 +3103,42 @@ export default function RecordsPage() {
       setWorkshopName(record.workshopName || "");
       setInvoice(record.invoice || "");
       setInvoiceAmount(record.invoiceAmount || "");
-      setDescription(record.description || "");
-
       setExistingImageUrl(record.imageUrl || null);
       setImagePreview(record.imageUrl || null);
       setImageFile(null);
+
+      // Populate multiple documents for duplicate
+      if (record.uploadedDocuments && record.uploadedDocuments.length > 0) {
+        setRecordDocuments(
+          record.uploadedDocuments.map((doc, idx) => ({
+            id: `dup_${idx}_${Date.now()}`,
+            imageUrl: doc.imageUrl,
+            customText: doc.text || `Document ${idx + 1}`,
+            fileType:
+              doc.fileType ||
+              (doc.imageUrl.toLowerCase().includes(".pdf") ? "pdf" : "image"),
+            isExisting: true,
+          }))
+        );
+      } else if (record.imageUrl) {
+        setRecordDocuments([
+          {
+            id: `dup_0_${Date.now()}`,
+            imageUrl: record.imageUrl,
+            customText:
+              record.documentName ||
+              (record.invoice ? `Invoice #${record.invoice}` : "Service Document"),
+            fileType:
+              record.fileType ||
+              (record.imageUrl.toLowerCase().includes(".pdf")
+                ? "pdf"
+                : "image"),
+            isExisting: true,
+          },
+        ]);
+      } else {
+        setRecordDocuments([]);
+      }
 
       setShowAddRecords(true);
       toast.success(
@@ -3185,6 +3343,7 @@ export default function RecordsPage() {
     setImageFile(null);
     setImagePreview(null);
     setExistingImageUrl(null);
+    setRecordDocuments([]);
     setIsOtherServiceSelected(false);
     setOtherServiceName("");
     setValidationErrors({});
@@ -4865,86 +5024,169 @@ export default function RecordsPage() {
                   className="rounded-lg"
                 />
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload Service Document / Invoice (Image or PDF)
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf,.pdf"
-                    onChange={handleImageChange}
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-[#F96176] file:text-white
-                      hover:file:bg-[#e05065]"
-                  />
+                <div className="mb-4 pt-2 border-t border-gray-100">
+                  <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-800">
+                        Upload Service Documents / Invoices
+                      </label>
+                      <p className="text-xs text-gray-500">
+                        Attach multiple invoices, parts receipts, work orders, or inspection reports (Images &amp; PDFs supported).
+                      </p>
+                    </div>
+                    {recordDocuments.length > 0 && (
+                      <span className="text-xs font-semibold bg-rose-50 text-[#F96176] px-2.5 py-0.5 rounded-full border border-rose-200">
+                        {recordDocuments.length} document{recordDocuments.length > 1 ? "s" : ""} attached
+                      </span>
+                    )}
+                  </div>
 
-                  {(imageFile || imagePreview || existingImageUrl) && (
-                    <div className="mt-3 p-3 border rounded-lg bg-gray-50 flex items-center justify-between">
-                      {(imageFile &&
-                        (imageFile.type.toLowerCase().includes("pdf") ||
-                          imageFile.name.toLowerCase().endsWith(".pdf"))) ||
-                      (!imageFile &&
-                        existingImageUrl &&
-                        (existingImageUrl.toLowerCase().includes(".pdf") ||
-                          existingImageUrl
-                            .toLowerCase()
-                            .includes("application%2fpdf"))) ? (
-                        <div className="flex items-center gap-3">
-                          <FaFilePdf className="text-red-500 text-3xl shrink-0" />
-                          <div>
-                            <p className="text-sm font-semibold text-gray-800">
-                              {imageFile
-                                ? imageFile.name
-                                : "Attached PDF Invoice"}
-                            </p>
-                            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-semibold uppercase">
-                              PDF Document
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <div className="relative w-16 h-16 rounded overflow-hidden border bg-white shrink-0">
-                            {imagePreview || existingImageUrl ? (
-                              <img
-                                src={imagePreview || existingImageUrl || ""}
-                                alt="Preview"
-                                className="w-full h-full object-cover"
-                              />
-                            ) : null}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-800">
-                              {imageFile
-                                ? imageFile.name
-                                : "Attached Service Image"}
-                            </p>
-                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded font-semibold uppercase">
-                              Image
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                  {/* File Selector */}
+                  <div className="flex gap-3 mb-3 items-center">
+                    <label className="cursor-pointer bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300 hover:border-[#F96176] rounded-xl px-4 py-2.5 flex items-center gap-3 transition">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,application/pdf,.pdf"
+                        onChange={handleRecordFilesChange}
+                        className="hidden"
+                      />
+                      <span className="bg-[#F96176] text-white px-3 py-1 rounded-md text-xs font-semibold shadow-xs">
+                        + Choose Files
+                      </span>
+                      <span className="text-xs text-gray-600 font-medium">
+                        Select multiple images or PDF files
+                      </span>
+                    </label>
+                  </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImagePreview(null);
-                          setImageFile(null);
-                          setExistingImageUrl(null);
-                        }}
-                        className="text-sm text-red-600 hover:text-red-800 flex items-center gap-1 p-2 rounded hover:bg-red-50"
-                      >
-                        <FaTrash size={12} /> Remove
-                      </button>
+                  {/* Selected / Existing Documents List with Name Inputs */}
+                  {recordDocuments.length > 0 && (
+                    <div className="space-y-3 mt-3">
+                      <p className="text-xs font-semibold text-gray-700">
+                        Attached Documents — Enter custom name for each:
+                      </p>
+                      <div className="grid grid-cols-1 gap-3">
+                        {recordDocuments.map((docItem) => {
+                          const isPdf =
+                            docItem.fileType === "pdf" ||
+                            (docItem.file &&
+                              (docItem.file.type.toLowerCase().includes("pdf") ||
+                                docItem.file.name.toLowerCase().endsWith(".pdf"))) ||
+                            (docItem.imageUrl &&
+                              (docItem.imageUrl.toLowerCase().includes(".pdf") ||
+                                docItem.imageUrl
+                                  .toLowerCase()
+                                  .includes("application%2fpdf")));
+
+                          const displayName =
+                            docItem.file?.name ||
+                            docItem.customText ||
+                            "Attached Document";
+
+                          return (
+                            <div
+                              key={docItem.id}
+                              className="p-3 border border-gray-200 rounded-xl bg-gray-50/80 hover:bg-gray-50 transition flex items-start gap-3"
+                            >
+                              {/* Preview Thumbnail */}
+                              <div className="shrink-0 w-14 h-14 rounded-lg overflow-hidden border bg-white flex items-center justify-center">
+                                {isPdf ? (
+                                  <FaFilePdf className="text-red-500 text-3xl" />
+                                ) : docItem.previewUrl || docItem.imageUrl ? (
+                                  <img
+                                    src={docItem.previewUrl || docItem.imageUrl}
+                                    alt="Preview"
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <FaFileImage className="text-blue-500 text-2xl" />
+                                )}
+                              </div>
+
+                              {/* Document Name and Quick Presets */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                  <span
+                                    className="text-xs font-semibold text-gray-800 truncate"
+                                    title={displayName}
+                                  >
+                                    {displayName}
+                                  </span>
+                                  <span
+                                    className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase shrink-0 ${
+                                      isPdf
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-blue-100 text-blue-700"
+                                    }`}
+                                  >
+                                    {isPdf ? "PDF" : "Image"}
+                                    {docItem.isExisting ? " • Saved" : " • New"}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <input
+                                    type="text"
+                                    value={docItem.customText}
+                                    onChange={(e) =>
+                                      handleRecordDocTextChange(
+                                        docItem.id,
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#F96176] font-medium"
+                                    placeholder="Enter document name (e.g. Invoice #1024, Parts Receipt)"
+                                  />
+                                </div>
+
+                                {/* Quick Presets */}
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {[
+                                    "Invoice",
+                                    "Receipt",
+                                    "Parts Breakdown",
+                                    "Work Order",
+                                    "Inspection Report",
+                                    "Diagnostic Scan",
+                                  ].map((preset) => (
+                                    <button
+                                      key={preset}
+                                      type="button"
+                                      onClick={() =>
+                                        handleRecordDocTextChange(
+                                          docItem.id,
+                                          preset
+                                        )
+                                      }
+                                      className="text-[10px] px-2 py-0.5 rounded bg-white hover:bg-[#F96176] hover:text-white text-gray-600 border border-gray-200 transition font-medium"
+                                    >
+                                      {preset}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Remove Button */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleRemoveRecordDoc(docItem.id)
+                                }
+                                className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition shrink-0"
+                                title="Remove document"
+                              >
+                                <FaTrash size={13} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
                   {isUploading && (
-                    <div className="mt-2">
+                    <div className="mt-3">
                       <LinearProgress
                         variant="determinate"
                         value={uploadProgress}
@@ -4953,8 +5195,9 @@ export default function RecordsPage() {
                         variant="caption"
                         display="block"
                         gutterBottom
+                        className="mt-1"
                       >
-                        Uploading: {Math.round(uploadProgress)}%
+                        Uploading documents: {Math.round(uploadProgress)}%
                       </Typography>
                     </div>
                   )}

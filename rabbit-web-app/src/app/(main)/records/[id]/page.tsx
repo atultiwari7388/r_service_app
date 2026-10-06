@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, getDoc } from "firebase/firestore";
@@ -53,6 +53,11 @@ interface ServiceRecord {
   imageUrl?: string;
   documentName?: string;
   fileType?: string;
+  uploadedDocuments?: Array<{
+    imageUrl: string;
+    text: string;
+    fileType?: string;
+  }>;
 }
 
 interface RecordData extends ServiceRecord {
@@ -78,6 +83,14 @@ export default function RecordsDetailsPage({
   const printRef = useRef<HTMLDivElement>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [activePdfDoc, setActivePdfDoc] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
+  const [activeImageDoc, setActiveImageDoc] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
   const [imageScale, setImageScale] = useState(1);
   const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
   const [userRole, setUserRole] = useState(""); // Add user role state
@@ -166,13 +179,58 @@ export default function RecordsDetailsPage({
     pdf.save(`Record_details${record?.invoice}.pdf`);
   };
 
-  const openImageModal = () => {
-    setIsImageModalOpen(true);
+  const allDocuments = useMemo(() => {
+    if (!record) return [];
+    if (record.uploadedDocuments && record.uploadedDocuments.length > 0) {
+      return record.uploadedDocuments;
+    }
+    if (record.imageUrl) {
+      const isPdf =
+        record.imageUrl.toLowerCase().includes(".pdf") ||
+        record.imageUrl.toLowerCase().includes("application%2fpdf") ||
+        record.fileType === "pdf";
+      return [
+        {
+          imageUrl: record.imageUrl,
+          text:
+            record.documentName ||
+            (record.invoice ? `Invoice #${record.invoice}` : "Service Document"),
+          fileType: isPdf ? "pdf" : "image",
+        },
+      ];
+    }
+    return [];
+  }, [record]);
+
+  const openImageModal = (url?: string, title?: string) => {
+    const targetUrl = url || record?.imageUrl || "";
+    if (!targetUrl) return;
+    setActiveImageDoc({
+      url: targetUrl,
+      title:
+        title ||
+        (record?.invoice ? `Invoice #${record.invoice}` : "Service Document"),
+    });
     setImageScale(1);
+    setIsImageModalOpen(true);
+  };
+
+  const openPdfModal = (url: string, title?: string) => {
+    setActivePdfDoc({
+      url,
+      title: title || "Document.pdf",
+    });
+    setIsPdfModalOpen(true);
   };
 
   const closeImageModal = () => {
     setIsImageModalOpen(false);
+    setActiveImageDoc(null);
+  };
+
+  const closePdfModal = () => {
+    setIsPdfModalOpen(false);
+    setActivePdfDoc(null);
   };
 
   const zoomIn = () => {
@@ -183,30 +241,16 @@ export default function RecordsDetailsPage({
     setImageScale((prev) => Math.max(prev - 0.25, 0.5)); // Limit zoom out to 0.5x
   };
 
-  const getPdfFileName = (record: ServiceRecord) => {
-    if (record.documentName && record.documentName.trim() !== "") {
-      return record.documentName;
+  const getPdfFileName = (docTitle?: string) => {
+    if (docTitle && docTitle.trim() !== "") {
+      return docTitle.toLowerCase().endsWith(".pdf") ? docTitle : `${docTitle}.pdf`;
     }
-    if (record.imageUrl) {
-      try {
-        const decodedUrl = decodeURIComponent(record.imageUrl);
-        const cleanUrl = decodedUrl.split("?")[0];
-        const lastSegment = cleanUrl.split("/").pop() || "";
-        // Strip timestamp prefix (e.g., 1725183492834_filename.pdf or 1725183492834.pdf)
-        const nameWithoutTimestamp = lastSegment.replace(/^\d+[_]/, "");
-        if (nameWithoutTimestamp.toLowerCase().endsWith(".pdf")) {
-          return nameWithoutTimestamp;
-        }
-        if (nameWithoutTimestamp) {
-          return nameWithoutTimestamp.includes(".")
-            ? nameWithoutTimestamp
-            : `${nameWithoutTimestamp}.pdf`;
-        }
-      } catch {
-        // fallback
-      }
+    if (record?.documentName && record.documentName.trim() !== "") {
+      return record.documentName.toLowerCase().endsWith(".pdf")
+        ? record.documentName
+        : `${record.documentName}.pdf`;
     }
-    return record.invoice
+    return record?.invoice
       ? `invoice_${record.invoice}.pdf`
       : "service_document.pdf";
   };
@@ -492,101 +536,119 @@ export default function RecordsDetailsPage({
           </div>
         )}
 
-        {/* Document Display Section (Image or PDF) */}
-        {record.imageUrl && (
+        {/* Documents Section (Images or PDFs) */}
+        {allDocuments.length > 0 && (
           <div className="mt-8 m-8">
-            <h3 className="text-2xl font-semibold text-gray-800 border-b pb-2 mb-4">
-              Service Document / Invoice
-            </h3>
-            {record.imageUrl.toLowerCase().includes(".pdf") ||
-            record.imageUrl.toLowerCase().includes("application%2fpdf") ||
-            record.fileType === "pdf" ? (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md mx-auto flex flex-col items-center justify-center text-center shadow-sm">
-                <FaFilePdf className="text-red-500 text-6xl mb-3" />
-                <h4 className="text-lg font-semibold text-gray-800 mb-1">
-                  Attached PDF Document
-                </h4>
-                <p
-                  className="text-sm font-semibold text-red-600 mb-4 px-3 py-1 bg-red-100/60 rounded-md truncate max-w-xs"
-                  title={getPdfFileName(record)}
-                >
-                  {getPdfFileName(record)}
-                </p>
-                <div className="flex gap-3 w-full justify-center">
-                  <button
-                    onClick={() => setIsPdfModalOpen(true)}
-                    className="bg-red-500 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-red-600 transition shadow-sm cursor-pointer"
+            <div className="flex items-center justify-between border-b pb-2 mb-4">
+              <h3 className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+                Service Documents / Attachments
+                <span className="text-sm font-normal bg-red-100 text-red-700 px-2.5 py-0.5 rounded-full">
+                  {allDocuments.length}
+                </span>
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {allDocuments.map((docItem, index) => {
+                const isPdf =
+                  docItem.fileType === "pdf" ||
+                  docItem.imageUrl.toLowerCase().includes(".pdf") ||
+                  docItem.imageUrl.toLowerCase().includes("application%2fpdf");
+                const docTitle =
+                  docItem.text ||
+                  (isPdf
+                    ? `Document_${index + 1}.pdf`
+                    : `Attachment_${index + 1}`);
+
+                return (
+                  <div
+                    key={index}
+                    className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between"
                   >
-                    <FaExternalLinkAlt size={13} /> View
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleDownloadFile(
-                        record.imageUrl!,
-                        getPdfFileName(record),
-                        true
-                      )
-                    }
-                    className="bg-gray-800 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-gray-900 transition shadow-sm cursor-pointer"
-                  >
-                    <FaDownload size={13} /> Download
-                  </button>
-                  <button
-                    onClick={() => handlePrintImage(record.imageUrl)}
-                    className="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-gray-200 transition border shadow-sm cursor-pointer"
-                  >
-                    <FaPrint size={13} /> Print
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div
-                  className="relative w-full max-w-md mx-auto cursor-pointer hover:opacity-90 transition"
-                  onClick={openImageModal}
-                >
-                  <Image
-                    src={record.imageUrl}
-                    alt="Service record"
-                    width={800}
-                    height={600}
-                    className="w-full h-auto rounded-lg border shadow-sm"
-                    objectFit="contain"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-                    <div className="bg-black bg-opacity-50 text-white p-2 rounded-full">
-                      <FaSearchPlus size={24} />
+                    {/* Card Header / Preview */}
+                    {isPdf ? (
+                      <div
+                        className="bg-gradient-to-br from-red-50 to-orange-50 p-6 flex flex-col items-center justify-center text-center cursor-pointer border-b"
+                        onClick={() => openPdfModal(docItem.imageUrl, docTitle)}
+                      >
+                        <FaFilePdf className="text-red-500 text-5xl mb-2 hover:scale-105 transition-transform" />
+                        <span className="text-xs font-bold text-red-600 uppercase tracking-wider bg-red-100 px-2 py-0.5 rounded">
+                          PDF Document
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        className="relative w-full h-44 bg-gray-100 cursor-pointer overflow-hidden group border-b flex items-center justify-center"
+                        onClick={() =>
+                          openImageModal(docItem.imageUrl, docTitle)
+                        }
+                      >
+                        <img
+                          src={docItem.imageUrl}
+                          alt={docTitle}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                        />
+                        <div className="absolute top-2 right-2">
+                          <span className="text-xs font-bold text-gray-800 uppercase tracking-wider bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded shadow-sm">
+                            Image
+                          </span>
+                        </div>
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                          <div className="bg-white/90 text-gray-900 p-2.5 rounded-full shadow-lg">
+                            <FaSearchPlus size={18} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Card Body */}
+                    <div className="p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4
+                          className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2"
+                          title={docTitle}
+                        >
+                          {docTitle}
+                        </h4>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 mt-4 pt-3 border-t">
+                        <button
+                          onClick={() =>
+                            isPdf
+                              ? openPdfModal(docItem.imageUrl, docTitle)
+                              : openImageModal(docItem.imageUrl, docTitle)
+                          }
+                          className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-xs py-2 px-2.5 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer"
+                        >
+                          <FaExternalLinkAlt size={11} /> View
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleDownloadFile(
+                              docItem.imageUrl,
+                              docTitle,
+                              isPdf
+                            )
+                          }
+                          className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 font-semibold text-xs py-2 px-2.5 rounded-lg flex items-center justify-center gap-1.5 transition border cursor-pointer"
+                        >
+                          <FaDownload size={11} /> Download
+                        </button>
+                        <button
+                          onClick={() => handlePrintImage(docItem.imageUrl)}
+                          className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition border cursor-pointer"
+                          title="Print Document"
+                        >
+                          <FaPrint size={12} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex justify-center gap-3 mt-3">
-                  <button
-                    onClick={openImageModal}
-                    className="text-sm bg-red-500 text-white hover:bg-red-600 px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm transition cursor-pointer"
-                  >
-                    <FaExternalLinkAlt size={12} /> View Image
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleDownloadFile(
-                        record.imageUrl!,
-                        `invoice_${record.invoice || record.id}`,
-                        false
-                      )
-                    }
-                    className="text-sm bg-gray-800 text-white hover:bg-gray-900 px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm transition cursor-pointer"
-                  >
-                    <FaDownload size={12} /> Download
-                  </button>
-                  <button
-                    onClick={() => handlePrintImage(record.imageUrl)}
-                    className="text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 border shadow-sm transition cursor-pointer"
-                  >
-                    <FaPrint size={12} /> Print
-                  </button>
-                </div>
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -601,7 +663,7 @@ export default function RecordsDetailsPage({
       </div>
 
       {/* In-Page PDF Preview Modal */}
-      {isPdfModalOpen && record.imageUrl && (
+      {isPdfModalOpen && activePdfDoc && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-6 no-print">
           <div className="bg-white w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
@@ -611,9 +673,9 @@ export default function RecordsDetailsPage({
                 <div className="truncate">
                   <h3
                     className="font-semibold text-base truncate"
-                    title={getPdfFileName(record)}
+                    title={activePdfDoc.title}
                   >
-                    {getPdfFileName(record)}
+                    {activePdfDoc.title}
                   </h3>
                   <p className="text-xs text-gray-400">PDF Preview</p>
                 </div>
@@ -621,7 +683,7 @@ export default function RecordsDetailsPage({
 
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
-                  onClick={() => handlePrintImage(record.imageUrl)}
+                  onClick={() => handlePrintImage(activePdfDoc.url)}
                   className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700 transition cursor-pointer"
                   title="Print PDF"
                 >
@@ -630,8 +692,8 @@ export default function RecordsDetailsPage({
                 <button
                   onClick={() =>
                     handleDownloadFile(
-                      record.imageUrl!,
-                      getPdfFileName(record),
+                      activePdfDoc.url,
+                      getPdfFileName(activePdfDoc.title),
                       true
                     )
                   }
@@ -641,14 +703,14 @@ export default function RecordsDetailsPage({
                   <FaDownload size={11} /> Download
                 </button>
                 <button
-                  onClick={() => window.open(record.imageUrl, "_blank")}
+                  onClick={() => window.open(activePdfDoc.url, "_blank")}
                   className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700 transition cursor-pointer"
                   title="Open in new tab"
                 >
                   <FaExternalLinkAlt size={11} /> New Tab
                 </button>
                 <button
-                  onClick={() => setIsPdfModalOpen(false)}
+                  onClick={closePdfModal}
                   className="bg-red-600/80 hover:bg-red-600 text-white p-2 rounded-lg transition ml-1 cursor-pointer"
                   title="Close"
                 >
@@ -660,9 +722,9 @@ export default function RecordsDetailsPage({
             {/* Modal Body / PDF Viewer */}
             <div className="flex-1 w-full h-full bg-gray-100 relative">
               <iframe
-                src={`${record.imageUrl}#toolbar=1&navpanes=0`}
+                src={`${activePdfDoc.url}#toolbar=1&navpanes=0`}
                 className="w-full h-full border-0"
-                title={getPdfFileName(record)}
+                title={activePdfDoc.title}
               />
             </div>
           </div>
@@ -670,19 +732,17 @@ export default function RecordsDetailsPage({
       )}
 
       {/* Image Modal */}
-      {isImageModalOpen && record.imageUrl && (
+      {isImageModalOpen && activeImageDoc && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4 no-print">
           <div className="relative max-w-5xl w-full max-h-[92vh] flex flex-col items-center">
             {/* Top Toolbar */}
             <div className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-900/90 text-white rounded-t-xl mb-2 backdrop-blur-md">
-              <span className="text-sm font-medium text-gray-200 truncate">
-                {record.invoice
-                  ? `Invoice #${record.invoice}`
-                  : "Service Document"}
+              <span className="text-sm font-medium text-gray-200 truncate max-w-md">
+                {activeImageDoc.title}
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handlePrintImage(record.imageUrl)}
+                  onClick={() => handlePrintImage(activeImageDoc.url)}
                   className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700 transition cursor-pointer"
                   title="Print Image"
                 >
@@ -691,8 +751,8 @@ export default function RecordsDetailsPage({
                 <button
                   onClick={() =>
                     handleDownloadFile(
-                      record.imageUrl!,
-                      `invoice_${record.invoice || record.id}`,
+                      activeImageDoc.url,
+                      activeImageDoc.title,
                       false
                     )
                   }
@@ -728,8 +788,8 @@ export default function RecordsDetailsPage({
             {/* Image Viewer */}
             <div className="w-full flex items-center justify-center overflow-auto max-h-[78vh] p-2 bg-black/40 rounded-b-xl">
               <img
-                src={record.imageUrl}
-                alt="Service record zoomed"
+                src={activeImageDoc.url}
+                alt={activeImageDoc.title}
                 className="max-w-full max-h-[75vh] object-contain rounded-lg transition-transform duration-150"
                 style={{ transform: `scale(${imageScale})` }}
               />
