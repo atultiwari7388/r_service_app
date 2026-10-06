@@ -220,12 +220,12 @@ export default function NavBar() {
                       >
                         Vehicles
                       </Link>
-                      <Link
+                      {/* <Link
                         href="/account/manage-trip"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
                       >
                         My Trip
-                      </Link>
+                      </Link> */}
                       <Link
                         href="/account/trip-wise-vehicle"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
@@ -493,12 +493,12 @@ export default function NavBar() {
                     >
                       ↳ Vehicles
                     </MobileNavLink>
-                    <MobileNavLink
+                    {/* <MobileNavLink
                       href="/account/manage-trip"
                       onClick={toggleMenu}
                     >
                       ↳ My Trip
-                    </MobileNavLink>
+                    </MobileNavLink> */}
                     <MobileNavLink
                       href="/account/trip-wise-vehicle"
                       onClick={toggleMenu}
