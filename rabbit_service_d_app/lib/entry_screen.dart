@@ -17,6 +17,7 @@ import 'package:regal_service_d_app/views/app/adminContact/admin_contact_screen.
 import 'package:regal_service_d_app/views/app/dashboard/dashboard_screen.dart';
 import 'package:regal_service_d_app/views/app/history/history_screen.dart';
 import 'package:regal_service_d_app/views/app/myJobs/my_jobs_screen.dart';
+import 'package:regal_service_d_app/services/notification_navigation_service.dart';
 import 'package:regal_service_d_app/views/app/reports/reports_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -51,6 +52,7 @@ class _EntryScreenState extends State<EntryScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       dashboardController.initializeController();
       reportsController.initializeStreams();
+      NotificationNavigationService.checkAndOpenPending();
     });
     getAnonymousUserFromSharedPrefs();
     fetchHelpContact().then((_) {
@@ -366,6 +368,10 @@ class _EntryScreenState extends State<EntryScreen>
       setState(() {
         loading = false;
       });
+
+      if (_currentUser != null) {
+        NotificationNavigationService.checkAndOpenPending();
+      }
     } catch (e) {
       if (kDebugMode) {
         print('EntryScreen initialization error: $e');

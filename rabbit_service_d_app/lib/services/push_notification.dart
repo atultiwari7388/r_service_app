@@ -331,6 +331,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:regal_service_d_app/services/notification_navigation_service.dart';
 
 class PushNotification {
   static final FirebaseMessaging _firebaseMessaging =
@@ -501,9 +502,10 @@ class PushNotification {
     }
   }
 
+  @pragma('vm:entry-point')
   static void onNotificationTap(NotificationResponse notificationResponse) {
     log("Tapped on notification: ${notificationResponse.payload}");
-    // Implement navigation or other actions here based on payload
+    NotificationNavigationService.openNotificationCenter();
   }
 
   static Future<void> showNewJobNotification({

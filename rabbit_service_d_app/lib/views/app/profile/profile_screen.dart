@@ -191,17 +191,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Get.to(() => MyTeamScreen());
                       })
                     ],
-                    if (role == "Owner" ||
-                        role == "Driver" ||
-                        role == "SubOwner") ...[
-                      buildListTile("assets/manage_trip.png", "My Trips", () {
-                        if (isAnonymous == true || isProfileComplete == false) {
-                          Get.to(() => RegistrationScreen());
-                        } else {
-                          Get.to(() => ManageTripsScreen());
-                        }
-                      }),
-                    ],
+                    // if (role == "Owner" ||
+                    //     role == "Driver" ||
+                    //     role == "SubOwner") ...[
+                    //   buildListTile("assets/manage_trip.png", "My Trips", () {
+                    //     if (isAnonymous == true || isProfileComplete == false) {
+                    //       Get.to(() => RegistrationScreen());
+                    //     } else {
+                    //       Get.to(() => ManageTripsScreen());
+                    //     }
+                    //   }),
+                    // ],
                     if (role == "Owner" || role == "Manager") ...[
                       buildListTile(
                           "assets/manage_trip.png", "Trips Wise Vehicle", () {

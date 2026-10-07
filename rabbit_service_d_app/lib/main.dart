@@ -12,6 +12,7 @@ import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
 import 'package:regal_service_d_app/services/driver_location_service.dart';
 import 'package:regal_service_d_app/views/app/splash/splash_screen.dart';
+import 'package:regal_service_d_app/services/notification_navigation_service.dart';
 import 'services/push_notification.dart';
 import 'entry_screen.dart';
 
@@ -84,30 +85,25 @@ class _MyAppState extends State<MyApp> {
     await pushNotification.localNotiInit();
     await pushNotification.init();
 
-    // Handle foreground taps
+    // Handle background taps
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      _handleNotificationNavigation(message);
+      log("Notification tapped from background: ${message.messageId}");
+      NotificationNavigationService.openNotificationCenter();
     });
 
     // Handle terminated state
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
+      log("App launched from notification in terminated state: ${initialMessage.messageId}");
+      NotificationNavigationService.pendingNotificationCenter = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleNotificationNavigation(initialMessage);
+        NotificationNavigationService.checkAndOpenPending();
       });
     }
   }
 
   void _handleNotificationNavigation(RemoteMessage message) {
-    final type = message.data['type'] ?? 'default';
-    if (type == 'new_job') {
-      navigatorKey.currentState?.pushNamed("/newJob", arguments: message);
-    } else if (type == 'offer_accepted') {
-      navigatorKey.currentState
-          ?.pushNamed("/offerAccepted", arguments: message);
-    } else {
-      navigatorKey.currentState?.pushNamed("/default", arguments: message);
-    }
+    NotificationNavigationService.openNotificationCenter();
   }
 
   // void _listenToInternet() {
