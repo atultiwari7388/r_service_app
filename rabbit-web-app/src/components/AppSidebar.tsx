@@ -332,7 +332,7 @@ export default function AppSidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-50 h-screen w-16 bg-[#0B132B] flex flex-col items-center py-4 justify-between border-r border-gray-800 select-none">
+    <aside className="fixed left-0 top-0 z-50 h-screen w-16 bg-[#0B132B] flex flex-col items-center py-4 justify-between border-r border-gray-800 select-none print:hidden no-print">
       {/* Top: Logo / Home Link */}
       <div className="flex flex-col items-center gap-6 w-full">
         <Link

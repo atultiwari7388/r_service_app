@@ -1,3 +1,8 @@
+"use client";
+
+import CarriersScreen from "../../screens/CarriersScreen";
+
 export default function Page() {
-  return null;
+  return <CarriersScreen onMenuClick={() => {}} />;
 }
+
