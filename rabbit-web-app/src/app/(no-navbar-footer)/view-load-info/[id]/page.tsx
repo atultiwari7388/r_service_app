@@ -38,9 +38,13 @@ import {
   getDocs,
   query,
   where,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
+import { sendLoadCompletionEmail } from "@/utils/sendLoadCompletionEmail";
+import toast from "react-hot-toast";
 
 import { LoadData, Stop, LoadDocument } from "../../interface/loaddata";
 import {
@@ -1981,6 +1985,54 @@ export default function LoadDetailsPage() {
     [dbLoad]
   );
 
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendCompletionPacket = async () => {
+    setIsSendingEmail(true);
+    const toastId = toast.loading("Sending shipment documents to driver & consignee...");
+    try {
+      const res = await sendLoadCompletionEmail({
+        loadId: loadDocId,
+        loadData: dbLoad,
+        showToast: false,
+      });
+      if (res.success) {
+        toast.success(
+          `Documents emailed successfully to: ${res.recipients?.join(", ")} ✉️`,
+          { id: toastId, duration: 5000 }
+        );
+      } else {
+        toast.error(res.error || "Failed to send documents email", { id: toastId, duration: 5000 });
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send email", { id: toastId });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value;
+    if (!newStatus || newStatus === loadData.status) return;
+
+    try {
+      const updateToastId = toast.loading(`Updating status to ${newStatus}...`);
+      await updateDoc(doc(db, "dispatch_loads", loadDocId), {
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      });
+
+      setDbLoad((prev) => (prev ? { ...prev, status: newStatus } : prev));
+      toast.success(`Load status updated to ${newStatus}`, { id: updateToastId });
+
+      if (newStatus === "Completed" || newStatus === "Completed Toun") {
+        await handleSendCompletionPacket();
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update status");
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gray-100/50 font-sans text-gray-900 pb-20">
@@ -2033,6 +2085,15 @@ export default function LoadDetailsPage() {
                     onViewUploadedDocument={handleViewDocument}
                   />
                 </div>
+                <button
+                  onClick={handleSendCompletionPacket}
+                  disabled={isSendingEmail}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition shadow-sm disabled:opacity-50"
+                  title="Email all load documents to assigned driver and consignee"
+                >
+                  <Mail className="w-4 h-4" />
+                  {isSendingEmail ? "Sending Docs..." : "Email Docs to Driver & Consignee"}
+                </button>
                 <button
                   onClick={() => setShowConfirmationModal(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm"
@@ -2133,6 +2194,7 @@ export default function LoadDetailsPage() {
                       <SelectField
                         value={loadData.status}
                         options={loadStatusOptions}
+                        onChange={handleStatusChange}
                       />
                     </div>
                     <div>

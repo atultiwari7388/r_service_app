@@ -37,6 +37,7 @@ import DriverLiveTrackingModal from "@/components/dispatch/DriverLiveTrackingMod
 import { useAuth } from "@/contexts/AuthContexts";
 import { db, storage } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
+import { sendLoadCompletionEmail } from "@/utils/sendLoadCompletionEmail";
 import toast from "react-hot-toast";
 import {
   addDoc,
@@ -767,8 +768,63 @@ export default function TruckDispatchScreen({
     setDropdownOpen(null);
   };
 
+  const handleMarkAsCompleted = async (loadId: string) => {
+    const toastId = toast.loading("Marking load as Completed & delivering documents...");
+    try {
+      await updateDoc(doc(db, "dispatch_loads", loadId), {
+        status: "Completed",
+        updatedAt: serverTimestamp(),
+      });
+
+      setLoads((prev) =>
+        prev.map((item) =>
+          item.id === loadId
+            ? {
+                ...item,
+                status: "Completed",
+                statusGroup: "Completed",
+                progress: 100,
+              }
+            : item
+        )
+      );
+
+      toast.success("Load marked as Completed!", { id: toastId });
+
+      // Automatically email all documents to Driver & Consignee
+      await sendLoadCompletionEmail({ loadId, showToast: true });
+    } catch (error) {
+      GlobalToastError(error);
+      toast.dismiss(toastId);
+    }
+  };
+
+  const handleSendCompletionEmail = async (loadId: string) => {
+    const toastId = toast.loading("Sending shipment documents to driver & consignee...");
+    try {
+      const res = await sendLoadCompletionEmail({ loadId, showToast: false });
+      if (res.success) {
+        toast.success(
+          `Documents emailed successfully to: ${res.recipients?.join(", ")} ✉️`,
+          { id: toastId, duration: 5000 }
+        );
+      } else {
+        toast.error(res.error || "Failed to send documents email", { id: toastId, duration: 5000 });
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send email", { id: toastId });
+    }
+  };
+
   const handleAction = (action: string, loadId: string) => {
     switch (action) {
+      case "mark-completed":
+        handleMarkAsCompleted(loadId);
+        break;
+      case "send-completion-email":
+      case "email-log":
+        handleSendCompletionEmail(loadId);
+        break;
       case "upload-bol":
         openUploadModal(loadId, "bol");
         break;
@@ -781,9 +837,8 @@ export default function TruckDispatchScreen({
       case "duplicate-load":
         router.push(`/create-new-load?duplicateId=${loadId}`);
         break;
-      case "email-log":
       case "load-notes":
-        toast("This action will be connected later.");
+        toast("Load notes viewer will open.");
         break;
       default:
         toast("This action is not available yet.");
@@ -1421,10 +1476,22 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
   const menuItems = [
     {
+      id: "mark-completed",
+      label: "Mark Completed & Mail Docs",
+      icon: <CheckCircle className="w-4 h-4" />,
+      color: "text-emerald-600 hover:bg-emerald-50 font-medium",
+    },
+    {
+      id: "send-completion-email",
+      label: "Send Docs to Driver / Consignee",
+      icon: <Mail className="w-4 h-4" />,
+      color: "text-purple-600 hover:bg-purple-50",
+    },
+    {
       id: "upload-bol",
       label: "Upload BOL",
       icon: <FileUp className="w-4 h-4" />,
-      color: "text-blue-600 hover:bg-blue-50",
+      color: "text-indigo-600 hover:bg-indigo-50",
     },
     {
       id: "upload-pod",
@@ -1433,20 +1500,8 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
       color: "text-green-600 hover:bg-green-50",
     },
     {
-      id: "email-log",
-      label: "Email Log",
-      icon: <Mail className="w-4 h-4" />,
-      color: "text-purple-600 hover:bg-purple-50",
-    },
-    {
-      id: "load-notes",
-      label: "Load Notes",
-      icon: <FileText className="w-4 h-4" />,
-      color: "text-yellow-600 hover:bg-yellow-50",
-    },
-    {
       id: "history",
-      label: "History",
+      label: "History & Logs",
       icon: <History className="w-4 h-4" />,
       color: "text-gray-600 hover:bg-gray-50",
     },
@@ -1457,16 +1512,10 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
       color: "text-indigo-600 hover:bg-indigo-50",
     },
     {
-      id: "additional-invoice",
-      label: "Additional Invoice",
+      id: "load-notes",
+      label: "Load Notes",
       icon: <FileText className="w-4 h-4" />,
-      color: "text-pink-600 hover:bg-pink-50",
-    },
-    {
-      id: "hold",
-      label: "Hold",
-      icon: <PauseCircle className="w-4 h-4" />,
-      color: "text-orange-600 hover:bg-orange-50",
+      color: "text-yellow-600 hover:bg-yellow-50",
     },
     {
       id: "view-check-calls",

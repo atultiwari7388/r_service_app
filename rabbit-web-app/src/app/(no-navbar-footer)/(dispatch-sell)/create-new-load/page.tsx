@@ -36,6 +36,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
+import { sendLoadCompletionEmail } from "@/utils/sendLoadCompletionEmail";
 import {
   collection,
   deleteField,
@@ -53,6 +54,7 @@ import toast from "react-hot-toast";
 
 interface Stop {
   id: number;
+  email?: string;
   // Basic Info
   company: string;
   customerLoadRefConf: string;
@@ -1703,6 +1705,14 @@ function CreateNewLoadPageContent() {
         loadPayload,
         { merge: true }
       );
+
+      if (statusToSave === "Completed" || statusToSave === "Completed Toun") {
+        sendLoadCompletionEmail({
+          loadId: loadRef.id,
+          loadData: { id: loadRef.id, ...loadPayload },
+          showToast: true,
+        }).catch((err) => console.warn("Could not auto-send completion email:", err));
+      }
 
       toast.success(
         editingLoadId
