@@ -142,9 +142,9 @@ export default function ImportVehicle() {
 
   // Overwrite Confirmation State
   const [showOverwriteModal, setShowOverwriteModal] = useState(false);
-  const [existingMatches, setExistingMatches] = useState<ExistingVehicleMatch[]>(
-    []
-  );
+  const [existingMatches, setExistingMatches] = useState<
+    ExistingVehicleMatch[]
+  >([]);
   const [isPreChecking, setIsPreChecking] = useState(false);
 
   // My Companies state
@@ -152,7 +152,8 @@ export default function ImportVehicle() {
     { id: string; companyName: string }[]
   >([]);
   const [selectedMyCompanyId, setSelectedMyCompanyId] = useState<string>("");
-  const [selectedMyCompanyName, setSelectedMyCompanyName] = useState<string>("");
+  const [selectedMyCompanyName, setSelectedMyCompanyName] =
+    useState<string>("");
 
   const router = useRouter();
 
@@ -389,7 +390,9 @@ export default function ImportVehicle() {
             myCompany:
               item.myCompany ||
               selectedMyCompanyName ||
-              (myCompaniesList.length > 0 ? myCompaniesList[0].companyName : ""),
+              (myCompaniesList.length > 0
+                ? myCompaniesList[0].companyName
+                : ""),
             mycomId:
               item.mycomId ||
               selectedMyCompanyId ||
@@ -658,7 +661,9 @@ export default function ImportVehicle() {
     );
     if (missingIndex !== -1) {
       toast.error(
-        `Row ${missingIndex + 1}: Please select 'My Company' for this vehicle before uploading.`,
+        `Row ${
+          missingIndex + 1
+        }: Please select 'My Company' for this vehicle before uploading.`,
         { autoClose: 5000 }
       );
       return;
@@ -752,7 +757,9 @@ export default function ImportVehicle() {
 
     if (allowOverwrite) {
       currentMatches.forEach((m) => {
-        const keyWithBoth = `${m.vehicleNumber.trim().toUpperCase()}_${m.vehicleType.trim().toUpperCase()}`;
+        const keyWithBoth = `${m.vehicleNumber
+          .trim()
+          .toUpperCase()}_${m.vehicleType.trim().toUpperCase()}`;
         matchesMap.set(keyWithBoth, m.existingDocId);
         matchesMap.set(m.vehicleNumber.trim().toUpperCase(), m.existingDocId);
       });
@@ -765,7 +772,9 @@ export default function ImportVehicle() {
     for (let i = 0; i < excelData.length; i++) {
       const data = excelData[i];
       try {
-        const keyWithBoth = `${(data.vehicleNumber || "").trim().toUpperCase()}_${(data.vehicleType || "").trim().toUpperCase()}`;
+        const keyWithBoth = `${(data.vehicleNumber || "")
+          .trim()
+          .toUpperCase()}_${(data.vehicleType || "").trim().toUpperCase()}`;
         const keyNumOnly = (data.vehicleNumber || "").trim().toUpperCase();
         const existingDocId = allowOverwrite
           ? matchesMap.get(keyWithBoth) || matchesMap.get(keyNumOnly)
@@ -839,7 +848,10 @@ export default function ImportVehicle() {
           {/* Default Company (Quick Assign All) */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <Label htmlFor="myCompany" className="text-base font-semibold block">
+              <Label
+                htmlFor="myCompany"
+                className="text-base font-semibold block"
+              >
                 Default My Company (Quick Assign All)
               </Label>
               <Link
@@ -872,12 +884,17 @@ export default function ImportVehicle() {
               </Link>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Selecting a company here applies it as the default for all imported vehicles. You can also customize individual vehicles in the table below.
+              Selecting a company here applies it as the default for all
+              imported vehicles. You can also customize individual vehicles in
+              the table below.
             </p>
           </div>
 
           <div>
-            <Label htmlFor="excelFile" className="text-base font-semibold mb-2 block">
+            <Label
+              htmlFor="excelFile"
+              className="text-base font-semibold mb-2 block"
+            >
               Upload Excel File (.xlsx)
             </Label>
             <input
@@ -905,16 +922,16 @@ export default function ImportVehicle() {
               >
                 Download Vehicle Template
               </Button>
-              <Button variant="outline" asChild>
+              {/* <Button variant="outline" asChild>
                 <Link href={sampleFiles.bulkTrucks} download>
                   Bulk Trucks Sample (6 Vehicles)
                 </Link>
-              </Button>
-              <Button variant="outline" asChild>
+              </Button> */}
+              {/* <Button variant="outline" asChild>
                 <Link href={sampleFiles.bulkTrailers} download>
                   Bulk Trailers Sample (9 Vehicles)
                 </Link>
-              </Button>
+              </Button> */}
               <Button variant="outline" asChild>
                 <Link href={sampleFiles.truckCompanies} target="_blank">
                   Truck Companies & Engines
@@ -940,25 +957,44 @@ export default function ImportVehicle() {
                     Preview Data ({excelData.length} Vehicles)
                   </h2>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Assign or change &lsquo;My Company&rsquo; for each individual vehicle before saving.
+                    Assign or change &lsquo;My Company&rsquo; for each
+                    individual vehicle before saving.
                   </p>
                 </div>
               </div>
               <table className="min-w-full divide-y divide-gray-200 border text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">#</th>
-                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Vehicle #</th>
-                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Type</th>
-                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Company Make</th>
-                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Engine</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                      #
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                      Vehicle #
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                      Type
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                      Company Make
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                      Engine
+                    </th>
                     <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap bg-rose-50/70 border-x border-rose-200">
                       Assign My Company *
                     </th>
-                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">VIN</th>
-                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">License Plate</th>
-                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Year</th>
-                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Miles / Hours</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                      VIN
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                      License Plate
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                      Year
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                      Miles / Hours
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
@@ -981,8 +1017,12 @@ export default function ImportVehicle() {
                             {String(row.vehicleType || "Truck")}
                           </span>
                         </td>
-                        <td className="px-4 py-3">{String(row.companyName || "—")}</td>
-                        <td className="px-4 py-3">{String(row.engineName || "—")}</td>
+                        <td className="px-4 py-3">
+                          {String(row.companyName || "—")}
+                        </td>
+                        <td className="px-4 py-3">
+                          {String(row.engineName || "—")}
+                        </td>
                         {/* Per-Vehicle Assign My Company Dropdown */}
                         <td className="px-4 py-3 min-w-[210px] bg-rose-50/30 border-x border-rose-100">
                           <select
@@ -1014,8 +1054,12 @@ export default function ImportVehicle() {
                             ))}
                           </select>
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs">{String(row.vin || "—")}</td>
-                        <td className="px-4 py-3">{String(row.licensePlate || "—")}</td>
+                        <td className="px-4 py-3 font-mono text-xs">
+                          {String(row.vin || "—")}
+                        </td>
+                        <td className="px-4 py-3">
+                          {String(row.licensePlate || "—")}
+                        </td>
                         <td className="px-4 py-3">{String(row.year || "—")}</td>
                         <td className="px-4 py-3">
                           {row.currentMiles
@@ -1073,7 +1117,8 @@ export default function ImportVehicle() {
                 Existing Vehicle(s) Found
               </h3>
               <p className="text-sm text-gray-500">
-                {existingMatches.length} vehicle(s) from your file already exist in your account.
+                {existingMatches.length} vehicle(s) from your file already exist
+                in your account.
               </p>
             </div>
           </div>
@@ -1083,7 +1128,8 @@ export default function ImportVehicle() {
               Do you want to overwrite and update the existing vehicle details?
             </p>
             <p className="text-xs text-amber-800">
-              Confirming will update their specifications (My Company, Engine, Miles/Hours, Services) with the new details from this Excel file.
+              Confirming will update their specifications (My Company, Engine,
+              Miles/Hours, Services) with the new details from this Excel file.
             </p>
           </div>
 
@@ -1091,20 +1137,34 @@ export default function ImportVehicle() {
             <table className="min-w-full divide-y divide-gray-200 text-xs">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Row</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Vehicle #</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Type</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Company</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Status</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Row
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Vehicle #
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Type
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Company
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {existingMatches.map((m, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-gray-500">{m.rowNumber}</td>
-                    <td className="px-3 py-2 font-bold text-gray-800">{m.vehicleNumber}</td>
+                    <td className="px-3 py-2 font-bold text-gray-800">
+                      {m.vehicleNumber}
+                    </td>
                     <td className="px-3 py-2 text-gray-600">{m.vehicleType}</td>
-                    <td className="px-3 py-2 text-gray-600">{m.newMyCompany || m.companyName || "—"}</td>
+                    <td className="px-3 py-2 text-gray-600">
+                      {m.newMyCompany || m.companyName || "—"}
+                    </td>
                     <td className="px-3 py-2">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
                         Will Overwrite
@@ -1140,24 +1200,26 @@ export default function ImportVehicle() {
           <div className="flex flex-col gap-2">
             <Button asChild variant="outline">
               <Link href={sampleFiles.truck} download>
-                Single Truck Template
+                {/* Single Truck Template */}
+                Truck Template
               </Link>
             </Button>
-            <Button asChild variant="outline">
+            {/* <Button asChild variant="outline">
               <Link href={sampleFiles.bulkTrucks} download>
                 Bulk Trucks Sample (6 Vehicles)
               </Link>
-            </Button>
+            </Button> */}
             <Button asChild variant="outline">
               <Link href={sampleFiles.trailer} download>
-                Single Trailer Template
+                {/* Single Trailer Template */}
+                Trailer Template
               </Link>
             </Button>
-            <Button asChild variant="outline">
+            {/* <Button asChild variant="outline">
               <Link href={sampleFiles.bulkTrailers} download>
                 Bulk Trailers Sample (9 Vehicles)
               </Link>
-            </Button>
+            </Button> */}
           </div>
         </div>
       </Modal>

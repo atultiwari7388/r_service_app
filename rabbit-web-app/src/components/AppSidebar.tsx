@@ -166,8 +166,7 @@ export default function AppSidebar() {
     }
   };
 
-  const isGuest =
-    userData?.role === "Guest" || userData?.isGuest === true;
+  const isGuest = userData?.role === "Guest" || userData?.isGuest === true;
 
   // Define Navigation Categories
   const guestNavItems: NavCategory[] = [
@@ -204,7 +203,11 @@ export default function AppSidebar() {
       icon: <Wrench size={20} />,
       subItems: [
         { label: "Records", href: "/records", icon: <FileText size={16} /> },
-        { label: "Vehicles", href: "/account/my-vehicles", icon: <Car size={16} /> },
+        {
+          label: "Vehicles",
+          href: "/account/my-vehicles",
+          icon: <Car size={16} />,
+        },
         {
           label: "Tripwise Vehicle",
           href: "/account/trip-wise-vehicle",
@@ -217,7 +220,11 @@ export default function AppSidebar() {
       label: "Mechanic",
       icon: <Search size={20} />,
       subItems: [
-        { label: "Find Mechanic", href: "/find-mechanic", icon: <Search size={16} /> },
+        {
+          label: "Find Mechanic",
+          href: "/find-mechanic",
+          icon: <Search size={16} />,
+        },
         { label: "My Jobs", href: "/my-jobs", icon: <FileText size={16} /> },
       ],
     },
@@ -227,9 +234,22 @@ export default function AppSidebar() {
       icon: <Truck size={20} />,
       roles: ["Owner", "SubOwner"],
       subItems: [
-        { label: "Create Load", href: "/create-new-load", icon: <Truck size={16} /> },
-        { label: "View Load", href: "/truck-dispatch", icon: <Truck size={16} /> },
-        { label: "Carriers", href: "/carriers", icon: <Users size={16} /> },
+        {
+          label: "Create Load",
+          href: "/create-new-load",
+          icon: <Truck size={16} />,
+        },
+        {
+          label: "View Load",
+          href: "/truck-dispatch",
+          icon: <Truck size={16} />,
+        },
+        // { label: "Carriers", href: "/carriers", icon: <Users size={16} /> },
+        {
+          label: "Reports",
+          href: "/dispatch-reports",
+          icon: <Users size={16} />,
+        },
       ],
     },
     {
@@ -237,9 +257,21 @@ export default function AppSidebar() {
       label: "Financial",
       icon: <DollarSign size={20} />,
       subItems: [
-        { label: "Other Expenses", href: "/other-expenses", icon: <DollarSign size={16} /> },
-        { label: "Write Check", href: "/account/manage-check", icon: <CheckSquare size={16} /> },
-        { label: "Pay Invoice", href: "/account/pay-invoice", icon: <CreditCard size={16} /> },
+        {
+          label: "Other Expenses",
+          href: "/other-expenses",
+          icon: <DollarSign size={16} />,
+        },
+        {
+          label: "Write Check",
+          href: "/account/manage-check",
+          icon: <CheckSquare size={16} />,
+        },
+        {
+          label: "Pay Invoice",
+          href: "/account/pay-invoice",
+          icon: <CreditCard size={16} />,
+        },
       ],
     },
     {
@@ -247,9 +279,21 @@ export default function AppSidebar() {
       label: "Settings",
       icon: <Settings size={20} />,
       subItems: [
-        { label: "Manage Team", href: "/account/manage-team", icon: <Users size={16} /> },
-        { label: "My Companies", href: "/my-companies", icon: <Building size={16} /> },
-        { label: "Dispatch Settings", href: "/dispatch-settings", icon: <Settings size={16} /> },
+        {
+          label: "Manage Team",
+          href: "/account/manage-team",
+          icon: <Users size={16} />,
+        },
+        {
+          label: "My Companies",
+          href: "/my-companies",
+          icon: <Building size={16} />,
+        },
+        {
+          label: "Dispatch Settings",
+          href: "/dispatch-settings",
+          icon: <Settings size={16} />,
+        },
       ],
     },
   ];
@@ -278,7 +322,8 @@ export default function AppSidebar() {
   const isCategoryActive = (category: NavCategory) => {
     if (category.href) {
       if (category.href === "/" && pathname === "/") return true;
-      if (category.href !== "/" && pathname.startsWith(category.href)) return true;
+      if (category.href !== "/" && pathname.startsWith(category.href))
+        return true;
     }
     if (category.subItems) {
       return category.subItems.some((item) => pathname.startsWith(item.href));
@@ -309,7 +354,9 @@ export default function AppSidebar() {
           {currentNavCategories.map((cat) => {
             const isActive = isCategoryActive(cat);
             const isHovered = hoveredCategory === cat.key;
-            const hasSubItems = Boolean(cat.subItems && cat.subItems.length > 0);
+            const hasSubItems = Boolean(
+              cat.subItems && cat.subItems.length > 0
+            );
 
             return (
               <div
@@ -363,7 +410,9 @@ export default function AppSidebar() {
                     </div>
                     <div className="flex flex-col gap-1">
                       {cat.subItems.map((sub) => {
-                        const isSubActive = pathname === sub.href || pathname.startsWith(sub.href + "/");
+                        const isSubActive =
+                          pathname === sub.href ||
+                          pathname.startsWith(sub.href + "/");
                         return (
                           <Link
                             key={sub.href}
@@ -376,7 +425,11 @@ export default function AppSidebar() {
                             )}
                           >
                             {sub.icon && (
-                              <span className={clsx(isSubActive ? "text-white" : "text-gray-400")}>
+                              <span
+                                className={clsx(
+                                  isSubActive ? "text-white" : "text-gray-400"
+                                )}
+                              >
                                 {sub.icon}
                               </span>
                             )}
@@ -471,7 +524,10 @@ export default function AppSidebar() {
                     {userData?.userName || user?.displayName || "User"}
                   </h4>
                   <p className="text-xs text-gray-400 truncate">
-                    {userData?.phoneNumber || user?.phoneNumber || user?.email || ""}
+                    {userData?.phoneNumber ||
+                      user?.phoneNumber ||
+                      user?.email ||
+                      ""}
                   </p>
                   {userData?.wallet !== undefined && (
                     <p className="text-xs font-semibold text-[#F96176] mt-0.5">
