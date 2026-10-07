@@ -160,7 +160,8 @@ export default function ImportRecordsPage() {
     truckBulk: "/records/truck_bulk_records_sample.xlsx",
     truckMultiServicesBulk: "/records/truck_multi_services_bulk_sample.xlsx",
     trailerBulk: "/records/trailer_bulk_records_sample.xlsx",
-    trailerMultiServicesBulk: "/records/trailer_multi_services_bulk_sample.xlsx",
+    trailerMultiServicesBulk:
+      "/records/trailer_multi_services_bulk_sample.xlsx",
     truckServicesList: "/records/truck_services_sample_list.xlsx",
     trailerServicesList: "/records/trailer_services_sample_list.xlsx",
     servicesList: "/records/truck_trailer_services_list.xlsx",
@@ -297,7 +298,11 @@ export default function ImportRecordsPage() {
       }
 
       // Parse services from row
-      const rawServicesStr = (row.services || row.serviceNames || "").toString();
+      const rawServicesStr = (
+        row.services ||
+        row.serviceNames ||
+        ""
+      ).toString();
       const serviceNamesList = rawServicesStr
         .split(",")
         .map((s) => s.trim())
@@ -321,7 +326,9 @@ export default function ImportRecordsPage() {
           hours: row.hours ? String(row.hours).trim() : undefined,
           workshopName,
           invoice,
-          invoiceAmount: row.invoiceAmount ? String(row.invoiceAmount).trim() : "",
+          invoiceAmount: row.invoiceAmount
+            ? String(row.invoiceAmount).trim()
+            : "",
           description: (row.description || "").toString().trim(),
           services: [],
           rawRowCount: 0,
@@ -362,8 +369,7 @@ export default function ImportRecordsPage() {
           subServicesList.forEach((sub) => {
             if (
               !existingService.subServices.some(
-                (existingSub) =>
-                  existingSub.toLowerCase() === sub.toLowerCase()
+                (existingSub) => existingSub.toLowerCase() === sub.toLowerCase()
               )
             ) {
               existingService.subServices.push(sub);
@@ -406,7 +412,9 @@ export default function ImportRecordsPage() {
         setRowImages({});
 
         if (grouped.length === 0) {
-          toast.warning("The uploaded Excel file contains no valid vehicle records.");
+          toast.warning(
+            "The uploaded Excel file contains no valid vehicle records."
+          );
         } else {
           toast.success(
             `Parsed ${jsonData.length} Excel row(s) into ${grouped.length} unified invoice record(s)!`
@@ -485,7 +493,9 @@ export default function ImportRecordsPage() {
       );
       const storageRef = ref(
         storage,
-        `service-records/${effectiveUserId}/${Date.now()}_${sanitizedNumber}_${file.name}`
+        `service-records/${effectiveUserId}/${Date.now()}_${sanitizedNumber}_${
+          file.name
+        }`
       );
       const uploadTask = uploadBytesResumable(storageRef, file, {
         contentType: file.type || (isPdf ? "application/pdf" : "image/jpeg"),
@@ -530,8 +540,7 @@ export default function ImportRecordsPage() {
 
     // Match vehicle in user active vehicles
     const matchedVehicle = vehicles.find(
-      (v) =>
-        v.vehicleNumber?.toString().trim().toUpperCase() === vehicleNumber
+      (v) => v.vehicleNumber?.toString().trim().toUpperCase() === vehicleNumber
     );
 
     if (!matchedVehicle) {
@@ -588,16 +597,25 @@ export default function ImportRecordsPage() {
       const subServiceNameList = serviceItem.subServices;
 
       // Find matching service metadata (normalizing slashes and whitespace)
-      const cleanSName = sName.toLowerCase().replace(/\s*\/\s*/g, "/").trim();
+      const cleanSName = sName
+        .toLowerCase()
+        .replace(/\s*\/\s*/g, "/")
+        .trim();
       const matchedMeta =
         servicesData.find(
           (s) =>
-            s.sName?.toLowerCase().replace(/\s*\/\s*/g, "/").trim() === cleanSName &&
+            s.sName
+              ?.toLowerCase()
+              .replace(/\s*\/\s*/g, "/")
+              .trim() === cleanSName &&
             (!s.vType || s.vType.toLowerCase() === vehicleType.toLowerCase())
         ) ||
         servicesData.find(
           (s) =>
-            s.sName?.toLowerCase().replace(/\s*\/\s*/g, "/").trim() === cleanSName
+            s.sName
+              ?.toLowerCase()
+              .replace(/\s*\/\s*/g, "/")
+              .trim() === cleanSName
         );
 
       const serviceId =
@@ -895,9 +913,9 @@ export default function ImportRecordsPage() {
     for (let i = 0; i < groupedRecords.length; i++) {
       const record = groupedRecords[i];
       setSavingProgress(
-        `Saving invoice record ${i + 1} of ${groupedRecords.length} (${record.vehicleNumber}${
-          record.invoice ? ` / ${record.invoice}` : ""
-        })...`
+        `Saving invoice record ${i + 1} of ${groupedRecords.length} (${
+          record.vehicleNumber
+        }${record.invoice ? ` / ${record.invoice}` : ""})...`
       );
 
       try {
@@ -905,7 +923,9 @@ export default function ImportRecordsPage() {
         let rowImageUrl = "";
         if (rowImages[i]?.file) {
           setSavingProgress(
-            `Uploading invoice image for record ${i + 1} (${record.vehicleNumber})...`
+            `Uploading invoice image for record ${i + 1} (${
+              record.vehicleNumber
+            })...`
           );
           rowImageUrl = await uploadSingleImage(
             rowImages[i].file,
@@ -1003,7 +1023,8 @@ export default function ImportRecordsPage() {
                 Select your Excel records file to upload
               </p>
               <p className="text-xs text-gray-500 mb-4">
-                Supports line-item records with multiple services &amp; sub-services automatically grouped per invoice!
+                Supports line-item records with multiple services &amp;
+                sub-services automatically grouped per invoice!
               </p>
               <input
                 id="excelFile"
@@ -1026,16 +1047,20 @@ export default function ImportRecordsPage() {
               <div>
                 <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <FaCheckCircle className="text-emerald-500" />
-                  Preview Grouped Records ({groupedRecords.length} Invoices / {totalExcelRowsCount} Excel Lines)
+                  Preview Grouped Records ({groupedRecords.length} Invoices /{" "}
+                  {totalExcelRowsCount} Excel Lines)
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Lines with the same Vehicle # and Invoice are merged into 1 unified database record with all respective services &amp; sub-services.
+                  Lines with the same Vehicle # and Invoice are merged into 1
+                  unified database record with all respective services &amp;
+                  sub-services.
                 </p>
               </div>
 
               {attachedImagesCount > 0 && (
                 <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200 self-start sm:self-auto">
-                  {attachedImagesCount} image{attachedImagesCount === 1 ? "" : "s"} attached
+                  {attachedImagesCount} image
+                  {attachedImagesCount === 1 ? "" : "s"} attached
                 </span>
               )}
             </div>
@@ -1156,18 +1181,19 @@ export default function ImportRecordsPage() {
                                   {srv.serviceName}
                                 </div>
 
-                                {srv.subServices && srv.subServices.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1.5 pl-3 border-l-2 border-rose-300">
-                                    {srv.subServices.map((sub, subIdx) => (
-                                      <span
-                                        key={subIdx}
-                                        className="inline-block bg-white text-gray-700 text-[11px] px-2 py-0.5 rounded border border-gray-200 font-medium shadow-2xs"
-                                      >
-                                        {sub}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
+                                {srv.subServices &&
+                                  srv.subServices.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1.5 pl-3 border-l-2 border-rose-300">
+                                      {srv.subServices.map((sub, subIdx) => (
+                                        <span
+                                          key={subIdx}
+                                          className="inline-block bg-white text-gray-700 text-[11px] px-2 py-0.5 rounded border border-gray-200 font-medium shadow-2xs"
+                                        >
+                                          {sub}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                               </div>
                             ))}
                           </div>
@@ -1185,7 +1211,9 @@ export default function ImportRecordsPage() {
 
                         {/* Amount */}
                         <td className="px-4 py-3 font-medium text-gray-800 align-top whitespace-nowrap">
-                          {record.invoiceAmount ? `$${record.invoiceAmount}` : "—"}
+                          {record.invoiceAmount
+                            ? `$${record.invoiceAmount}`
+                            : "—"}
                         </td>
 
                         {/* Description */}
@@ -1198,7 +1226,9 @@ export default function ImportRecordsPage() {
                           {rowImg ? (
                             <div className="flex items-center gap-2.5 p-1.5 bg-white rounded-lg border border-blue-200 shadow-2xs">
                               {rowImg.file.type.toLowerCase().includes("pdf") ||
-                              rowImg.file.name.toLowerCase().endsWith(".pdf") ? (
+                              rowImg.file.name
+                                .toLowerCase()
+                                .endsWith(".pdf") ? (
                                 <div className="h-9 w-9 bg-red-100 rounded border border-red-200 flex items-center justify-center shrink-0">
                                   <FaFilePdf className="text-red-500 text-lg" />
                                 </div>
@@ -1217,8 +1247,12 @@ export default function ImportRecordsPage() {
                                   {rowImg.file.name}
                                 </p>
                                 <span className="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium uppercase">
-                                  {rowImg.file.type.toLowerCase().includes("pdf") ||
-                                  rowImg.file.name.toLowerCase().endsWith(".pdf")
+                                  {rowImg.file.type
+                                    .toLowerCase()
+                                    .includes("pdf") ||
+                                  rowImg.file.name
+                                    .toLowerCase()
+                                    .endsWith(".pdf")
                                     ? "PDF"
                                     : "IMAGE"}
                                 </span>
@@ -1313,17 +1347,20 @@ export default function ImportRecordsPage() {
                 Existing Invoice Number(s) Found
               </h3>
               <p className="text-sm text-gray-500">
-                {existingInvoiceMatches.length} record(s) in your file have invoice numbers that already exist in your records.
+                {existingInvoiceMatches.length} record(s) in your file have
+                invoice numbers that already exist in your records.
               </p>
             </div>
           </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3.5 mb-4 text-sm text-amber-900">
             <p className="font-semibold mb-1">
-              Do you want to proceed and import these records with duplicate invoice numbers?
+              Do you want to proceed and import these records with duplicate
+              invoice numbers?
             </p>
             <p className="text-xs text-amber-800">
-              Confirming will add these records to your account alongside existing records.
+              Confirming will add these records to your account alongside
+              existing records.
             </p>
           </div>
 
@@ -1331,22 +1368,40 @@ export default function ImportRecordsPage() {
             <table className="min-w-full divide-y divide-gray-200 text-xs">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Row</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Vehicle #</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Invoice #</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Date</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Amount</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Status</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Row
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Vehicle #
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Invoice #
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Date
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Amount
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {existingInvoiceMatches.map((m, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-gray-500">{m.rowNumber}</td>
-                    <td className="px-3 py-2 font-bold text-gray-800">{m.vehicleNumber}</td>
-                    <td className="px-3 py-2 font-semibold text-amber-700">{m.invoice}</td>
+                    <td className="px-3 py-2 font-bold text-gray-800">
+                      {m.vehicleNumber}
+                    </td>
+                    <td className="px-3 py-2 font-semibold text-amber-700">
+                      {m.invoice}
+                    </td>
                     <td className="px-3 py-2 text-gray-600">{m.date || "—"}</td>
-                    <td className="px-3 py-2 text-gray-600">{m.invoiceAmount ? `$${m.invoiceAmount}` : "—"}</td>
+                    <td className="px-3 py-2 text-gray-600">
+                      {m.invoiceAmount ? `$${m.invoiceAmount}` : "—"}
+                    </td>
                     <td className="px-3 py-2">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
                         Duplicate Invoice
@@ -1379,57 +1434,61 @@ export default function ImportRecordsPage() {
       {/* Sample Modal */}
       <Modal show={showSampleModal} onClose={() => setShowSampleModal(false)}>
         <div className="p-6">
-          <h3 className="text-xl font-bold mb-4">Download Sample Excel Files</h3>
+          <h3 className="text-xl font-bold mb-4">
+            Download Sample Excel Files
+          </h3>
           <p className="text-sm text-gray-600 mb-6">
-            Choose a sample file below. Pre-filled with accurate truck and trailer details matching the database.
+            Choose a sample file below. Pre-filled with accurate truck and
+            trailer details matching the database.
           </p>
           <div className="flex flex-col gap-3">
             <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.truckSingle} download>
                 <FaFileDownload className="mr-2 text-rose-500" />
-                Truck Single Record Sample (ACHA9999 / VOLVO)
+                {/* Truck Single Record Sample (ACHA9999 / VOLVO) */}
+                Truck Record Sample
               </Link>
             </Button>
-            <Button asChild variant="outline" className="justify-start">
+            {/* <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.truckMultiServicesBulk} download>
                 <FaFileDownload className="mr-2 text-purple-600" />
                 Truck Bulk Multi-Services (Line-Item Grouped with Sub-Services)
               </Link>
-            </Button>
-            <Button asChild variant="outline" className="justify-start">
+            </Button> */}
+            {/* <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.truckBulk} download>
                 <FaFileDownload className="mr-2 text-purple-400" />
                 Truck Bulk Sample (6 Records - Single Service)
               </Link>
-            </Button>
+            </Button> */}
             <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.trailerSingle} download>
                 <FaFileDownload className="mr-2 text-blue-500" />
-                Trailer Single Record Sample (BZ88BS77 / HYUNDAI)
+                Trailer Record Sample
               </Link>
             </Button>
-            <Button asChild variant="outline" className="justify-start">
+            {/* <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.trailerMultiServicesBulk} download>
                 <FaFileDownload className="mr-2 text-indigo-600" />
                 Trailer Bulk Multi-Services (Line-Item Grouped with Sub-Services)
               </Link>
-            </Button>
-            <Button asChild variant="outline" className="justify-start">
+            </Button> */}
+            {/* <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.trailerBulk} download>
                 <FaFileDownload className="mr-2 text-indigo-400" />
                 Trailer Bulk Sample (9 Records - Single Service)
               </Link>
-            </Button>
+            </Button> */}
             <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.truckServicesList} download>
                 <FaFileDownload className="mr-2 text-emerald-500" />
-                Truck Services Reference List (56 Services &amp; Sub-Services)
+                Truck Services Reference List
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.trailerServicesList} download>
                 <FaFileDownload className="mr-2 text-teal-600" />
-                Trailer Services Reference List (18 Services &amp; Sub-Services)
+                Trailer Services Reference List
               </Link>
             </Button>
           </div>
