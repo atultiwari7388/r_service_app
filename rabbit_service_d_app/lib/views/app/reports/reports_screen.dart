@@ -33,6 +33,7 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isSavingMiles = false;
 
   @override
   void initState() {
@@ -1104,199 +1105,359 @@ class _ReportsScreenState extends State<ReportsScreen>
                       reController.selectedVehicleData?['companyName'] !=
                           'DRY VAN'))
                 CustomButton(
-                  onPress: () async {
-                    // Check which controller to use based on vehicle type
-                    final isTruck =
-                        reController.selectedVehicleData?['vehicleType'] ==
-                            'Truck';
-                    final controller = isTruck
-                        ? reController.todayMilesController
-                        : reController.hoursController;
-                    final value = controller.text.trim();
+                  onPress: _isSavingMiles
+                      ? null
+                      : () async {
+                          // Check which controller to use based on vehicle type
+                          final isTruck =
+                              reController.selectedVehicleData?['vehicleType'] ==
+                                  'Truck';
+                          final controller = isTruck
+                              ? reController.todayMilesController
+                              : reController.hoursController;
+                          final value = controller.text.trim();
 
-                    if (reController.selectedVehicle != null &&
-                        value.isNotEmpty) {
-                      try {
-                        final int enteredValue = int.parse(value);
-                        final vehicleId = reController.selectedVehicle;
+                          if (reController.selectedVehicle == null ||
+                              value.isEmpty) {
+                            showToastMessage(
+                              "Required",
+                              "Please enter ${isTruck ? 'miles' : 'hours'}",
+                              kPrimary,
+                            );
+                            return;
+                          }
 
-                        // Check if DataServices subcollection exists and is not empty
-                        final dataServicesSnapshot = await FirebaseFirestore
-                            .instance
-                            .collection("Users")
-                            .doc(reController.effectiveUserId)
-                            .collection("DataServices")
-                            .where("vehicleId", isEqualTo: vehicleId)
-                            .get();
+                          setState(() {
+                            _isSavingMiles = true;
+                          });
 
-                        // Fetch current reading (Miles/Hours) for the selected vehicle
-                        final vehicleDoc = await FirebaseFirestore.instance
-                            .collection("Users")
-                            .doc(reController.effectiveUserId)
-                            .collection("Vehicles")
-                            .doc(vehicleId)
-                            .get();
+                          try {
+                            final int enteredValue = int.parse(value);
+                            final vehicleId = reController.selectedVehicle!;
+                            final vehicleNumber = (reController
+                                        .selectedVehicleData?['vehicleNumber'] ??
+                                    'Vehicle')
+                                .toString();
+                            final companyName = (reController
+                                        .selectedVehicleData?['companyName'] ??
+                                    '')
+                                .toString();
+                            final vehicleType = (reController
+                                        .selectedVehicleData?['vehicleType'] ??
+                                    (isTruck ? 'Truck' : 'Trailer'))
+                                .toString();
 
-                        if (vehicleDoc.exists) {
-                          final int currentReading = int.parse(
-                            vehicleDoc[isTruck
-                                    ? 'currentMiles'
-                                    : 'hoursReading'] ??
-                                '0',
-                          );
+                            // Check if DataServices subcollection exists and is not empty
+                            final dataServicesSnapshot =
+                                await FirebaseFirestore.instance
+                                    .collection("Users")
+                                    .doc(reController.effectiveUserId)
+                                    .collection("DataServices")
+                                    .where("vehicleId", isEqualTo: vehicleId)
+                                    .get();
 
-                          final data = {
-                            "updatedAt":
-                                DateFormat('yyyy-MM-dd').format(DateTime.now()),
-                            isTruck
-                                    ? "prevMilesValue"
-                                    : "prevHoursReadingValue":
-                                currentReading.toString(),
-                            isTruck ? "currentMiles" : "hoursReading":
-                                enteredValue.toString(),
-                            isTruck ? "miles" : "hoursReading":
-                                enteredValue.toString(),
-                            isTruck ? 'currentMilesArray' : 'hoursReadingArray':
-                                FieldValue.arrayUnion([
-                              {
-                                isTruck ? "miles" : "hours": enteredValue,
-                                "date": DateTime.now().toIso8601String(),
-                              }
-                            ]),
-                          };
-
-                          // Get current user data to determine if we're a team member
-                          final currentUserDoc = await FirebaseFirestore
-                              .instance
-                              .collection('Users')
-                              .doc(reController.effectiveUserId)
-                              .get();
-
-                          final isTeamMember =
-                              currentUserDoc.data()?['isTeamMember'] == true;
-                          final ownerUid = isTeamMember
-                              ? (currentUserDoc.data()?['createdBy'] ??
-                                  reController.effectiveUserId)
-                              : reController.effectiveUserId;
-
-                          // Update owner's vehicle first
-                          await FirebaseFirestore.instance
-                              .collection("Users")
-                              .doc(ownerUid)
-                              .collection("Vehicles")
-                              .doc(vehicleId)
-                              .update(data);
-
-                          // Query all team members under this owner (including the current user if they're a team member)
-                          final teamMembersSnapshot = await FirebaseFirestore
-                              .instance
-                              .collection('Users')
-                              .where('createdBy', isEqualTo: ownerUid)
-                              .where('isTeamMember', isEqualTo: true)
-                              .get();
-
-                          // Save to all team members who have this vehicle
-                          for (final doc in teamMembersSnapshot.docs) {
-                            final teamMemberUid = doc.id;
-
-                            // Check if this team member has this vehicle
-                            final teamMemberVehicleDoc = await FirebaseFirestore
-                                .instance
-                                .collection('Users')
-                                .doc(teamMemberUid)
-                                .collection('Vehicles')
+                            // Fetch current reading (Miles/Hours) for the selected vehicle
+                            final vehicleDoc = await FirebaseFirestore.instance
+                                .collection("Users")
+                                .doc(reController.effectiveUserId)
+                                .collection("Vehicles")
                                 .doc(vehicleId)
                                 .get();
 
-                            if (teamMemberVehicleDoc.exists) {
-                              await FirebaseFirestore.instance
-                                  .collection('Users')
-                                  .doc(teamMemberUid)
-                                  .collection("Vehicles")
-                                  .doc(vehicleId)
-                                  .update(data);
+                            if (!vehicleDoc.exists) {
+                              throw 'Vehicle data not found';
                             }
-                          }
 
-                          // If current user is team member, also update their own vehicle
-                          if (isTeamMember &&
-                              reController.effectiveUserId != ownerUid) {
-                            final currentUserVehicleDoc =
+                            final int currentReading = int.parse(
+                              vehicleDoc[isTruck
+                                      ? 'currentMiles'
+                                      : 'hoursReading'] ??
+                                  '0',
+                            );
+
+                            final data = {
+                              "updatedAt": DateFormat('yyyy-MM-dd')
+                                  .format(DateTime.now()),
+                              isTruck
+                                      ? "prevMilesValue"
+                                      : "prevHoursReadingValue":
+                                  currentReading.toString(),
+                              isTruck ? "currentMiles" : "hoursReading":
+                                  enteredValue.toString(),
+                              isTruck ? "miles" : "hoursReading":
+                                  enteredValue.toString(),
+                              isTruck
+                                      ? 'currentMilesArray'
+                                      : 'hoursReadingArray':
+                                  FieldValue.arrayUnion([
+                                {
+                                  isTruck ? "miles" : "hours": enteredValue,
+                                  "date": DateTime.now().toIso8601String(),
+                                }
+                              ]),
+                            };
+
+                            // Get current user data to determine if we're a team member
+                            final currentUserDoc = await FirebaseFirestore
+                                .instance
+                                .collection('Users')
+                                .doc(reController.effectiveUserId)
+                                .get();
+
+                            final isTeamMember =
+                                currentUserDoc.data()?['isTeamMember'] == true;
+                            final ownerUid = isTeamMember
+                                ? (currentUserDoc.data()?['createdBy'] ??
+                                    reController.effectiveUserId)
+                                : reController.effectiveUserId;
+
+                            // Update owner's vehicle first
+                            await FirebaseFirestore.instance
+                                .collection("Users")
+                                .doc(ownerUid)
+                                .collection("Vehicles")
+                                .doc(vehicleId)
+                                .update(data);
+
+                            // Query all team members under this owner
+                            final teamMembersSnapshot = await FirebaseFirestore
+                                .instance
+                                .collection('Users')
+                                .where('createdBy', isEqualTo: ownerUid)
+                                .where('isTeamMember', isEqualTo: true)
+                                .get();
+
+                            // Save to all team members who have this vehicle
+                            for (final doc in teamMembersSnapshot.docs) {
+                              final teamMemberUid = doc.id;
+
+                              final teamMemberVehicleDoc =
+                                  await FirebaseFirestore.instance
+                                      .collection('Users')
+                                      .doc(teamMemberUid)
+                                      .collection('Vehicles')
+                                      .doc(vehicleId)
+                                      .get();
+
+                              if (teamMemberVehicleDoc.exists) {
+                                await FirebaseFirestore.instance
+                                    .collection('Users')
+                                    .doc(teamMemberUid)
+                                    .collection("Vehicles")
+                                    .doc(vehicleId)
+                                    .update(data);
+                              }
+                            }
+
+                            // If current user is team member, also update their own vehicle
+                            if (isTeamMember &&
+                                reController.effectiveUserId != ownerUid) {
+                              final currentUserVehicleDoc =
+                                  await FirebaseFirestore.instance
+                                      .collection('Users')
+                                      .doc(reController.effectiveUserId)
+                                      .collection('Vehicles')
+                                      .doc(vehicleId)
+                                      .get();
+
+                              if (currentUserVehicleDoc.exists) {
                                 await FirebaseFirestore.instance
                                     .collection('Users')
                                     .doc(reController.effectiveUserId)
-                                    .collection('Vehicles')
+                                    .collection("Vehicles")
                                     .doc(vehicleId)
-                                    .get();
-
-                            if (currentUserVehicleDoc.exists) {
-                              await FirebaseFirestore.instance
-                                  .collection('Users')
-                                  .doc(reController.effectiveUserId)
-                                  .collection("Vehicles")
-                                  .doc(vehicleId)
-                                  .update(data);
+                                    .update(data);
+                              }
                             }
-                          }
 
-                          debugPrint(
-                              '${isTruck ? 'Miles' : 'Hours'} updated successfully!');
-                          reController.todayMilesController.clear();
-                          reController.hoursController.clear();
-                          setState(() {
-                            reController.selectedVehicle = null;
-                            reController.selectedVehicleType = '';
-                          });
+                            debugPrint(
+                                '${isTruck ? 'Miles' : 'Hours'} updated successfully in Firestore!');
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Saved successfully!'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
+                            // Call the appropriate cloud function to evaluate service intervals
+                            bool hasNotifications = false;
+                            bool isFirstTime = false;
+                            List<dynamic> serviceNotifications = [];
+                            String functionMessage = '';
 
-                          if (dataServicesSnapshot.docs.isEmpty) {
-                            // Call cloud function to notify about missing services
-                            final HttpsCallable callable =
-                                FirebaseFunctions.instance.httpsCallable(
-                                    'checkAndNotifyUserForVehicleService');
+                            try {
+                              if (dataServicesSnapshot.docs.isEmpty) {
+                                final HttpsCallable callable =
+                                    FirebaseFunctions.instance.httpsCallable(
+                                        'checkAndNotifyUserForVehicleService');
 
-                            await callable.call({
-                              'userId': reController.currentUId,
-                              'vehicleId': vehicleId,
+                                final result = await callable.call({
+                                  'userId': reController.currentUId,
+                                  'vehicleId': vehicleId,
+                                });
+
+                                log('checkAndNotifyUserForVehicleService result: ${result.data}');
+                                if (result.data is Map) {
+                                  final resMap = Map<String, dynamic>.from(
+                                      result.data as Map);
+                                  if (resMap.containsKey('hasNotifications')) {
+                                    hasNotifications =
+                                        resMap['hasNotifications'] == true;
+                                  } else if (resMap['message'] != null) {
+                                    final msg = resMap['message']
+                                        .toString()
+                                        .toLowerCase();
+                                    hasNotifications = msg.contains('notifications sent to') ||
+                                        msg.contains('service reminder') ||
+                                        msg.contains('needs attention');
+                                  }
+                                  isFirstTime = resMap['isFirstTime'] == true;
+                                  if (resMap['serviceNotifications'] is List) {
+                                    serviceNotifications = List.from(
+                                        resMap['serviceNotifications']);
+                                  }
+                                  functionMessage =
+                                      resMap['message']?.toString() ?? '';
+                                }
+                              } else {
+                                final HttpsCallable callable =
+                                    FirebaseFunctions.instance.httpsCallable(
+                                        'checkDataServicesAndNotify');
+
+                                final result = await callable.call({
+                                  'userId': reController.currentUId,
+                                  'vehicleId': vehicleId
+                                });
+
+                                log('checkDataServicesAndNotify result: ${result.data}');
+                                if (result.data is Map) {
+                                  final resMap = Map<String, dynamic>.from(
+                                      result.data as Map);
+                                  if (resMap.containsKey('hasNotifications')) {
+                                    hasNotifications =
+                                        resMap['hasNotifications'] == true;
+                                  } else if (resMap['message'] != null) {
+                                    final msg = resMap['message']
+                                        .toString()
+                                        .toLowerCase();
+                                    hasNotifications = msg.contains('notifications sent to') ||
+                                        msg.contains('service reminder') ||
+                                        msg.contains('needs attention');
+                                  }
+                                  isFirstTime = resMap['isFirstTime'] == true;
+                                  if (resMap['serviceNotifications'] is List) {
+                                    serviceNotifications = List.from(
+                                        resMap['serviceNotifications']);
+                                  }
+                                  functionMessage =
+                                      resMap['message']?.toString() ?? '';
+                                }
+                              }
+                            } catch (cfErr) {
+                              debugPrint('Cloud Function execution note: $cfErr');
+                            }
+
+                            // Clear form fields
+                            reController.todayMilesController.clear();
+                            reController.hoursController.clear();
+
+                            setState(() {
+                              _isSavingMiles = false;
+                              reController.selectedVehicle = null;
+                              reController.selectedVehicleType = '';
                             });
 
-                            log('Called checkAndNotifyUserForVehicleService for $vehicleId');
-                          } else {
-                            // Call the cloud function to check for notifications
-                            final HttpsCallable callable = FirebaseFunctions
-                                .instance
-                                .httpsCallable('checkDataServicesAndNotify');
-
-                            final result = await callable.call({
-                              'userId': reController.currentUId,
-                              'vehicleId': vehicleId
+                            if (!hasNotifications) {
+                              _showNoServiceDueDialog();
+                            } else {
+                              showToastMessage(
+                                "Success",
+                                "${isTruck ? 'Miles' : 'Hours'} saved successfully",
+                                kPrimary,
+                              );
+                            }
+                          } catch (e) {
+                            setState(() {
+                              _isSavingMiles = false;
                             });
-
-                            log('Check Data Services Cloud function result: ${result.data} vehicle Id $vehicleId');
+                            debugPrint(
+                                'Error updating ${isTruck ? 'miles' : 'hours'}: $e');
+                            showToastMessage(
+                              "Error",
+                              "Failed to save ${isTruck ? 'miles' : 'hours'}: $e",
+                              kPrimary,
+                            );
                           }
-                        } else {
-                          throw 'Vehicle data not found';
-                        }
-                      } catch (e) {
-                        debugPrint(
-                            'Error updating ${isTruck ? 'miles' : 'hours'}: $e');
-                      }
-                    } else {}
-                  },
-                  color: kPrimary,
-                  text:
-                      'Save ${reController.selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
+                        },
+                  color: _isSavingMiles ? kGray : kPrimary,
+                  text: _isSavingMiles
+                      ? 'Saving & Checking Services...'
+                      : 'Save ${reController.selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
                 ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  // MARK: - No Service Due Dialog
+  void _showNoServiceDueDialog() {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        elevation: 6,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 56.w,
+                height: 56.w,
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.green.shade200,
+                    width: 2,
+                  ),
+                ),
+                child: Icon(
+                  Icons.check_circle_outline_rounded,
+                  size: 32.sp,
+                  color: Colors.green.shade700,
+                ),
+              ),
+              SizedBox(height: 14.h),
+              Text(
+                "No Service Due",
+                textAlign: TextAlign.center,
+                style: appStyleUniverse(
+                  17,
+                  kDark,
+                  FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                "You don't have any service due.",
+                textAlign: TextAlign.center,
+                style: appStyleUniverse(
+                  13,
+                  kDarkGray,
+                  FontWeight.normal,
+                ),
+              ),
+              SizedBox(height: 20.h),
+              CustomButton(
+                text: "OK",
+                color: kPrimary,
+                onPress: () => Get.back(),
+                height: 40.h,
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
     );
   }
 

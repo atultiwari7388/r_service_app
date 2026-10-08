@@ -461,7 +461,15 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
         console.log(
           `First time vehicle. Skipping notifications for ${vehicleId}`
         );
-        return { message: "First time vehicle - no notifications sent." };
+        return {
+          success: true,
+          hasNotifications: false,
+          isFirstTime: true,
+          serviceNotifications: [],
+          servicesDueCount: 0,
+          message:
+            "Initial vehicle reading recorded. No service reminders are due yet.",
+        };
       }
 
       const vehicleType = vehicleData.vehicleType;
@@ -678,9 +686,13 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
 
       return {
         success: true,
-        message: "Notifications processed successfully",
-        hasNotifications,
-        serviceNotifications,
+        hasNotifications: hasNotifications,
+        serviceNotifications: serviceNotifications,
+        servicesDueCount: serviceNotifications.length,
+        isFirstTime: false,
+        message: hasNotifications
+          ? `Service reminder: ${serviceNotifications.length} service(s) need attention.`
+          : "All maintenance services are up to date.",
         recipients: Array.from(notificationRecipients),
       };
     } catch (error) {
@@ -790,7 +802,10 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
       if (!vehicleData.services || vehicleData.services.length === 0) {
         return {
           success: true,
-          message: "No services found for this vehicle.",
+          hasNotifications: false,
+          serviceNotifications: [],
+          servicesDueCount: 0,
+          message: "No services configured for this vehicle.",
         };
       }
 
@@ -815,38 +830,42 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
         switch (type) {
           case "reading":
             shouldNotify =
-              vehicleType === "Truck" && currentMiles >= nextNotificationValue;
+              vehicleType === "Truck" &&
+              nextNotificationValue > 0 &&
+              currentMiles >= nextNotificationValue;
             break;
           case "hours":
             shouldNotify =
               vehicleType === "Trailer" &&
+              nextNotificationValue > 0 &&
               hoursReading >= nextNotificationValue;
             break;
 
           case "day":
-            if (service.nextNotificationValue) {
-              if (typeof service.nextNotificationValue === "string") {
-                const dateStr = service.nextNotificationValue.trim();
-                const [dd, mm, yyyy] = dateStr.split("/").map(Number);
+            if (
+              service.nextNotificationValue &&
+              typeof service.nextNotificationValue === "string"
+            ) {
+              const dateStr = service.nextNotificationValue.trim();
+              if (dateStr.includes("/")) {
+                const parts = dateStr.split("/").map(Number);
+                if (parts.length === 3 && !parts.some(isNaN)) {
+                  const [dd, mm, yyyy] = parts;
+                  const dueDate = new Date(yyyy, mm - 1, dd);
+                  if (!isNaN(dueDate.getTime())) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
 
-                const dueDate = new Date(yyyy, mm - 1, dd);
+                    const diffMs = dueDate - today;
+                    const daysRemaining = Math.ceil(
+                      diffMs / (1000 * 60 * 60 * 24)
+                    );
 
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                const diffMs = dueDate - today;
-                const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-                // NEW LOGIC (matches your requirement)
-                // Notify if:
-                // 1) 15 days before
-                // OR
-                // 2) Date is already passed but user still didn't update
-                shouldNotify =
-                  (daysRemaining <= 15 && daysRemaining >= 0) || // within 15 days
-                  daysRemaining < 0; // expired but unchanged
-              } else {
-                shouldNotify = false; // skip if number
+                    shouldNotify =
+                      (daysRemaining <= 15 && daysRemaining >= 0) ||
+                      daysRemaining < 0;
+                  }
+                }
               }
             }
             break;
@@ -964,9 +983,13 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
 
       return {
         success: true,
+        hasNotifications: hasNotifications,
+        serviceNotifications: serviceNotifications,
+        servicesDueCount: serviceNotifications.length,
         message: hasNotifications
-          ? `Notifications sent to ${notificationRecipients.size} users.`
-          : "No notifications sent.",
+          ? `Service reminder: ${serviceNotifications.length} service(s) need attention.`
+          : "All maintenance services are up to date.",
+        recipients: Array.from(notificationRecipients),
       };
     } catch (error) {
       console.error("Error in checkDataServicesAndNotify:", error);
