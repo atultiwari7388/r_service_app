@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -92,17 +93,62 @@ class RecordsDetailsScreen extends StatelessWidget {
 
   String _formatDateSafe(dynamic val) {
     if (val == null) return 'N/A';
+    if (val is DateTime) return DateFormat('MM-dd-yyyy').format(val);
+    if (val is Timestamp) return DateFormat('MM-dd-yyyy').format(val.toDate());
     final str = val.toString().trim();
-    if (str.isEmpty) return 'N/A';
+    if (str.isEmpty ||
+        str == '—' ||
+        str == '-' ||
+        str == 'null' ||
+        str == 'N/A') {
+      return 'N/A';
+    }
 
-    if (RegExp(r'^\d{2}[-/]\d{2}[-/]\d{4}$').hasMatch(str)) {
-      return str.replaceAll('/', '-');
+    // Try regex for MM-dd-yyyy, MM/dd/yyyy, yyyy-MM-dd, dd-MM-yyyy
+    final cleanStr = str.split(' ')[0];
+    final match =
+        RegExp(r'^(\d{1,4})[-/.](\d{1,2})[-/.](\d{2,4})$').firstMatch(cleanStr);
+    if (match != null) {
+      final p1 = int.tryParse(match.group(1)!) ?? 0;
+      final p2 = int.tryParse(match.group(2)!) ?? 0;
+      final p3 = int.tryParse(match.group(3)!) ?? 0;
+
+      if (p1 >= 1000) {
+        return DateFormat('MM-dd-yyyy')
+            .format(DateTime(p1, p2.clamp(1, 12), p3.clamp(1, 31)));
+      } else if (p3 >= 1000 || (p3 >= 20 && p3 <= 99)) {
+        final year = p3 < 100 ? (2000 + p3) : p3;
+        int month = p1;
+        int day = p2;
+        if (month > 12 && day <= 12) {
+          final temp = month;
+          month = day;
+          day = temp;
+        }
+        return DateFormat('MM-dd-yyyy')
+            .format(DateTime(year, month.clamp(1, 12), day.clamp(1, 31)));
+      }
     }
 
     try {
-      final dt = DateTime.parse(str);
-      return DateFormat('MM-dd-yyyy').format(dt);
+      final dt = DateTime.tryParse(str);
+      if (dt != null) {
+        return DateFormat('MM-dd-yyyy').format(dt);
+      }
     } catch (_) {}
+
+    final formats = [
+      'MM-dd-yyyy',
+      'MM/dd/yyyy',
+      'yyyy-MM-dd',
+      'dd-MM-yyyy',
+      'MMM dd, yyyy',
+    ];
+    for (final fmt in formats) {
+      try {
+        return DateFormat('MM-dd-yyyy').format(DateFormat(fmt).parseLoose(str));
+      } catch (_) {}
+    }
 
     return str;
   }

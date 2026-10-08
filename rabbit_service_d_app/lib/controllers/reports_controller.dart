@@ -104,21 +104,81 @@ class ReportsController extends GetxController {
     if (val == null) return null;
     if (val is DateTime) return val;
     if (val is Timestamp) return val.toDate();
+    if (val is int) {
+      if (val > 1000000000000) {
+        return DateTime.fromMillisecondsSinceEpoch(val);
+      } else if (val > 1000000000) {
+        return DateTime.fromMillisecondsSinceEpoch(val * 1000);
+      }
+    }
     final str = val.toString().trim();
-    if (str.isEmpty) return null;
-
-    // Try MM-dd-yyyy or MM/dd/yyyy
-    if (RegExp(r'^\d{2}[-/]\d{2}[-/]\d{4}$').hasMatch(str)) {
-      final parts = str.contains('-') ? str.split('-') : str.split('/');
-      final m = int.tryParse(parts[0]) ?? 1;
-      final d = int.tryParse(parts[1]) ?? 1;
-      final y = int.tryParse(parts[2]) ?? 2000;
-      return DateTime(y, m, d);
+    if (str.isEmpty ||
+        str == '—' ||
+        str == '-' ||
+        str == 'null' ||
+        str == 'N/A') {
+      return null;
     }
 
-    // Try standard ISO / yyyy-MM-dd
-    final parsed = DateTime.tryParse(str);
-    if (parsed != null) return parsed;
+    // 1. Try ISO-8601 (yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss)
+    try {
+      final iso = DateTime.tryParse(str);
+      if (iso != null) return iso;
+    } catch (_) {}
+
+    final cleanStr = str.split(' ')[0]; // Strip time component if present
+
+    // 2. Try Regex for formatted patterns (MM-dd-yyyy, MM/dd/yyyy, yyyy-MM-dd, dd-MM-yyyy)
+    final match =
+        RegExp(r'^(\d{1,4})[-/.](\d{1,2})[-/.](\d{2,4})$').firstMatch(cleanStr);
+    if (match != null) {
+      final p1 = int.tryParse(match.group(1)!) ?? 0;
+      final p2 = int.tryParse(match.group(2)!) ?? 0;
+      final p3 = int.tryParse(match.group(3)!) ?? 0;
+
+      // Case A: yyyy-MM-dd or yyyy/MM/dd
+      if (p1 >= 1000) {
+        final year = p1;
+        final month = p2.clamp(1, 12);
+        final day = p3.clamp(1, 31);
+        return DateTime(year, month, day);
+      }
+      // Case B: MM-dd-yyyy or MM/dd/yyyy or dd-MM-yyyy
+      else if (p3 >= 1000 || (p3 >= 20 && p3 <= 99)) {
+        final year = p3 < 100 ? (2000 + p3) : p3;
+        int month = p1;
+        int day = p2;
+        // If first part is > 12, it must be dd-MM-yyyy
+        if (month > 12 && day <= 12) {
+          final temp = month;
+          month = day;
+          day = temp;
+        }
+        month = month.clamp(1, 12);
+        day = day.clamp(1, 31);
+        return DateTime(year, month, day);
+      }
+    }
+
+    // 3. Fallback to DateFormat parsing
+    final formats = [
+      'MM-dd-yyyy',
+      'MM/dd/yyyy',
+      'MM-dd-yy',
+      'MM/dd/yy',
+      'yyyy-MM-dd',
+      'yyyy/MM/dd',
+      'dd-MM-yyyy',
+      'dd/MM/yyyy',
+      'MMM dd, yyyy',
+      'dd MMM yyyy',
+      'MMMM dd, yyyy',
+    ];
+    for (final fmt in formats) {
+      try {
+        return DateFormat(fmt).parseLoose(str);
+      } catch (_) {}
+    }
 
     return null;
   }
@@ -130,6 +190,7 @@ class ReportsController extends GetxController {
       return DateFormat('MM-dd-yyyy').format(dt);
     }
     final str = val.toString().trim();
+    if (str.isEmpty || str == 'null' || str == 'N/A' || str == '—') return '';
     if (RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(str)) {
       return str.replaceAll('/', '-');
     }
@@ -334,19 +395,13 @@ class ReportsController extends GetxController {
       }));
 
       records.sort((a, b) {
-        DateTime? dateA =
-            a['date'] != null ? DateTime.tryParse(a['date'].toString()) : null;
-        DateTime? dateB =
-            b['date'] != null ? DateTime.tryParse(b['date'].toString()) : null;
+        DateTime? dateA = parseDateSafe(a['date']);
+        DateTime? dateB = parseDateSafe(b['date']);
         if (dateA != null && dateB != null && !dateA.isAtSameMomentAs(dateB)) {
           return dateB.compareTo(dateA); // Newest date first
         }
-        DateTime? createdA = a['createdAt'] != null
-            ? DateTime.tryParse(a['createdAt'].toString())
-            : null;
-        DateTime? createdB = b['createdAt'] != null
-            ? DateTime.tryParse(b['createdAt'].toString())
-            : null;
+        DateTime? createdA = parseDateSafe(a['createdAt']);
+        DateTime? createdB = parseDateSafe(b['createdAt']);
         if (createdA != null && createdB != null) {
           return createdB.compareTo(createdA); // Newest created first
         }
@@ -463,7 +518,7 @@ class ReportsController extends GetxController {
                   .contains(filterService.toLowerCase()));
 
       // Date range filter
-      final recordDate = DateTime.tryParse(record['date']?.toString() ?? '');
+      final recordDate = parseDateSafe(record['date']);
       final dateMatch = startDate == null ||
           endDate == null ||
           (recordDate != null &&
@@ -480,19 +535,13 @@ class ReportsController extends GetxController {
       return vehicleMatch && serviceMatch && dateMatch && invoiceMatch;
     }).toList()
       ..sort((a, b) {
-        DateTime? dateA =
-            a['date'] != null ? DateTime.tryParse(a['date'].toString()) : null;
-        DateTime? dateB =
-            b['date'] != null ? DateTime.tryParse(b['date'].toString()) : null;
+        DateTime? dateA = parseDateSafe(a['date']);
+        DateTime? dateB = parseDateSafe(b['date']);
         if (dateA != null && dateB != null && !dateA.isAtSameMomentAs(dateB)) {
           return dateB.compareTo(dateA); // Newest date first
         }
-        DateTime? createdA = a['createdAt'] != null
-            ? DateTime.tryParse(a['createdAt'].toString())
-            : null;
-        DateTime? createdB = b['createdAt'] != null
-            ? DateTime.tryParse(b['createdAt'].toString())
-            : null;
+        DateTime? createdA = parseDateSafe(a['createdAt']);
+        DateTime? createdB = parseDateSafe(b['createdAt']);
         if (createdA != null && createdB != null) {
           return createdB.compareTo(createdA); // Newest created first
         }
@@ -1544,7 +1593,7 @@ class ReportsController extends GetxController {
   void handleEditRecord(Map<String, dynamic> record) {
     isEditing = true;
     editingRecordId = record['id'];
-    originalRecordDate = DateTime.tryParse(record['date']?.toString() ?? '');
+    originalRecordDate = parseDateSafe(record['date']);
     selectedVehicle = record['vehicleId'];
     selectedVehicleData = record['vehicleDetails'];
     selectedVehicleType =
@@ -1816,16 +1865,19 @@ class ReportsController extends GetxController {
     final filteredRecords = getFilteredRecords();
 
     for (final record in filteredRecords) {
-      final recordDate = DateTime.parse(record['date']);
+      final recordDate = parseDateSafe(record['date']);
       final amount =
           double.tryParse(record['invoiceAmount']?.toString() ?? '0') ?? 0;
       final vehicleId = record['vehicleId'];
-      final vehicleType = record['vehicleDetails']['vehicleType'];
+      final vehicleType = record['vehicleDetails']?['vehicleType'] ?? '';
 
-      final isWithinDateRange =
-          (summaryStartDate == null || recordDate.isAfter(summaryStartDate!)) &&
+      final isWithinDateRange = recordDate == null ||
+          ((summaryStartDate == null ||
+                  recordDate.isAfter(summaryStartDate!
+                      .subtract(const Duration(seconds: 1)))) &&
               (summaryEndDate == null ||
-                  recordDate.isBefore(summaryEndDate!.add(Duration(days: 1))));
+                  recordDate.isBefore(
+                      summaryEndDate!.add(const Duration(days: 1)))));
 
       final matchesVehicleType = summaryVehicleTypeFilter == 'All' ||
           vehicleType == summaryVehicleTypeFilter;
