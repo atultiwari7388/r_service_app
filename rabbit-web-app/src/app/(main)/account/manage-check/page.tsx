@@ -905,15 +905,20 @@ function ManageCheckScreenContent() {
       return;
     }
 
-    // Ensure we include 0 amounts and invoice metadata properly
-    const detailsToSave = nonEmptyDetails.map((detail) => ({
-      serviceName: detail.serviceName,
-      amount:
-        detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
-      recordId: detail.recordId || undefined,
-      invoiceNumber: detail.invoiceNumber || undefined,
-      vehicleNumber: detail.vehicleNumber || undefined,
-    }));
+    // Ensure we include 0 amounts and invoice metadata properly without undefined fields
+    const detailsToSave = nonEmptyDetails.map((detail) => {
+      const item: Record<string, any> = {
+        serviceName: detail.serviceName.trim(),
+        amount:
+          detail.amount === null || isNaN(detail.amount)
+            ? 0
+            : Number(detail.amount),
+      };
+      if (detail.recordId) item.recordId = detail.recordId;
+      if (detail.invoiceNumber) item.invoiceNumber = detail.invoiceNumber;
+      if (detail.vehicleNumber) item.vehicleNumber = detail.vehicleNumber;
+      return item;
+    });
 
     // Extract only the currently active attached invoices from detailsToSave
     const activeAttachedInvoices: Array<{
@@ -1186,15 +1191,20 @@ function ManageCheckScreenContent() {
       return;
     }
 
-    // Ensure we include 0 amounts and metadata properly
-    const detailsToSave = nonEmptyDetails.map((detail) => ({
-      serviceName: detail.serviceName,
-      amount:
-        detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
-      recordId: detail.recordId || undefined,
-      invoiceNumber: detail.invoiceNumber || undefined,
-      vehicleNumber: detail.vehicleNumber || undefined,
-    }));
+    // Ensure we include 0 amounts and metadata properly without undefined fields
+    const detailsToSave = nonEmptyDetails.map((detail) => {
+      const item: Record<string, any> = {
+        serviceName: detail.serviceName.trim(),
+        amount:
+          detail.amount === null || isNaN(detail.amount)
+            ? 0
+            : Number(detail.amount),
+      };
+      if (detail.recordId) item.recordId = detail.recordId;
+      if (detail.invoiceNumber) item.invoiceNumber = detail.invoiceNumber;
+      if (detail.vehicleNumber) item.vehicleNumber = detail.vehicleNumber;
+      return item;
+    });
 
     setIsUpdatingCheck(true);
 
@@ -1213,8 +1223,8 @@ function ManageCheckScreenContent() {
         amount?: number;
       }> = (prevCheckData?.attachedInvoices || []).map((inv: any) => ({
         recordId: inv.recordId,
-        invoiceNumber: inv.invoiceNumber,
-        vehicleNumber: inv.vehicleNumber,
+        invoiceNumber: inv.invoiceNumber || "",
+        vehicleNumber: inv.vehicleNumber || "",
         amount:
           typeof inv.amount === "number" ? inv.amount : inv.amountPaid || 0,
       }));
@@ -1225,8 +1235,8 @@ function ManageCheckScreenContent() {
           if (sd.recordId) {
             prevAttachedInvoices.push({
               recordId: sd.recordId,
-              invoiceNumber: sd.invoiceNumber,
-              vehicleNumber: sd.vehicleNumber,
+              invoiceNumber: sd.invoiceNumber || "",
+              vehicleNumber: sd.vehicleNumber || "",
               amount: typeof sd.amount === "number" ? sd.amount : 0,
             });
           }
@@ -1256,8 +1266,8 @@ function ManageCheckScreenContent() {
         if (matchedRecordId && (detail.amount || 0) > 0) {
           updatedAttachedInvoices.push({
             recordId: matchedRecordId,
-            invoiceNumber: detail.invoiceNumber,
-            vehicleNumber: detail.vehicleNumber,
+            invoiceNumber: detail.invoiceNumber || "",
+            vehicleNumber: detail.vehicleNumber || "",
             amount: detail.amount || 0,
           });
         }
