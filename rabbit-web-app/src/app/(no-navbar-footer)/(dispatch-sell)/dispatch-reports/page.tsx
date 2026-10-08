@@ -126,9 +126,13 @@ export default function DispatchReportsPage() {
   const [timeframe, setTimeframe] = useState<TimeframePreset>("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
-  const [selectedCompany, setSelectedCompany] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [quickSearchText, setQuickSearchText] = useState<string>("");
+  const [quickCompanyFilter, setQuickCompanyFilter] = useState<string>("all");
+  const [quickVehicleFilter, setQuickVehicleFilter] = useState<string>("all");
+  const [quickTypeFilter, setQuickTypeFilter] = useState<"all" | "truck" | "trailer">("all");
+  const [quickStatusFilter, setQuickStatusFilter] = useState<string>("all");
+  const [quickDriverFilter, setQuickDriverFilter] = useState<string>("all");
+  const [quickSortOption, setQuickSortOption] = useState<string>("earnings_desc");
 
   // Expandable rows state
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
@@ -442,7 +446,125 @@ export default function DispatchReportsPage() {
     fetchReportData();
   }, [fetchReportData]);
 
-  // Date Presets Filter Logic
+  // Derived unique companies
+  const availableCompanies = useMemo(() => {
+    const set = new Set<string>();
+    userCompanies.forEach((c) => c && set.add(c.trim()));
+    loads.forEach((l) => {
+      if (l.companyName && l.companyName !== "Default Company") {
+        set.add(l.companyName.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [userCompanies, loads]);
+
+  // Derived available vehicles based on quickCompanyFilter & quickTypeFilter
+  const availableVehiclesForQuickFilter = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; label: string; type: "Truck" | "Trailer"; company: string }
+    >();
+
+    loads.forEach((l) => {
+      if (l.truck && l.truck !== "Unassigned" && l.truck !== "-") {
+        const id = l.truck;
+        if (!map.has(id)) {
+          map.set(id, { id, label: l.truck, type: "Truck", company: l.companyName });
+        }
+      }
+      if (l.trailer && l.trailer !== "Unassigned" && l.trailer !== "-") {
+        const id = l.trailer;
+        if (!map.has(id)) {
+          map.set(id, { id, label: l.trailer, type: "Trailer", company: l.companyName });
+        }
+      }
+    });
+
+    let list = Array.from(map.values());
+
+    if (quickTypeFilter === "truck") {
+      list = list.filter((v) => v.type === "Truck");
+    } else if (quickTypeFilter === "trailer") {
+      list = list.filter((v) => v.type === "Trailer");
+    }
+
+    if (quickCompanyFilter !== "all") {
+      const targetCompanyLower = quickCompanyFilter.toLowerCase().trim();
+      list = list.filter((v) => {
+        const vComp = (v.company || "").toLowerCase().trim();
+        const vLabel = v.label.toLowerCase().trim();
+        return vComp === targetCompanyLower || vLabel.includes(targetCompanyLower);
+      });
+    }
+
+    return list.sort((a, b) => a.label.localeCompare(b.label));
+  }, [loads, quickCompanyFilter, quickTypeFilter]);
+
+  // Derived available drivers
+  const availableDrivers = useMemo(() => {
+    const set = new Set<string>();
+    loads.forEach((l) => {
+      if (l.driver && l.driver !== "Unassigned" && l.driver !== "-") {
+        set.add(l.driver.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [loads]);
+
+  // Handle Quick Company filter change with smart vehicle reset
+  const handleQuickCompanyFilterChange = (selectedCompany: string) => {
+    setQuickCompanyFilter(selectedCompany);
+    if (selectedCompany !== "all" && quickVehicleFilter !== "all") {
+      const exists = availableVehiclesForQuickFilter.some(
+        (v) => v.id === quickVehicleFilter || v.label === quickVehicleFilter
+      );
+      if (!exists) {
+        setQuickVehicleFilter("all");
+      }
+    }
+  };
+
+  // Handle Quick Type filter change with smart vehicle reset
+  const handleQuickTypeFilterChange = (
+    selectedType: "all" | "truck" | "trailer"
+  ) => {
+    setQuickTypeFilter(selectedType);
+    if (selectedType !== "all" && quickVehicleFilter !== "all") {
+      const selectedVeh = availableVehiclesForQuickFilter.find(
+        (v) => v.id === quickVehicleFilter || v.label === quickVehicleFilter
+      );
+      if (selectedVeh && selectedVeh.type.toLowerCase() !== selectedType) {
+        setQuickVehicleFilter("all");
+      }
+    }
+  };
+
+  const isQuickFilterActive =
+    quickSearchText !== "" ||
+    quickCompanyFilter !== "all" ||
+    quickVehicleFilter !== "all" ||
+    quickTypeFilter !== "all" ||
+    quickStatusFilter !== "all" ||
+    quickDriverFilter !== "all" ||
+    timeframe !== "all" ||
+    startDate !== "" ||
+    endDate !== "" ||
+    quickSortOption !== "earnings_desc";
+
+  const clearQuickFilters = () => {
+    setQuickSearchText("");
+    setQuickCompanyFilter("all");
+    setQuickVehicleFilter("all");
+    setQuickTypeFilter("all");
+    setQuickStatusFilter("all");
+    setQuickDriverFilter("all");
+    setTimeframe("all");
+    setStartDate("");
+    setEndDate("");
+    setQuickSortOption("earnings_desc");
+  };
+
+  // Date Presets & Quick Filter Logic
   const filteredLoads = useMemo(() => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -492,29 +614,71 @@ export default function DispatchReportsPage() {
       }
 
       // 2. Company Filter
-      if (selectedCompany !== "all") {
+      if (quickCompanyFilter !== "all") {
+        const targetCompany = quickCompanyFilter.toLowerCase().trim();
         const matchesComp =
-          load.companyName.toLowerCase() === selectedCompany.toLowerCase() ||
-          load.truck.toLowerCase().includes(selectedCompany.toLowerCase());
+          load.companyName.toLowerCase().trim() === targetCompany ||
+          load.truck.toLowerCase().includes(targetCompany);
         if (!matchesComp) return false;
       }
 
-      // 3. Status Filter
-      if (selectedStatus !== "all") {
-        if (selectedStatus === "completed" && load.statusGroup !== "Completed") {
+      // 3. Vehicle Filter
+      if (quickVehicleFilter !== "all") {
+        const targetVeh = quickVehicleFilter.toLowerCase().trim();
+        const matchesVeh =
+          load.truckId === quickVehicleFilter ||
+          load.trailerId === quickVehicleFilter ||
+          load.truck.toLowerCase().includes(targetVeh) ||
+          load.trailer.toLowerCase().includes(targetVeh);
+        if (!matchesVeh) return false;
+      }
+
+      // 4. Vehicle Type Filter (Truck or Trailer)
+      if (quickTypeFilter === "truck") {
+        const hasTruck =
+          load.truck &&
+          load.truck !== "Unassigned" &&
+          load.truck !== "-" &&
+          load.truck.trim().length > 0;
+        if (!hasTruck) return false;
+      } else if (quickTypeFilter === "trailer") {
+        const hasTrailer =
+          load.trailer &&
+          load.trailer !== "Unassigned" &&
+          load.trailer !== "-" &&
+          load.trailer.trim().length > 0;
+        if (!hasTrailer) return false;
+      }
+
+      // 5. Status Filter
+      if (quickStatusFilter !== "all") {
+        if (quickStatusFilter === "completed" && load.statusGroup !== "Completed") {
           return false;
         }
-        if (selectedStatus === "active" && load.statusGroup !== "Active") {
+        if (quickStatusFilter === "active" && load.statusGroup !== "Active") {
           return false;
         }
-        if (selectedStatus === "ready" && load.statusGroup !== "Ready") {
+        if (quickStatusFilter === "ready" && load.statusGroup !== "Ready") {
+          return false;
+        }
+        if (quickStatusFilter === "pre-planned" && load.statusGroup !== "Pre-Planned") {
           return false;
         }
       }
 
-      // 4. Search Filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+      // 6. Driver Filter
+      if (quickDriverFilter !== "all") {
+        const targetDriver = quickDriverFilter.toLowerCase().trim();
+        const matchesDriver =
+          load.driverId === quickDriverFilter ||
+          load.driver.toLowerCase().trim() === targetDriver ||
+          load.carrier.toLowerCase().trim() === targetDriver;
+        if (!matchesDriver) return false;
+      }
+
+      // 7. Quick Search Text
+      if (quickSearchText.trim()) {
+        const q = quickSearchText.toLowerCase().trim();
         const matchesQuery =
           load.loadNumber.toLowerCase().includes(q) ||
           load.truck.toLowerCase().includes(q) ||
@@ -535,9 +699,12 @@ export default function DispatchReportsPage() {
     timeframe,
     startDate,
     endDate,
-    selectedCompany,
-    selectedStatus,
-    searchQuery,
+    quickCompanyFilter,
+    quickVehicleFilter,
+    quickTypeFilter,
+    quickStatusFilter,
+    quickDriverFilter,
+    quickSearchText,
   ]);
 
   // Overall KPI Metrics
@@ -615,6 +782,13 @@ export default function DispatchReportsPage() {
           stat.totalLoads > 0 ? stat.totalEarnings / stat.totalLoads : 0,
       }))
       .sort((a, b) => {
+        if (quickSortOption === "miles_desc") return b.totalMiles - a.totalMiles;
+        if (quickSortOption === "miles_asc") return a.totalMiles - b.totalMiles;
+        if (quickSortOption === "loads_desc") return b.totalLoads - a.totalLoads;
+        if (quickSortOption === "rpm_desc") return b.avgRpm - a.avgRpm;
+        if (quickSortOption === "earnings_asc") return a.totalEarnings - b.totalEarnings;
+        if (quickSortOption === "earnings_desc") return b.totalEarnings - a.totalEarnings;
+
         if (sortField === "miles") {
           return sortOrder === "desc"
             ? b.totalMiles - a.totalMiles
@@ -632,7 +806,7 @@ export default function DispatchReportsPage() {
           ? b.totalEarnings - a.totalEarnings
           : a.totalEarnings - b.totalEarnings;
       });
-  }, [filteredLoads, sortField, sortOrder]);
+  }, [filteredLoads, sortField, sortOrder, quickSortOption]);
 
   // Grouped by Driver / Carrier
   const driverStats = useMemo<DriverStat[]>(() => {
@@ -675,6 +849,13 @@ export default function DispatchReportsPage() {
           stat.totalLoads > 0 ? stat.totalMiles / stat.totalLoads : 0,
       }))
       .sort((a, b) => {
+        if (quickSortOption === "miles_desc") return b.totalMiles - a.totalMiles;
+        if (quickSortOption === "miles_asc") return a.totalMiles - b.totalMiles;
+        if (quickSortOption === "loads_desc") return b.totalLoads - a.totalLoads;
+        if (quickSortOption === "rpm_desc") return b.avgRpm - a.avgRpm;
+        if (quickSortOption === "earnings_asc") return a.totalEarnings - b.totalEarnings;
+        if (quickSortOption === "earnings_desc") return b.totalEarnings - a.totalEarnings;
+
         if (sortField === "miles") {
           return sortOrder === "desc"
             ? b.totalMiles - a.totalMiles
@@ -692,7 +873,7 @@ export default function DispatchReportsPage() {
           ? b.totalEarnings - a.totalEarnings
           : a.totalEarnings - b.totalEarnings;
       });
-  }, [filteredLoads, sortField, sortOrder]);
+  }, [filteredLoads, sortField, sortOrder, quickSortOption]);
 
   // Grouped by Company
   const companyStats = useMemo<CompanyStat[]>(() => {
@@ -737,8 +918,42 @@ export default function DispatchReportsPage() {
           driverCount: uniqueDrivers.size,
         };
       })
-      .sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }, [filteredLoads]);
+      .sort((a, b) => {
+        if (quickSortOption === "miles_desc") return b.totalMiles - a.totalMiles;
+        if (quickSortOption === "miles_asc") return a.totalMiles - b.totalMiles;
+        if (quickSortOption === "loads_desc") return b.totalLoads - a.totalLoads;
+        if (quickSortOption === "rpm_desc") return b.avgRpm - a.avgRpm;
+        if (quickSortOption === "earnings_asc") return a.totalRevenue - b.totalRevenue;
+        return b.totalRevenue - a.totalRevenue;
+      });
+  }, [filteredLoads, quickSortOption]);
+
+  // Sorted Loads for All Loads Tab
+  const sortedLoads = useMemo(() => {
+    return [...filteredLoads].sort((a, b) => {
+      if (quickSortOption === "date_asc") {
+        const tA = a.dateObj ? a.dateObj.getTime() : 0;
+        const tB = b.dateObj ? b.dateObj.getTime() : 0;
+        return tA - tB;
+      }
+      if (quickSortOption === "earnings_desc") {
+        return b.revenue - a.revenue;
+      }
+      if (quickSortOption === "earnings_asc") {
+        return a.revenue - b.revenue;
+      }
+      if (quickSortOption === "miles_desc") {
+        return b.miles - a.miles;
+      }
+      if (quickSortOption === "miles_asc") {
+        return a.miles - b.miles;
+      }
+      // default newest date
+      const tA = a.dateObj ? a.dateObj.getTime() : 0;
+      const tB = b.dateObj ? b.dateObj.getTime() : 0;
+      return tB - tA;
+    });
+  }, [filteredLoads, quickSortOption]);
 
   // Toggle Row Expansion
   const toggleExpandRow = (key: string) => {
@@ -879,41 +1094,40 @@ export default function DispatchReportsPage() {
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-4">
-          {/* Timeframe Presets */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-            {(
-              [
-                { key: "this_month", label: "This Month" },
-                { key: "this_quarter", label: "This Quarter" },
-                { key: "this_year", label: "This Year" },
-                { key: "this_week", label: "This Week" },
-                { key: "today", label: "Today" },
-                { key: "last_month", label: "Last Month" },
-                { key: "all", label: "All Time" },
-                { key: "custom", label: "Custom Date" },
-              ] as const
-            ).map((preset) => (
-              <button
-                key={preset.key}
-                onClick={() => setTimeframe(preset.key)}
-                className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer",
-                  timeframe === preset.key
-                    ? "bg-[#F96176] text-white shadow-sm"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
+        <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col gap-3">
+          {/* Top Row: Timeframe Presets & Custom Date Picker */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+              {(
+                [
+                  { key: "all", label: "All Time" },
+                  { key: "this_month", label: "This Month" },
+                  { key: "this_quarter", label: "This Quarter" },
+                  { key: "this_year", label: "This Year" },
+                  { key: "this_week", label: "This Week" },
+                  { key: "today", label: "Today" },
+                  { key: "last_month", label: "Last Month" },
+                  { key: "custom", label: "Custom Date" },
+                ] as const
+              ).map((preset) => (
+                <button
+                  key={preset.key}
+                  onClick={() => setTimeframe(preset.key)}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer",
+                    timeframe === preset.key
+                      ? "bg-[#F96176] text-white shadow-xs"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  )}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
 
-          {/* Secondary Filters: Company, Status, Search */}
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
             {/* Custom Date Inputs if Custom is selected */}
             {timeframe === "custom" && (
-              <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+              <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-300">
                 <input
                   type="date"
                   value={startDate}
@@ -931,49 +1145,153 @@ export default function DispatchReportsPage() {
                 />
               </div>
             )}
+          </div>
 
-            {/* Company Dropdown */}
-            {userCompanies.length > 0 && (
+          {/* Bottom Row: Quick / Short Filters (matching /records styling) */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5">
+            {/* Quick Search */}
+            <div className="relative col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[170px]">
+              <input
+                type="text"
+                value={quickSearchText}
+                onChange={(e: any) => setQuickSearchText(e.target.value)}
+                placeholder="Quick search..."
+                className="w-full px-3 py-1.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F96176] focus:bg-white text-gray-800 transition"
+              />
+              {quickSearchText && (
+                <button
+                  onClick={() => setQuickSearchText("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-200 cursor-pointer"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Company Filter Dropdown */}
+            <select
+              value={quickCompanyFilter}
+              onChange={(e: any) =>
+                handleQuickCompanyFilterChange(e.target.value)
+              }
+              className={`w-full sm:w-auto sm:max-w-[170px] truncate px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+                quickCompanyFilter !== "all"
+                  ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                  : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <option value="all">All Companies</option>
+              {availableCompanies.map((compName) => (
+                <option key={compName} value={compName}>
+                  🏢 {compName}
+                </option>
+              ))}
+            </select>
+
+            {/* Vehicle Filter Dropdown */}
+            <select
+              value={quickVehicleFilter}
+              onChange={(e: any) => setQuickVehicleFilter(e.target.value)}
+              className={`w-full sm:w-auto sm:max-w-[170px] truncate px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+                quickVehicleFilter !== "all"
+                  ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                  : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <option value="all">All Vehicles</option>
+              {availableVehiclesForQuickFilter.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.type === "Trailer" ? "🚚" : "🚛"} {v.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Vehicle Type Filter Dropdown (Truck or Trailer) */}
+            <select
+              value={quickTypeFilter}
+              onChange={(e: any) =>
+                handleQuickTypeFilterChange(
+                  e.target.value as "all" | "truck" | "trailer"
+                )
+              }
+              className={`w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+                quickTypeFilter !== "all"
+                  ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                  : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <option value="all">Vehicle Type: All</option>
+              <option value="truck">🚛 Truck</option>
+              <option value="trailer">🚚 Trailer</option>
+            </select>
+
+            {/* Status Dropdown */}
+            <select
+              value={quickStatusFilter}
+              onChange={(e: any) => setQuickStatusFilter(e.target.value)}
+              className={`w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+                quickStatusFilter !== "all"
+                  ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                  : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <option value="all">Status: All</option>
+              <option value="completed">Completed Only</option>
+              <option value="active">Active / In Transit</option>
+              <option value="ready">Ready / Assigned</option>
+              <option value="pre-planned">Pre-Planned / Draft</option>
+            </select>
+
+            {/* Driver Filter Dropdown */}
+            {availableDrivers.length > 0 && (
               <select
-                value={selectedCompany}
-                onChange={(e) => setSelectedCompany(e.target.value)}
-                className="bg-white border border-gray-300 text-gray-700 text-xs rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#F96176] transition"
+                value={quickDriverFilter}
+                onChange={(e: any) => setQuickDriverFilter(e.target.value)}
+                className={`w-full sm:w-auto sm:max-w-[170px] truncate px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+                  quickDriverFilter !== "all"
+                    ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                    : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+                }`}
               >
-                <option value="all">All Companies</option>
-                {userCompanies.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                <option value="all">Driver: All</option>
+                {availableDrivers.map((d) => (
+                  <option key={d} value={d}>
+                    👤 {d}
                   </option>
                 ))}
               </select>
             )}
 
-            {/* Status Dropdown */}
+            {/* Sort By Dropdown */}
             <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-white border border-gray-300 text-gray-700 text-xs rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#F96176] transition"
+              value={quickSortOption}
+              onChange={(e: any) => setQuickSortOption(e.target.value)}
+              className={`w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+                quickSortOption !== "earnings_desc"
+                  ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                  : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
             >
-              <option value="all">All Statuses</option>
-              <option value="completed">Completed Only</option>
-              <option value="active">Active / In Transit</option>
-              <option value="ready">Ready / Assigned</option>
+              <option value="earnings_desc">Earnings: High to Low</option>
+              <option value="earnings_asc">Earnings: Low to High</option>
+              <option value="miles_desc">Miles: Highest</option>
+              <option value="miles_asc">Miles: Lowest</option>
+              <option value="loads_desc">Loads: Most</option>
+              <option value="rpm_desc">Avg RPM: Highest</option>
+              <option value="date_desc">Date: Newest</option>
+              <option value="date_asc">Date: Oldest</option>
             </select>
 
-            {/* Search Input */}
-            <div className="relative min-w-[200px] flex-1 lg:flex-initial">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search truck, driver, load #..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#F96176] transition"
-              />
-            </div>
+            {/* Reset / Clear All Filters */}
+            {isQuickFilterActive && (
+              <button
+                onClick={clearQuickFilters}
+                className="col-span-2 sm:col-span-1 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition shadow-2xs cursor-pointer"
+                title="Reset all filters"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1584,7 +1902,7 @@ export default function DispatchReportsPage() {
               {/* TAB 4: ALL DISPATCHED LOADS REGISTRY */}
               {activeTab === "all_loads" && (
                 <div className="overflow-x-auto">
-                  {filteredLoads.length === 0 ? (
+                  {sortedLoads.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
                       No matching loads found.
                     </div>
@@ -1603,7 +1921,7 @@ export default function DispatchReportsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {filteredLoads.map((load) => (
+                        {sortedLoads.map((load) => (
                           <tr
                             key={load.id}
                             className="hover:bg-gray-50/80 transition-colors"
