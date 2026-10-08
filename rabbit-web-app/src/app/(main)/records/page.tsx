@@ -1460,10 +1460,18 @@ export default function RecordsPage() {
     return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
   }, [companies, vehicles, records]);
 
-  // Derived available vehicles based on quickCompanyFilter
+  // Derived available vehicles based on quickCompanyFilter & quickTypeFilter
   const availableVehiclesForQuickFilter = useMemo(() => {
+    let list = vehicles;
+
+    if (quickTypeFilter === "truck") {
+      list = list.filter((v) => v.vehicleType === "Truck");
+    } else if (quickTypeFilter === "trailer") {
+      list = list.filter((v) => v.vehicleType === "Trailer");
+    }
+
     if (quickCompanyFilter === "all") {
-      return vehicles;
+      return list;
     }
 
     const targetCompanyLower = quickCompanyFilter.toLowerCase().trim();
@@ -1473,14 +1481,14 @@ export default function RecordsPage() {
         c.id === quickCompanyFilter
     );
 
-    return vehicles.filter((v) => {
+    return list.filter((v) => {
       const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
       if (vCompName && vCompName === targetCompanyLower) return true;
       if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
         return true;
       return false;
     });
-  }, [vehicles, quickCompanyFilter, companies]);
+  }, [vehicles, quickCompanyFilter, quickTypeFilter, companies]);
 
   // Handle Quick Company filter change with smart vehicle reset
   const handleQuickCompanyFilterChange = (selectedCompany: string) => {
@@ -1505,6 +1513,29 @@ export default function RecordsPage() {
 
       if (!vehicleExistsInCompany) {
         setQuickVehicleFilter("all");
+      }
+    }
+  };
+
+  // Handle Quick Type filter change with smart vehicle reset
+  const handleQuickTypeFilterChange = (
+    selectedType: "all" | "truck" | "trailer"
+  ) => {
+    setQuickTypeFilter(selectedType);
+    if (selectedType !== "all" && quickVehicleFilter !== "all") {
+      const selectedVeh = vehicles.find(
+        (v) =>
+          v.vehicleNumber === quickVehicleFilter || v.id === quickVehicleFilter
+      );
+      if (selectedVeh) {
+        if (selectedType === "truck" && selectedVeh.vehicleType !== "Truck") {
+          setQuickVehicleFilter("all");
+        } else if (
+          selectedType === "trailer" &&
+          selectedVeh.vehicleType !== "Trailer"
+        ) {
+          setQuickVehicleFilter("all");
+        }
       }
     }
   };
@@ -4140,6 +4171,25 @@ export default function RecordsPage() {
             ))}
           </select>
 
+          {/* Vehicle Type Filter Dropdown (Truck or Trailer) */}
+          <select
+            value={quickTypeFilter}
+            onChange={(e: any) =>
+              handleQuickTypeFilterChange(
+                e.target.value as "all" | "truck" | "trailer"
+              )
+            }
+            className={`w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+              quickTypeFilter !== "all"
+                ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <option value="all">Vehicle Type: All</option>
+            <option value="truck">🚛 Truck</option>
+            <option value="trailer">🚚 Trailer</option>
+          </select>
+
           {/* Payment Status Dropdown Filter */}
           {activeTab === "records" && (
             <select
@@ -4181,23 +4231,6 @@ export default function RecordsPage() {
               ))}
             </select>
           )}
-
-          {/* Vehicle Type / Unit Filter (Trucks/Miles vs Trailers/Hours) */}
-          <select
-            value={quickTypeFilter}
-            onChange={(e: any) =>
-              setQuickTypeFilter(e.target.value as "all" | "truck" | "trailer")
-            }
-            className={`w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
-              quickTypeFilter !== "all"
-                ? "bg-rose-50 border-[#F96176] text-[#F96176]"
-                : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            <option value="all">Type: All</option>
-            <option value="truck">Trucks (Miles)</option>
-            <option value="trailer">Trailers (Hours)</option>
-          </select>
 
           {/* Sort By Dropdown (Records Tab) */}
           {activeTab === "records" && (
@@ -4873,6 +4906,23 @@ export default function RecordsPage() {
                   />
                 )}
 
+                {selectedVehicleData?.vehicleType === "Trailer" && (
+                  <>
+                    {selectedVehicleData?.engineName === "DRY VAN" ? (
+                      <div></div>
+                    ) : (
+                      <TextField
+                        fullWidth
+                        label="Hours"
+                        type="number"
+                        value={hours}
+                        onChange={(e: any) => setHours(e.target.value)}
+                        className="mb-4 rounded-lg"
+                      />
+                    )}
+                  </>
+                )}
+
                 <div className="mb-4 mt-4">
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Date <span className="text-red-500">*</span>
@@ -4948,23 +4998,6 @@ export default function RecordsPage() {
                     </p>
                   )}
                 </div>
-
-                {selectedVehicleData?.vehicleType === "Trailer" && (
-                  <>
-                    {selectedVehicleData?.engineName === "DRY VAN" ? (
-                      <div></div>
-                    ) : (
-                      <TextField
-                        fullWidth
-                        label="Hours"
-                        type="number"
-                        value={hours}
-                        onChange={(e: any) => setHours(e.target.value)}
-                        className="mb-4 rounded-lg"
-                      />
-                    )}
-                  </>
-                )}
 
                 {(() => {
                   const AutocompleteAny: any = Autocomplete;
