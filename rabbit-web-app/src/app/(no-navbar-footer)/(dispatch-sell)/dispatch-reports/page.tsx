@@ -1523,138 +1523,77 @@ export default function DispatchReportsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {truckStats.map((item) => {
-                          const isExpanded = expandedRowKey === item.truckKey;
-                          return (
-                            <React.Fragment key={item.truckKey}>
-                              <tr className="hover:bg-gray-50/80 transition-colors">
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700 font-bold print:hidden">
-                                      <Truck size={18} />
-                                    </div>
-                                    <div>
-                                      <span className="font-bold text-gray-900">
-                                        {item.truckNumber}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 text-gray-700 font-medium">
-                                  {item.trailer}
-                                </td>
-                                <td className="px-6 py-4 text-gray-600">
-                                  {item.companyName}
-                                </td>
-                                <td className="px-6 py-4 text-right font-bold text-emerald-600 text-base">
-                                  ${item.totalEarnings.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}
-                                </td>
-                                <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                                  {item.totalMiles.toLocaleString(undefined, {
-                                    maximumFractionDigits: 1,
-                                  })}{" "}
-                                  <span className="text-xs text-gray-400 font-normal">
-                                    mi
+                        {truckStats.map((item) => (
+                          <tr
+                            key={item.truckKey}
+                            className="hover:bg-gray-50/80 transition-colors"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700 font-bold print:hidden">
+                                  <Truck size={18} />
+                                </div>
+                                <div>
+                                  <span className="font-bold text-gray-900">
+                                    {item.truckNumber}
                                   </span>
-                                </td>
-                                <td className="px-6 py-4 text-right font-semibold text-teal-700">
-                                  ${item.avgRpm.toFixed(2)}/mi
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
-                                    {item.totalLoads} loads (
-                                    <span className="text-emerald-600">
-                                      {item.completedLoads}
-                                    </span>
-                                    /
-                                    <span className="text-amber-500">
-                                      {item.activeLoads}
-                                    </span>
-                                    )
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 text-right print:hidden">
-                                  <button
-                                    onClick={() => toggleExpandRow(item.truckKey)}
-                                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <span>{isExpanded ? "Hide" : "View Loads"}</span>
-                                    <ChevronDown
-                                      size={14}
-                                      className={clsx(
-                                        "transition-transform",
-                                        isExpanded && "rotate-180"
-                                      )}
-                                    />
-                                  </button>
-                                </td>
-                              </tr>
-
-                              {/* Expanded Load List for Truck */}
-                              {isExpanded && (
-                                <tr>
-                                  <td
-                                    colSpan={8}
-                                    className="bg-gray-50/90 px-8 py-4 border-y border-gray-200/60"
-                                  >
-                                    <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center justify-between">
-                                      <span>
-                                        Loads Assigned to {item.truckNumber} ({item.loads.length})
-                                      </span>
-                                    </div>
-                                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                                      {item.loads.map((l) => (
-                                        <div
-                                          key={l.id}
-                                          className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between hover:border-gray-300 transition"
-                                        >
-                                          <div className="flex items-center gap-3">
-                                            <span className="font-bold text-gray-900 text-sm">
-                                              {l.loadNumber}
-                                            </span>
-                                            <span
-                                              className={clsx(
-                                                "px-2 py-0.5 rounded text-[11px] font-bold",
-                                                l.statusGroup === "Completed"
-                                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                  : l.statusGroup === "Active"
-                                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                                  : "bg-gray-100 text-gray-700"
-                                              )}
-                                            >
-                                              {l.status}
-                                            </span>
-                                            <span className="text-gray-500">
-                                              {l.origin} → {l.destination}
-                                            </span>
-                                          </div>
-
-                                          <div className="flex items-center gap-4">
-                                            <span className="text-gray-600">
-                                              {l.miles.toFixed(1)} mi
-                                            </span>
-                                            <span className="font-bold text-emerald-600">
-                                              ${l.revenue.toLocaleString()}
-                                            </span>
-                                            <Link
-                                              href={`/view-load-info/${l.id}`}
-                                              className="text-xs text-[#F96176] hover:underline font-semibold flex items-center gap-1"
-                                            >
-                                              Details <ExternalLink size={11} />
-                                            </Link>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-gray-700 font-medium">
+                              {item.trailer}
+                            </td>
+                            <td className="px-6 py-4 text-gray-600">
+                              {item.companyName}
+                            </td>
+                            <td className="px-6 py-4 text-right font-bold text-emerald-600 text-base">
+                              ${item.totalEarnings.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </td>
+                            <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                              {item.totalMiles.toLocaleString(undefined, {
+                                maximumFractionDigits: 1,
+                              })}{" "}
+                              <span className="text-xs text-gray-400 font-normal">
+                                mi
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-semibold text-teal-700">
+                              ${item.avgRpm.toFixed(2)}/mi
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
+                                {item.totalLoads} loads (
+                                <span className="text-emerald-600">
+                                  {item.completedLoads}
+                                </span>
+                                /
+                                <span className="text-amber-500">
+                                  {item.activeLoads}
+                                </span>
+                                )
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right print:hidden">
+                              <Link
+                                href={`/dispatch-reports/details?type=truck&key=${encodeURIComponent(
+                                  item.truckNumber
+                                )}&timeframe=${encodeURIComponent(timeframe)}${
+                                  startDate ? `&startDate=${encodeURIComponent(startDate)}` : ""
+                                }${endDate ? `&endDate=${encodeURIComponent(endDate)}` : ""}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F96176]/10 text-[#F96176] hover:bg-[#F96176]/20 font-semibold text-xs rounded-lg transition cursor-pointer"
+                                title="View Full Truck Report & Loads (Opens in new tab)"
+                              >
+                                <span>View Loads</span>
+                                <ExternalLink size={12} />
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   )}
@@ -1683,130 +1622,80 @@ export default function DispatchReportsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {driverStats.map((item) => {
-                          const isExpanded = expandedRowKey === item.driverKey;
-                          return (
-                            <React.Fragment key={item.driverKey}>
-                              <tr className="hover:bg-gray-50/80 transition-colors">
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold print:hidden">
-                                      <User size={18} />
-                                    </div>
-                                    <div>
-                                      <span className="font-bold text-gray-900">
-                                        {item.driverName}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 text-gray-700 font-medium">
-                                  {item.carrierName}
-                                </td>
-                                <td className="px-6 py-4 text-right font-bold text-gray-900">
-                                  {item.totalMiles.toLocaleString(undefined, {
-                                    maximumFractionDigits: 1,
-                                  })}{" "}
-                                  <span className="text-xs text-gray-400 font-normal">
-                                    mi
+                        {driverStats.map((item) => (
+                          <tr
+                            key={item.driverKey}
+                            className="hover:bg-gray-50/80 transition-colors"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold print:hidden">
+                                  <User size={18} />
+                                </div>
+                                <div>
+                                  <span className="font-bold text-gray-900">
+                                    {item.driverName}
                                   </span>
-                                </td>
-                                <td className="px-6 py-4 text-right font-bold text-emerald-600 text-base">
-                                  ${item.totalEarnings.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}
-                                </td>
-                                <td className="px-6 py-4 text-right font-semibold text-gray-700">
-                                  ${item.customerRevenue.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}
-                                </td>
-                                <td className="px-6 py-4 text-right font-semibold text-teal-700">
-                                  ${item.avgRpm.toFixed(2)}/mi
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
-                                    {item.totalLoads} loads (
-                                    <span className="text-emerald-600">
-                                      {item.completedLoads}
-                                    </span>
-                                    /
-                                    <span className="text-amber-500">
-                                      {item.activeLoads}
-                                    </span>
-                                    )
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 text-right print:hidden">
-                                  <button
-                                    onClick={() => toggleExpandRow(item.driverKey)}
-                                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <span>{isExpanded ? "Hide" : "View Loads"}</span>
-                                    <ChevronDown
-                                      size={14}
-                                      className={clsx(
-                                        "transition-transform",
-                                        isExpanded && "rotate-180"
-                                      )}
-                                    />
-                                  </button>
-                                </td>
-                              </tr>
-
-                              {/* Expanded Load List for Driver */}
-                              {isExpanded && (
-                                <tr>
-                                  <td
-                                    colSpan={8}
-                                    className="bg-gray-50/90 px-8 py-4 border-y border-gray-200/60"
-                                  >
-                                    <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-                                      Loads Completed by {item.driverName} ({item.loads.length})
-                                    </div>
-                                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                                      {item.loads.map((l) => (
-                                        <div
-                                          key={l.id}
-                                          className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between hover:border-gray-300 transition"
-                                        >
-                                          <div className="flex items-center gap-3">
-                                            <span className="font-bold text-gray-900 text-sm">
-                                              {l.loadNumber}
-                                            </span>
-                                            <span className="text-gray-500">
-                                              {l.origin} → {l.destination}
-                                            </span>
-                                            <span className="text-gray-400 text-xs">
-                                              ({l.truck})
-                                            </span>
-                                          </div>
-
-                                          <div className="flex items-center gap-4">
-                                            <span className="text-gray-600">
-                                              {l.miles.toFixed(1)} mi
-                                            </span>
-                                            <span className="font-bold text-emerald-600">
-                                              ${l.revenue.toLocaleString()}
-                                            </span>
-                                            <Link
-                                              href={`/view-load-info/${l.id}`}
-                                              className="text-xs text-[#F96176] hover:underline font-semibold flex items-center gap-1 print:hidden"
-                                            >
-                                              Details <ExternalLink size={11} />
-                                            </Link>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-gray-700 font-medium">
+                              {item.carrierName}
+                            </td>
+                            <td className="px-6 py-4 text-right font-bold text-gray-900">
+                              {item.totalMiles.toLocaleString(undefined, {
+                                maximumFractionDigits: 1,
+                              })}{" "}
+                              <span className="text-xs text-gray-400 font-normal">
+                                mi
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-bold text-emerald-600 text-base">
+                              ${item.totalEarnings.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </td>
+                            <td className="px-6 py-4 text-right font-semibold text-gray-700">
+                              ${item.customerRevenue.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </td>
+                            <td className="px-6 py-4 text-right font-semibold text-teal-700">
+                              ${item.avgRpm.toFixed(2)}/mi
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
+                                {item.totalLoads} loads (
+                                <span className="text-emerald-600">
+                                  {item.completedLoads}
+                                </span>
+                                /
+                                <span className="text-amber-500">
+                                  {item.activeLoads}
+                                </span>
+                                )
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right print:hidden">
+                              <Link
+                                href={`/dispatch-reports/details?type=driver&key=${encodeURIComponent(
+                                  item.driverName
+                                )}&timeframe=${encodeURIComponent(timeframe)}${
+                                  startDate ? `&startDate=${encodeURIComponent(startDate)}` : ""
+                                }${endDate ? `&endDate=${encodeURIComponent(endDate)}` : ""}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F96176]/10 text-[#F96176] hover:bg-[#F96176]/20 font-semibold text-xs rounded-lg transition cursor-pointer"
+                                title="View Full Driver Report & Loads (Opens in new tab)"
+                              >
+                                <span>View Loads</span>
+                                <ExternalLink size={12} />
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   )}
@@ -1832,6 +1721,7 @@ export default function DispatchReportsPage() {
                           <th className="px-6 py-3.5 text-center">Trucks / Drivers</th>
                           <th className="px-6 py-3.5 text-center">Total Loads</th>
                           <th className="px-6 py-3.5 text-right">Avg. RPM</th>
+                          <th className="px-6 py-3.5 text-right print:hidden font-semibold text-gray-700">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -1890,6 +1780,22 @@ export default function DispatchReportsPage() {
                             </td>
                             <td className="px-6 py-4 text-right font-semibold text-teal-700">
                               ${item.avgRpm.toFixed(2)}/mi
+                            </td>
+                            <td className="px-6 py-4 text-right print:hidden">
+                              <Link
+                                href={`/dispatch-reports/details?type=company&key=${encodeURIComponent(
+                                  item.companyName
+                                )}&timeframe=${encodeURIComponent(timeframe)}${
+                                  startDate ? `&startDate=${encodeURIComponent(startDate)}` : ""
+                                }${endDate ? `&endDate=${encodeURIComponent(endDate)}` : ""}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F96176]/10 text-[#F96176] hover:bg-[#F96176]/20 font-semibold text-xs rounded-lg transition cursor-pointer"
+                                title="View Full Company Report & Loads (Opens in new tab)"
+                              >
+                                <span>View Loads</span>
+                                <ExternalLink size={12} />
+                              </Link>
                             </td>
                           </tr>
                         ))}
@@ -1977,13 +1883,28 @@ export default function DispatchReportsPage() {
                               })}
                             </td>
                             <td className="px-6 py-4 text-right print:hidden">
-                              <Link
-                                href={`/view-load-info/${load.id}`}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F96176]/10 text-[#F96176] hover:bg-[#F96176]/20 font-semibold text-xs rounded-lg transition cursor-pointer"
-                              >
-                                <span>View Load</span>
-                                <ExternalLink size={12} />
-                              </Link>
+                              <div className="flex items-center justify-end gap-2">
+                                <Link
+                                  href={`/view-load-info/${load.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F96176]/10 text-[#F96176] hover:bg-[#F96176]/20 font-semibold text-xs rounded-lg transition cursor-pointer"
+                                  title="View Full Load Details (Opens in new page)"
+                                >
+                                  <span>View</span>
+                                  <ExternalLink size={12} />
+                                </Link>
+                                <Link
+                                  href={`/view-load-info/${load.id}?action=print`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 font-semibold text-xs rounded-lg transition cursor-pointer"
+                                  title="Print Load Sheet"
+                                >
+                                  <Printer size={13} />
+                                  <span>Print</span>
+                                </Link>
+                              </div>
                             </td>
                           </tr>
                         ))}
