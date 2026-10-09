@@ -40,6 +40,7 @@ export interface OtherExpenseRecord {
   companyName?: string;
   vehicleId?: string;
   vehicleNumber?: string;
+  vehicleType?: string;
   teamMemberId?: string;
   teamMemberName?: string;
   teamMemberRole?: string;
@@ -636,6 +637,15 @@ export default function AddOtherExpenseModal({
           collection(db, "Users", effectiveUserId, "record_otherExpenses")
         ).id;
 
+      const matchedVeh = vehiclesList.find(
+        (v) =>
+          v.id === selectedVehicleId ||
+          (selectedVehicleNumber && v.vehicleNumber === selectedVehicleNumber)
+      );
+      const determinedVehicleType =
+        matchedVeh?.vehicleType ||
+        (selectedVehicleId || selectedVehicleNumber ? "Truck" : "");
+
       const recordPayload = {
         id: recordId,
         userId: effectiveUserId,
@@ -646,6 +656,7 @@ export default function AddOtherExpenseModal({
         companyName: selectedCompanyName || "",
         vehicleId: selectedVehicleId || "",
         vehicleNumber: selectedVehicleNumber || "",
+        vehicleType: determinedVehicleType || editingRecord?.vehicleType || "",
         teamMemberId: selectedTeamMember?.uid || "",
         teamMemberName: selectedTeamMember?.userName || "",
         teamMemberRole: selectedTeamMember?.role || "",
@@ -840,12 +851,16 @@ export default function AddOtherExpenseModal({
                 className="w-full p-3 bg-gray-50 hover:bg-gray-100/70 focus:bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all"
               >
                 <option value="">-- Select Vehicle (Optional) --</option>
-                {availableVehicles.map((veh) => (
-                  <option key={veh.id} value={veh.id}>
-                    {veh.vehicleNumber}
-                    {veh.vehicleType ? ` (${veh.vehicleType})` : ""}
-                  </option>
-                ))}
+                {availableVehicles.map((veh) => {
+                  const isTrailer =
+                    (veh.vehicleType || "").toLowerCase() === "trailer";
+                  return (
+                    <option key={veh.id} value={veh.id}>
+                      {isTrailer ? "🚚 " : "🚛 "}
+                      {veh.vehicleNumber} ({veh.vehicleType || "Truck"})
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>

@@ -171,6 +171,7 @@ export default function OtherExpensesPage() {
     {
       id: string;
       vehicleNumber: string;
+      vehicleType?: string;
       mycomId?: string;
       myCompany?: string;
       companyName?: string;
@@ -185,6 +186,9 @@ export default function OtherExpensesPage() {
     "All"
   );
   const [companyFilter, setCompanyFilter] = useState<string>("All");
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<
+    "All" | "Truck" | "Trailer"
+  >("All");
   const [vehicleFilter, setVehicleFilter] = useState<string>("All");
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -285,6 +289,7 @@ export default function OtherExpensesPage() {
         const loaded: {
           id: string;
           vehicleNumber: string;
+          vehicleType?: string;
           mycomId?: string;
           myCompany?: string;
           companyName?: string;
@@ -297,6 +302,7 @@ export default function OtherExpensesPage() {
               loaded.push({
                 id: docSnap.id,
                 vehicleNumber: vNum,
+                vehicleType: data.vehicleType || "Truck",
                 mycomId: data.mycomId || data.companyId || "",
                 myCompany: data.myCompany || "",
                 companyName: data.companyName || data.company || "",
@@ -415,6 +421,7 @@ export default function OtherExpensesPage() {
               companyName: data.companyName || "",
               vehicleId: data.vehicleId || "",
               vehicleNumber: data.vehicleNumber || "",
+              vehicleType: data.vehicleType || "",
               teamMemberId: data.teamMemberId || "",
               teamMemberName: data.teamMemberName || "",
               teamMemberRole: data.teamMemberRole || "",
@@ -470,27 +477,66 @@ export default function OtherExpensesPage() {
     return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
   }, [companies, records]);
 
-  // Vehicles available for filter based on selected company
+  // Map of vehicle ID / vehicle number to vehicleType ("Truck" / "Trailer")
+  const vehicleTypeMap = useMemo(() => {
+    const map = new Map<string, string>();
+    vehicles.forEach((v) => {
+      const vType = v.vehicleType || "Truck";
+      if (v.id) map.set(v.id.toLowerCase(), vType);
+      if (v.vehicleNumber) map.set(v.vehicleNumber.toLowerCase().trim(), vType);
+    });
+    return map;
+  }, [vehicles]);
+
+  // Helper to determine vehicle type of any given record
+  const getRecordVehicleType = (rec: OtherExpenseRecord): string => {
+    if (rec.vehicleType?.trim()) return rec.vehicleType.trim();
+    if (rec.vehicleId && vehicleTypeMap.has(rec.vehicleId.toLowerCase())) {
+      return vehicleTypeMap.get(rec.vehicleId.toLowerCase())!;
+    }
+    if (
+      rec.vehicleNumber &&
+      vehicleTypeMap.has(rec.vehicleNumber.toLowerCase().trim())
+    ) {
+      return vehicleTypeMap.get(rec.vehicleNumber.toLowerCase().trim())!;
+    }
+    return rec.vehicleNumber || rec.vehicleId ? "Truck" : "";
+  };
+
+  // Vehicles available for filter based on selected company and selected vehicle type
   const availableVehiclesForFilter = useMemo(() => {
-    if (companyFilter === "All") {
-      return vehicles;
+    let list = vehicles;
+
+    // 1. Filter by Company
+    if (companyFilter !== "All") {
+      const targetCompanyLower = companyFilter.toLowerCase().trim();
+      const matchedCompany = companies.find(
+        (c) =>
+          c.companyName?.trim().toLowerCase() === targetCompanyLower ||
+          c.id === companyFilter
+      );
+
+      list = list.filter((v) => {
+        const vCompName = (v.companyName || v.myCompany || "")
+          .toLowerCase()
+          .trim();
+        if (vCompName && vCompName === targetCompanyLower) return true;
+        if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
+          return true;
+        return false;
+      });
     }
 
-    const targetCompanyLower = companyFilter.toLowerCase().trim();
-    const matchedCompany = companies.find(
-      (c) =>
-        c.companyName?.trim().toLowerCase() === targetCompanyLower ||
-        c.id === companyFilter
-    );
+    // 2. Filter by Vehicle Type (Truck / Trailer)
+    if (vehicleTypeFilter !== "All") {
+      const targetTypeLower = vehicleTypeFilter.toLowerCase();
+      list = list.filter(
+        (v) => (v.vehicleType || "Truck").toLowerCase() === targetTypeLower
+      );
+    }
 
-    return vehicles.filter((v) => {
-      const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
-      if (vCompName && vCompName === targetCompanyLower) return true;
-      if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
-        return true;
-      return false;
-    });
-  }, [vehicles, companyFilter, companies]);
+    return list;
+  }, [vehicles, companyFilter, vehicleTypeFilter, companies]);
 
   // Handle Company filter change with smart vehicle reset
   const handleCompanyFilterChange = (selectedCompany: string) => {
@@ -506,7 +552,9 @@ export default function OtherExpensesPage() {
         const isThisVehicle =
           v.vehicleNumber === vehicleFilter || v.id === vehicleFilter;
         if (!isThisVehicle) return false;
-        const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
+        const vCompName = (v.companyName || v.myCompany || "")
+          .toLowerCase()
+          .trim();
         if (vCompName && vCompName === targetCompanyLower) return true;
         if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
           return true;
@@ -514,6 +562,25 @@ export default function OtherExpensesPage() {
       });
 
       if (!vehicleExistsInCompany) {
+        setVehicleFilter("All");
+      }
+    }
+  };
+
+  // Handle Vehicle Type filter change with smart vehicle reset
+  const handleVehicleTypeFilterChange = (
+    selectedType: "All" | "Truck" | "Trailer"
+  ) => {
+    setVehicleTypeFilter(selectedType);
+    if (selectedType !== "All" && vehicleFilter !== "All") {
+      const currentVeh = vehicles.find(
+        (v) => v.vehicleNumber === vehicleFilter || v.id === vehicleFilter
+      );
+      if (
+        currentVeh &&
+        (currentVeh.vehicleType || "Truck").toLowerCase() !==
+          selectedType.toLowerCase()
+      ) {
         setVehicleFilter("All");
       }
     }
@@ -537,7 +604,15 @@ export default function OtherExpensesPage() {
         }
       }
 
-      // 2. Vehicle Filter
+      // 2. Vehicle Type Filter (Truck vs Trailer)
+      if (vehicleTypeFilter !== "All") {
+        const recType = getRecordVehicleType(rec);
+        if (recType.toLowerCase() !== vehicleTypeFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 3. Vehicle Filter
       if (vehicleFilter !== "All") {
         const targetVehicle = vehicleFilter.toLowerCase().trim();
         const matchesVehicle =
@@ -597,10 +672,12 @@ export default function OtherExpensesPage() {
     records,
     typeFilter,
     companyFilter,
+    vehicleTypeFilter,
     vehicleFilter,
     searchQuery,
     startDate,
     endDate,
+    vehicleTypeMap,
   ]);
 
   // Summary calculations
@@ -734,32 +811,39 @@ export default function OtherExpensesPage() {
     }
 
     try {
-      const exportData = filteredRecords.map((r, index) => ({
-        "S.No": String(index + 1),
-        Date: formatDateSafe(r.date),
-        "Service / Expense": r.serviceName,
-        "Team Member": r.teamMemberName
-          ? `${r.teamMemberName}${r.teamMemberRole ? ` (${r.teamMemberRole})` : ""}`
-          : "-",
-        Company: r.companyName || "-",
-        Vehicle: r.vehicleNumber || "-",
-        Type: r.type === "Credit" ? "Credit (Cash In)" : "Debit (Cash Out)",
-        "Amount ($)": Number(r.amount).toFixed(2),
-        Description: r.description || "-",
-      }));
+      const exportData = filteredRecords.map((r, index) => {
+        const vType = getRecordVehicleType(r);
+        return {
+          "S.No": String(index + 1),
+          Date: formatDateSafe(r.date),
+          "Service / Expense": r.serviceName,
+          "Team Member": r.teamMemberName
+            ? `${r.teamMemberName}${r.teamMemberRole ? ` (${r.teamMemberRole})` : ""}`
+            : "-",
+          Company: r.companyName || "-",
+          Vehicle: r.vehicleNumber
+            ? `${r.vehicleNumber}${vType ? ` (${vType})` : ""}`
+            : "-",
+          "Vehicle Type": vType || "-",
+          Type: r.type === "Credit" ? "Credit (Cash In)" : "Debit (Cash Out)",
+          "Amount ($)": Number(r.amount).toFixed(2),
+          Description: r.description || "-",
+        };
+      });
 
       const ws = utils.json_to_sheet(exportData);
 
       // Define expanded, comfortable column widths (wch = character count)
       ws["!cols"] = [
-        { wch: 10 }, // S.No
-        { wch: 18 }, // Date (MM-DD-YYYY)
-        { wch: 32 }, // Service / Expense
-        { wch: 26 }, // Team Member
-        { wch: 24 }, // Company
-        { wch: 18 }, // Vehicle
-        { wch: 24 }, // Type (Credit (Cash In) / Debit (Cash Out))
-        { wch: 18 }, // Amount ($)
+        { wch: 8 }, // S.No
+        { wch: 16 }, // Date (MM-DD-YYYY)
+        { wch: 30 }, // Service / Expense
+        { wch: 24 }, // Team Member
+        { wch: 22 }, // Company
+        { wch: 20 }, // Vehicle
+        { wch: 16 }, // Vehicle Type
+        { wch: 22 }, // Type (Credit (Cash In) / Debit (Cash Out))
+        { wch: 16 }, // Amount ($)
         { wch: 45 }, // Description / Notes
       ];
 
@@ -856,7 +940,7 @@ export default function OtherExpensesPage() {
     <div className="min-h-screen bg-[#F8FAFC] pb-16">
       {/* Top Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="w-full max-w-[1750px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link
@@ -918,7 +1002,7 @@ export default function OtherExpensesPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+      <div className="w-full max-w-[1750px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         {/* KPI Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Total Credit (Cash In) */}
@@ -1061,7 +1145,7 @@ export default function OtherExpensesPage() {
                 )}
               </div>
 
-              {/* Company Filter Dropdown (Placed before Vehicle Filter) */}
+              {/* Company Filter Dropdown (Placed before Vehicle Type & Vehicle Filter) */}
               <div className="relative min-w-[140px] flex-1 sm:flex-none">
                 <select
                   value={companyFilter}
@@ -1081,6 +1165,27 @@ export default function OtherExpensesPage() {
                 </select>
               </div>
 
+              {/* Vehicle Type Filter Dropdown (Truck / Trailer) */}
+              <div className="relative min-w-[130px] flex-1 sm:flex-none">
+                <select
+                  value={vehicleTypeFilter}
+                  onChange={(e) =>
+                    handleVehicleTypeFilterChange(
+                      e.target.value as "All" | "Truck" | "Trailer"
+                    )
+                  }
+                  className={`w-full py-2 px-3 bg-gray-50 hover:bg-gray-100/80 focus:bg-white border rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all cursor-pointer font-medium ${
+                    vehicleTypeFilter !== "All"
+                      ? "border-[#F96176] text-[#F96176] font-bold bg-rose-50/40"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <option value="All">All Vehicle Types</option>
+                  <option value="Truck">🚛 Truck</option>
+                  <option value="Trailer">🚚 Trailer</option>
+                </select>
+              </div>
+
               {/* Vehicle Filter Dropdown */}
               <div className="relative min-w-[140px] flex-1 sm:flex-none">
                 <select
@@ -1093,11 +1198,16 @@ export default function OtherExpensesPage() {
                   }`}
                 >
                   <option value="All">All Vehicles</option>
-                  {availableVehiclesForFilter.map((v) => (
-                    <option key={v.id} value={v.vehicleNumber}>
-                      🚗 {v.vehicleNumber}
-                    </option>
-                  ))}
+                  {availableVehiclesForFilter.map((v) => {
+                    const isTrailer =
+                      (v.vehicleType || "Truck").toLowerCase() === "trailer";
+                    return (
+                      <option key={v.id} value={v.vehicleNumber}>
+                        {isTrailer ? "🚚 " : "🚛 "}
+                        {v.vehicleNumber} ({v.vehicleType || "Truck"})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -1160,6 +1270,7 @@ export default function OtherExpensesPage() {
                 {searchQuery ||
                 typeFilter !== "All" ||
                 companyFilter !== "All" ||
+                vehicleTypeFilter !== "All" ||
                 vehicleFilter !== "All" ||
                 startDate ||
                 endDate
@@ -1170,10 +1281,11 @@ export default function OtherExpensesPage() {
                 {searchQuery ||
                 typeFilter !== "All" ||
                 companyFilter !== "All" ||
+                vehicleTypeFilter !== "All" ||
                 vehicleFilter !== "All" ||
                 startDate ||
                 endDate
-                  ? "Try adjusting your search query, company, vehicle, filter type, or date range."
+                  ? "Try adjusting your search query, company, vehicle type, vehicle, filter type, or date range."
                   : "Record cash inflows (Credit) and cash outflows (Debit) to keep your financials organized."}
               </p>
               <button
@@ -1200,6 +1312,9 @@ export default function OtherExpensesPage() {
                 <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                   {filteredRecords.map((record) => {
                     const isCredit = record.type === "Credit";
+                    const vType = getRecordVehicleType(record);
+                    const isTrailer = vType.toLowerCase() === "trailer";
+
                     return (
                       <tr
                         key={record.id}
@@ -1241,7 +1356,11 @@ export default function OtherExpensesPage() {
                               )}
                               {record.vehicleNumber && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-medium text-[10px] border border-blue-100">
-                                  🚗 {record.vehicleNumber}
+                                  {isTrailer ? "🚚" : "🚛"}{" "}
+                                  {record.vehicleNumber}
+                                  <span className="text-[9px] text-blue-600 font-normal">
+                                    ({vType || "Truck"})
+                                  </span>
                                 </span>
                               )}
                               {record.companyName && (
@@ -1281,7 +1400,7 @@ export default function OtherExpensesPage() {
                         </td>
 
                         {/* Description */}
-                        <td className="py-4 px-4 sm:px-6 max-w-xs text-xs text-gray-500 truncate">
+                        <td className="py-4 px-4 sm:px-6 max-w-md text-xs text-gray-500 truncate">
                           {record.description || (
                             <span className="text-gray-300 italic">
                               No notes
@@ -1515,7 +1634,7 @@ export default function OtherExpensesPage() {
                               row.description) && <span> • </span>}
                           {row.vehicleNumber && (
                             <span className="font-medium text-gray-700">
-                              Veh: {row.vehicleNumber}
+                              Veh: {row.vehicleNumber} ({getRecordVehicleType(row) || "Truck"})
                             </span>
                           )}
                           {row.vehicleNumber &&
