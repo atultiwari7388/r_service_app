@@ -85,7 +85,9 @@ export default function DriverExcelImportModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressText, setProgressText] = useState("");
   const [progressPercent, setProgressPercent] = useState(0);
-  const [filterTab, setFilterTab] = useState<"all" | "valid" | "invalid">("all");
+  const [filterTab, setFilterTab] = useState<"all" | "valid" | "invalid">(
+    "all"
+  );
 
   // Fetch active owner vehicles on open
   useEffect(() => {
@@ -94,7 +96,12 @@ export default function DriverExcelImportModal({
     const fetchOwnerVehicles = async () => {
       setLoadingVehicles(true);
       try {
-        const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
+        const vehiclesRef = collection(
+          db,
+          "Users",
+          effectiveUserId,
+          "Vehicles"
+        );
         const q = query(vehiclesRef, where("active", "==", true));
         const snap = await getDocs(q);
 
@@ -102,7 +109,9 @@ export default function DriverExcelImportModal({
           const data = d.data();
           return {
             id: d.id,
-            vehicleNumber: (data.vehicleNumber || data.companyName || d.id).toString().trim(),
+            vehicleNumber: (data.vehicleNumber || data.companyName || d.id)
+              .toString()
+              .trim(),
             companyName: (data.companyName || "").toString().trim(),
           };
         });
@@ -140,10 +149,7 @@ export default function DriverExcelImportModal({
 
     for (const rawPart of parts) {
       // Extract clean vehicle number if format is "ACHA9999 - VOLVO" or "ACHA9999 (VOLVO)"
-      const cleanPart = rawPart
-        .split(/[-–(]/)[0]
-        .trim()
-        .toUpperCase();
+      const cleanPart = rawPart.split(/[-–(]/)[0].trim().toUpperCase();
 
       const found = fleetVehicles.find(
         (v) =>
@@ -203,9 +209,12 @@ export default function DriverExcelImportModal({
       const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
-        defval: "",
-      });
+      const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+        worksheet,
+        {
+          defval: "",
+        }
+      );
 
       if (!rawData || rawData.length === 0) {
         toast.error("The uploaded Excel file contains no data rows.");
@@ -227,10 +236,20 @@ export default function DriverExcelImportModal({
           for (const key of keys) {
             const foundKey = Object.keys(row).find(
               (k) =>
-                k.trim().toLowerCase().replace(/[*_\s-]/g, "") ===
-                key.trim().toLowerCase().replace(/[*_\s-]/g, "")
+                k
+                  .trim()
+                  .toLowerCase()
+                  .replace(/[*_\s-]/g, "") ===
+                key
+                  .trim()
+                  .toLowerCase()
+                  .replace(/[*_\s-]/g, "")
             );
-            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+            if (
+              foundKey &&
+              row[foundKey] !== undefined &&
+              row[foundKey] !== null
+            ) {
               return String(row[foundKey]).trim();
             }
           }
@@ -241,10 +260,20 @@ export default function DriverExcelImportModal({
           for (const key of keys) {
             const foundKey = Object.keys(row).find(
               (k) =>
-                k.trim().toLowerCase().replace(/[*_\s-]/g, "") ===
-                key.trim().toLowerCase().replace(/[*_\s-]/g, "")
+                k
+                  .trim()
+                  .toLowerCase()
+                  .replace(/[*_\s-]/g, "") ===
+                key
+                  .trim()
+                  .toLowerCase()
+                  .replace(/[*_\s-]/g, "")
             );
-            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+            if (
+              foundKey &&
+              row[foundKey] !== undefined &&
+              row[foundKey] !== null
+            ) {
               return row[foundKey];
             }
           }
@@ -252,9 +281,16 @@ export default function DriverExcelImportModal({
         };
 
         const name = getCol("Driver Name", "Name", "Full Name", "Member Name");
-        const email = getCol("Email", "Driver Email", "Member Email").toLowerCase();
+        const email = getCol(
+          "Email",
+          "Driver Email",
+          "Member Email"
+        ).toLowerCase();
         const rawPhone = getCol("Phone Number", "Phone", "Mobile", "Contact");
-        const phone = rawPhone.replace(/^\+1\s*/, "").replace(/^\+/, "").trim();
+        const phone = rawPhone
+          .replace(/^\+1\s*/, "")
+          .replace(/^\+/, "")
+          .trim();
         const vehicleInput = getCol(
           "Assigned Vehicle Numbers",
           "Assigned Vehicles",
@@ -264,24 +300,38 @@ export default function DriverExcelImportModal({
         );
         const password = getCol("Password", "Member Password") || "12345678";
         const payType = getCol("Pay Type", "Pay Mode", "PayType") || "Per Mile";
-        const perMileCharge = getCol("Pay Per Mile", "Per Mile Charge", "Rate Per Mile") || "0";
+        const perMileCharge =
+          getCol("Pay Per Mile", "Per Mile Charge", "Rate Per Mile") || "0";
         const address = getCol("Address", "Street Address");
         const city = getCol("City") || "Dallas";
         const state = getCol("State") || "TX";
         const country = getCol("Country") || "USA";
         const postal = getCol("Zip Code", "Zip", "Postal Code", "Postal");
         const licenseNumber = getCol("License Number", "DL Number", "License");
-        const socialSecurity = getCol("Social Security Number", "SSN", "Social Security");
-        const secondaryEmail = getCol("Secondary Email", "Email 2", "Member Email 2");
+        const socialSecurity = getCol(
+          "Social Security Number",
+          "SSN",
+          "Social Security"
+        );
+        const secondaryEmail = getCol(
+          "Secondary Email",
+          "Email 2",
+          "Member Email 2"
+        );
         const rawTelephone = getCol("Telephone", "Tel");
-        const telephone = rawTelephone.replace(/^\+1\s*/, "").replace(/^\+/, "").trim();
+        const telephone = rawTelephone
+          .replace(/^\+1\s*/, "")
+          .replace(/^\+/, "")
+          .trim();
         const recordAccessStr = getCol("Record Access", "Access");
 
         // Parse Dates
         const licExpiryDate = parseDateValue(
           getColRaw("License Expiry Date", "License Expiry", "DL Expiry")
         );
-        const dob = parseDateValue(getColRaw("Date of Birth", "DOB", "Birth Date"));
+        const dob = parseDateValue(
+          getColRaw("Date of Birth", "DOB", "Birth Date")
+        );
         const lastDrugTest = parseDateValue(
           getColRaw("Last Drug Test", "Drug Test Date", "Drug Test")
         );
@@ -312,7 +362,9 @@ export default function DriverExcelImportModal({
         // Vehicle assignment is optional.
         // Only trigger an error if the user provided a vehicle number that cannot be found in their fleet.
         if (vehicleInput.trim() && unmatched.length > 0) {
-          errors.push(`Vehicle "${unmatched.join(", ")}" not found in your fleet`);
+          errors.push(
+            `Vehicle "${unmatched.join(", ")}" not found in your fleet`
+          );
         }
 
         // Record Access
@@ -362,7 +414,9 @@ export default function DriverExcelImportModal({
       setPreviewRows(parsed);
     } catch (err) {
       console.error("Error parsing Excel:", err);
-      toast.error("Failed to parse Excel file. Please ensure it is a valid format.");
+      toast.error(
+        "Failed to parse Excel file. Please ensure it is a valid format."
+      );
     } finally {
       setIsProcessing(false);
       setProgressText("");
@@ -373,7 +427,9 @@ export default function DriverExcelImportModal({
   const handleImportSubmit = async () => {
     const validRows = previewRows.filter((r) => r.isValid);
     if (validRows.length === 0) {
-      toast.error("No valid driver records to import. Please fix errors first.");
+      toast.error(
+        "No valid driver records to import. Please fix errors first."
+      );
       return;
     }
 
@@ -397,7 +453,10 @@ export default function DriverExcelImportModal({
           query(collection(db, "Users"), where("email", "==", row.memberEmail))
         );
         const mSnap = await getDocs(
-          query(collection(db, "Mechanics"), where("email", "==", row.memberEmail))
+          query(
+            collection(db, "Mechanics"),
+            where("email", "==", row.memberEmail)
+          )
         );
 
         if (!uSnap.empty || !mSnap.empty) {
@@ -414,7 +473,8 @@ export default function DriverExcelImportModal({
           if (trimmed.startsWith("+")) return trimmed;
           const digits = trimmed.replace(/\D/g, "");
           if (digits.length === 10) return `+1${digits}`;
-          if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+          if (digits.length === 11 && digits.startsWith("1"))
+            return `+${digits}`;
           return `+1${digits}`;
         };
 
@@ -424,7 +484,9 @@ export default function DriverExcelImportModal({
           email: row.memberEmail,
           email2: row.memberEmail2,
           phone: formatPhoneForBackend(row.memberPhoneNumber),
-          telephone: row.memberTelephone ? formatPhoneForBackend(row.memberTelephone) : "",
+          telephone: row.memberTelephone
+            ? formatPhoneForBackend(row.memberTelephone)
+            : "",
           password: row.memberPassword,
           companyName: row.companyName,
           address: row.address,
@@ -524,7 +586,8 @@ export default function DriverExcelImportModal({
                 Import Drivers (Excel)
               </h3>
               <p className="text-xs text-white/90">
-                Bulk create drivers and auto-assign fleet vehicles using an Excel spreadsheet
+                Bulk create drivers and auto-assign fleet vehicles using an
+                Excel spreadsheet
               </p>
             </div>
           </div>
@@ -549,7 +612,8 @@ export default function DriverExcelImportModal({
                   Download Driver Sample Templates
                 </h4>
                 <p className="text-xs text-[#2e724f] mt-0.5">
-                  Choose between templates with pre-filled fleet vehicles or templates without assigned vehicles:
+                  Choose between templates with pre-filled fleet vehicles or
+                  templates without assigned vehicles:
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -563,7 +627,7 @@ export default function DriverExcelImportModal({
                   <FiFileText className="mr-1.5 text-[#58BB87]" />
                   Single (With Vehicles)
                 </a>
-                <a
+                {/* <a
                   href="/sample_excels/driver_bulk_sample.xlsx"
                   download="driver_bulk_sample.xlsx"
                   className="inline-flex items-center px-3 py-1.5 text-xs font-semibold bg-[#58BB87] text-white hover:bg-[#4aa975] rounded-xl transition-all shadow-sm"
@@ -571,10 +635,10 @@ export default function DriverExcelImportModal({
                 >
                   <FiDownload className="mr-1.5 text-white" />
                   Bulk 10 (With Vehicles)
-                </a>
+                </a> */}
 
                 {/* Samples without vehicles */}
-                <a
+                {/* <a
                   href="/sample_excels/driver_single_sample_no_vehicle.xlsx"
                   download="driver_single_sample_no_vehicle.xlsx"
                   className="inline-flex items-center px-3 py-1.5 text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-xl transition-all shadow-sm"
@@ -582,8 +646,8 @@ export default function DriverExcelImportModal({
                 >
                   <FiFileText className="mr-1.5 text-gray-500" />
                   Single (No Vehicles)
-                </a>
-                <a
+                </a> */}
+                {/* <a
                   href="/sample_excels/driver_bulk_sample_no_vehicle.xlsx"
                   download="driver_bulk_sample_no_vehicle.xlsx"
                   className="inline-flex items-center px-3 py-1.5 text-xs font-semibold bg-gray-700 text-white hover:bg-gray-800 rounded-xl transition-all shadow-sm"
@@ -591,7 +655,7 @@ export default function DriverExcelImportModal({
                 >
                   <FiDownload className="mr-1.5 text-white" />
                   Bulk 10 (No Vehicles)
-                </a>
+                </a> */}
               </div>
             </div>
           </div>
@@ -614,10 +678,13 @@ export default function DriverExcelImportModal({
                 <FiUploadCloud className="w-6 h-6" />
               </div>
               <span className="text-sm font-bold text-gray-700">
-                {importFile ? importFile.name : "Click to select or drag & drop Excel file"}
+                {importFile
+                  ? importFile.name
+                  : "Click to select or drag & drop Excel file"}
               </span>
               <span className="text-xs text-gray-400">
-                Supports .xlsx, .xls, .csv • Fleet has {vehicles.length} active vehicles ready
+                Supports .xlsx, .xls, .csv • Fleet has {vehicles.length} active
+                vehicles ready
               </span>
             </label>
           </div>
@@ -649,7 +716,8 @@ export default function DriverExcelImportModal({
                     Preview Drivers ({previewRows.length} Rows)
                   </h4>
                   <p className="text-xs text-gray-500">
-                    Review extracted driver information and assigned fleet vehicles before importing.
+                    Review extracted driver information and assigned fleet
+                    vehicles before importing.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -699,11 +767,19 @@ export default function DriverExcelImportModal({
                     <tr>
                       <th className="p-3.5 w-10 whitespace-nowrap">#</th>
                       <th className="p-3.5 whitespace-nowrap">Status</th>
-                      <th className="p-3.5 whitespace-nowrap min-w-[140px]">Driver Name</th>
-                      <th className="p-3.5 whitespace-nowrap min-w-[200px]">Email & Phone</th>
+                      <th className="p-3.5 whitespace-nowrap min-w-[140px]">
+                        Driver Name
+                      </th>
+                      <th className="p-3.5 whitespace-nowrap min-w-[200px]">
+                        Email & Phone
+                      </th>
                       <th className="p-3.5 min-w-[180px]">Assigned Vehicles</th>
-                      <th className="p-3.5 whitespace-nowrap">Pay Type / Rate</th>
-                      <th className="p-3.5 whitespace-nowrap min-w-[160px]">City / State / Zip</th>
+                      <th className="p-3.5 whitespace-nowrap">
+                        Pay Type / Rate
+                      </th>
+                      <th className="p-3.5 whitespace-nowrap min-w-[160px]">
+                        City / State / Zip
+                      </th>
                       <th className="p-3.5 whitespace-nowrap">License #</th>
                       <th className="p-3.5 whitespace-nowrap">SSN</th>
                     </tr>
