@@ -8,7 +8,7 @@ interface HistoryCardProps {
 
 const HistoryCard: React.FC<HistoryCardProps> = ({ items }) => {
   return (
-    <div className="bg-white border rounded-lg p-4 shadow-md mb-4 px-12 lg:mx-12 lg:mt-5">
+    <div className="bg-white border rounded-lg p-4 sm:p-6 shadow-md mb-4">
       {/* Top Section: ID, Distance, Rating */}
       <div className="flex justify-between text-sm text-gray-600 mb-2">
         <p>

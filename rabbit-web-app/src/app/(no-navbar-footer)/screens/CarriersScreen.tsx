@@ -429,7 +429,7 @@ export default function CarriersPage({
       </Header>
 
       {/* Summary Cards */}
-      <div className="px-6 py-4">
+      <div className="px-3 sm:px-4 md:px-6 py-4 w-full max-w-full overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">

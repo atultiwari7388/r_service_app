@@ -2155,18 +2155,18 @@ function ManageCheckScreenContent() {
   return (
     <div
       key={role}
-      className="container py-4 mx-auto"
+      className="container py-4 px-3 sm:px-4 md:px-6 mx-auto w-full max-w-full overflow-hidden"
       style={{ maxWidth: "1200px" }}
     >
       {/* Header Section */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center bg-white p-4 rounded-full shadow-lg mb-4">
-          <FaFileAlt className="text-[#F96176] mr-3" size={32} />
-          <h1 className="text-3xl font-serif font-bold text-gray-800">
+        <div className="inline-flex items-center justify-center bg-white p-3 sm:p-4 rounded-full shadow-lg mb-4">
+          <FaFileAlt className="text-[#F96176] mr-2 sm:mr-3" size={28} />
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-gray-800">
             Check Management
           </h1>
         </div>
-        <p className="text-lg text-gray-600 mb-6 italic">
+        <p className="text-base sm:text-lg text-gray-600 mb-6 italic px-2">
           &quot;Track and manage all check transactions with precision&quot;
         </p>
 
@@ -2177,14 +2177,14 @@ function ManageCheckScreenContent() {
             </p>
           </div>
         ) : (
-          <div className="flex justify-center space-x-4">
+          <div className="flex flex-wrap justify-center gap-3">
             <button
               onClick={
                 showWriteCheck || showEditCheck
                   ? handleCancelWriteCheck
                   : handleWriteCheck
               }
-              className="flex items-center px-6 py-2.5 bg-[#F96176] rounded-full shadow-md hover:bg-[#F96176] transition-all duration-300 text-white"
+              className="flex items-center px-5 sm:px-6 py-2 sm:py-2.5 bg-[#F96176] rounded-full shadow-md hover:bg-[#F96176] transition-all duration-300 text-white text-sm sm:text-base"
             >
               <FiPlus className="mr-2" />
               {showWriteCheck || showEditCheck ? "Cancel" : "Write Check"}
@@ -2192,7 +2192,7 @@ function ManageCheckScreenContent() {
 
             <button
               onClick={() => setShowAddSeries(true)}
-              className="flex items-center px-6 py-2.5 bg-[#58BB87] rounded-full shadow-md hover:bg-[#58BB87] transition-all duration-300 text-white"
+              className="flex items-center px-5 sm:px-6 py-2 sm:py-2.5 bg-[#58BB87] rounded-full shadow-md hover:bg-[#58BB87] transition-all duration-300 text-white text-sm sm:text-base"
             >
               <FiHash className="mr-2" />
               Add Check Series
@@ -2200,7 +2200,7 @@ function ManageCheckScreenContent() {
 
             <button
               onClick={() => setShowCheckSeries(!showCheckSeries)}
-              className="flex items-center justify-center px-6 py-2.5 bg-gray-100 rounded-full shadow-md hover:bg-gray-200 transition-all duration-300 text-gray-700 mx-auto"
+              className="flex items-center justify-center px-5 sm:px-6 py-2 sm:py-2.5 bg-gray-100 rounded-full shadow-md hover:bg-gray-200 transition-all duration-300 text-gray-700 text-sm sm:text-base"
             >
               <FiHash className="mr-2" />
               {showCheckSeries ? "Hide Check Series" : "Show Check Series"}

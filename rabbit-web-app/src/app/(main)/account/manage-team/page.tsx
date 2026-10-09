@@ -318,11 +318,11 @@ export default function ManageTeam(): JSX.Element {
   const filteredMembers = filterMembers();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 w-full max-w-full overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white shadow-sm rounded-lg mb-6 p-4 flex flex-col sm:flex-row justify-between items-center">
-          <h1 className="text-2xl text-gray-800 font-bold mb-4 sm:mb-0">
+        <div className="bg-white shadow-sm rounded-lg mb-6 p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <h1 className="text-2xl text-gray-800 font-bold">
             Manage Team
           </h1>
           {role === "Owner" || role === "SubOwner" ? (
@@ -724,8 +724,8 @@ export default function ManageTeam(): JSX.Element {
                     </p>
                   )}
                 </div>
-                <div className="mt-4 flex justify-between items-center">
-                  {role === "Owner" && (
+                <div className="mt-4 flex justify-between items-center pt-3 border-t border-gray-100">
+                  {role === "Owner" ? (
                     <Switch
                       checked={member.active}
                       onChange={() =>
@@ -741,13 +741,100 @@ export default function ManageTeam(): JSX.Element {
                         } inline-block h-4 w-4 transform rounded-full bg-white transition`}
                       />
                     </Switch>
-                  )}
-                  <Link
-                    href={`/account/manage-team/member-vehicles/${member.uid}`}
-                    className="text-sm text-[#F96176] hover:text-[#e54d62]"
-                  >
-                    View Details
-                  </Link>
+                  ) : <div />}
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/account/manage-team/member-vehicles/${member.uid}`}
+                      className="text-sm font-medium text-[#F96176] hover:text-[#e54d62]"
+                    >
+                      Vehicles
+                    </Link>
+                    <Menu as="div" className="relative">
+                      <Menu.Button className="inline-flex justify-center items-center w-8 h-8 p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
+                        <FiMoreVertical className="h-5 w-5" />
+                      </Menu.Button>
+                      <Transition
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                      >
+                        <Menu.Items className="absolute right-0 z-20 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                          <div className="py-1">
+                            {member.role === "SubOwner" ? (
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <Link
+                                    href={`/account/manage-team/member-profile/${member.uid}`}
+                                    className={`${
+                                      active
+                                        ? "bg-gray-100 text-gray-900"
+                                        : "text-gray-700"
+                                    } flex items-center px-4 py-2 text-sm`}
+                                  >
+                                    <FiUser className="mr-3 h-4 w-4 text-gray-400" />
+                                    View Profile
+                                  </Link>
+                                )}
+                              </Menu.Item>
+                            ) : (
+                              <>
+                                {role === "Owner" && (
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <Link
+                                        href={`/account/manage-team/edit/${member.uid}`}
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 text-gray-900"
+                                            : "text-gray-700"
+                                        } flex items-center px-4 py-2 text-sm`}
+                                      >
+                                        <FiEdit className="mr-3 h-4 w-4 text-gray-400" />
+                                        Edit
+                                      </Link>
+                                    )}
+                                  </Menu.Item>
+                                )}
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <Link
+                                      href={`/account/manage-team/member-vehicles/${member.uid}`}
+                                      className={`${
+                                        active
+                                          ? "bg-gray-100 text-gray-900"
+                                          : "text-gray-700"
+                                      } flex items-center px-4 py-2 text-sm`}
+                                    >
+                                      <FiTruck className="mr-3 h-4 w-4 text-gray-400" />
+                                      View Vehicles
+                                    </Link>
+                                  )}
+                                </Menu.Item>
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <Link
+                                      href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
+                                      className={`${
+                                        active
+                                          ? "bg-gray-100 text-gray-900"
+                                          : "text-gray-700"
+                                      } flex items-center px-4 py-2 text-sm`}
+                                    >
+                                      <FiBriefcase className="mr-3 h-4 w-4 text-gray-400" />
+                                      View Jobs
+                                    </Link>
+                                  )}
+                                </Menu.Item>
+                              </>
+                            )}
+                          </div>
+                        </Menu.Items>
+                      </Transition>
+                    </Menu>
+                  </div>
                 </div>
               </div>
             ))

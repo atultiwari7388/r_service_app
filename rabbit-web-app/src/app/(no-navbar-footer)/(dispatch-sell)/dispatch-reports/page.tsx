@@ -1055,7 +1055,7 @@ export default function DispatchReportsPage() {
       </div>
 
       {/* Top Header (Hidden on Print) */}
-      <div className="bg-white border-b border-gray-200 px-6 py-6 sticky top-0 z-30 shadow-sm print:hidden">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 sm:py-6 sticky top-0 z-30 shadow-sm print:hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">

@@ -213,7 +213,7 @@ export default function HistoryPage(): JSX.Element {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-3 sm:p-4 md:p-6 w-full max-w-full overflow-hidden">
       {/* Table Layout for larger screens */}
       {userRole === "SubOwner" && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">

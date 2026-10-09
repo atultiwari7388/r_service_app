@@ -2197,7 +2197,7 @@ function CreateNewLoadPageContent() {
           </div>
         </div>
 
-        <div className="max-w-auto mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="w-full max-w-full mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-10 space-y-6">
             {/* SECTION 1: Customer & Load Header - UPDATED with 3 fields per row */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">

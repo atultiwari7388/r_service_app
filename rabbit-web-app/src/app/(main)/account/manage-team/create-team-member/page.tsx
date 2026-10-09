@@ -403,10 +403,10 @@ export default function CreateTeamMemberPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 w-full max-w-full overflow-hidden">
       {showConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-auto">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               {formData.role === "Vendor" ? "Confirm Vendor Creation" : "Confirm Email Address"}
             </h3>
@@ -448,7 +448,7 @@ export default function CreateTeamMemberPage() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
+      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
           <h1 className="text-2xl font-bold text-gray-800">
             Create Team Member

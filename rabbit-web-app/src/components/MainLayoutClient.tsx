@@ -16,7 +16,7 @@ export default function MainLayoutClient({
   const isLoggedIn = Boolean(user);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-white w-full max-w-full overflow-x-hidden">
       {/* If Logged In, Render AppSidebar on Desktop (hidden on mobile) */}
       {isLoggedIn && (
         <div className="hidden md:block">
@@ -26,13 +26,13 @@ export default function MainLayoutClient({
 
       {/* Main Content Area */}
       <div
-        className={`flex-1 flex flex-col transition-all duration-200 ${
+        className={`flex-1 min-w-0 flex flex-col transition-all duration-200 ${
           isLoggedIn ? "md:ml-16" : ""
         }`}
       >
         <TopBar />
         <NavBar />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 min-w-0 w-full">{children}</main>
         <Footer />
       </div>
     </div>

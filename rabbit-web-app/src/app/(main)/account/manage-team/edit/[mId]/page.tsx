@@ -464,9 +464,9 @@ export default function EditTeamMemberPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 w-full max-w-full overflow-hidden">
+      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-4 sm:p-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6">
           Edit Team Member
         </h1>
 

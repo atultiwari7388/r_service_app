@@ -1342,10 +1342,10 @@ export default function SettingPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ─── FULL WIDTH CONTAINER ─── */}
-      <div className="w-full py-8 px-4 sm:px-6 lg:px-10 xl:px-16">
+      <div className="w-full py-4 sm:py-8 px-3 sm:px-6 lg:px-10 xl:px-16 max-w-full overflow-hidden">
         {/* Header */}
-        <div className="mb-10">
-          <p className="mt-4 text-xl text-gray-500 max-w-3xl">
+        <div className="mb-6 sm:mb-10">
+          <p className="mt-2 sm:mt-4 text-base sm:text-xl text-gray-500 max-w-3xl">
             Manage shippers, carriers, agents and all your master data in one
             place
           </p>
@@ -1357,8 +1357,8 @@ export default function SettingPage() {
         </div>
 
         {/* Tabs */}
-        <div className="mb-10">
-          <nav className="-mb-px flex flex-nowrap space-x-6 lg:space-x-10 overflow-x-auto overflow-y-hidden border-b border-gray-200 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 snap-x snap-mandatory pb-px">
+        <div className="mb-6 sm:mb-10">
+          <nav className="-mb-px flex flex-nowrap space-x-4 sm:space-x-6 lg:space-x-10 overflow-x-auto overflow-y-hidden border-b border-gray-200 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 snap-x snap-mandatory pb-px">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -1366,8 +1366,8 @@ export default function SettingPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={
                   activeTab === tab.id
-                    ? "whitespace-nowrap py-4 px-1 border-b-2 border-[#F96176] text-[#F96176] font-semibold text-sm flex-shrink-0 snap-center transition-all"
-                    : "whitespace-nowrap py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors flex-shrink-0 snap-center"
+                    ? "whitespace-nowrap py-3 sm:py-4 px-1 border-b-2 border-[#F96176] text-[#F96176] font-semibold text-sm flex-shrink-0 snap-center transition-all"
+                    : "whitespace-nowrap py-3 sm:py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors flex-shrink-0 snap-center"
                 }
               >
                 {tab.label}
@@ -1377,8 +1377,8 @@ export default function SettingPage() {
         </div>
 
         {/* ─── FULL WIDTH CARD ─── */}
-        <div className="bg-white shadow-xl border border-gray-200 rounded-3xl overflow-hidden w-full">
-          <div className="p-6 sm:p-8 lg:p-10">
+        <div className="bg-white shadow-xl border border-gray-200 rounded-2xl sm:rounded-3xl overflow-hidden w-full">
+          <div className="p-4 sm:p-6 lg:p-10">
             {/* Section Header */}
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-4">
               <div>

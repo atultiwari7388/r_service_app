@@ -2239,9 +2239,7 @@ export default function LoadDetailsPage() {
                       <FormLabel required>Customer</FormLabel>
                       <InputField
                         value={
-                          dbLoad?.customerSearch ||
-                          dbLoad?.customerName ||
-                          "-"
+                          dbLoad?.customerSearch || dbLoad?.customerName || "-"
                         }
                         disabled
                       />
@@ -2298,10 +2296,7 @@ export default function LoadDetailsPage() {
                     </div>
                     <div>
                       <FormLabel>Fuel Surcharge Type</FormLabel>
-                      <InputField
-                        value={dbLoad?.fuelSrcType || "-"}
-                        disabled
-                      />
+                      <InputField value={dbLoad?.fuelSrcType || "-"} disabled />
                     </div>
 
                     {/* Row 5 */}
@@ -2337,26 +2332,19 @@ export default function LoadDetailsPage() {
                     {/* Row 6 */}
                     <div>
                       <FormLabel>Temperature</FormLabel>
-                      <InputField
-                        value={dbLoad?.temperature || "-"}
-                        disabled
-                      />
+                      <InputField value={dbLoad?.temperature || "-"} disabled />
                     </div>
                     <div>
                       <FormLabel>Length</FormLabel>
                       <InputField
-                        value={
-                          dbLoad?.length ? `${dbLoad.length} ft` : "-"
-                        }
+                        value={dbLoad?.length ? `${dbLoad.length} ft` : "-"}
                         disabled
                       />
                     </div>
                     <div>
                       <FormLabel>Weight (Lbs)</FormLabel>
                       <InputField
-                        value={
-                          dbLoad?.weight ? `${dbLoad.weight} lbs` : "-"
-                        }
+                        value={dbLoad?.weight ? `${dbLoad.weight} lbs` : "-"}
                         disabled
                       />
                     </div>
@@ -2364,10 +2352,7 @@ export default function LoadDetailsPage() {
                     {/* Row 7 */}
                     <div>
                       <FormLabel>Commodity</FormLabel>
-                      <InputField
-                        value={dbLoad?.commodity || "-"}
-                        disabled
-                      />
+                      <InputField value={dbLoad?.commodity || "-"} disabled />
                     </div>
                     <div>
                       <FormLabel>Declared Value ($)</FormLabel>
@@ -2382,10 +2367,7 @@ export default function LoadDetailsPage() {
                     </div>
                     <div>
                       <FormLabel>Sales Agent</FormLabel>
-                      <InputField
-                        value={dbLoad?.salesAgent || "-"}
-                        disabled
-                      />
+                      <InputField value={dbLoad?.salesAgent || "-"} disabled />
                     </div>
 
                     {/* Row 8 */}
@@ -2463,10 +2445,7 @@ export default function LoadDetailsPage() {
                         </div>
                         <div>
                           <FormLabel>Truck #</FormLabel>
-                          <InputField
-                            value={dbLoad?.truckId || "-"}
-                            disabled
-                          />
+                          <InputField value={dbLoad?.truckId || "-"} disabled />
                         </div>
                         <div>
                           <FormLabel>Trailer #</FormLabel>
@@ -2911,9 +2890,7 @@ export default function LoadDetailsPage() {
                             </div>
                             <div className="flex items-center gap-1 text-xs text-gray-500">
                               <Calendar className={`w-3 h-3 ${iconColor}`} />
-                              <span className="font-semibold">
-                                {stop.date}
-                              </span>
+                              <span className="font-semibold">{stop.date}</span>
                               <span className="text-gray-300">|</span>
                               <span>{stop.timeWindow}</span>
                             </div>
@@ -2955,30 +2932,20 @@ export default function LoadDetailsPage() {
                                 </span>
                                 <span
                                   className="font-medium text-gray-800 truncate block"
-                                  title={
-                                    stop.puNumber ||
-                                    stop.soNumber ||
-                                    "-"
-                                  }
+                                  title={stop.puNumber || stop.soNumber || "-"}
                                 >
-                                  {stop.puNumber ||
-                                    stop.soNumber ||
-                                    "-"}
+                                  {stop.puNumber || stop.soNumber || "-"}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1 col-span-2 bg-gray-50 rounded p-1.5 border border-gray-100 flex-wrap">
                                 <span className="text-gray-500">
                                   Qty:{" "}
-                                  <b className="text-gray-900">
-                                    {stop.qty}
-                                  </b>
+                                  <b className="text-gray-900">{stop.qty}</b>
                                 </span>
                                 <span className="text-gray-300">|</span>
                                 <span className="text-gray-500">
                                   Wgt:{" "}
-                                  <b className="text-gray-900">
-                                    {stop.weight}
-                                  </b>
+                                  <b className="text-gray-900">{stop.weight}</b>
                                 </span>
                                 {stop.temp && (
                                   <>
@@ -2993,12 +2960,11 @@ export default function LoadDetailsPage() {
                             </div>
 
                             {/* Instructions */}
-                            {stop.instructions &&
-                              stop.instructions !== "-" && (
-                                <div className="text-xs text-gray-500 italic border-l-2 border-gray-200 pl-2">
-                                  {stop.instructions}
-                                </div>
-                              )}
+                            {stop.instructions && stop.instructions !== "-" && (
+                              <div className="text-xs text-gray-500 italic border-l-2 border-gray-200 pl-2">
+                                {stop.instructions}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

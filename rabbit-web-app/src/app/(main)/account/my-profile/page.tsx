@@ -198,12 +198,12 @@ export default function MyProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-100 py-6 sm:py-12 px-3 sm:px-6 lg:px-8 w-full max-w-full overflow-hidden">
       <div className="max-w-3xl mx-auto">
         {/* Profile Picture Section */}
         <div className="flex flex-col items-center mb-8">
           <div className="relative">
-            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
               <img
                 src={userData?.profilePicture || "/default-avatar.png"}
                 alt="Profile"
@@ -240,27 +240,27 @@ export default function MyProfile() {
               </svg>
             </label>
           </div>
-          <h2 className="mt-4 text-2xl font-bold text-gray-800">
+          <h2 className="mt-4 text-xl sm:text-2xl font-bold text-gray-800 text-center">
             {userData?.userName}
           </h2>
         </div>
 
         {/* Personal Details Section */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-          <div className="bg-[#F96176] px-6 py-4 flex justify-between items-center">
-            <h3 className="text-xl font-semibold text-white">
+          <div className="bg-[#F96176] px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap gap-2 justify-between items-center">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">
               Personal Details
             </h3>
             {!isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="bg-white text-[#F96176] px-4 py-2 rounded-full"
+                className="bg-white text-[#F96176] px-4 py-1.5 sm:py-2 text-sm sm:text-base rounded-full"
               >
                 Edit Details
               </button>
             )}
           </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {isEditing ? (
               <>
                 <div className="bg-gray-50 p-4 rounded-lg">

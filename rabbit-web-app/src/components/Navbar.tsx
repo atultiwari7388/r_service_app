@@ -391,16 +391,22 @@ export default function NavBar() {
                           Dispatch
                         </div>
                         <MobileNavLink
-                          href="/dispatch/create-load"
+                          href="/create-new-load"
                           onClick={toggleMenu}
                         >
                           ↳ Create Load
                         </MobileNavLink>
                         <MobileNavLink
-                          href="/dispatch/view-load"
+                          href="/truck-dispatch"
                           onClick={toggleMenu}
                         >
                           ↳ View Load
+                        </MobileNavLink>
+                        <MobileNavLink
+                          href="/dispatch-reports"
+                          onClick={toggleMenu}
+                        >
+                          ↳ Reports
                         </MobileNavLink>
                         <MobileNavLink
                           href="/dispatch/settings"

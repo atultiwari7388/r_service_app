@@ -254,19 +254,21 @@ export default function MyVehiclesPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-4 md:p-6 w-full max-w-full overflow-hidden">
       {/* Header Row with Flexbox */}
-      <div className="flex items-center justify-between w-full mb-6 flex-wrap gap-4">
-        <h1 className="text-3xl font-bold">My Vehicles</h1>
+      <div className="flex items-center justify-between w-full mb-4 sm:mb-6 flex-wrap gap-3">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
+          My Vehicles
+        </h1>
         <button
-          className="btn bg-[#F96176] text-white text-lg px-5 py-2 rounded-md hover:bg-[#eb929e] transition"
+          className="bg-[#F96176] text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#eb929e] transition shadow-xs cursor-pointer active:scale-95"
           title="Add Vehicle"
           onClick={(e) => {
             e.preventDefault();
             setShowPopup(true);
           }}
         >
-          Add Vehicle
+          + Add Vehicle
         </button>
       </div>
 

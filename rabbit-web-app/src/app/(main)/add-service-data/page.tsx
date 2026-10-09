@@ -112,8 +112,8 @@ export default function AddServiceData() {
   }
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Add Services Data</h1>
+    <div className="p-3 sm:p-6 max-w-4xl mx-auto w-full">
+      <h1 className="text-xl sm:text-2xl font-bold mb-4">Add Services Data</h1>
 
       <div className="space-y-4">
         <TextField

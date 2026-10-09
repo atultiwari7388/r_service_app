@@ -879,7 +879,7 @@ export default function TruckDispatchScreen({
       </Header>
 
       {/* Main Content Area */}
-      <div className="p-4 md:p-6">
+      <div className="p-3 sm:p-4 md:p-6 w-full max-w-full overflow-hidden">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -1622,7 +1622,7 @@ const TabNavigation: React.FC<{
   };
 
   return (
-    <div className="flex flex-wrap gap-2 mb-6">
+    <div className="flex overflow-x-auto pb-2 mb-6 gap-2 hide-scrollbar w-full">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const colors = getTabColors(tab.id, isActive);
