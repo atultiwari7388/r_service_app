@@ -165,7 +165,12 @@ const getFormFields = (tabId: TabId): FormField[] => {
       return [
         { name: "name", label: "Carrier Name", type: "text", required: true },
         { name: "mcNumber", label: "MC Number", type: "text", required: false },
-        { name: "dotNumber", label: "DOT Number", type: "text", required: false },
+        {
+          name: "dotNumber",
+          label: "DOT Number",
+          type: "text",
+          required: false,
+        },
         { name: "address", label: "Address", type: "text", required: true },
         {
           name: "primaryContact",
@@ -234,25 +239,33 @@ const getExtraColumns = (tabId: TabId) => {
 
 const dispatchSampleFiles: Record<
   string,
-  { single: string; bulk: string; singleLabel: string; bulkLabel: string }
+  {
+    single: string;
+    bulk: string;
+    singleLabel: string;
+    //  bulkLabel: string
+  }
 > = {
   shippers: {
     single: "/sample_excels/dispatch/shipper_single_sample.xlsx",
     bulk: "/sample_excels/dispatch/shipper_bulk_sample.xlsx",
-    singleLabel: "Single Shipper Sample",
-    bulkLabel: "Bulk Shippers Sample (6 Facilities)",
+    // singleLabel: "Single Shipper Sample",
+    singleLabel: "Shipper Sample",
+    // bulkLabel: "Bulk Shippers Sample (6 Facilities)",
   },
   carrier: {
     single: "/sample_excels/dispatch/carrier_single_sample.xlsx",
     bulk: "/sample_excels/dispatch/carrier_bulk_sample.xlsx",
-    singleLabel: "Single Carrier Sample",
-    bulkLabel: "Bulk Carriers Sample (6 Carriers)",
+    singleLabel: "Carrier Sample",
+    // singleLabel: "Single Carrier Sample",
+    // bulkLabel: "Bulk Carriers Sample (6 Carriers)",
   },
   customers: {
     single: "/sample_excels/dispatch/customer_single_sample.xlsx",
     bulk: "/sample_excels/dispatch/customer_bulk_sample.xlsx",
-    singleLabel: "Single Customer Sample",
-    bulkLabel: "Bulk Customers Sample (6 Customers)",
+    // singleLabel: "Single Customer Sample",
+    singleLabel: "Customer Sample",
+    // bulkLabel: "Bulk Customers Sample (6 Customers)",
   },
 };
 
@@ -307,7 +320,10 @@ const normalizeExcelRow = (
   };
 
   const cleanPhone = (val: string) =>
-    val.replace(/^\+1\s*/, "").replace(/^\+/, "").trim();
+    val
+      .replace(/^\+1\s*/, "")
+      .replace(/^\+/, "")
+      .trim();
 
   if (tabId === "shippers") {
     result.name = getVal([
@@ -390,13 +406,7 @@ const normalizeExcelRow = (
       "dispatchEmail",
     ]);
     result.cellPhone = cleanPhone(
-      getVal([
-        "cellPhone",
-        "cell",
-        "mobile",
-        "mobileNumber",
-        "alternatePhone",
-      ])
+      getVal(["cellPhone", "cell", "mobile", "mobileNumber", "alternatePhone"])
     );
     result.telephone = cleanPhone(
       getVal([
@@ -813,8 +823,7 @@ export default function SettingPage() {
         return acc;
       }
 
-      const rawVal =
-        (item[field.name as keyof SettingsEntity] as string) || "";
+      const rawVal = (item[field.name as keyof SettingsEntity] as string) || "";
       if (["phone", "cellPhone", "telephone"].includes(field.name)) {
         acc[field.name] = rawVal
           .replace(/^\+1\s*/, "")
@@ -1229,7 +1238,10 @@ export default function SettingPage() {
     if (["phone", "cellPhone", "telephone"].includes(key)) {
       const val = (item[key as keyof SettingsEntity] as string) || "";
       return val
-        ? val.replace(/^\+1\s*/, "").replace(/^\+/, "").trim()
+        ? val
+            .replace(/^\+1\s*/, "")
+            .replace(/^\+/, "")
+            .trim()
         : "-";
     }
 
@@ -1759,14 +1771,14 @@ export default function SettingPage() {
                         <FaFileDownload className="mr-1.5 text-[#58BB87]" />
                         {dispatchSampleFiles[activeTab].singleLabel}
                       </a>
-                      <a
+                      {/* <a
                         href={dispatchSampleFiles[activeTab].bulk}
                         download
                         className="inline-flex items-center px-3.5 py-2 text-xs font-semibold bg-[#58BB87] text-white hover:bg-[#4aa975] rounded-xl transition-all shadow-sm"
                       >
                         <FaFileDownload className="mr-1.5 text-white" />
                         {dispatchSampleFiles[activeTab].bulkLabel}
-                      </a>
+                      </a> */}
                     </div>
                   </div>
                 </div>
