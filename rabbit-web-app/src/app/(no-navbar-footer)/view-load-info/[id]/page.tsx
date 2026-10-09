@@ -75,6 +75,7 @@ interface DispatchStopRecord {
   address?: string;
   contactPerson?: string;
   phone?: string;
+  email?: string;
   date?: string;
   timeStart?: string;
   timeEnd?: string;
@@ -170,6 +171,7 @@ interface DispatchLoadRecord {
   autoSendDriver?: boolean;
   autoTrack?: boolean;
   autoInvoice?: boolean;
+  yardLocation?: string;
   pickups?: DispatchStopRecord[];
   deliveries?: DispatchStopRecord[];
   documents?: DispatchDocumentRecord[];
@@ -1346,7 +1348,8 @@ export default function LoadDetailsPage() {
                 )
               : null;
             if (!truckSnap || !truckSnap.exists()) {
-              const fallbackOwnerId = data.effectiveUserId || data.currentUserId;
+              const fallbackOwnerId =
+                data.effectiveUserId || data.currentUserId;
               if (fallbackOwnerId) {
                 truckSnap = await getDoc(
                   doc(db, "Users", fallbackOwnerId, "Vehicles", data.truckId)
@@ -1383,7 +1386,8 @@ export default function LoadDetailsPage() {
                 )
               : null;
             if (!trailerSnap || !trailerSnap.exists()) {
-              const fallbackOwnerId = data.effectiveUserId || data.currentUserId;
+              const fallbackOwnerId =
+                data.effectiveUserId || data.currentUserId;
               if (fallbackOwnerId) {
                 trailerSnap = await getDoc(
                   doc(db, "Users", fallbackOwnerId, "Vehicles", data.trailerId)
@@ -1804,11 +1808,16 @@ export default function LoadDetailsPage() {
         return (
           typeKey === filterKey ||
           typeKey.replace(/-/g, "") === filterKey.replace(/-/g, "") ||
-          (filterKey === "bol" && (typeKey === "bill-of-lading" || typeKey === "bol")) ||
-          (filterKey === "pod" && (typeKey === "proof-of-delivery" || typeKey === "pod")) ||
-          (filterKey === "lumper" && (typeKey === "lumper-receipt" || typeKey === "lumper")) ||
-          (filterKey === "damage-photos" && (typeKey === "damage-photo" || typeKey === "damage-photos")) ||
-          (filterKey === "rate-confirmation" && (typeKey === "rate-confirmation" || typeKey === "rate-conf"))
+          (filterKey === "bol" &&
+            (typeKey === "bill-of-lading" || typeKey === "bol")) ||
+          (filterKey === "pod" &&
+            (typeKey === "proof-of-delivery" || typeKey === "pod")) ||
+          (filterKey === "lumper" &&
+            (typeKey === "lumper-receipt" || typeKey === "lumper")) ||
+          (filterKey === "damage-photos" &&
+            (typeKey === "damage-photo" || typeKey === "damage-photos")) ||
+          (filterKey === "rate-confirmation" &&
+            (typeKey === "rate-confirmation" || typeKey === "rate-conf"))
         );
       });
     }
@@ -1989,7 +1998,9 @@ export default function LoadDetailsPage() {
 
   const handleSendCompletionPacket = async () => {
     setIsSendingEmail(true);
-    const toastId = toast.loading("Sending shipment documents to driver & consignee...");
+    const toastId = toast.loading(
+      "Sending shipment documents to driver & consignee..."
+    );
     try {
       const res = await sendLoadCompletionEmail({
         loadId: loadDocId,
@@ -2002,8 +2013,12 @@ export default function LoadDetailsPage() {
           { id: toastId, duration: 5000 }
         );
       } else {
-        toast.error(res.error || "Failed to send documents email", { id: toastId, duration: 5000 });
+        toast.error(res.error || "Failed to send documents email", {
+          id: toastId,
+          duration: 5000,
+        });
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to send email", { id: toastId });
     } finally {
@@ -2011,7 +2026,9 @@ export default function LoadDetailsPage() {
     }
   };
 
-  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleStatusChange = async (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
     const newStatus = e.target.value;
     if (!newStatus || newStatus === loadData.status) return;
 
@@ -2023,11 +2040,14 @@ export default function LoadDetailsPage() {
       });
 
       setDbLoad((prev) => (prev ? { ...prev, status: newStatus } : prev));
-      toast.success(`Load status updated to ${newStatus}`, { id: updateToastId });
+      toast.success(`Load status updated to ${newStatus}`, {
+        id: updateToastId,
+      });
 
       if (newStatus === "Completed" || newStatus === "Completed Toun") {
         await handleSendCompletionPacket();
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to update status");
     }
@@ -2092,7 +2112,9 @@ export default function LoadDetailsPage() {
                   title="Email all load documents to assigned driver and consignee"
                 >
                   <Mail className="w-4 h-4" />
-                  {isSendingEmail ? "Sending Docs..." : "Email Docs to Driver & Consignee"}
+                  {isSendingEmail
+                    ? "Sending Docs..."
+                    : "Email Docs to Driver & Consignee"}
                 </button>
                 <button
                   onClick={() => setShowConfirmationModal(true)}
@@ -2182,12 +2204,22 @@ export default function LoadDetailsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* LEFT COLUMN: LOAD DETAILS (60%) */}
               <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
-                <DetailCard title="Load Details">
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {/* 1. Load Details */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
+                      Load Details
+                    </h2>
+                  </div>
+
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {/* Row 1 */}
                     <div>
                       <FormLabel>Load #</FormLabel>
-                      <InputField value={loadData.loadNumber} disabled />
+                      <InputField
+                        value={dbLoad?.loadNumber || loadDocId || "-"}
+                        disabled
+                      />
                     </div>
                     <div>
                       <FormLabel>Load Status</FormLabel>
@@ -2199,94 +2231,23 @@ export default function LoadDetailsPage() {
                     </div>
                     <div>
                       <FormLabel>Load Type</FormLabel>
-                      <SelectField
-                        value={loadData.loadType}
-                        options={loadTypeOptions}
-                      />
+                      <InputField value={dbLoad?.type || "-"} disabled />
                     </div>
 
                     {/* Row 2 */}
                     <div className="md:col-span-2 xl:col-span-3">
                       <FormLabel required>Customer</FormLabel>
-                      <InputField value={loadData.customer} />
+                      <InputField
+                        value={
+                          dbLoad?.customerSearch ||
+                          dbLoad?.customerName ||
+                          "-"
+                        }
+                        disabled
+                      />
                     </div>
 
                     {/* Row 3 */}
-                    <div>
-                      <FormLabel>Primary Fees</FormLabel>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2 text-gray-500 text-sm">
-                          $
-                        </span>
-                        <InputField
-                          value={Number(dbLoad?.primaryFees || 0).toFixed(2)}
-                          className="pl-6"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <FormLabel>Fee Type</FormLabel>
-                      <SelectField
-                        value={loadData.feeType}
-                        options={["Flat Rate", "Per Mile"]}
-                      />
-                    </div>
-                    <div>
-                      <FormLabel>Tendered Miles</FormLabel>
-                      <InputField value={loadData.tenderedMiles} disabled />
-                    </div>
-
-                    {/* Row 4 */}
-                    <div>
-                      <FormLabel>Fuel Surcharge</FormLabel>
-                      <InputField value={loadData.fuelSurcharge} />
-                    </div>
-                    <div>
-                      <FormLabel>Target Rate</FormLabel>
-                      <InputField value={loadData.targetRate} />
-                    </div>
-                    <div>
-                      <FormLabel>Van Type</FormLabel>
-                      <SelectField
-                        value={loadData.vanType}
-                        options={["Reefer", "Dry Van", "Flatbed"]}
-                      />
-                    </div>
-
-                    {/* Row 5 */}
-                    <div>
-                      <FormLabel>Length</FormLabel>
-                      <InputField value={loadData.length} />
-                    </div>
-                    <div>
-                      <FormLabel>Weight (Lbs)</FormLabel>
-                      <InputField value={loadData.weight} />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <FormLabel>Options</FormLabel>
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <ToggleSwitch
-                            label="Hazmat"
-                            checked={loadData.isHazmat}
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <ToggleSwitch
-                            label="Tarp"
-                            checked={loadData.isTarpRequired}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Row 6 */}
-                    <div className="md:col-span-2 xl:col-span-3">
-                      <FormLabel>Booking Authority</FormLabel>
-                      <InputField value={loadData.bookingAuthority} disabled />
-                    </div>
-
-                    {/* Row 7 */}
                     <div>
                       <FormLabel>Booking Office</FormLabel>
                       <InputField
@@ -2295,251 +2256,468 @@ export default function LoadDetailsPage() {
                       />
                     </div>
                     <div>
-                      <FormLabel>Sales Agent</FormLabel>
-                      <InputField value={loadData.salesAgent} disabled />
+                      <FormLabel>Booking Authority</FormLabel>
+                      <InputField
+                        value={dbLoad?.bookingAuthority || "-"}
+                        disabled
+                      />
                     </div>
                     <div>
-                      <FormLabel>Booking Terminal</FormLabel>
-                      <InputField value={loadData.bookingTerminal} disabled />
+                      <FormLabel>Primary Fees</FormLabel>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-500 text-sm">
+                          $
+                        </span>
+                        <InputField
+                          value={
+                            dbLoad?.primaryFees !== undefined
+                              ? String(dbLoad.primaryFees)
+                              : "-"
+                          }
+                          className="pl-6"
+                          disabled
+                        />
+                      </div>
                     </div>
+
+                    {/* Row 4 */}
+                    <div>
+                      <FormLabel>Fee Type</FormLabel>
+                      <InputField value={dbLoad?.feeType || "-"} disabled />
+                    </div>
+                    <div>
+                      <FormLabel>Tendered Miles</FormLabel>
+                      <InputField
+                        value={
+                          dbLoad?.tenderedMiles
+                            ? `${dbLoad.tenderedMiles} Miles`
+                            : "-"
+                        }
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Fuel Surcharge Type</FormLabel>
+                      <InputField
+                        value={dbLoad?.fuelSrcType || "-"}
+                        disabled
+                      />
+                    </div>
+
+                    {/* Row 5 */}
+                    <div>
+                      <FormLabel>Fuel Surcharge ($)</FormLabel>
+                      <InputField
+                        value={
+                          dbLoad?.fuelSurcharge !== undefined
+                            ? `$${dbLoad.fuelSurcharge}`
+                            : dbLoad?.fuelSrc
+                            ? `$${dbLoad.fuelSrc}`
+                            : "-"
+                        }
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Target Rate ($)</FormLabel>
+                      <InputField
+                        value={
+                          dbLoad?.targetRate !== undefined
+                            ? `$${dbLoad.targetRate}`
+                            : "-"
+                        }
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Equipment / Van Type</FormLabel>
+                      <InputField value={dbLoad?.vanType || "-"} disabled />
+                    </div>
+
+                    {/* Row 6 */}
+                    <div>
+                      <FormLabel>Temperature</FormLabel>
+                      <InputField
+                        value={dbLoad?.temperature || "-"}
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Length</FormLabel>
+                      <InputField
+                        value={
+                          dbLoad?.length ? `${dbLoad.length} ft` : "-"
+                        }
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Weight (Lbs)</FormLabel>
+                      <InputField
+                        value={
+                          dbLoad?.weight ? `${dbLoad.weight} lbs` : "-"
+                        }
+                        disabled
+                      />
+                    </div>
+
+                    {/* Row 7 */}
                     <div>
                       <FormLabel>Commodity</FormLabel>
-                      <InputField value={loadData.commodity} />
+                      <InputField
+                        value={dbLoad?.commodity || "-"}
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Declared Value ($)</FormLabel>
+                      <InputField
+                        value={
+                          dbLoad?.declaredValue
+                            ? `$${dbLoad.declaredValue}`
+                            : "-"
+                        }
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Sales Agent</FormLabel>
+                      <InputField
+                        value={dbLoad?.salesAgent || "-"}
+                        disabled
+                      />
                     </div>
 
                     {/* Row 8 */}
                     <div>
-                      <FormLabel>Declared Value</FormLabel>
-                      <InputField value={loadData.declaredValue} />
+                      <FormLabel>Booking Terminal</FormLabel>
+                      <InputField
+                        value={dbLoad?.bookingTerminalOffice || "-"}
+                        disabled
+                      />
                     </div>
                     <div>
                       <FormLabel>Agency</FormLabel>
-                      <InputField value={loadData.agency} />
+                      <InputField value={dbLoad?.agency || "-"} disabled />
                     </div>
                     <div>
                       <FormLabel>Brokerage Agent</FormLabel>
-                      <InputField value={loadData.brokerageAgent} />
+                      <InputField
+                        value={dbLoad?.brokerageAgent || "-"}
+                        disabled
+                      />
+                    </div>
+
+                    {/* Row 9 */}
+                    <div className="md:col-span-2 xl:col-span-3">
+                      <FormLabel>Yard Location</FormLabel>
+                      <InputField
+                        value={dbLoad?.yardLocation || "-"}
+                        disabled
+                      />
                     </div>
                   </div>
-                </DetailCard>
+                </div>
 
-                <DetailCard title="Assignment & Advanced Settings">
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    <DetailItem
-                      label="Assignment Type"
-                      value={dbLoad?.assignmentType}
-                    />
-                    <DetailItem label="Carrier" value={loadData.carrier} />
-                    <DetailItem
-                      label="Carrier Pay"
-                      value={formatCurrency(dbLoad?.totalCarrierPay)}
-                    />
-                    <DetailItem label="Driver" value={loadData.driver} />
-                    <DetailItem label="Co-Driver" value={secondDriverLabel} />
-                    <DetailItem
-                      label="Dispatcher"
-                      value={dbLoad?.dispatcherId}
-                    />
-                    <DetailItem label="Truck" value={loadData.truck} />
-                    <DetailItem label="Trailer" value={loadData.trailer} />
-                    <DetailItem
-                      label="Trailer Type"
-                      value={dbLoad?.trailerType}
-                    />
-                    <DetailItem
-                      label="Fuel Source Type"
-                      value={dbLoad?.fuelSrcType}
-                    />
-                    <DetailItem label="Fuel Source" value={dbLoad?.fuelSrc} />
-                    <DetailItem
-                      label="Temperature"
-                      value={dbLoad?.temperature}
-                    />
-                    <DetailItem
-                      label="Line Haul"
-                      value={formatCurrency(dbLoad?.lineHaul)}
-                    />
-                    <DetailItem
-                      label="Fuel Surcharge"
-                      value={formatCurrency(dbLoad?.fuelSurcharge)}
-                    />
-                    <DetailItem
-                      label="Detention"
-                      value={formatCurrency(dbLoad?.detention)}
-                    />
-                    <DetailItem
-                      label="Layover"
-                      value={formatCurrency(dbLoad?.layover)}
-                    />
-                    <DetailItem
-                      label="TONU"
-                      value={formatCurrency(dbLoad?.tonu)}
-                    />
-                    <DetailItem
-                      label="Accessorials"
-                      value={formatCurrency(dbLoad?.accessorials)}
-                    />
-                    <DetailItem
-                      label="Total Customer Rate"
-                      value={formatCurrency(dbLoad?.totalCustomerRate)}
-                    />
-                    <DetailItem
-                      label="Tendered Miles"
-                      value={dbLoad?.tenderedMiles}
-                    />
-                    <DetailItem
-                      label="Auto Send Driver"
-                      value={dbLoad?.autoSendDriver}
-                    />
-                    <DetailItem label="Auto Track" value={dbLoad?.autoTrack} />
-                    <DetailItem
-                      label="Auto Invoice"
-                      value={dbLoad?.autoInvoice}
-                    />
+                {/* 2. Equipment & Driver Assignment */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
+                      Equipment & Driver Assignment
+                    </h2>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                      {dbLoad?.assignmentType === "carrier"
+                        ? "Third-Party Carrier"
+                        : "In-House Fleet"}
+                    </span>
                   </div>
-                </DetailCard>
 
-                <DetailCard title="Notes">
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                    <DetailItem
-                      label="Customer Load Notes"
-                      value={dbLoad?.customerLoadNotes}
-                    />
-                    <DetailItem
-                      label="Dispatch Notes"
-                      value={dbLoad?.dispatchNotes}
-                    />
-                    <DetailItem
-                      label="Internal Notes"
-                      value={dbLoad?.internalNotes}
-                      className="xl:col-span-2"
-                    />
-                  </div>
-                </DetailCard>
-
-                <DetailCard title="All Stop Details">
-                  <div className="space-y-6">
-                    {allStops.length === 0 && (
-                      <div className="text-sm text-gray-500">
-                        No stops available.
-                      </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    {dbLoad?.assignmentType === "carrier" ? (
+                      <>
+                        <div>
+                          <FormLabel>Carrier Name</FormLabel>
+                          <InputField
+                            value={
+                              carrierProfile?.companyName ||
+                              carrierProfile?.name ||
+                              dbLoad?.carrierId ||
+                              "-"
+                            }
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Carrier Pay</FormLabel>
+                          <InputField
+                            value={formatCurrency(dbLoad?.totalCarrierPay)}
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Driver Name</FormLabel>
+                          <InputField
+                            value={dbLoad?.driverName || "-"}
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Truck #</FormLabel>
+                          <InputField
+                            value={dbLoad?.truckId || "-"}
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Trailer #</FormLabel>
+                          <InputField
+                            value={dbLoad?.trailerId || "-"}
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Dispatcher</FormLabel>
+                          <InputField
+                            value={dbLoad?.dispatcherId || "-"}
+                            disabled
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <FormLabel>Primary Driver</FormLabel>
+                          <InputField
+                            value={driverLabel || dbLoad?.driverId || "-"}
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Co-Driver</FormLabel>
+                          <InputField
+                            value={secondDriverLabel || "-"}
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Truck</FormLabel>
+                          <InputField
+                            value={truckLabel || dbLoad?.truckId || "-"}
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Trailer</FormLabel>
+                          <InputField
+                            value={trailerLabel || dbLoad?.trailerId || "-"}
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Trailer Type</FormLabel>
+                          <InputField
+                            value={dbLoad?.trailerType || "-"}
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <FormLabel>Dispatcher</FormLabel>
+                          <InputField
+                            value={dbLoad?.dispatcherId || "-"}
+                            disabled
+                          />
+                        </div>
+                      </>
                     )}
-                    {allStops.map((stop) => (
-                      <div
-                        key={`${stop.stopCategory}-${stop.stopNumber}-${
-                          stop.company || "stop"
-                        }`}
-                        className="rounded-lg border border-gray-200 p-4"
-                      >
-                        <div className="mb-4 flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white">
-                            {stop.stopCategory} {stop.stopNumber}
-                          </span>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {stop.company || "-"}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                          <DetailItem label="Address" value={stop.address} />
-                          <DetailItem
-                            label="Location Notes"
-                            value={stop.locationNotes}
-                          />
-                          <DetailItem label="Date" value={stop.date} />
-                          <DetailItem
-                            label="Start Time"
-                            value={stop.timeStart}
-                          />
-                          <DetailItem label="End Time" value={stop.timeEnd} />
-                          <DetailItem
-                            label="Has Appointment"
-                            value={stop.hasAppointment}
-                          />
-                          <DetailItem label="Stop Type" value={stop.stopType} />
-                          <DetailItem
-                            label="Customer Load/Ref/Conf"
-                            value={stop.customerLoadRefConf}
-                          />
-                          <DetailItem
-                            label="Pickup / Delivery Instruction"
-                            value={stop.pickup}
-                          />
-                          <DetailItem
-                            label="Contact Person"
-                            value={stop.contactPerson}
-                          />
-                          <DetailItem label="Phone" value={stop.phone} />
-                          <DetailItem label="PO Number" value={stop.poNumber} />
-                          <DetailItem
-                            label="Shipment BOL"
-                            value={stop.shipmentBol}
-                          />
-                          <DetailItem
-                            label="Pickup Number"
-                            value={stop.pickupNumber}
-                          />
-                          <DetailItem
-                            label="Stop Load Number"
-                            value={stop.loadNumber}
-                          />
-                          <DetailItem label="Total Qty" value={stop.totalQty} />
-                          <DetailItem label="Qty Type" value={stop.qtyType} />
-                          <DetailItem
-                            label="Total Weight"
-                            value={stop.totalWeight}
-                          />
-                          <DetailItem
-                            label="Commodity"
-                            value={stop.commodity}
-                          />
-                          <DetailItem label="Length" value={stop.length} />
-                          <DetailItem label="Width" value={stop.width} />
-                          <DetailItem label="Height" value={stop.height} />
-                          <DetailItem
-                            label="Instructions"
-                            value={stop.instructions}
-                          />
-                          <DetailItem
-                            label="Route Name"
-                            value={stop.routeName}
-                          />
-                          <DetailItem
-                            label="Reefer Mode"
-                            value={stop.reeferMode}
-                          />
-                          <DetailItem
-                            label="Reefer Fuel Level"
-                            value={stop.reeferFuelLevel}
-                          />
-                          <DetailItem label="Seal" value={stop.seal} />
-                          <DetailItem
-                            label="Container"
-                            value={stop.container}
-                          />
-                          <DetailItem label="Chassis" value={stop.chassis} />
-                          <DetailItem
-                            label="Customer Trailer"
-                            value={stop.customerTrailer}
-                          />
-                          <DetailItem label="PRO" value={stop.pro} />
-                          <DetailItem
-                            label="Split Load"
-                            value={stop.splitLoad}
-                          />
-                          <DetailItem
-                            label="Yard Location"
-                            value={stop.yardLocation}
-                          />
-                          <DetailItem
-                            label="Notes"
-                            value={stop.notes}
-                            className="xl:col-span-3"
-                          />
-                        </div>
-                      </div>
-                    ))}
                   </div>
-                </DetailCard>
+                </div>
+
+                {/* 3. Financials Breakdown */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
+                      Financials Breakdown
+                    </h2>
+                  </div>
+
+                  <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 text-xs">
+                      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                        <span className="text-gray-500 block text-[10px] uppercase font-semibold">
+                          Line Haul
+                        </span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {formatCurrency(dbLoad?.lineHaul)}
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                        <span className="text-gray-500 block text-[10px] uppercase font-semibold">
+                          Fuel Surcharge
+                        </span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {formatCurrency(dbLoad?.fuelSurcharge)}
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                        <span className="text-gray-500 block text-[10px] uppercase font-semibold">
+                          Detention
+                        </span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {formatCurrency(dbLoad?.detention)}
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                        <span className="text-gray-500 block text-[10px] uppercase font-semibold">
+                          Layover
+                        </span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {formatCurrency(dbLoad?.layover)}
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                        <span className="text-gray-500 block text-[10px] uppercase font-semibold">
+                          TONU
+                        </span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {formatCurrency(dbLoad?.tonu)}
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                        <span className="text-gray-500 block text-[10px] uppercase font-semibold">
+                          Accessorials
+                        </span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {formatCurrency(dbLoad?.accessorials)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200">
+                        <span className="text-xs font-bold">
+                          Total Customer Rate
+                        </span>
+                        <span className="text-sm font-black">
+                          {formatCurrency(
+                            dbLoad?.totalCustomerRate ||
+                              Number(dbLoad?.lineHaul || 0) +
+                                Number(dbLoad?.fuelSurcharge || 0) +
+                                Number(dbLoad?.detention || 0) +
+                                Number(dbLoad?.layover || 0) +
+                                Number(dbLoad?.tonu || 0) +
+                                Number(dbLoad?.accessorials || 0)
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-rose-50 text-rose-900 border border-rose-200">
+                        <span className="text-xs font-bold">
+                          Total Carrier / Driver Pay
+                        </span>
+                        <span className="text-sm font-black">
+                          {formatCurrency(dbLoad?.totalCarrierPay)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 text-blue-900 border border-blue-200">
+                        <span className="text-xs font-bold">Net Profit</span>
+                        <span className="text-sm font-black">
+                          {loadData.profit}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Automation Settings */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
+                      Automation Settings
+                    </h2>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <span className="font-medium text-gray-700">
+                        Auto Send Driver
+                      </span>
+                      <span
+                        className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                          dbLoad?.autoSendDriver
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {dbLoad?.autoSendDriver ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <span className="font-medium text-gray-700">
+                        Auto Track
+                      </span>
+                      <span
+                        className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                          dbLoad?.autoTrack
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {dbLoad?.autoTrack ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <span className="font-medium text-gray-700">
+                        Auto Invoice
+                      </span>
+                      <span
+                        className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                          dbLoad?.autoInvoice
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {dbLoad?.autoInvoice ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Notes */}
+                {(dbLoad?.customerLoadNotes ||
+                  dbLoad?.dispatchNotes ||
+                  dbLoad?.internalNotes) && (
+                  <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                      <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
+                        Notes
+                      </h2>
+                    </div>
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {dbLoad?.customerLoadNotes && (
+                        <div>
+                          <FormLabel>Customer Load Notes</FormLabel>
+                          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-700 whitespace-pre-wrap">
+                            {dbLoad.customerLoadNotes}
+                          </div>
+                        </div>
+                      )}
+                      {dbLoad?.dispatchNotes && (
+                        <div>
+                          <FormLabel>Dispatch Notes</FormLabel>
+                          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-700 whitespace-pre-wrap">
+                            {dbLoad.dispatchNotes}
+                          </div>
+                        </div>
+                      )}
+                      {dbLoad?.internalNotes && (
+                        <div className="md:col-span-2">
+                          <FormLabel>Internal Notes</FormLabel>
+                          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-700 whitespace-pre-wrap">
+                            {dbLoad.internalNotes}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* RIGHT COLUMN: DISPATCH, ACTIONS, STOPS (40%) */}
@@ -2549,14 +2727,6 @@ export default function LoadDetailsPage() {
                   <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
                     Shipper / Consignee
                   </h2>
-                  <div className="flex gap-2">
-                    <button className="p-1 rounded hover:bg-gray-200 border border-transparent hover:border-gray-300 transition-colors">
-                      {/* <ChevronLeft className="w-5 h-5 text-gray-600" /> */}
-                    </button>
-                    <button className="p-1 rounded hover:bg-gray-200 border border-transparent hover:border-gray-300 transition-colors">
-                      {/* <ChevronRight className="w-5 h-5 text-gray-600" /> */}
-                    </button>
-                  </div>
                 </div>
 
                 {/* Dispatch Info Section */}
@@ -2572,89 +2742,96 @@ export default function LoadDetailsPage() {
                         </span>
                         <span
                           className="font-bold text-[#F96176] block truncate text-xs sm:text-sm"
-                          title={loadData.carrier}
+                          title={
+                            dbLoad?.assignmentType === "carrier"
+                              ? carrierProfile?.companyName ||
+                                carrierProfile?.name ||
+                                dbLoad?.carrierId ||
+                                "Carrier"
+                              : "In-House Fleet"
+                          }
                         >
-                          {loadData.carrier}
+                          {dbLoad?.assignmentType === "carrier"
+                            ? carrierProfile?.companyName ||
+                              carrierProfile?.name ||
+                              dbLoad?.carrierId ||
+                              "Carrier"
+                            : "In-House Fleet"}
                         </span>
                       </div>
                       <div className="min-w-0">
                         <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
                           Vehicle
                         </span>
-                        <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
-                          {loadData.truck}
+                        <span
+                          className="font-bold text-gray-900 block truncate text-xs sm:text-sm"
+                          title={
+                            truckLabel !== "-"
+                              ? truckLabel
+                              : dbLoad?.truckId || "-"
+                          }
+                        >
+                          {truckLabel !== "-"
+                            ? truckLabel
+                            : dbLoad?.truckId || "-"}
                         </span>
                       </div>
                       <div className="min-w-0">
                         <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
                           Trailer
                         </span>
-                        <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
-                          {loadData.trailer}
+                        <span
+                          className="font-bold text-gray-900 block truncate text-xs sm:text-sm"
+                          title={
+                            trailerLabel !== "-"
+                              ? trailerLabel
+                              : dbLoad?.trailerId || "-"
+                          }
+                        >
+                          {trailerLabel !== "-"
+                            ? trailerLabel
+                            : dbLoad?.trailerId || "-"}
                         </span>
                       </div>
                       <div className="min-w-0">
                         <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
                           Driver
                         </span>
-                        <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm mb-1">
-                          {loadData.driver}
+                        <span
+                          className="font-bold text-gray-900 block truncate text-xs sm:text-sm mb-1"
+                          title={
+                            dbLoad?.assignmentType === "carrier"
+                              ? dbLoad?.driverName || "-"
+                              : driverLabel !== "-"
+                              ? driverLabel
+                              : dbLoad?.driverName || "-"
+                          }
+                        >
+                          {dbLoad?.assignmentType === "carrier"
+                            ? dbLoad?.driverName || "-"
+                            : driverLabel !== "-"
+                            ? driverLabel
+                            : dbLoad?.driverName || "-"}
                         </span>
                         <div className="flex gap-1.5">
-                          <button className="p-1 hover:bg-blue-50 rounded text-[#F96176]">
+                          <button
+                            className="p-1 hover:bg-rose-50 rounded text-[#F96176]"
+                            title="Message"
+                          >
                             <MessageSquare className="w-3.5 h-3.5" />
                           </button>
-                          <button className="p-1 hover:bg-green-50 rounded text-green-500">
+                          <button
+                            className="p-1 hover:bg-green-50 rounded text-green-500"
+                            title="Phone"
+                          >
                             <Phone className="w-3.5 h-3.5" />
                           </button>
-                          <div className="relative">
-                            <button
-                              onClick={() => setIsOpen(!isOpen)}
-                              className="p-1 hover:bg-gray-100 rounded text-gray-500"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </button>
-                            {isOpen && (
-                              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                                <button
-                                  onClick={() => {
-                                    setIsOpen(false);
-                                    alert("Send to driver clicked");
-                                  }}
-                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  Send to driver
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setIsOpen(false);
-                                    alert("SMS to driver clicked");
-                                  }}
-                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  SMS to driver
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setIsOpen(false);
-                                    alert("SMS load info clicked");
-                                  }}
-                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  SMS load info
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setIsOpen(false);
-                                    setShowLoadInfoModal(true);
-                                  }}
-                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  View load info
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          <button
+                            className="p-1 hover:bg-gray-100 rounded text-gray-500"
+                            title="Chat"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -2665,15 +2842,9 @@ export default function LoadDetailsPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <ActionDropdown
                     type="bol"
-                    onViewConfirmation={() => setShowConfirmationModal(true)}
                     onViewBol={() => setShowBolModal(true)}
-                    onSendERate={() => {
-                      alert("Sending e-rate confirmation...");
-                      // You could implement email functionality here
-                    }}
-                    uploadedBolDocument={latestUploadedBol}
-                    uploadedPodDocument={latestUploadedPod}
-                    onViewUploadedDocument={handleViewDocument}
+                    onViewConfirmation={() => setShowConfirmationModal(true)}
+                    onSendERate={() => setShowConfirmationModal(true)}
                   />
 
                   <ActionDropdown
@@ -2685,7 +2856,7 @@ export default function LoadDetailsPage() {
 
                   <button
                     onClick={() => setShowCheckCallModal(true)}
-                    className="flex items-center justify-center gap-2 px-2 py-3 bg-[#F96176] border border-[#F96176] rounded-md text-xs font-bold text-white hover:bg-[#F96176] hover:text-white hover:border-[#F96176] transition-all shadow-sm group"
+                    className="flex items-center justify-center gap-2 px-2 py-3 bg-[#F96176] border border-[#F96176] rounded-md text-xs font-bold text-white hover:bg-[#F96176]/90 transition-all shadow-sm group"
                   >
                     <Clock className="w-4 h-4" />
                     Add Check Call
@@ -2705,7 +2876,7 @@ export default function LoadDetailsPage() {
                         : "border-l-[#F96176]";
                       const headerBg = isPickup
                         ? "bg-green-50/40"
-                        : "bg-[#F96176]/40";
+                        : "bg-[#F96176]/10";
                       const textColor = isPickup
                         ? "text-green-700"
                         : "text-[#F96176]";
@@ -2715,7 +2886,7 @@ export default function LoadDetailsPage() {
 
                       return (
                         <div
-                          key={index}
+                          key={`stop-${index}`}
                           className={`bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden border-l-4 ${accentColor}`}
                         >
                           {/* Compact Header */}
@@ -2727,7 +2898,7 @@ export default function LoadDetailsPage() {
                                 className={`text-[10px] font-bold px-1.5 py-0.5 rounded border bg-white ${
                                   isPickup
                                     ? "text-green-700 border-green-200"
-                                    : "text-[#F96176] border-[#F96176]"
+                                    : "text-[#F96176] border-[#F96176]/30"
                                 }`}
                               >
                                 {index + 1}
@@ -2740,7 +2911,9 @@ export default function LoadDetailsPage() {
                             </div>
                             <div className="flex items-center gap-1 text-xs text-gray-500">
                               <Calendar className={`w-3 h-3 ${iconColor}`} />
-                              <span className="font-semibold">{stop.date}</span>
+                              <span className="font-semibold">
+                                {stop.date}
+                              </span>
                               <span className="text-gray-300">|</span>
                               <span>{stop.timeWindow}</span>
                             </div>
@@ -2759,7 +2932,7 @@ export default function LoadDetailsPage() {
                                 </span>
                               </div>
                               <p className="text-xs text-gray-500 mt-0.5">
-                                {stop.address}, {stop.cityStateZip}
+                                {stop.address}
                               </p>
                             </div>
 
@@ -2769,7 +2942,10 @@ export default function LoadDetailsPage() {
                                 <span className="text-gray-400 block uppercase text-[9px]">
                                   Contact
                                 </span>
-                                <span className="font-medium text-gray-800">
+                                <span
+                                  className="font-medium text-gray-800 truncate block"
+                                  title={stop.contact}
+                                >
                                   {stop.contact}
                                 </span>
                               </div>
@@ -2777,19 +2953,32 @@ export default function LoadDetailsPage() {
                                 <span className="text-gray-400 block uppercase text-[9px]">
                                   Ref #
                                 </span>
-                                <span className="font-medium text-gray-800">
-                                  {stop.puNumber || stop.soNumber || "-"}
+                                <span
+                                  className="font-medium text-gray-800 truncate block"
+                                  title={
+                                    stop.puNumber ||
+                                    stop.soNumber ||
+                                    "-"
+                                  }
+                                >
+                                  {stop.puNumber ||
+                                    stop.soNumber ||
+                                    "-"}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1 col-span-2 bg-gray-50 rounded p-1.5 border border-gray-100">
+                              <div className="flex items-center gap-1 col-span-2 bg-gray-50 rounded p-1.5 border border-gray-100 flex-wrap">
                                 <span className="text-gray-500">
                                   Qty:{" "}
-                                  <b className="text-gray-900">{stop.qty}</b>
+                                  <b className="text-gray-900">
+                                    {stop.qty}
+                                  </b>
                                 </span>
                                 <span className="text-gray-300">|</span>
                                 <span className="text-gray-500">
                                   Wgt:{" "}
-                                  <b className="text-gray-900">{stop.weight}</b>
+                                  <b className="text-gray-900">
+                                    {stop.weight}
+                                  </b>
                                 </span>
                                 {stop.temp && (
                                   <>
@@ -2804,13 +2993,22 @@ export default function LoadDetailsPage() {
                             </div>
 
                             {/* Instructions */}
-                            <div className="text-xs text-gray-500 italic border-l-2 border-gray-200 pl-2">
-                              {stop.instructions}
-                            </div>
+                            {stop.instructions &&
+                              stop.instructions !== "-" && (
+                                <div className="text-xs text-gray-500 italic border-l-2 border-gray-200 pl-2">
+                                  {stop.instructions}
+                                </div>
+                              )}
                           </div>
                         </div>
                       );
                     })}
+
+                    {stops.length === 0 && (
+                      <div className="text-xs text-gray-400 italic bg-white p-4 rounded-lg border border-gray-200">
+                        No stops recorded for this load.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2959,7 +3157,8 @@ export default function LoadDetailsPage() {
                       </span>
                     </h2>
                     <p className="text-xs text-gray-500 mt-1">
-                      Documents uploaded by the driver or dispatch team for this load.
+                      Documents uploaded by the driver or dispatch team for this
+                      load.
                     </p>
                   </div>
 
@@ -3006,16 +3205,29 @@ export default function LoadDetailsPage() {
                       item.key === "all"
                         ? uploadedDocumentsList.length
                         : uploadedDocumentsList.filter((doc) => {
-                            const typeKey = (doc.type || "").toLowerCase().trim();
+                            const typeKey = (doc.type || "")
+                              .toLowerCase()
+                              .trim();
                             const filterKey = item.key.toLowerCase().trim();
                             return (
                               typeKey === filterKey ||
-                              typeKey.replace(/-/g, "") === filterKey.replace(/-/g, "") ||
-                              (filterKey === "bol" && (typeKey === "bill-of-lading" || typeKey === "bol")) ||
-                              (filterKey === "pod" && (typeKey === "proof-of-delivery" || typeKey === "pod")) ||
-                              (filterKey === "lumper" && (typeKey === "lumper-receipt" || typeKey === "lumper")) ||
-                              (filterKey === "damage-photos" && (typeKey === "damage-photo" || typeKey === "damage-photos")) ||
-                              (filterKey === "rate-confirmation" && (typeKey === "rate-confirmation" || typeKey === "rate-conf"))
+                              typeKey.replace(/-/g, "") ===
+                                filterKey.replace(/-/g, "") ||
+                              (filterKey === "bol" &&
+                                (typeKey === "bill-of-lading" ||
+                                  typeKey === "bol")) ||
+                              (filterKey === "pod" &&
+                                (typeKey === "proof-of-delivery" ||
+                                  typeKey === "pod")) ||
+                              (filterKey === "lumper" &&
+                                (typeKey === "lumper-receipt" ||
+                                  typeKey === "lumper")) ||
+                              (filterKey === "damage-photos" &&
+                                (typeKey === "damage-photo" ||
+                                  typeKey === "damage-photos")) ||
+                              (filterKey === "rate-confirmation" &&
+                                (typeKey === "rate-confirmation" ||
+                                  typeKey === "rate-conf"))
                             );
                           }).length;
 
@@ -3051,7 +3263,9 @@ export default function LoadDetailsPage() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-100/70 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
-                        <th className="px-6 py-4 w-[140px] text-center">Actions</th>
+                        <th className="px-6 py-4 w-[140px] text-center">
+                          Actions
+                        </th>
                         <th className="px-6 py-4">Document Details</th>
                         <th className="px-6 py-4">Category</th>
                         <th className="px-6 py-4">Uploaded By</th>
@@ -3061,21 +3275,22 @@ export default function LoadDetailsPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
                       {filteredUploadedDocs.map((docItem) => {
-                        const categoryBadge = getDocTypeCategoryBadge(docItem.type);
+                        const categoryBadge = getDocTypeCategoryBadge(
+                          docItem.type
+                        );
                         const isImage = isImageDocument(docItem);
                         const isPdf = isPdfDocument(docItem);
                         const formattedDate = docItem.createdAt?.seconds
-                          ? new Date(docItem.createdAt.seconds * 1000).toLocaleString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                                hour: "numeric",
-                                minute: "numeric",
-                                hour12: true,
-                              }
-                            )
+                          ? new Date(
+                              docItem.createdAt.seconds * 1000
+                            ).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "numeric",
+                              minute: "numeric",
+                              hour12: true,
+                            })
                           : "-";
 
                         return (
@@ -3094,7 +3309,9 @@ export default function LoadDetailsPage() {
                                   <Eye className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleDownloadUploadedDoc(docItem)}
+                                  onClick={() =>
+                                    handleDownloadUploadedDoc(docItem)
+                                  }
                                   title="Download Document"
                                   className="p-1.5 text-emerald-600 hover:text-white hover:bg-emerald-600 rounded-md border border-emerald-200 hover:border-emerald-600 transition shadow-xs"
                                 >
@@ -3136,7 +3353,9 @@ export default function LoadDetailsPage() {
                                 </div>
                                 <div className="min-w-0">
                                   <button
-                                    onClick={() => setPreviewUploadedDoc(docItem)}
+                                    onClick={() =>
+                                      setPreviewUploadedDoc(docItem)
+                                    }
                                     className="text-sm font-semibold text-gray-900 hover:text-[#F96176] transition-colors text-left truncate block max-w-xs md:max-w-md"
                                     title={docItem.name || "Document"}
                                   >
@@ -3242,15 +3461,22 @@ export default function LoadDetailsPage() {
                           </h3>
                           <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
                             <span>
-                              {getDocTypeCategoryBadge(previewUploadedDoc.type).label}
+                              {
+                                getDocTypeCategoryBadge(previewUploadedDoc.type)
+                                  .label
+                              }
                             </span>
                             <span>•</span>
-                            <span>{formatDocFileSize(previewUploadedDoc.size)}</span>
+                            <span>
+                              {formatDocFileSize(previewUploadedDoc.size)}
+                            </span>
                             {previewUploadedDoc.uploadedByRole && (
                               <>
                                 <span>•</span>
                                 <span className="capitalize">
-                                  By {previewUploadedDoc.uploadedByName || previewUploadedDoc.uploadedByRole}
+                                  By{" "}
+                                  {previewUploadedDoc.uploadedByName ||
+                                    previewUploadedDoc.uploadedByRole}
                                 </span>
                               </>
                             )}
@@ -3260,7 +3486,9 @@ export default function LoadDetailsPage() {
 
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
-                          onClick={() => handleDownloadUploadedDoc(previewUploadedDoc)}
+                          onClick={() =>
+                            handleDownloadUploadedDoc(previewUploadedDoc)
+                          }
                           className="px-3 py-1.5 bg-[#F96176] text-white text-xs font-semibold rounded-md hover:bg-[#F96176]/90 transition shadow-sm flex items-center gap-1.5"
                         >
                           <Download className="w-3.5 h-3.5" /> Download
@@ -3272,7 +3500,8 @@ export default function LoadDetailsPage() {
                             rel="noopener noreferrer"
                             className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-md hover:bg-gray-100 transition shadow-xs flex items-center gap-1.5"
                           >
-                            <ExternalLink className="w-3.5 h-3.5" /> Open in New Tab
+                            <ExternalLink className="w-3.5 h-3.5" /> Open in New
+                            Tab
                           </a>
                         )}
                         <button
@@ -3286,13 +3515,15 @@ export default function LoadDetailsPage() {
 
                     {/* Modal Body Preview */}
                     <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex items-center justify-center bg-gray-100/50 min-h-[400px] max-h-[70vh]">
-                      {isImageDocument(previewUploadedDoc) && previewUploadedDoc.url ? (
+                      {isImageDocument(previewUploadedDoc) &&
+                      previewUploadedDoc.url ? (
                         <img
                           src={previewUploadedDoc.url}
                           alt={previewUploadedDoc.name || "Preview"}
                           className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-md border border-gray-200"
                         />
-                      ) : isPdfDocument(previewUploadedDoc) && previewUploadedDoc.url ? (
+                      ) : isPdfDocument(previewUploadedDoc) &&
+                        previewUploadedDoc.url ? (
                         <iframe
                           src={`${previewUploadedDoc.url}#toolbar=1`}
                           title={previewUploadedDoc.name || "PDF Document"}
@@ -3305,10 +3536,14 @@ export default function LoadDetailsPage() {
                             Preview Not Available
                           </h4>
                           <p className="text-xs text-gray-500 max-w-sm mb-4">
-                            This file type cannot be previewed directly in the browser. You can download or open it in a new window.
+                            This file type cannot be previewed directly in the
+                            browser. You can download or open it in a new
+                            window.
                           </p>
                           <button
-                            onClick={() => handleDownloadUploadedDoc(previewUploadedDoc)}
+                            onClick={() =>
+                              handleDownloadUploadedDoc(previewUploadedDoc)
+                            }
                             className="px-4 py-2 bg-[#F96176] text-white text-xs font-semibold rounded-md hover:bg-[#F96176]/90 transition"
                           >
                             Download File
