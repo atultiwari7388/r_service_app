@@ -625,7 +625,8 @@ export default function DriverExcelImportModal({
                   title="Single Driver with pre-filled fleet vehicles"
                 >
                   <FiFileText className="mr-1.5 text-[#58BB87]" />
-                  Single (With Vehicles)
+                  {/* Single (With Vehicles) */}
+                  Driver Smaple
                 </a>
                 {/* <a
                   href="/sample_excels/driver_bulk_sample.xlsx"
