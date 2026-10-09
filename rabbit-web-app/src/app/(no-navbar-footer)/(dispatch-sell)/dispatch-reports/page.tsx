@@ -1150,7 +1150,7 @@ export default function DispatchReportsPage() {
           {/* Bottom Row: Quick / Short Filters (matching /records styling) */}
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5">
             {/* Quick Search */}
-            <div className="relative col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[170px]">
+            <div className="relative col-span-2 sm:col-span-1 w-full sm:w-[160px] md:w-[180px]">
               <input
                 type="text"
                 value={quickSearchText}
@@ -1297,7 +1297,7 @@ export default function DispatchReportsPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-6 pt-6 print:max-w-none print:p-0">
+      <div className="w-full max-w-[1750px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 print:max-w-none print:p-0">
         {/* KPI Metric Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8 print:grid-cols-4 print:gap-3 print:mb-6">
           {/* Card 1: Gross Revenue */}
@@ -1503,7 +1503,7 @@ export default function DispatchReportsPage() {
             <div>
               {/* TAB 1: TRUCK & TRAILER PERFORMANCE */}
               {activeTab === "trucks" && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto relative">
                   {truckStats.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
                       No truck records found for the selected timeframe.
@@ -1512,47 +1512,71 @@ export default function DispatchReportsPage() {
                     <table className="w-full text-left text-sm">
                       <thead className="bg-gray-50 text-gray-500 font-semibold text-xs uppercase tracking-wider border-b border-gray-200">
                         <tr>
-                          <th className="px-6 py-3.5">Truck / Vehicle</th>
-                          <th className="px-6 py-3.5">Trailer</th>
-                          <th className="px-6 py-3.5">Company</th>
-                          <th className="px-6 py-3.5 text-right">Total Earnings</th>
-                          <th className="px-6 py-3.5 text-right">Total Miles</th>
-                          <th className="px-6 py-3.5 text-right">Avg. RPM</th>
-                          <th className="px-6 py-3.5 text-center">Loads (Comp / Act)</th>
-                          <th className="px-6 py-3.5 text-right print:hidden">Actions</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Truck / Vehicle</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Trailer</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Company</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Total Earnings</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Total Miles</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Avg. RPM</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-center whitespace-nowrap">Loads (Comp / Act)</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right print:hidden whitespace-nowrap sticky right-0 bg-gray-50 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)]">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {truckStats.map((item) => (
                           <tr
                             key={item.truckKey}
-                            className="hover:bg-gray-50/80 transition-colors"
+                            className="group hover:bg-gray-50/80 transition-colors"
                           >
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700 font-bold print:hidden">
-                                  <Truck size={18} />
+                            <td className="px-4 sm:px-5 py-3.5 whitespace-nowrap">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700 font-bold shrink-0 print:hidden">
+                                  <Truck size={16} />
                                 </div>
-                                <div>
-                                  <span className="font-bold text-gray-900">
-                                    {item.truckNumber}
-                                  </span>
+                                <div className="min-w-0">
+                                  {item.truckNumber.includes(" - ") ? (
+                                    <>
+                                      <span className="font-bold text-gray-900 block truncate max-w-[200px]" title={item.truckNumber}>
+                                        {item.truckNumber.split(" - ")[0]}
+                                      </span>
+                                      <span className="text-[11px] text-gray-400 font-normal block truncate max-w-[180px]" title={item.truckNumber.split(" - ").slice(1).join(" - ")}>
+                                        {item.truckNumber.split(" - ").slice(1).join(" - ")}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="font-bold text-gray-900 block truncate max-w-[220px]" title={item.truckNumber}>
+                                      {item.truckNumber}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-gray-700 font-medium">
-                              {item.trailer}
+                            <td className="px-4 sm:px-5 py-3.5 text-gray-700 font-medium whitespace-nowrap">
+                              {item.trailer.includes(" - ") ? (
+                                <div className="min-w-0">
+                                  <span className="font-medium text-gray-800 block truncate max-w-[200px]" title={item.trailer}>
+                                    {item.trailer.split(" - ")[0]}
+                                  </span>
+                                  <span className="text-[11px] text-gray-400 font-normal block truncate max-w-[180px]" title={item.trailer.split(" - ").slice(1).join(" - ")}>
+                                    {item.trailer.split(" - ").slice(1).join(" - ")}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="block truncate max-w-[220px]" title={item.trailer}>
+                                  {item.trailer}
+                                </span>
+                              )}
                             </td>
-                            <td className="px-6 py-4 text-gray-600">
+                            <td className="px-4 sm:px-5 py-3.5 text-gray-600 whitespace-nowrap">
                               {item.companyName}
                             </td>
-                            <td className="px-6 py-4 text-right font-bold text-emerald-600 text-base">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-bold text-emerald-600 text-base whitespace-nowrap">
                               ${item.totalEarnings.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </td>
-                            <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-semibold text-gray-900 whitespace-nowrap">
                               {item.totalMiles.toLocaleString(undefined, {
                                 maximumFractionDigits: 1,
                               })}{" "}
@@ -1560,10 +1584,10 @@ export default function DispatchReportsPage() {
                                 mi
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-right font-semibold text-teal-700">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-semibold text-teal-700 whitespace-nowrap">
                               ${item.avgRpm.toFixed(2)}/mi
                             </td>
-                            <td className="px-6 py-4 text-center">
+                            <td className="px-4 sm:px-5 py-3.5 text-center whitespace-nowrap">
                               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
                                 {item.totalLoads} loads (
                                 <span className="text-emerald-600">
@@ -1576,7 +1600,7 @@ export default function DispatchReportsPage() {
                                 )
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-right print:hidden">
+                            <td className="px-4 sm:px-5 py-3.5 text-right print:hidden whitespace-nowrap sticky right-0 bg-white group-hover:bg-gray-50 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)] transition-colors">
                               <Link
                                 href={`/dispatch-reports/details?type=truck&key=${encodeURIComponent(
                                   item.truckNumber
@@ -1602,7 +1626,7 @@ export default function DispatchReportsPage() {
 
               {/* TAB 2: DRIVER & CARRIER PERFORMANCE */}
               {activeTab === "drivers" && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto relative">
                   {driverStats.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
                       No driver records found for the selected timeframe.
@@ -1611,38 +1635,40 @@ export default function DispatchReportsPage() {
                     <table className="w-full text-left text-sm">
                       <thead className="bg-gray-50 text-gray-500 font-semibold text-xs uppercase tracking-wider border-b border-gray-200">
                         <tr>
-                          <th className="px-6 py-3.5">Driver Name</th>
-                          <th className="px-6 py-3.5">Carrier Company</th>
-                          <th className="px-6 py-3.5 text-right">Total Miles</th>
-                          <th className="px-6 py-3.5 text-right">Carrier Pay / Earnings</th>
-                          <th className="px-6 py-3.5 text-right font-semibold text-gray-700">Customer Revenue</th>
-                          <th className="px-6 py-3.5 text-right font-semibold text-gray-700">Avg. RPM</th>
-                          <th className="px-6 py-3.5 text-center font-semibold text-gray-700">Loads (Comp / Act)</th>
-                          <th className="px-6 py-3.5 text-right print:hidden font-semibold text-gray-700">Actions</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Driver Name</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Carrier Company</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Total Miles</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Carrier Pay / Earnings</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right font-semibold text-gray-700 whitespace-nowrap">Customer Revenue</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right font-semibold text-gray-700 whitespace-nowrap">Avg. RPM</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-center font-semibold text-gray-700 whitespace-nowrap">Loads (Comp / Act)</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right print:hidden font-semibold text-gray-700 whitespace-nowrap sticky right-0 bg-gray-50 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)]">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {driverStats.map((item) => (
                           <tr
                             key={item.driverKey}
-                            className="hover:bg-gray-50/80 transition-colors"
+                            className="group hover:bg-gray-50/80 transition-colors"
                           >
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold print:hidden">
-                                  <User size={18} />
+                            <td className="px-4 sm:px-5 py-3.5 whitespace-nowrap">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0 print:hidden">
+                                  <User size={16} />
                                 </div>
                                 <div>
-                                  <span className="font-bold text-gray-900">
+                                  <span className="font-bold text-gray-900 block truncate max-w-[200px]" title={item.driverName}>
                                     {item.driverName}
                                   </span>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-gray-700 font-medium">
-                              {item.carrierName}
+                            <td className="px-4 sm:px-5 py-3.5 text-gray-700 font-medium whitespace-nowrap">
+                              <span className="block truncate max-w-[200px]" title={item.carrierName}>
+                                {item.carrierName}
+                              </span>
                             </td>
-                            <td className="px-6 py-4 text-right font-bold text-gray-900">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-bold text-gray-900 whitespace-nowrap">
                               {item.totalMiles.toLocaleString(undefined, {
                                 maximumFractionDigits: 1,
                               })}{" "}
@@ -1650,22 +1676,22 @@ export default function DispatchReportsPage() {
                                 mi
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-right font-bold text-emerald-600 text-base">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-bold text-emerald-600 text-base whitespace-nowrap">
                               ${item.totalEarnings.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </td>
-                            <td className="px-6 py-4 text-right font-semibold text-gray-700">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-semibold text-gray-700 whitespace-nowrap">
                               ${item.customerRevenue.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </td>
-                            <td className="px-6 py-4 text-right font-semibold text-teal-700">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-semibold text-teal-700 whitespace-nowrap">
                               ${item.avgRpm.toFixed(2)}/mi
                             </td>
-                            <td className="px-6 py-4 text-center">
+                            <td className="px-4 sm:px-5 py-3.5 text-center whitespace-nowrap">
                               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
                                 {item.totalLoads} loads (
                                 <span className="text-emerald-600">
@@ -1678,7 +1704,7 @@ export default function DispatchReportsPage() {
                                 )
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-right print:hidden">
+                            <td className="px-4 sm:px-5 py-3.5 text-right print:hidden whitespace-nowrap sticky right-0 bg-white group-hover:bg-gray-50 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)] transition-colors">
                               <Link
                                 href={`/dispatch-reports/details?type=driver&key=${encodeURIComponent(
                                   item.driverName
@@ -1704,7 +1730,7 @@ export default function DispatchReportsPage() {
 
               {/* TAB 3: COMPANY PERFORMANCE */}
               {activeTab === "companies" && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto relative">
                   {companyStats.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
                       No company records found for the selected timeframe.
@@ -1713,52 +1739,52 @@ export default function DispatchReportsPage() {
                     <table className="w-full text-left text-sm">
                       <thead className="bg-gray-50 text-gray-500 font-semibold text-xs uppercase tracking-wider border-b border-gray-200">
                         <tr>
-                          <th className="px-6 py-3.5">Company Name</th>
-                          <th className="px-6 py-3.5 text-right">Total Revenue</th>
-                          <th className="px-6 py-3.5 text-right">Carrier Pay</th>
-                          <th className="px-6 py-3.5 text-right">Net Profit</th>
-                          <th className="px-6 py-3.5 text-right">Total Miles</th>
-                          <th className="px-6 py-3.5 text-center">Trucks / Drivers</th>
-                          <th className="px-6 py-3.5 text-center">Total Loads</th>
-                          <th className="px-6 py-3.5 text-right">Avg. RPM</th>
-                          <th className="px-6 py-3.5 text-right print:hidden font-semibold text-gray-700">Actions</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Company Name</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Total Revenue</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Carrier Pay</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Net Profit</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Total Miles</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-center whitespace-nowrap">Trucks / Drivers</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-center whitespace-nowrap">Total Loads</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Avg. RPM</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right print:hidden font-semibold text-gray-700 whitespace-nowrap sticky right-0 bg-gray-50 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)]">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {companyStats.map((item) => (
                           <tr
                             key={item.companyName}
-                            className="hover:bg-gray-50/80 transition-colors"
+                            className="group hover:bg-gray-50/80 transition-colors"
                           >
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold print:hidden">
-                                  <Building size={18} />
+                            <td className="px-4 sm:px-5 py-3.5 whitespace-nowrap">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold shrink-0 print:hidden">
+                                  <Building size={16} />
                                 </div>
-                                <span className="font-bold text-gray-900">
+                                <span className="font-bold text-gray-900 block truncate max-w-[220px]" title={item.companyName}>
                                   {item.companyName}
                                 </span>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-right font-bold text-emerald-600 text-base">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-bold text-emerald-600 text-base whitespace-nowrap">
                               ${item.totalRevenue.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </td>
-                            <td className="px-6 py-4 text-right font-semibold text-gray-700">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-semibold text-gray-700 whitespace-nowrap">
                               ${item.totalCarrierPay.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </td>
-                            <td className="px-6 py-4 text-right font-bold text-rose-600">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-bold text-rose-600 whitespace-nowrap">
                               ${item.totalProfit.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </td>
-                            <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-semibold text-gray-900 whitespace-nowrap">
                               {item.totalMiles.toLocaleString(undefined, {
                                 maximumFractionDigits: 1,
                               })}{" "}
@@ -1766,10 +1792,10 @@ export default function DispatchReportsPage() {
                                 mi
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-center text-gray-700 font-medium">
+                            <td className="px-4 sm:px-5 py-3.5 text-center text-gray-700 font-medium whitespace-nowrap">
                               {item.truckCount} trucks / {item.driverCount} drivers
                             </td>
-                            <td className="px-6 py-4 text-center">
+                            <td className="px-4 sm:px-5 py-3.5 text-center whitespace-nowrap">
                               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
                                 {item.totalLoads} loads (
                                 <span className="text-emerald-600">
@@ -1778,10 +1804,10 @@ export default function DispatchReportsPage() {
                                 comp)
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-right font-semibold text-teal-700">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-semibold text-teal-700 whitespace-nowrap">
                               ${item.avgRpm.toFixed(2)}/mi
                             </td>
-                            <td className="px-6 py-4 text-right print:hidden">
+                            <td className="px-4 sm:px-5 py-3.5 text-right print:hidden whitespace-nowrap sticky right-0 bg-white group-hover:bg-gray-50 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)] transition-colors">
                               <Link
                                 href={`/dispatch-reports/details?type=company&key=${encodeURIComponent(
                                   item.companyName
@@ -1807,7 +1833,7 @@ export default function DispatchReportsPage() {
 
               {/* TAB 4: ALL DISPATCHED LOADS REGISTRY */}
               {activeTab === "all_loads" && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto relative">
                   {sortedLoads.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
                       No matching loads found.
@@ -1816,26 +1842,26 @@ export default function DispatchReportsPage() {
                     <table className="w-full text-left text-sm">
                       <thead className="bg-gray-50 text-gray-500 font-semibold text-xs uppercase tracking-wider border-b border-gray-200">
                         <tr>
-                          <th className="px-6 py-3.5">Load #</th>
-                          <th className="px-6 py-3.5">Status</th>
-                          <th className="px-6 py-3.5">Route</th>
-                          <th className="px-6 py-3.5">Truck / Trailer</th>
-                          <th className="px-6 py-3.5">Driver / Carrier</th>
-                          <th className="px-6 py-3.5 text-right">Miles</th>
-                          <th className="px-6 py-3.5 text-right">Revenue</th>
-                          <th className="px-6 py-3.5 text-right print:hidden">Action</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Load #</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Status</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Route</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Truck / Trailer</th>
+                          <th className="px-4 sm:px-5 py-3.5 whitespace-nowrap">Driver / Carrier</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Miles</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">Revenue</th>
+                          <th className="px-4 sm:px-5 py-3.5 text-right print:hidden whitespace-nowrap sticky right-0 bg-gray-50 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)]">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {sortedLoads.map((load) => (
                           <tr
                             key={load.id}
-                            className="hover:bg-gray-50/80 transition-colors"
+                            className="group hover:bg-gray-50/80 transition-colors"
                           >
-                            <td className="px-6 py-4 font-bold text-gray-900">
+                            <td className="px-4 sm:px-5 py-3.5 font-bold text-gray-900 whitespace-nowrap">
                               {load.loadNumber}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-5 py-3.5 whitespace-nowrap">
                               <span
                                 className={clsx(
                                   "px-2.5 py-1 rounded-md text-xs font-bold",
@@ -1849,40 +1875,40 @@ export default function DispatchReportsPage() {
                                 {load.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-gray-700">
-                              <div className="font-medium">
+                            <td className="px-4 sm:px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                              <div className="font-medium text-xs">
                                 {load.origin} → {load.destination}
                               </div>
-                              <div className="text-xs text-gray-400">
+                              <div className="text-[11px] text-gray-400">
                                 {load.pickupDateStr}
                               </div>
                             </td>
-                            <td className="px-6 py-4">
-                              <div className="font-semibold text-gray-900">
+                            <td className="px-4 sm:px-5 py-3.5 whitespace-nowrap">
+                              <div className="font-semibold text-gray-900 text-xs truncate max-w-[160px]" title={load.truck}>
                                 {load.truck}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-[11px] text-gray-500 truncate max-w-[160px]" title={load.trailer}>
                                 Tr: {load.trailer}
                               </div>
                             </td>
-                            <td className="px-6 py-4">
-                              <div className="font-semibold text-gray-900">
+                            <td className="px-4 sm:px-5 py-3.5 whitespace-nowrap">
+                              <div className="font-semibold text-gray-900 text-xs truncate max-w-[160px]" title={load.driver}>
                                 {load.driver}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-[11px] text-gray-500 truncate max-w-[160px]" title={load.carrier}>
                                 {load.carrier}
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-semibold text-gray-900 whitespace-nowrap">
                               {load.miles.toFixed(1)} mi
                             </td>
-                            <td className="px-6 py-4 text-right font-bold text-emerald-600 text-base">
+                            <td className="px-4 sm:px-5 py-3.5 text-right font-bold text-emerald-600 text-base whitespace-nowrap">
                               ${load.revenue.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </td>
-                            <td className="px-6 py-4 text-right print:hidden">
+                            <td className="px-4 sm:px-5 py-3.5 text-right print:hidden whitespace-nowrap sticky right-0 bg-white group-hover:bg-gray-50 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)] transition-colors">
                               <div className="flex items-center justify-end gap-2">
                                 <Link
                                   href={`/view-load-info/${load.id}`}

@@ -560,7 +560,7 @@ function ReportDetailsContent() {
       </div>
 
       {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-6 pt-6 print:max-w-none print:p-0">
+      <div className="w-full max-w-[1750px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 print:max-w-none print:p-0">
         {/* KPI Metrics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:grid-cols-4 print:gap-3">
           {/* Card 1: Revenue */}
@@ -749,16 +749,16 @@ function ReportDetailsContent() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-gray-500 font-semibold text-xs uppercase tracking-wider border-b border-gray-200">
                   <tr>
-                    <th className="px-5 py-3.5">Load #</th>
-                    <th className="px-5 py-3.5">Status</th>
-                    <th className="px-5 py-3.5">Customer</th>
-                    <th className="px-5 py-3.5">Route</th>
-                    <th className="px-5 py-3.5">Truck / Trailer</th>
-                    <th className="px-5 py-3.5">Driver / Carrier</th>
-                    <th className="px-5 py-3.5 text-right">Miles</th>
-                    <th className="px-5 py-3.5 text-right">Revenue</th>
-                    <th className="px-5 py-3.5 text-right">Carrier Pay</th>
-                    <th className="px-5 py-3.5 text-right print:hidden">Actions</th>
+                    <th className="px-5 py-3.5 whitespace-nowrap">Load #</th>
+                    <th className="px-5 py-3.5 whitespace-nowrap">Status</th>
+                    <th className="px-5 py-3.5 whitespace-nowrap">Customer</th>
+                    <th className="px-5 py-3.5 whitespace-nowrap">Route</th>
+                    <th className="px-5 py-3.5 whitespace-nowrap">Truck / Trailer</th>
+                    <th className="px-5 py-3.5 whitespace-nowrap">Driver / Carrier</th>
+                    <th className="px-5 py-3.5 text-right whitespace-nowrap">Miles</th>
+                    <th className="px-5 py-3.5 text-right whitespace-nowrap">Revenue</th>
+                    <th className="px-5 py-3.5 text-right whitespace-nowrap">Carrier Pay</th>
+                    <th className="px-5 py-3.5 text-right print:hidden whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
