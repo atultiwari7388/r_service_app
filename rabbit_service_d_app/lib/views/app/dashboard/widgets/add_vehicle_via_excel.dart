@@ -484,7 +484,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                           text: "Select Excel File",
                           onPress: () async {
                             FilePickerResult? result =
-                                await FilePicker.platform.pickFiles(
+                                await FilePicker.pickFiles(
                               type: FileType.custom,
                               allowedExtensions: ['xlsx'],
                             );

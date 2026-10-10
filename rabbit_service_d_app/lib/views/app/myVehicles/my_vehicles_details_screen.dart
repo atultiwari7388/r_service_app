@@ -97,7 +97,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 title: const Text('Upload PDF Document'),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  final result = await FilePicker.platform.pickFiles(
+                  final result = await FilePicker.pickFiles(
                     type: FileType.custom,
                     allowedExtensions: ['pdf'],
                   );

@@ -116,14 +116,14 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
       LatLng? drop;
 
       if (pickupAddress.isNotEmpty) {
-        final locations = await locationFromAddress(pickupAddress);
+        final locations = await Geocoding().locationFromAddress(pickupAddress);
         if (locations.isNotEmpty) {
           pickup = LatLng(locations.first.latitude, locations.first.longitude);
         }
       }
 
       if (dropAddress.isNotEmpty) {
-        final locations = await locationFromAddress(dropAddress);
+        final locations = await Geocoding().locationFromAddress(dropAddress);
         if (locations.isNotEmpty) {
           drop = LatLng(locations.first.latitude, locations.first.longitude);
         }
@@ -335,97 +335,97 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
     }
   }
 
-  Future<void> _browseFiles() async {
-    if (_loadData == null || _isUploading) return;
+  // Future<void> _browseFiles() async {
+  //   if (_loadData == null || _isUploading) return;
 
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: [
-          'pdf',
-          'jpg',
-          'jpeg',
-          'png',
-          'doc',
-          'docx',
-          'xls',
-          'xlsx'
-        ],
-        allowMultiple: true,
-      );
+  //   try {
+  //     final result = await FilePicker.pickFiles(
+  //       type: FileType.custom,
+  //       allowedExtensions: [
+  //         'pdf',
+  //         'jpg',
+  //         'jpeg',
+  //         'png',
+  //         'doc',
+  //         'docx',
+  //         'xls',
+  //         'xlsx'
+  //       ],
+  //       allowMultiple: true,
+  //     );
 
-      if (result == null || result.files.isEmpty) return;
+  //     if (result == null || result.files.isEmpty) return;
 
-      setState(() => _isUploading = true);
+  //     setState(() => _isUploading = true);
 
-      final loadRef = FirebaseFirestore.instance
-          .collection('dispatch_loads')
-          .doc(widget.load.id);
-      final existingDocuments = _documents();
-      final nextDocuments = <Map<String, dynamic>>[...existingDocuments];
+  //     final loadRef = FirebaseFirestore.instance
+  //         .collection('dispatch_loads')
+  //         .doc(widget.load.id);
+  //     final existingDocuments = _documents();
+  //     final nextDocuments = <Map<String, dynamic>>[...existingDocuments];
 
-      for (final file in result.files) {
-        if (file.path == null) continue;
-        final ioFile = File(file.path!);
-        final safeName = file.name.replaceAll(' ', '_');
-        final storagePath =
-            'dispatch-loads/${widget.load.id}/driver-uploads/${DateTime.now().millisecondsSinceEpoch}-$safeName';
-        final storageRef = FirebaseStorage.instance.ref().child(storagePath);
+  //     for (final file in result.files) {
+  //       if (file.path == null) continue;
+  //       final ioFile = File(file.path!);
+  //       final safeName = file.name.replaceAll(' ', '_');
+  //       final storagePath =
+  //           'dispatch-loads/${widget.load.id}/driver-uploads/${DateTime.now().millisecondsSinceEpoch}-$safeName';
+  //       final storageRef = FirebaseStorage.instance.ref().child(storagePath);
 
-        await storageRef.putFile(ioFile);
-        final downloadUrl = await storageRef.getDownloadURL();
+  //       await storageRef.putFile(ioFile);
+  //       final downloadUrl = await storageRef.getDownloadURL();
 
-        nextDocuments.add({
-          'id': 'driver-${DateTime.now().microsecondsSinceEpoch}',
-          'name': file.name,
-          'type': 'proof-of-delivery',
-          'size': file.size,
-          'url': downloadUrl,
-          'mimeType': file.extension ?? '',
-          'source': 'uploaded',
-          'storagePath': storagePath,
-          'createdAt': Timestamp.now(),
-          'uploadedByRole': 'driver',
-          'uploadedById': currentUId,
-          'uploadedByName': widget.load.driverName,
-        });
-      }
+  //       nextDocuments.add({
+  //         'id': 'driver-${DateTime.now().microsecondsSinceEpoch}',
+  //         'name': file.name,
+  //         'type': 'proof-of-delivery',
+  //         'size': file.size,
+  //         'url': downloadUrl,
+  //         'mimeType': file.extension ?? '',
+  //         'source': 'uploaded',
+  //         'storagePath': storagePath,
+  //         'createdAt': Timestamp.now(),
+  //         'uploadedByRole': 'driver',
+  //         'uploadedById': currentUId,
+  //         'uploadedByName': widget.load.driverName,
+  //       });
+  //     }
 
-      await loadRef.update({
-        'documents': nextDocuments,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+  //     await loadRef.update({
+  //       'documents': nextDocuments,
+  //       'updatedAt': FieldValue.serverTimestamp(),
+  //     });
 
-      await loadRef.collection('history').add({
-        'action': 'driver-uploaded-documents',
-        'message': 'Driver uploaded documents',
-        'createdBy': currentUId,
-        'createdAt': FieldValue.serverTimestamp(),
-        'metadata': {
-          'files': result.files.length.toString(),
-          'driverId': currentUId,
-        },
-      });
+  //     await loadRef.collection('history').add({
+  //       'action': 'driver-uploaded-documents',
+  //       'message': 'Driver uploaded documents',
+  //       'createdBy': currentUId,
+  //       'createdAt': FieldValue.serverTimestamp(),
+  //       'metadata': {
+  //         'files': result.files.length.toString(),
+  //         'driverId': currentUId,
+  //       },
+  //     });
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${result.files.length} file(s) uploaded successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to upload files: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isUploading = false);
-    }
-  }
+  //     if (!mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('${result.files.length} file(s) uploaded successfully'),
+  //         backgroundColor: Colors.green,
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     if (!mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Failed to upload files: $e'),
+  //         backgroundColor: Colors.red,
+  //       ),
+  //     );
+  //   } finally {
+  //     if (mounted) setState(() => _isUploading = false);
+  //   }
+  // }
 
   Future<void> _downloadDocument(Map<String, dynamic> doc) async {
     final url = (doc['url'] ?? '').toString().trim();
@@ -686,16 +686,16 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                           ),
                         ),
                         if (((_loadData?['temperature'] ??
-                                    _loadData?['temp'] ??
-                                    widget.load.temperature)
-                                .toString()
-                                .trim())
-                            .isNotEmpty &&
+                                        _loadData?['temp'] ??
+                                        widget.load.temperature)
+                                    .toString()
+                                    .trim())
+                                .isNotEmpty &&
                             ((_loadData?['temperature'] ??
-                                    _loadData?['temp'] ??
-                                    widget.load.temperature)
-                                .toString()
-                                .trim()) !=
+                                        _loadData?['temp'] ??
+                                        widget.load.temperature)
+                                    .toString()
+                                    .trim()) !=
                                 '-') ...[
                           const SizedBox(height: 4),
                           Container(
@@ -1010,8 +1010,7 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
             ),
             if (documents.isNotEmpty)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(8),
@@ -1087,7 +1086,8 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 child: Row(
                   children: [
                     Container(
@@ -1672,9 +1672,8 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
           .collection('dispatch_loads')
           .doc(widget.load.id);
       final allDocs = _documents();
-      final updatedDocs = allDocs
-          .where((d) => (d['id'] ?? '').toString() != docId)
-          .toList();
+      final updatedDocs =
+          allDocs.where((d) => (d['id'] ?? '').toString() != docId).toList();
 
       await loadRef.update({
         'documents': updatedDocs,

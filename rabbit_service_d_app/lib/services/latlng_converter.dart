@@ -8,7 +8,7 @@ Future<String> getAddressFromLtLng(String latLngString) async {
   final longitude = double.parse(coords[1].split(')').first);
 
   List<Placemark> placemarks =
-      await placemarkFromCoordinates(latitude, longitude);
+      await Geocoding().placemarkFromCoordinates(latitude, longitude);
 
   if (placemarks.isNotEmpty) {
     final Placemark pm = placemarks.first;

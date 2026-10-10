@@ -167,7 +167,7 @@ class _UploadDocumentModalState extends State<UploadDocumentModal> {
 
   Future<void> _pickFiles() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: [
           'pdf',
@@ -226,7 +226,8 @@ class _UploadDocumentModalState extends State<UploadDocumentModal> {
       for (final item in items) {
         count++;
         setState(() {
-          _uploadStatusText = 'Uploading ($count/${items.length}): ${item.name}';
+          _uploadStatusText =
+              'Uploading ($count/${items.length}): ${item.name}';
         });
 
         final safeName = item.name.replaceAll(RegExp(r'[^\w\.-]'), '_');
@@ -550,7 +551,6 @@ class _UploadDocumentModalState extends State<UploadDocumentModal> {
               ),
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 // Camera Button

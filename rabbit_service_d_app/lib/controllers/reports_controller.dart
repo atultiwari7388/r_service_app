@@ -783,7 +783,7 @@ class ReportsController extends GetxController {
   }
 
   void pickPdfFile(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
     );
@@ -1876,8 +1876,8 @@ class ReportsController extends GetxController {
                   recordDate.isAfter(summaryStartDate!
                       .subtract(const Duration(seconds: 1)))) &&
               (summaryEndDate == null ||
-                  recordDate.isBefore(
-                      summaryEndDate!.add(const Duration(days: 1)))));
+                  recordDate
+                      .isBefore(summaryEndDate!.add(const Duration(days: 1)))));
 
       final matchesVehicleType = summaryVehicleTypeFilter == 'All' ||
           vehicleType == summaryVehicleTypeFilter;
