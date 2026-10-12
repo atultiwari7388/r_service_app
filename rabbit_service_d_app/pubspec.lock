@@ -470,14 +470,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.3.1"
-  flutter_google_places:
-    dependency: "direct main"
-    description:
-      name: flutter_google_places
-      sha256: e9fb23ceacdc7359aa759627550146f7fd3ae6c067d16f39f3c50d8feebf4809
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.0"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
@@ -609,18 +601,18 @@ packages:
     dependency: "direct main"
     description:
       name: geolocator
-      sha256: "5c23f3613f50586c0bbb2b8f970240ae66b3bd992088cf60dd5ee2e6f7dde3a8"
+      sha256: ee2212a3df8292ec4c90b91183b8001d3f5a800823c974b570c5f9344ca320dc
       url: "https://pub.dev"
     source: hosted
-    version: "9.0.2"
+    version: "14.0.1"
   geolocator_android:
     dependency: transitive
     description:
       name: geolocator_android
-      sha256: fcb1760a50d7500deca37c9a666785c047139b5f9ee15aa5469fae7dbbe3170d
+      sha256: "1be90ea8aaaf9db8e7816b4fe0387f082ee8b5cf03355912dad90fb0a75717fa"
       url: "https://pub.dev"
     source: hosted
-    version: "4.6.2"
+    version: "5.1.1+1"
   geolocator_apple:
     dependency: transitive
     description:
@@ -641,18 +633,18 @@ packages:
     dependency: transitive
     description:
       name: geolocator_web
-      sha256: "102e7da05b48ca6bf0a5bda0010f886b171d1a08059f01bfe02addd0175ebece"
+      sha256: "19e485a0f8d6a88abcf9c53cba3a4105e14b7435ed8ac1c108c067b938fe8429"
       url: "https://pub.dev"
     source: hosted
-    version: "2.2.1"
+    version: "4.1.4"
   geolocator_windows:
     dependency: transitive
     description:
       name: geolocator_windows
-      sha256: "4f4218f122a6978d0ad655fa3541eea74c67417440b09f0657238810d5af6bdc"
+      sha256: "175435404d20278ffd220de83c2ca293b73db95eafbdc8131fe8609be1421eb6"
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.3"
+    version: "0.2.5"
   get:
     dependency: "direct main"
     description:
@@ -661,22 +653,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.7.3"
-  google_api_headers:
-    dependency: transitive
-    description:
-      name: google_api_headers
-      sha256: b27a55935d5c51cedda8a925f5df8388cc327c94a47fef5a4335e8707e089878
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.0"
   google_fonts:
     dependency: "direct main"
     description:
       name: google_fonts
-      sha256: "6b6f10f0ce3c42f6552d1c70d2c28d764cf22bb487f50f66cca31dcd5194f4d6"
+      sha256: ba03d03bcaa2f6cb7bd920e3b5027181db75ab524f8891c8bc3aa603885b8055
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.4"
+    version: "6.3.3"
   google_maps:
     dependency: transitive
     description:
@@ -725,14 +709,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.4+1"
-  google_maps_webservice:
-    dependency: transitive
-    description:
-      name: google_maps_webservice
-      sha256: d0ae4e4508afd74a3f051565261a3cdbae59db29448f9b6e6beb5674545e1eb7
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.20-nullsafety.5"
   hooks:
     dependency: transitive
     description:
@@ -753,10 +729,10 @@ packages:
     dependency: "direct main"
     description:
       name: http
-      sha256: "5895291c13fa8a3bd82e76d5627f69e0d85ca6a30dcac95c4ea19a5d555879c2"
+      sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
       url: "https://pub.dev"
     source: hosted
-    version: "0.13.6"
+    version: "1.6.0"
   http_parser:
     dependency: transitive
     description:
@@ -841,10 +817,10 @@ packages:
     dependency: "direct main"
     description:
       name: internet_connection_checker_plus
-      sha256: "8efb327ee79b2ca7f9c05254f004a28c7dd65358bd7b51f56c4db6b38de0833f"
+      sha256: "43edc904d8b8a9f5a2f871e9317a352ca005641b2f158a8b22732447c9f3994e"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.1"
+    version: "3.1.2"
   intl:
     dependency: "direct main"
     description:
@@ -1097,18 +1073,18 @@ packages:
     dependency: "direct main"
     description:
       name: package_info_plus
-      sha256: "7e76fad405b3e4016cd39d08f455a4eb5199723cf594cd1b8916d47140d93017"
+      sha256: "468c26b4254ab01979fa5e4a98cb343ea3631b9acee6f21028997419a80e1a20"
       url: "https://pub.dev"
     source: hosted
-    version: "4.2.0"
+    version: "9.0.1"
   package_info_plus_platform_interface:
     dependency: transitive
     description:
       name: package_info_plus_platform_interface
-      sha256: "9bc8ba46813a4cc42c66ab781470711781940780fd8beddd0c3da62506d3a6c6"
+      sha256: "202a487f08836a592a6bd4f901ac69b3a8f146af552bbd14407b6b41e1c3f086"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.1"
+    version: "3.2.1"
   path:
     dependency: transitive
     description:
@@ -1209,10 +1185,10 @@ packages:
     dependency: "direct main"
     description:
       name: place_picker_google
-      sha256: "90725fd8585bddb865e916b82c3a6408a5513f1e342424552eb9c99c49b399c9"
+      sha256: dcd8dc0acec56441d76a7c85b9c627c7777757d2dd6fcb315473a4712adb3d9a
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.10"
+    version: "0.0.18"
   platform:
     dependency: transitive
     description:
