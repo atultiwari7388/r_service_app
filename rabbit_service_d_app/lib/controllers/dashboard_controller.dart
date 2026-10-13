@@ -318,8 +318,7 @@ class DashboardController extends GetxController {
           return "$vehicleNumber ($companyName)";
         }).toList();
 
-        vehicleNames
-            .sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        vehicleNames.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
         print('Vehicle Names with isSet true: $vehicleNames'); // Debugging line
 

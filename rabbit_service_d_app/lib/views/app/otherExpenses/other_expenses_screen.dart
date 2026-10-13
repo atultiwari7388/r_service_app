@@ -7,13 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
-
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/show_toast_msg.dart';
@@ -107,7 +105,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: kRed, size: 22.sp),
@@ -128,9 +127,11 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
             onPressed: () => Get.back(result: true),
             style: ElevatedButton.styleFrom(
               backgroundColor: kRed,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r)),
             ),
-            child: Text("Delete", style: appStyle(13, Colors.white, FontWeight.bold)),
+            child: Text("Delete",
+                style: appStyle(13, Colors.white, FontWeight.bold)),
           ),
         ],
       ),
@@ -147,7 +148,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
           'active': false,
           'updatedAt': DateTime.now().toIso8601String(),
         });
-        showToastMessage("Success", "Expense deleted successfully", Colors.green);
+        showToastMessage(
+            "Success", "Expense deleted successfully", Colors.green);
       } catch (e) {
         log("Error deleting expense: $e");
         showToastMessage("Error", "Failed to delete expense", Colors.red);
@@ -195,13 +197,15 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
 
       // 2. Company Filter
       if (_selectedCompanyFilter != "All" &&
-          exp.companyName.toLowerCase() != _selectedCompanyFilter.toLowerCase()) {
+          exp.companyName.toLowerCase() !=
+              _selectedCompanyFilter.toLowerCase()) {
         return false;
       }
 
       // 3. Vehicle Filter
       if (_selectedVehicleFilter != "All" &&
-          exp.vehicleNumber.toLowerCase() != _selectedVehicleFilter.toLowerCase()) {
+          exp.vehicleNumber.toLowerCase() !=
+              _selectedVehicleFilter.toLowerCase()) {
         return false;
       }
 
@@ -209,10 +213,15 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
       if (_selectedDateRange != null) {
         final d = exp.parsedDate;
         if (d != null) {
-          final start = DateTime(
-              _selectedDateRange!.start.year, _selectedDateRange!.start.month, _selectedDateRange!.start.day);
+          final start = DateTime(_selectedDateRange!.start.year,
+              _selectedDateRange!.start.month, _selectedDateRange!.start.day);
           final end = DateTime(
-              _selectedDateRange!.end.year, _selectedDateRange!.end.month, _selectedDateRange!.end.day, 23, 59, 59);
+              _selectedDateRange!.end.year,
+              _selectedDateRange!.end.month,
+              _selectedDateRange!.end.day,
+              23,
+              59,
+              59);
           if (d.isBefore(start) || d.isAfter(end)) {
             return false;
           }
@@ -280,22 +289,30 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
           excel_pkg.IntCellValue(i + 1),
           excel_pkg.TextCellValue(r.date),
           excel_pkg.TextCellValue(r.serviceName),
-          excel_pkg.TextCellValue(r.teamMemberName.isNotEmpty ? r.teamMemberName : '-'),
-          excel_pkg.TextCellValue(r.teamMemberRole.isNotEmpty ? r.teamMemberRole : '-'),
-          excel_pkg.TextCellValue(r.companyName.isNotEmpty ? r.companyName : '-'),
-          excel_pkg.TextCellValue(r.vehicleNumber.isNotEmpty ? r.vehicleNumber : '-'),
-          excel_pkg.TextCellValue(r.type == 'Credit' ? 'Credit (Cash In)' : 'Debit (Cash Out)'),
+          excel_pkg.TextCellValue(
+              r.teamMemberName.isNotEmpty ? r.teamMemberName : '-'),
+          excel_pkg.TextCellValue(
+              r.teamMemberRole.isNotEmpty ? r.teamMemberRole : '-'),
+          excel_pkg.TextCellValue(
+              r.companyName.isNotEmpty ? r.companyName : '-'),
+          excel_pkg.TextCellValue(
+              r.vehicleNumber.isNotEmpty ? r.vehicleNumber : '-'),
+          excel_pkg.TextCellValue(
+              r.type == 'Credit' ? 'Credit (Cash In)' : 'Debit (Cash Out)'),
           excel_pkg.DoubleCellValue(r.amount),
-          excel_pkg.TextCellValue(r.description.isNotEmpty ? r.description : '-'),
+          excel_pkg.TextCellValue(
+              r.description.isNotEmpty ? r.description : '-'),
         ]);
       }
 
       final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/other_expenses_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx');
+      final file = File(
+          '${dir.path}/other_expenses_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx');
       final bytes = excel.encode();
       if (bytes != null) {
         await file.writeAsBytes(bytes);
-        await Share.shareXFiles([XFile(file.path)], text: 'Other Expenses Report');
+        await Share.shareXFiles([XFile(file.path)],
+            text: 'Other Expenses Report');
       }
     } catch (e) {
       log("Error exporting excel: $e");
@@ -337,13 +354,20 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('TRENOOPS', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
-                    pw.Text('Other Expenses & Income Statement', style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+                    pw.Text('TRENOOPS',
+                        style: pw.TextStyle(
+                            fontSize: 20,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.red800)),
+                    pw.Text('Other Expenses & Income Statement',
+                        style: pw.TextStyle(
+                            fontSize: 12, color: PdfColors.grey700)),
                   ],
                 ),
                 pw.Text(
                   'Generated: ${DateFormat('dd MMM yyyy').format(DateTime.now())}',
-                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+                  style: const pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey600),
                 ),
               ],
             ),
@@ -361,18 +385,37 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                 children: [
                   pw.Column(children: [
-                    pw.Text('Total Cash In', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-                    pw.Text('+\$${totalCredit.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColors.green800)),
+                    pw.Text('Total Cash In',
+                        style: const pw.TextStyle(
+                            fontSize: 10, color: PdfColors.grey700)),
+                    pw.Text('+\$${totalCredit.toStringAsFixed(2)}',
+                        style: pw.TextStyle(
+                            fontSize: 13,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.green800)),
                   ]),
                   pw.Column(children: [
-                    pw.Text('Total Cash Out', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-                    pw.Text('-\$${totalDebit.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
+                    pw.Text('Total Cash Out',
+                        style: const pw.TextStyle(
+                            fontSize: 10, color: PdfColors.grey700)),
+                    pw.Text('-\$${totalDebit.toStringAsFixed(2)}',
+                        style: pw.TextStyle(
+                            fontSize: 13,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.red800)),
                   ]),
                   pw.Column(children: [
-                    pw.Text('Net Balance', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                    pw.Text('Net Balance',
+                        style: const pw.TextStyle(
+                            fontSize: 10, color: PdfColors.grey700)),
                     pw.Text(
                       '${netBalance >= 0 ? '+' : '-'}\$${netBalance.abs().toStringAsFixed(2)}',
-                      style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: netBalance >= 0 ? PdfColors.green800 : PdfColors.red800),
+                      style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          color: netBalance >= 0
+                              ? PdfColors.green800
+                              : PdfColors.red800),
                     ),
                   ]),
                 ],
@@ -382,7 +425,14 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
 
             // Table
             pw.Table.fromTextArray(
-              headers: ['Date', 'Service / Remark', 'Team / Info', 'Mode', 'Cash In', 'Cash Out'],
+              headers: [
+                'Date',
+                'Service / Remark',
+                'Team / Info',
+                'Mode',
+                'Cash In',
+                'Cash Out'
+              ],
               data: records.map((r) {
                 final isCredit = r.type == 'Credit';
                 String teamInfo = '';
@@ -390,7 +440,9 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                   teamInfo = '${r.teamMemberName} (${r.teamMemberRole})';
                 }
                 if (r.vehicleNumber.isNotEmpty) {
-                  teamInfo += teamInfo.isNotEmpty ? ' | Veh: ${r.vehicleNumber}' : 'Veh: ${r.vehicleNumber}';
+                  teamInfo += teamInfo.isNotEmpty
+                      ? ' | Veh: ${r.vehicleNumber}'
+                      : 'Veh: ${r.vehicleNumber}';
                 }
 
                 return [
@@ -402,11 +454,15 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                   !isCredit ? '\$${r.amount.toStringAsFixed(2)}' : '',
                 ];
               }).toList(),
-              headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+              headerStyle: pw.TextStyle(
+                  fontSize: 9,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white),
               headerDecoration: const pw.BoxDecoration(color: PdfColors.red700),
               cellStyle: const pw.TextStyle(fontSize: 8),
               cellAlignment: pw.Alignment.centerLeft,
-              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+              cellPadding:
+                  const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
             ),
           ],
         ),
@@ -414,7 +470,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
 
       await Printing.layoutPdf(
         onLayout: (format) async => doc.save(),
-        name: 'other_expenses_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+        name:
+            'other_expenses_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
       );
     } catch (e) {
       log("Error generating PDF: $e");
@@ -430,7 +487,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
         appBar: AppBar(
           backgroundColor: kLightWhite,
           elevation: 0,
-          title: Text("Other Expenses", style: appStyle(18, kDark, FontWeight.bold)),
+          title: Text("Other Expenses",
+              style: appStyle(18, kDark, FontWeight.bold)),
         ),
         body: const Center(child: CircularProgressIndicator(color: kPrimary)),
       );
@@ -442,7 +500,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
         backgroundColor: kLightWhite,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 18.sp, color: kDark),
+          icon:
+              Icon(Icons.arrow_back_ios_new_rounded, size: 18.sp, color: kDark),
           onPressed: () => Get.back(),
         ),
         title: _isSearchVisible
@@ -474,7 +533,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                   ),
                 ),
               )
-            : Text("Other Expenses", style: appStyle(18, kDark, FontWeight.bold)),
+            : Text("Other Expenses",
+                style: appStyle(18, kDark, FontWeight.bold)),
         actions: [
           if (!_isSearchVisible)
             IconButton(
@@ -483,7 +543,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
             ),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert_rounded, size: 22.sp, color: kDark),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r)),
             onSelected: (val) {
               // Handled below via Stream data
             },
@@ -492,9 +553,11 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                 value: 'date_filter',
                 child: Row(
                   children: [
-                    Icon(Icons.date_range_rounded, size: 18.sp, color: kPrimary),
+                    Icon(Icons.date_range_rounded,
+                        size: 18.sp, color: kPrimary),
                     SizedBox(width: 8.w),
-                    Text("Filter by Date", style: appStyle(13, kDark, FontWeight.normal)),
+                    Text("Filter by Date",
+                        style: appStyle(13, kDark, FontWeight.normal)),
                   ],
                 ),
               ),
@@ -506,7 +569,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
         onPressed: () => _openAddExpenseModal(),
         backgroundColor: kPrimary,
         icon: Icon(Icons.add_rounded, size: 20.sp, color: Colors.white),
-        label: Text("Add Expense", style: appStyle(13, Colors.white, FontWeight.bold)),
+        label: Text("Add Expense",
+            style: appStyle(13, Colors.white, FontWeight.bold)),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
@@ -516,12 +580,14 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: kPrimary));
+            return const Center(
+                child: CircularProgressIndicator(color: kPrimary));
           }
 
           if (snapshot.hasError) {
             return Center(
-              child: Text("Error loading expenses", style: appStyle(14, kRed, FontWeight.w500)),
+              child: Text("Error loading expenses",
+                  style: appStyle(14, kRed, FontWeight.w500)),
             );
           }
 
@@ -583,21 +649,28 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.arrow_downward_rounded, size: 14.sp, color: Colors.green),
+                              Icon(Icons.arrow_downward_rounded,
+                                  size: 14.sp, color: Colors.green),
                               SizedBox(width: 4.w),
-                              Text("Cash In", style: appStyle(11, Colors.green.shade700, FontWeight.bold)),
+                              Text("Cash In",
+                                  style: appStyle(11, Colors.green.shade700,
+                                      FontWeight.bold)),
                             ],
                           ),
                           SizedBox(height: 4.h),
                           Text(
                             "+\$${totalCredit.toStringAsFixed(2)}",
-                            style: appStyle(14, Colors.green.shade800, FontWeight.bold),
+                            style: appStyle(
+                                14, Colors.green.shade800, FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
 
-                    Container(width: 1, height: 35.h, color: kGrayLight.withOpacity(0.5)),
+                    Container(
+                        width: 1,
+                        height: 35.h,
+                        color: kGrayLight.withOpacity(0.5)),
                     SizedBox(width: 10.w),
 
                     // Cash Out (Debit)
@@ -607,9 +680,12 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.arrow_upward_rounded, size: 14.sp, color: kPrimary),
+                              Icon(Icons.arrow_upward_rounded,
+                                  size: 14.sp, color: kPrimary),
                               SizedBox(width: 4.w),
-                              Text("Cash Out", style: appStyle(11, kPrimary, FontWeight.bold)),
+                              Text("Cash Out",
+                                  style:
+                                      appStyle(11, kPrimary, FontWeight.bold)),
                             ],
                           ),
                           SizedBox(height: 4.h),
@@ -621,7 +697,10 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                       ),
                     ),
 
-                    Container(width: 1, height: 35.h, color: kGrayLight.withOpacity(0.5)),
+                    Container(
+                        width: 1,
+                        height: 35.h,
+                        color: kGrayLight.withOpacity(0.5)),
                     SizedBox(width: 10.w),
 
                     // Net Balance
@@ -631,9 +710,11 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.account_balance_wallet_rounded, size: 14.sp, color: kDark),
+                              Icon(Icons.account_balance_wallet_rounded,
+                                  size: 14.sp, color: kDark),
                               SizedBox(width: 4.w),
-                              Text("Net Balance", style: appStyle(11, kDark, FontWeight.bold)),
+                              Text("Net Balance",
+                                  style: appStyle(11, kDark, FontWeight.bold)),
                             ],
                           ),
                           SizedBox(height: 4.h),
@@ -641,7 +722,9 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                             "${netBalance >= 0 ? '+' : '-'}\$${netBalance.abs().toStringAsFixed(2)}",
                             style: appStyle(
                               14,
-                              netBalance >= 0 ? Colors.green.shade800 : kPrimary,
+                              netBalance >= 0
+                                  ? Colors.green.shade800
+                                  : kPrimary,
                               FontWeight.bold,
                             ),
                           ),
@@ -687,7 +770,9 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16.r),
                             side: BorderSide(
-                              color: isSelected ? Colors.transparent : kGrayLight.withOpacity(0.5),
+                              color: isSelected
+                                  ? Colors.transparent
+                                  : kGrayLight.withOpacity(0.5),
                               width: 0.8,
                             ),
                           ),
@@ -702,17 +787,26 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                       onTap: _pickDateRange,
                       borderRadius: BorderRadius.circular(8.r),
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 8.w, vertical: 6.h),
                         decoration: BoxDecoration(
-                          color: _selectedDateRange != null ? kPrimary.withOpacity(0.1) : Colors.white,
+                          color: _selectedDateRange != null
+                              ? kPrimary.withOpacity(0.1)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(
-                            color: _selectedDateRange != null ? kPrimary : kGrayLight.withOpacity(0.5),
+                            color: _selectedDateRange != null
+                                ? kPrimary
+                                : kGrayLight.withOpacity(0.5),
                           ),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.calendar_month_rounded, size: 14.sp, color: _selectedDateRange != null ? kPrimary : kGray),
+                            Icon(Icons.calendar_month_rounded,
+                                size: 14.sp,
+                                color: _selectedDateRange != null
+                                    ? kPrimary
+                                    : kGray),
                             if (_selectedDateRange != null) ...[
                               SizedBox(width: 4.w),
                               Text(
@@ -721,8 +815,10 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                               ),
                               SizedBox(width: 4.w),
                               GestureDetector(
-                                onTap: () => setState(() => _selectedDateRange = null),
-                                child: Icon(Icons.close, size: 14.sp, color: kPrimary),
+                                onTap: () =>
+                                    setState(() => _selectedDateRange = null),
+                                child: Icon(Icons.close,
+                                    size: 14.sp, color: kPrimary),
                               ),
                             ],
                           ],
@@ -739,11 +835,14 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8.r),
-                          border: Border.all(color: kGrayLight.withOpacity(0.5)),
+                          border:
+                              Border.all(color: kGrayLight.withOpacity(0.5)),
                         ),
-                        child: Icon(Icons.download_rounded, size: 16.sp, color: kDark),
+                        child: Icon(Icons.download_rounded,
+                            size: 16.sp, color: kDark),
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r)),
                       onSelected: (val) {
                         if (val == 'excel') {
                           _exportToExcel(filteredExpenses);
@@ -756,9 +855,11 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                           value: 'excel',
                           child: Row(
                             children: [
-                              Icon(Icons.table_chart_rounded, size: 18.sp, color: Colors.green),
+                              Icon(Icons.table_chart_rounded,
+                                  size: 18.sp, color: Colors.green),
                               SizedBox(width: 8.w),
-                              Text("Export Excel (.xlsx)", style: appStyle(12, kDark, FontWeight.w500)),
+                              Text("Export Excel (.xlsx)",
+                                  style: appStyle(12, kDark, FontWeight.w500)),
                             ],
                           ),
                         ),
@@ -766,9 +867,11 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                           value: 'pdf',
                           child: Row(
                             children: [
-                              Icon(Icons.picture_as_pdf_rounded, size: 18.sp, color: kRed),
+                              Icon(Icons.picture_as_pdf_rounded,
+                                  size: 18.sp, color: kRed),
                               SizedBox(width: 8.w),
-                              Text("Print / Share PDF", style: appStyle(12, kDark, FontWeight.w500)),
+                              Text("Print / Share PDF",
+                                  style: appStyle(12, kDark, FontWeight.w500)),
                             ],
                           ),
                         ),
@@ -787,11 +890,15 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.receipt_long_rounded, size: 48.sp, color: kGrayLight),
+                            Icon(Icons.receipt_long_rounded,
+                                size: 48.sp, color: kGrayLight),
                             SizedBox(height: 10.h),
-                            Text("No expense records found", style: appStyle(14, kGray, FontWeight.bold)),
+                            Text("No expense records found",
+                                style: appStyle(14, kGray, FontWeight.bold)),
                             SizedBox(height: 4.h),
-                            Text("Tap '+ Add Expense' to record a transaction", style: appStyle(12, kGrayLight, FontWeight.normal)),
+                            Text("Tap '+ Add Expense' to record a transaction",
+                                style: appStyle(
+                                    12, kGrayLight, FontWeight.normal)),
                           ],
                         ),
                       )
@@ -807,7 +914,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14.r),
-                              border: Border.all(color: kGrayLight.withOpacity(0.35)),
+                              border: Border.all(
+                                  color: kGrayLight.withOpacity(0.35)),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.02),
@@ -817,7 +925,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                               ],
                             ),
                             child: InkWell(
-                              onTap: () => _openAddExpenseModal(expenseToEdit: item),
+                              onTap: () =>
+                                  _openAddExpenseModal(expenseToEdit: item),
                               borderRadius: BorderRadius.circular(14.r),
                               child: Padding(
                                 padding: EdgeInsets.all(12.w),
@@ -826,34 +935,53 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                   children: [
                                     // Row 1: Date & Type Badge + Amount
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
                                             // Date tag
                                             Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 8.w,
+                                                  vertical: 3.h),
                                               decoration: BoxDecoration(
                                                 color: kOffWhite,
-                                                borderRadius: BorderRadius.circular(6.r),
+                                                borderRadius:
+                                                    BorderRadius.circular(6.r),
                                               ),
                                               child: Text(
                                                 item.formattedDisplayDate,
-                                                style: appStyle(10, kDark, FontWeight.w500),
+                                                style: appStyle(
+                                                    10, kDark, FontWeight.w500),
                                               ),
                                             ),
                                             SizedBox(width: 6.w),
                                             // Type tag
                                             Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.5.h),
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 6.w,
+                                                  vertical: 2.5.h),
                                               decoration: BoxDecoration(
-                                                color: isCredit ? Colors.green.withOpacity(0.1) : kPrimary.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(6.r),
+                                                color: isCredit
+                                                    ? Colors.green
+                                                        .withOpacity(0.1)
+                                                    : kPrimary.withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(6.r),
                                               ),
                                               child: Text(
-                                                isCredit ? "Credit (Cash In)" : "Debit (Cash Out)",
-                                                style: appStyle(9, isCredit ? Colors.green.shade700 : kPrimary, FontWeight.bold),
+                                                isCredit
+                                                    ? "Credit (Cash In)"
+                                                    : "Debit (Cash Out)",
+                                                style: appStyle(
+                                                    9,
+                                                    isCredit
+                                                        ? Colors.green.shade700
+                                                        : kPrimary,
+                                                    FontWeight.bold),
                                               ),
                                             ),
                                           ],
@@ -864,7 +992,9 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                           "${isCredit ? '+' : '-'}\$${item.amount.toStringAsFixed(2)}",
                                           style: appStyle(
                                             15,
-                                            isCredit ? Colors.green.shade700 : kPrimary,
+                                            isCredit
+                                                ? Colors.green.shade700
+                                                : kPrimary,
                                             FontWeight.bold,
                                           ),
                                         ),
@@ -882,20 +1012,34 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                               Flexible(
                                                 child: Text(
                                                   item.serviceName,
-                                                  style: appStyle(14, kDark, FontWeight.bold),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  style: appStyle(14, kDark,
+                                                      FontWeight.bold),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                               if (item.isCustomService) ...[
                                                 SizedBox(width: 6.w),
                                                 Container(
-                                                  padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
+                                                  padding: EdgeInsets.symmetric(
+                                                      horizontal: 5.w,
+                                                      vertical: 1.h),
                                                   decoration: BoxDecoration(
-                                                    color: Colors.amber.withOpacity(0.15),
-                                                    borderRadius: BorderRadius.circular(4.r),
-                                                    border: Border.all(color: Colors.amber.shade400, width: 0.5),
+                                                    color: Colors.amber
+                                                        .withOpacity(0.15),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            4.r),
+                                                    border: Border.all(
+                                                        color: Colors
+                                                            .amber.shade400,
+                                                        width: 0.5),
                                                   ),
-                                                  child: Text("Custom", style: appStyle(8, Colors.amber.shade900, FontWeight.bold)),
+                                                  child: Text("Custom",
+                                                      style: appStyle(
+                                                          8,
+                                                          Colors.amber.shade900,
+                                                          FontWeight.bold)),
                                                 ),
                                               ],
                                             ],
@@ -906,10 +1050,12 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                         PopupMenuButton<String>(
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(),
-                                          icon: Icon(Icons.more_horiz_rounded, color: kGray, size: 18.sp),
+                                          icon: Icon(Icons.more_horiz_rounded,
+                                              color: kGray, size: 18.sp),
                                           onSelected: (action) {
                                             if (action == 'edit') {
-                                              _openAddExpenseModal(expenseToEdit: item);
+                                              _openAddExpenseModal(
+                                                  expenseToEdit: item);
                                             } else if (action == 'delete') {
                                               _deleteExpense(item);
                                             }
@@ -919,9 +1065,13 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                               value: 'edit',
                                               child: Row(
                                                 children: [
-                                                  Icon(Icons.edit_outlined, size: 16.sp, color: kPrimary),
+                                                  Icon(Icons.edit_outlined,
+                                                      size: 16.sp,
+                                                      color: kPrimary),
                                                   SizedBox(width: 6.w),
-                                                  Text("Edit", style: appStyle(12, kDark, FontWeight.normal)),
+                                                  Text("Edit",
+                                                      style: appStyle(12, kDark,
+                                                          FontWeight.normal)),
                                                 ],
                                               ),
                                             ),
@@ -929,9 +1079,15 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                               value: 'delete',
                                               child: Row(
                                                 children: [
-                                                  Icon(Icons.delete_outline_rounded, size: 16.sp, color: kRed),
+                                                  Icon(
+                                                      Icons
+                                                          .delete_outline_rounded,
+                                                      size: 16.sp,
+                                                      color: kRed),
                                                   SizedBox(width: 6.w),
-                                                  Text("Delete", style: appStyle(12, kRed, FontWeight.normal)),
+                                                  Text("Delete",
+                                                      style: appStyle(12, kRed,
+                                                          FontWeight.normal)),
                                                 ],
                                               ),
                                             ),
@@ -952,20 +1108,33 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                           // Assigned Team Member Badge
                                           if (item.teamMemberName.isNotEmpty)
                                             Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.5.h),
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 7.w,
+                                                  vertical: 2.5.h),
                                               decoration: BoxDecoration(
-                                                color: Colors.green.withOpacity(0.08),
-                                                borderRadius: BorderRadius.circular(6.r),
-                                                border: Border.all(color: Colors.green.withOpacity(0.3), width: 0.6),
+                                                color: Colors.green
+                                                    .withOpacity(0.08),
+                                                borderRadius:
+                                                    BorderRadius.circular(6.r),
+                                                border: Border.all(
+                                                    color: Colors.green
+                                                        .withOpacity(0.3),
+                                                    width: 0.6),
                                               ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Icon(Icons.person_rounded, size: 11.sp, color: Colors.green.shade700),
+                                                  Icon(Icons.person_rounded,
+                                                      size: 11.sp,
+                                                      color: Colors
+                                                          .green.shade700),
                                                   SizedBox(width: 3.w),
                                                   Text(
                                                     "${item.teamMemberName}${item.teamMemberRole.isNotEmpty ? ' (${item.teamMemberRole})' : ''}",
-                                                    style: appStyle(10, Colors.green.shade800, FontWeight.bold),
+                                                    style: appStyle(
+                                                        10,
+                                                        Colors.green.shade800,
+                                                        FontWeight.bold),
                                                   ),
                                                 ],
                                               ),
@@ -974,18 +1143,34 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                           // Vehicle Chip
                                           if (item.vehicleNumber.isNotEmpty)
                                             Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.5.h),
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 6.w,
+                                                  vertical: 2.5.h),
                                               decoration: BoxDecoration(
-                                                color: Colors.blue.withOpacity(0.08),
-                                                borderRadius: BorderRadius.circular(6.r),
-                                                border: Border.all(color: Colors.blue.withOpacity(0.3), width: 0.6),
+                                                color: Colors.blue
+                                                    .withOpacity(0.08),
+                                                borderRadius:
+                                                    BorderRadius.circular(6.r),
+                                                border: Border.all(
+                                                    color: Colors.blue
+                                                        .withOpacity(0.3),
+                                                    width: 0.6),
                                               ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Icon(Icons.directions_car_rounded, size: 11.sp, color: Colors.blue.shade700),
+                                                  Icon(
+                                                      Icons
+                                                          .directions_car_rounded,
+                                                      size: 11.sp,
+                                                      color:
+                                                          Colors.blue.shade700),
                                                   SizedBox(width: 3.w),
-                                                  Text(item.vehicleNumber, style: appStyle(10, Colors.blue.shade800, FontWeight.w500)),
+                                                  Text(item.vehicleNumber,
+                                                      style: appStyle(
+                                                          10,
+                                                          Colors.blue.shade800,
+                                                          FontWeight.w500)),
                                                 ],
                                               ),
                                             ),
@@ -993,18 +1178,33 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                           // Company Chip
                                           if (item.companyName.isNotEmpty)
                                             Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.5.h),
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 6.w,
+                                                  vertical: 2.5.h),
                                               decoration: BoxDecoration(
-                                                color: Colors.purple.withOpacity(0.08),
-                                                borderRadius: BorderRadius.circular(6.r),
-                                                border: Border.all(color: Colors.purple.withOpacity(0.3), width: 0.6),
+                                                color: Colors.purple
+                                                    .withOpacity(0.08),
+                                                borderRadius:
+                                                    BorderRadius.circular(6.r),
+                                                border: Border.all(
+                                                    color: Colors.purple
+                                                        .withOpacity(0.3),
+                                                    width: 0.6),
                                               ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Icon(Icons.business_rounded, size: 11.sp, color: Colors.purple.shade700),
+                                                  Icon(Icons.business_rounded,
+                                                      size: 11.sp,
+                                                      color: Colors
+                                                          .purple.shade700),
                                                   SizedBox(width: 3.w),
-                                                  Text(item.companyName, style: appStyle(10, Colors.purple.shade800, FontWeight.w500)),
+                                                  Text(item.companyName,
+                                                      style: appStyle(
+                                                          10,
+                                                          Colors
+                                                              .purple.shade800,
+                                                          FontWeight.w500)),
                                                 ],
                                               ),
                                             ),
@@ -1017,7 +1217,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                       SizedBox(height: 6.h),
                                       Text(
                                         item.description,
-                                        style: appStyle(11, kGray, FontWeight.normal),
+                                        style: appStyle(
+                                            11, kGray, FontWeight.normal),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
