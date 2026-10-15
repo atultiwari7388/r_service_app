@@ -2364,11 +2364,9 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                             buildInfoRow('VIN:', vin),
                             buildInfoRow('Engine:', engineName),
                             if (dot.isNotEmpty) buildInfoRow('DOT:', dot),
-                            if (iccms.isNotEmpty)
-                              buildInfoRow('ICCMS:', iccms),
+                            if (iccms.isNotEmpty) buildInfoRow('ICCMS:', iccms),
                             if (oilChangeDate.isNotEmpty)
-                              buildInfoRow(
-                                  'Oil Change Date:', oilChangeDate),
+                              buildInfoRow('Oil Change Date:', oilChangeDate),
                           ],
                         ),
                       ),

@@ -200,6 +200,28 @@ export default function MyVehicleDetailsScreen() {
     fetchVehicleData();
   }, [vehicleId, effectiveUserId]);
 
+  const [highlightHistory, setHighlightHistory] = useState(false);
+
+  // Scroll to miles-hours-history if URL hash is present
+  useEffect(() => {
+    if (!loading && vehicleData) {
+      if (
+        typeof window !== "undefined" &&
+        window.location.hash === "#miles-hours-history"
+      ) {
+        const timer = setTimeout(() => {
+          const el = document.getElementById("miles-hours-history");
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            setHighlightHistory(true);
+            setTimeout(() => setHighlightHistory(false), 2500);
+          }
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [loading, vehicleData]);
+
   const handlePrint = async () => {
     const printContent = `
       <div style="padding: 20px; font-family: Arial, sans-serif;">
@@ -311,7 +333,7 @@ export default function MyVehicleDetailsScreen() {
         const mm = String(d.getMonth() + 1).padStart(2, "0");
         const dd = String(d.getDate()).padStart(2, "0");
         const yyyy = d.getFullYear();
-        return `${mm}-${dd}-${yyyy}`;
+        return `${mm}/${dd}/${yyyy}`;
       }
       return String(dateVal);
     } catch {
@@ -1659,7 +1681,14 @@ export default function MyVehicleDetailsScreen() {
           const displayList = [...records].reverse();
 
           return (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-8 border border-gray-100">
+            <div
+              id="miles-hours-history"
+              className={`bg-white rounded-lg shadow-md p-6 mb-8 border transition-all duration-700 scroll-mt-6 ${
+                highlightHistory
+                  ? "border-[#F96176] ring-4 ring-rose-200/70 shadow-lg scale-[1.005]"
+                  : "border-gray-100"
+              }`}
+            >
               <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   <div

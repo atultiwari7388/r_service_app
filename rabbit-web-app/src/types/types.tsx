@@ -111,7 +111,8 @@ export interface VehicleTypes {
   active: boolean;
   currentMiles: string;
   hoursReading: string;
-  currentMilesArray: { date: Timestamp; value: string }[];
+  currentMilesArray?: { date: any; miles?: string | number; value?: string }[];
+  hoursReadingArray?: { date: any; hours?: string | number; reading?: string | number; value?: string }[];
   myCompany?: string;
   mycomId?: string;
 }

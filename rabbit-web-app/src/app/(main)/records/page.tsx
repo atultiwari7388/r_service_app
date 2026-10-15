@@ -402,6 +402,54 @@ const DRY_VAN_EXCLUDED_SERVICES = [
 interface MilesTabProps {
   filteredVehicles: VehicleTypes[];
 }
+
+const formatToMMDDYYYY = (dateVal: any): string => {
+  if (!dateVal) return "N/A";
+  try {
+    let d: Date | null = null;
+    if (typeof dateVal?.toDate === "function") {
+      d = dateVal.toDate();
+    } else if (dateVal?.seconds) {
+      d = new Date(dateVal.seconds * 1000);
+    } else if (typeof dateVal === "string" || typeof dateVal === "number") {
+      if (typeof dateVal === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())) {
+        const [y, m, day] = dateVal.trim().split("-");
+        return `${m}/${day}/${y}`;
+      }
+      const parsed = new Date(dateVal);
+      if (!isNaN(parsed.getTime())) {
+        d = parsed;
+      }
+    }
+    if (d && !isNaN(d.getTime())) {
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    }
+    return "N/A";
+  } catch {
+    return "N/A";
+  }
+};
+
+const getVehicleLatestDate = (vehicle: VehicleTypes): string => {
+  const isTruck = vehicle.vehicleType === "Truck";
+  let dateVal: any = null;
+
+  if (isTruck && Array.isArray(vehicle.currentMilesArray) && vehicle.currentMilesArray.length > 0) {
+    dateVal = vehicle.currentMilesArray[vehicle.currentMilesArray.length - 1]?.date;
+  } else if (!isTruck && Array.isArray(vehicle.hoursReadingArray) && vehicle.hoursReadingArray.length > 0) {
+    dateVal = vehicle.hoursReadingArray[vehicle.hoursReadingArray.length - 1]?.date;
+  }
+
+  if (!dateVal) {
+    dateVal = (vehicle as any).updatedAt || vehicle.createdAt;
+  }
+
+  return formatToMMDDYYYY(dateVal);
+};
+
 const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
   return (
     <div className="w-full bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-gray-200">
@@ -422,13 +470,16 @@ const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
                 <TableCell className="!font-bold !text-gray-700 !text-xs sm:!text-sm !py-2.5">
                   Current Miles/Hours
                 </TableCell>
+                <TableCell className="!font-bold !text-gray-700 !text-xs sm:!text-sm !py-2.5">
+                  Date
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredVehicles.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={5}
                     align="center"
                     className="py-10 text-gray-500 text-sm"
                   >
@@ -451,7 +502,7 @@ const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
                       <span
                         className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-md ${
                           vehicle.vehicleType === "Truck"
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
+                            ? "bg-rose-50 text-[#F96176] border border-rose-200"
                             : "bg-purple-50 text-purple-700 border border-purple-200"
                         }`}
                       >
@@ -459,9 +510,18 @@ const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
                       </span>
                     </TableCell>
                     <TableCell className="!text-xs sm:!text-sm !font-medium !text-gray-800 !py-2.5">
-                      {vehicle.vehicleType === "Truck"
-                        ? `${vehicle.currentMiles || "0"} mi`
-                        : `${vehicle.hoursReading || "0"} hrs`}
+                      <Link
+                        href={`/account/my-vehicles/${vehicle.id}#miles-hours-history`}
+                        className="hover:text-[#F96176] hover:underline cursor-pointer"
+                        title="Click to view history"
+                      >
+                        {vehicle.vehicleType === "Truck"
+                          ? `${vehicle.currentMiles || "0"} mi`
+                          : `${vehicle.hoursReading || "0"} hrs`}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="!text-xs sm:!text-sm !text-gray-700 !py-2.5">
+                      {getVehicleLatestDate(vehicle)}
                     </TableCell>
                   </TableRow>
                 ))
@@ -1543,6 +1603,22 @@ export default function RecordsPage() {
   const filteredVehicles = useMemo(
     () =>
       vehicles.filter((v) => {
+        // Only include vehicles where miles or hours entry is added
+        const isTruck = v.vehicleType === "Truck";
+        const hasMilesOrHours = isTruck
+          ? (Array.isArray(v.currentMilesArray) && v.currentMilesArray.length > 0) ||
+            (v.currentMiles !== undefined &&
+              v.currentMiles !== null &&
+              String(v.currentMiles).trim() !== "" &&
+              String(v.currentMiles).trim() !== "0")
+          : (Array.isArray(v.hoursReadingArray) && v.hoursReadingArray.length > 0) ||
+            (v.hoursReading !== undefined &&
+              v.hoursReading !== null &&
+              String(v.hoursReading).trim() !== "" &&
+              String(v.hoursReading).trim() !== "0");
+
+        if (!hasMilesOrHours) return false;
+
         if (quickTypeFilter === "truck" && v.vehicleType !== "Truck")
           return false;
         if (quickTypeFilter === "trailer" && v.vehicleType !== "Trailer")
