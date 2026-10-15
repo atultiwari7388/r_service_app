@@ -961,6 +961,26 @@ export default function RecordsPage() {
       setOtherServiceName("");
     }
 
+    if (vehicleData && !isEditing) {
+      if (vehicleData.vehicleType === "Truck") {
+        const vMiles =
+          vehicleData.currentMiles &&
+          String(vehicleData.currentMiles).trim() !== "" &&
+          String(vehicleData.currentMiles).trim() !== "0"
+            ? String(vehicleData.currentMiles)
+            : "25000";
+        setMiles(vMiles);
+      } else if (vehicleData.vehicleType === "Trailer") {
+        const vHours =
+          vehicleData.hoursReading &&
+          String(vehicleData.hoursReading).trim() !== "" &&
+          String(vehicleData.hoursReading).trim() !== "0"
+            ? String(vehicleData.hoursReading)
+            : "2500";
+        setHours(vHours);
+      }
+    }
+
     if (vehicleData) {
       const isDryVan = vehicleData.engineName === "DRY VAN";
       const availableServices = services
@@ -3460,6 +3480,23 @@ export default function RecordsPage() {
     setShowAddRecords(false);
   };
 
+  const handleOpenAddRecord = () => {
+    if (!userData?.isAdd) {
+      toast.error("You don't have permission to add records.");
+      return;
+    }
+    resetForm();
+    // Auto-fill current date (editable)
+    const todayFormatted = format(new Date(), "MM-dd-yyyy");
+    setDate(todayFormatted);
+
+    // Default editable miles/hours
+    setMiles("25000");
+    setHours("2500");
+
+    setShowAddRecords(true);
+  };
+
   const columns = useMemo<MRT_ColumnDef<ServiceRecord>[]>(
     () => [
       {
@@ -3867,11 +3904,7 @@ export default function RecordsPage() {
         {/** Add Record */}
 
         <button
-          onClick={() =>
-            userData?.isAdd
-              ? setShowAddRecords(true)
-              : toast.error("You don't have permission to add records.")
-          }
+          onClick={handleOpenAddRecord}
           className="bg-[#F96176] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95"
         >
           <IoMdAdd className="text-base sm:text-lg" /> Add Record
