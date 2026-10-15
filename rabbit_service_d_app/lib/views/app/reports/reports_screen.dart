@@ -127,6 +127,39 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             !reController.showAddRecords;
                                         reController.showSearchFilter = false;
                                         reController.showAddMiles = false;
+
+                                        if (reController.showAddRecords) {
+                                          final now = DateTime.now();
+                                          reController.selectedDate = now;
+                                          reController.dateController.text =
+                                              DateFormat('MM-dd-yyyy').format(now);
+
+                                          if (reController.selectedVehicleData != null &&
+                                              reController.selectedVehicleData!.isNotEmpty) {
+                                            final vType = (reController.selectedVehicleData!['vehicleType'] ?? '')
+                                                .toString();
+                                            if (vType == 'Truck') {
+                                              final cMiles = reController.selectedVehicleData!['currentMiles']
+                                                  ?.toString()
+                                                  .trim();
+                                              reController.milesController.text =
+                                                  (cMiles != null && cMiles.isNotEmpty && cMiles != '0')
+                                                      ? cMiles
+                                                      : '25000';
+                                            } else if (vType == 'Trailer') {
+                                              final cHours = reController.selectedVehicleData!['hoursReading']
+                                                  ?.toString()
+                                                  .trim();
+                                              reController.hoursController.text =
+                                                  (cHours != null && cHours.isNotEmpty && cHours != '0')
+                                                      ? cHours
+                                                      : '2500';
+                                            }
+                                          } else {
+                                            reController.milesController.text = '25000';
+                                            reController.hoursController.text = '2500';
+                                          }
+                                        }
                                       });
                                     } else {
                                       showToastMessage(

@@ -692,6 +692,32 @@ class ReportsController extends GetxController {
     }
 
     selectedVehicleType = selectedVehicleData?['vehicleType'] ?? '';
+
+    // Autofill miles (Truck) or hours (Trailer) when not in edit mode
+    if (selectedVehicleData != null && selectedVehicleData!.isNotEmpty && !isEditing) {
+      if (selectedVehicleType == 'Truck') {
+        final currentMiles = selectedVehicleData!['currentMiles']?.toString().trim();
+        if (currentMiles != null && currentMiles.isNotEmpty && currentMiles != '0') {
+          milesController.text = currentMiles;
+        } else {
+          milesController.text = '25000';
+        }
+      } else if (selectedVehicleType == 'Trailer') {
+        final hoursReading = selectedVehicleData!['hoursReading']?.toString().trim();
+        if (hoursReading != null && hoursReading.isNotEmpty && hoursReading != '0') {
+          hoursController.text = hoursReading;
+        } else {
+          hoursController.text = '2500';
+        }
+      }
+    }
+
+    if (dateController.text.trim().isEmpty) {
+      final now = DateTime.now();
+      selectedDate = now;
+      dateController.text = DateFormat('MM-dd-yyyy').format(now);
+    }
+
     updateSelectedVehicleAndService();
     update();
   }
