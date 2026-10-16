@@ -417,7 +417,7 @@ export default function AddVehiclePage() {
         createdAt: serverTimestamp(),
         hoursReadingArray: [
           {
-            hours: 1000,
+            hours: 0,
             date: new Date().toISOString(),
           },
         ],
@@ -442,7 +442,7 @@ export default function AddVehiclePage() {
           })) || [],
 
         lastServiceMiles: currentReading ? parseInt(currentReading) : 0,
-        lastServiceHours: 1000,
+        lastServiceHours: 0,
       };
 
       if (selectedVehicleType === "Truck") {
@@ -460,8 +460,8 @@ export default function AddVehiclePage() {
         vehicleData.prevMilesValue = "";
         vehicleData.firstTimeMiles = "";
         vehicleData.oilChangeDate = "2025-07-19";
-        vehicleData.hoursReading = "1000";
-        vehicleData.prevHoursReadingValue = "1000";
+        vehicleData.hoursReading = "0";
+        vehicleData.prevHoursReadingValue = "0";
       }
 
       const vehicleDocRef = await addDoc(vehiclesRef, vehicleData);

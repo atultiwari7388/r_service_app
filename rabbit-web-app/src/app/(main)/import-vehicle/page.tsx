@@ -465,7 +465,7 @@ export default function ImportVehicle() {
       // Current miles is optional for Truck
     } else if (vehicleType === "Trailer") {
       if (!data.hoursReading || data.hoursReading.toString().trim() === "") {
-        data.hoursReading = "1000";
+        data.hoursReading = "0";
       } else {
         data.hoursReading = data.hoursReading.toString();
       }
@@ -502,7 +502,7 @@ export default function ImportVehicle() {
       const currentMilesNum =
         vehicleType === "Truck"
           ? parseInt(data.currentMiles || "0")
-          : parseInt(data.hoursReading || "1000");
+          : parseInt(data.hoursReading || "0");
 
       const updatedMilesArray = [
         ...(existingData.currentMilesArray || []),
@@ -563,15 +563,15 @@ export default function ImportVehicle() {
               hoursReading:
                 data.hoursReading?.toString() ||
                 existingData.hoursReading ||
-                "1000",
+                "0",
               prevHoursReadingValue:
                 data.hoursReading?.toString() ||
                 existingData.prevHoursReadingValue ||
-                "1000",
+                "0",
               hoursReadingArray: [
                 ...(existingData.hoursReadingArray || []),
                 {
-                  hours: parseInt(data.hoursReading?.toString() || "1000"),
+                  hours: parseInt(data.hoursReading?.toString() || "0"),
                   date: new Date().toISOString(),
                 },
               ],
@@ -605,7 +605,7 @@ export default function ImportVehicle() {
             miles:
               vehicleType === "Truck"
                 ? parseInt(data.currentMiles || "0")
-                : parseInt(data.hoursReading || "1000"),
+                : parseInt(data.hoursReading || "0"),
             date: new Date().toISOString(),
           },
         ],
@@ -635,11 +635,11 @@ export default function ImportVehicle() {
               firstTimeMiles: "",
               oilChangeDate:
                 data.oilChangeDate || format(new Date(), "yyyy-MM-dd"),
-              hoursReading: data.hoursReading?.toString() || "1000",
-              prevHoursReadingValue: data.hoursReading?.toString() || "1000",
+              hoursReading: data.hoursReading?.toString() || "0",
+              prevHoursReadingValue: data.hoursReading?.toString() || "0",
               hoursReadingArray: [
                 {
-                  hours: parseInt(data.hoursReading?.toString() || "1000"),
+                  hours: parseInt(data.hoursReading?.toString() || "0"),
                   date: new Date().toISOString(),
                 },
               ],

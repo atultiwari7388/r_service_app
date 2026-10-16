@@ -169,7 +169,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
         }
       } else if (vehicleType == 'Trailer') {
         // Set default values for trailer if not provided
-        data['hoursReading'] = data['hoursReading']?.toString() ?? '1000';
+        data['hoursReading'] = data['hoursReading']?.toString() ?? '0';
         data['dot'] = data['dot']?.toString() ?? 'RB123';
         data['iccms'] = data['iccms']?.toString() ?? 'RB123';
 
@@ -281,12 +281,12 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
           'prevMilesValue': '',
           'firstTimeMiles': '',
           'oilChangeDate': oilChangeDateStr,
-          'hoursReading': data['hoursReading']?.toString() ?? '1000',
-          'prevHoursReadingValue': data['hoursReading']?.toString() ?? '1000',
+          'hoursReading': data['hoursReading']?.toString() ?? '0',
+          'prevHoursReadingValue': data['hoursReading']?.toString() ?? '0',
           'hoursReadingArray': [
             {
               "hours": int.parse(
-                  data['hoursReading']?.toString() ?? 1000.toString()),
+                  data['hoursReading']?.toString() ?? 0.toString()),
               "date": DateTime.now().toIso8601String()
             }
           ],

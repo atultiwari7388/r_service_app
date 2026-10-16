@@ -432,7 +432,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         "uploadedDocuments": [],
         'createdAt': FieldValue.serverTimestamp(),
         'hoursReadingArray': [
-          {"hours": "1000", "date": DateTime.now().toIso8601String()}
+          {"hours": "0", "date": DateTime.now().toIso8601String()}
         ],
         'currentMilesArray': [
           {
@@ -472,8 +472,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         vehicleData['prevMilesValue'] = '';
         vehicleData['firstTimeMiles'] = '';
         vehicleData['oilChangeDate'] = '2025-04-12';
-        vehicleData['hoursReading'] = '1000';
-        vehicleData['prevHoursReadingValue'] = "1000";
+        vehicleData['hoursReading'] = '0';
+        vehicleData['prevHoursReadingValue'] = "0";
       }
 
       DocumentReference vehicleDocRef = await vehiclesRef.add(vehicleData);
