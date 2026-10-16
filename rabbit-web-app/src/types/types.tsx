@@ -61,6 +61,7 @@ export interface ProfileValues {
   isView: boolean;
   isOwner: boolean;
   isGuest?: boolean;
+  isAnonymous?: boolean;
 }
 
 /** Services */

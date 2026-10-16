@@ -22,8 +22,10 @@ import {
   Building,
   CreditCard,
   CheckSquare,
+  ShieldAlert,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
+import { isAllowedAdminEmail } from "@/lib/adminConfig";
 import {
   doc,
   getDoc,
@@ -80,6 +82,8 @@ export default function AppSidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const isAdminUser = Boolean(user && isAllowedAdminEmail(user.email));
 
   // Fetch User Data
   useEffect(() => {
@@ -294,6 +298,15 @@ export default function AppSidebar() {
           href: "/dispatch-settings",
           icon: <Settings size={16} />,
         },
+        ...(isAdminUser
+          ? [
+              {
+                label: "Admin Console",
+                href: "/admin/users",
+                icon: <ShieldAlert size={16} />,
+              },
+            ]
+          : []),
       ],
     },
   ];
@@ -572,6 +585,16 @@ export default function AppSidebar() {
                 </Link>
 
                 <div className="border-t border-gray-800 my-1 pt-1">
+                  {isAdminUser && (
+                    <Link
+                      href="/admin/users"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-[#F96176] hover:bg-[#1C2541] rounded-lg transition-colors font-medium"
+                    >
+                      <ShieldAlert size={16} />
+                      <span>Admin Console</span>
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       setIsProfileOpen(false);
