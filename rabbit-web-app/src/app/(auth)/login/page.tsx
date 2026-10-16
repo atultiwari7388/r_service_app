@@ -94,11 +94,21 @@ const Login: React.FC = () => {
         if (!user.emailVerified) {
           const verifyMsg =
             "Email not verified. Please verify your email. If you haven’t received the mail, please also check your Spam folder.";
-          toast.error(verifyMsg);
+          toast.dismiss();
+          toast.error(verifyMsg, {
+            id: "auth-login-error",
+            duration: 7500,
+          });
           setErrorMessage(verifyMsg);
-          await sendEmailVerification(user);
-          await signOut(auth);
-          setIsLoading(false);
+
+          try {
+            await sendEmailVerification(user);
+          } catch (err) {
+            console.warn("Could not send email verification:", err);
+          } finally {
+            await signOut(auth);
+            setIsLoading(false);
+          }
           return;
         }
 
@@ -114,7 +124,11 @@ const Login: React.FC = () => {
         if (mechanicDoc.exists()) {
           const mechanicMsg =
             "This email is registered with the Mechanic app. Please try with another email.";
-          toast.error(mechanicMsg);
+          toast.dismiss();
+          toast.error(mechanicMsg, {
+            id: "auth-login-error",
+            duration: 7500,
+          });
           setErrorMessage(mechanicMsg);
           await signOut(auth);
           setIsLoading(false);
@@ -130,7 +144,11 @@ const Login: React.FC = () => {
             if (userData.role === "Driver") {
               const driverMsg =
                 "Access restricted! Drivers can only log in using the mobile app.";
-              toast.error(driverMsg);
+              toast.dismiss();
+              toast.error(driverMsg, {
+                id: "auth-login-error",
+                duration: 7500,
+              });
               setErrorMessage(driverMsg);
               await signOut(auth);
               setIsLoading(false);
@@ -139,37 +157,61 @@ const Login: React.FC = () => {
 
             // ✅ Active user logic
             if (userData.active === true && userData.status === "active") {
+              toast.dismiss();
               toast.success("Login Successful");
               router.push("/records");
             } else if (userData.status === "deactivated") {
               const deactMsg =
                 "Your account is deactivated. Please contact your office.";
-              toast.error(deactMsg);
+              toast.dismiss();
+              toast.error(deactMsg, {
+                id: "auth-login-error",
+                duration: 7500,
+              });
               setErrorMessage(deactMsg);
+              await signOut(auth);
               router.push("/contact-us");
             } else {
               const inactiveMsg =
                 "Your account is not active. Please contact your office.";
-              toast.error(inactiveMsg);
+              toast.dismiss();
+              toast.error(inactiveMsg, {
+                id: "auth-login-error",
+                duration: 7500,
+              });
               setErrorMessage(inactiveMsg);
+              await signOut(auth);
               router.push("/contact-us");
             }
           } else {
             const mismatchMsg = "User mismatch. Please try again.";
-            toast.error(mismatchMsg);
+            toast.dismiss();
+            toast.error(mismatchMsg, {
+              id: "auth-login-error",
+              duration: 7500,
+            });
             setErrorMessage(mismatchMsg);
             await signOut(auth);
           }
         } else {
           const notFoundMsg = "User not found in system. Please sign up.";
-          toast.error(notFoundMsg);
+          toast.dismiss();
+          toast.error(notFoundMsg, {
+            id: "auth-login-error",
+            duration: 7500,
+          });
           setErrorMessage(notFoundMsg);
+          await signOut(auth);
           router.push("/sign-up");
         }
       }
     } catch (error: unknown) {
       const customMessage = getAuthErrorMessage(error);
-      toast.error(customMessage);
+      toast.dismiss();
+      toast.error(customMessage, {
+        id: "auth-login-error",
+        duration: 7500,
+      });
       setErrorMessage(customMessage);
       console.error("Login error:", error);
     } finally {

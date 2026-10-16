@@ -73,12 +73,14 @@ export default function RouteGuard({
   useEffect(() => {
     if (isLoading) return;
 
-    if (!user && !isPublic) {
-      // User is not logged in and route is protected -> redirect to /login
+    const isVerifiedUser = Boolean(user && user.emailVerified);
+
+    if (!isVerifiedUser && !isPublic) {
+      // User is not logged in or email is not verified, and route is protected -> redirect to /login
       const returnUrl = encodeURIComponent(pathname);
       router.replace(`/login?redirect=${returnUrl}`);
-    } else if (user && isAuthPage) {
-      // User is already logged in but visits /login, /sign-up -> redirect to /records
+    } else if (isVerifiedUser && isAuthPage) {
+      // User is already logged in with verified email but visits /login, /sign-up -> redirect to /records
       router.replace("/records");
     }
   }, [user, isLoading, pathname, isPublic, isAuthPage, router]);
