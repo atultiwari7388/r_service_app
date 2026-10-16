@@ -433,7 +433,7 @@ const formatToMMDDYYYY = (dateVal: any): string => {
   }
 };
 
-const getVehicleLatestDate = (vehicle: VehicleTypes): string => {
+const getVehicleLatestDateVal = (vehicle: VehicleTypes): any => {
   const isTruck = vehicle.vehicleType === "Truck";
   let dateVal: any = null;
 
@@ -447,10 +447,59 @@ const getVehicleLatestDate = (vehicle: VehicleTypes): string => {
     dateVal = (vehicle as any).updatedAt || vehicle.createdAt;
   }
 
+  return dateVal;
+};
+
+const getVehicleLatestTimestamp = (vehicle: VehicleTypes): number => {
+  const dateVal = getVehicleLatestDateVal(vehicle);
+  if (!dateVal) return 0;
+  try {
+    if (typeof dateVal?.toDate === "function") {
+      return dateVal.toDate().getTime();
+    }
+    if (dateVal?.seconds) {
+      return dateVal.seconds * 1000;
+    }
+    if (typeof dateVal === "string" || typeof dateVal === "number") {
+      if (typeof dateVal === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())) {
+        const [y, m, day] = dateVal.trim().split("-").map(Number);
+        return new Date(y, m - 1, day).getTime();
+      }
+      const parsed = new Date(dateVal).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  } catch {
+    return 0;
+  }
+};
+
+const getVehicleLatestDate = (vehicle: VehicleTypes): string => {
+  const dateVal = getVehicleLatestDateVal(vehicle);
   return formatToMMDDYYYY(dateVal);
 };
 
+const getVehicleDisplayReading = (vehicle: VehicleTypes): string => {
+  const isTruck = vehicle.vehicleType === "Truck";
+  const rawValue = isTruck ? vehicle.currentMiles : vehicle.hoursReading;
+  if (!rawValue) return "";
+  const str = rawValue.toString().trim();
+  const num = Number(str);
+  if (str === "" || str === "0" || (!isNaN(num) && num === 0)) {
+    return "";
+  }
+  return isTruck ? `${str} mi` : `${str} hrs`;
+};
+
 const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
+  const sortedVehicles = useMemo(() => {
+    return [...filteredVehicles].sort((a, b) => {
+      const timeA = getVehicleLatestTimestamp(a);
+      const timeB = getVehicleLatestTimestamp(b);
+      return timeB - timeA;
+    });
+  }, [filteredVehicles]);
+
   return (
     <div className="w-full bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-gray-200">
       <div className="overflow-x-auto">
@@ -476,7 +525,7 @@ const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredVehicles.length === 0 ? (
+              {sortedVehicles.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={5}
@@ -487,44 +536,49 @@ const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredVehicles.map((vehicle) => (
-                  <TableRow
-                    key={vehicle.id}
-                    className="hover:bg-gray-50/60 transition"
-                  >
-                    <TableCell className="!text-xs sm:!text-sm !font-semibold !text-gray-900 !py-2.5">
-                      {vehicle.vehicleNumber}
-                    </TableCell>
-                    <TableCell className="!text-xs sm:!text-sm !text-gray-700 !py-2.5">
-                      {vehicle.companyName}
-                    </TableCell>
-                    <TableCell className="!py-2.5">
-                      <span
-                        className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-md ${
-                          vehicle.vehicleType === "Truck"
-                            ? "bg-rose-50 text-[#F96176] border border-rose-200"
-                            : "bg-purple-50 text-purple-700 border border-purple-200"
-                        }`}
-                      >
-                        {vehicle.vehicleType}
-                      </span>
-                    </TableCell>
-                    <TableCell className="!text-xs sm:!text-sm !font-medium !text-gray-800 !py-2.5">
-                      <Link
-                        href={`/account/my-vehicles/${vehicle.id}#miles-hours-history`}
-                        className="hover:text-[#F96176] hover:underline cursor-pointer"
-                        title="Click to view history"
-                      >
-                        {vehicle.vehicleType === "Truck"
-                          ? `${vehicle.currentMiles || "0"} mi`
-                          : `${vehicle.hoursReading || "0"} hrs`}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="!text-xs sm:!text-sm !text-gray-700 !py-2.5">
-                      {getVehicleLatestDate(vehicle)}
-                    </TableCell>
-                  </TableRow>
-                ))
+                sortedVehicles.map((vehicle) => {
+                  const reading = getVehicleDisplayReading(vehicle);
+                  return (
+                    <TableRow
+                      key={vehicle.id}
+                      className="hover:bg-gray-50/60 transition"
+                    >
+                      <TableCell className="!text-xs sm:!text-sm !font-semibold !text-gray-900 !py-2.5">
+                        {vehicle.vehicleNumber}
+                      </TableCell>
+                      <TableCell className="!text-xs sm:!text-sm !text-gray-700 !py-2.5">
+                        {vehicle.companyName}
+                      </TableCell>
+                      <TableCell className="!py-2.5">
+                        <span
+                          className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-md ${
+                            vehicle.vehicleType === "Truck"
+                              ? "bg-rose-50 text-[#F96176] border border-rose-200"
+                              : "bg-purple-50 text-purple-700 border border-purple-200"
+                          }`}
+                        >
+                          {vehicle.vehicleType}
+                        </span>
+                      </TableCell>
+                      <TableCell className="!text-xs sm:!text-sm !font-medium !text-gray-800 !py-2.5">
+                        {reading ? (
+                          <Link
+                            href={`/account/my-vehicles/${vehicle.id}#miles-hours-history`}
+                            className="hover:text-[#F96176] hover:underline cursor-pointer"
+                            title="Click to view history"
+                          >
+                            {reading}
+                          </Link>
+                        ) : (
+                          ""
+                        )}
+                      </TableCell>
+                      <TableCell className="!text-xs sm:!text-sm !text-gray-700 !py-2.5">
+                        {getVehicleLatestDate(vehicle)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -1677,6 +1731,11 @@ export default function RecordsPage() {
           if (!matchNum && !matchComp) return false;
         }
         return true;
+      })
+      .sort((a, b) => {
+        const timeA = getVehicleLatestTimestamp(a);
+        const timeB = getVehicleLatestTimestamp(b);
+        return timeB - timeA;
       }),
     [
       vehicles,
