@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { FaCar, FaGasPump, FaTools, FaBell } from "react-icons/fa";
+import { FaCar, FaGasPump, FaTools, FaBell, FaShareAlt } from "react-icons/fa";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContexts";
 import { HashLoader } from "react-spinners";
+import toast from "react-hot-toast";
 
 interface NotificationData {
   message: string;
@@ -30,6 +31,15 @@ interface VehicleData {
   vehicleType: string;
 }
 
+const formatDDMMYYYYtoMMDDYYYY = (value: string | number) => {
+  const str = String(value);
+  const [dd, mm, yyyy] = str.split("/");
+
+  if (!dd || !mm || !yyyy) return str;
+
+  return `${mm}/${dd}/${yyyy}`;
+};
+
 export default function NotificationDetailsComponent({
   notId,
 }: {
@@ -44,6 +54,63 @@ export default function NotificationDetailsComponent({
   const { user } = useAuth() || { user: null };
   const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
   const [userRole, setUserRole] = useState(""); // Add user role state
+
+  const handleShare = async () => {
+    if (!vehicleData || !notification) return;
+
+    const isTrailer = vehicleData.vehicleType === "Trailer";
+    const readingText = isTrailer
+      ? `${notification.hoursReading ?? 0} (current hours)`
+      : `${notification.currentMiles ?? 0} (current miles)`;
+
+    const dueServices = [...(notification.notifications || [])]
+      .filter((s) => s.nextNotificationValue !== 0)
+      .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
+      .map((s) => {
+        const val =
+          s.type === "day"
+            ? formatDDMMYYYYtoMMDDYYYY(s.nextNotificationValue)
+            : `${s.nextNotificationValue} ${isTrailer ? "hrs" : "mi"}`;
+        return `• ${s.serviceName}: ${val}`;
+      })
+      .join("\n");
+
+    const shareText = `🚚 Service Reminder | Trenoops 🔧
+
+📋 Vehicle Information:
+• Vehicle Number: ${vehicleData.vehicleNumber}
+• Company: ${vehicleData.companyName}
+• Vehicle Type: ${vehicleData.vehicleType}
+• Current Reading: ${readingText}
+
+🔔 Next Due Services:
+${dueServices || "• No pending services due"}
+
+----------------------------------------
+Trenoops
+• Website: https://www.trenoops.com/
+• Android App: https://play.google.com/store/apps/details?id=com.trenoops.app
+• iOS App: https://apps.apple.com/in/app/trenoops/id6765658994`;
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: `Service Reminder - ${vehicleData.vehicleNumber}`,
+          text: shareText,
+        });
+        return;
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareText);
+      toast.success("Notification details copied to clipboard!");
+    } catch {
+      toast.error("Failed to copy details.");
+    }
+  };
 
   // Fetch user data and determine effectiveUserId
   useEffect(() => {
@@ -171,16 +238,27 @@ export default function NotificationDetailsComponent({
         )}
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="mb-6 flex justify-between items-center">
+          <div className="mb-6 flex flex-wrap justify-between items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-800">
               Service Reminder
             </h1>
-            <Link
-              href="/account/notifications"
-              className="text-blue-500 hover:underline"
-            >
-              Back to Notifications
-            </Link>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-[#F96176] hover:bg-[#e05064] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                title="Share service reminder"
+              >
+                <FaShareAlt className="text-white text-xs sm:text-sm" />
+                <span>Share</span>
+              </button>
+              <Link
+                href="/account/notifications"
+                className="text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-300 hover:bg-gray-100 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-colors"
+              >
+                Back to Notifications
+              </Link>
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -233,15 +311,6 @@ const InfoRow = ({ icon, text }: { icon: React.ReactNode; text: string }) => (
     <p className="text-gray-600 flex-1">{text}</p>
   </div>
 );
-
-const formatDDMMYYYYtoMMDDYYYY = (value: string | number) => {
-  const str = String(value);
-  const [dd, mm, yyyy] = str.split("/");
-
-  if (!dd || !mm || !yyyy) return str;
-
-  return `${mm}/${dd}/${yyyy}`;
-};
 
 const ServiceItem = ({ service }: { service: Service }) => {
   if (service.nextNotificationValue === 0) return null;
