@@ -271,7 +271,9 @@ export default function MyVehicleDetailsScreen() {
           </tr>
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${
-              vehicleData?.vehicleType === "Trailer" ? "Current Hours" : "Current Miles"
+              vehicleData?.vehicleType === "Trailer"
+                ? "Current Hours"
+                : "Current Miles"
             }</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${
               (vehicleData?.vehicleType === "Trailer"
@@ -1572,7 +1574,7 @@ export default function MyVehicleDetailsScreen() {
                   : ""}
               </span>
             </p>
-            <p className="text-gray-600">
+            {/* <p className="text-gray-600">
               {vehicleData?.vehicleType === "Trailer"
                 ? "Current Hours:"
                 : "Current Miles:"}{" "}
@@ -1581,7 +1583,7 @@ export default function MyVehicleDetailsScreen() {
                   ? vehicleData?.hoursReading || "N/A"
                   : vehicleData?.currentMiles || "N/A"}
               </span>
-            </p>
+            </p> */}
           </div>
         </div>
       </div>
