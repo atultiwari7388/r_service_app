@@ -26,9 +26,85 @@
     },
     {
       "client_info": {
+        "mobilesdk_app_id": "1:605779344995:android:b46e50e7516ba21d018256",
+        "android_client_info": {
+          "package_name": "com.rabbit_service.admin_rabbit_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWscm-Y87peiFPzHb7OzNnUhCse5yUhKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:605779344995:android:f4689d5242c0ed90018256",
         "android_client_info": {
           "package_name": "com.rabbit_u_d_app.rabbit_services_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWscm-Y87peiFPzHb7OzNnUhCse5yUhKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605779344995:android:88fcafbb67bf2bb4018256",
+        "android_client_info": {
+          "package_name": "com.trenoops.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWscm-Y87peiFPzHb7OzNnUhCse5yUhKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605779344995:android:9d814428c4c7ed49018256",
+        "android_client_info": {
+          "package_name": "com.trenoops.mechanic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWscm-Y87peiFPzHb7OzNnUhCse5yUhKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605779344995:android:789357b6a22b35df018256",
+        "android_client_info": {
+          "package_name": "com.trenoops.trenoops_mechanic"
         }
       },
       "oauth_client": [],

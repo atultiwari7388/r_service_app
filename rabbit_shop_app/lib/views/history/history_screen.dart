@@ -1,3 +1,6 @@
+import 'dart:developer';
+import 'dart:io' show Platform;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -217,8 +220,7 @@ class _UpcomingAndCompletedJobsScreenState
               final dId = jobs["userId"];
               final bool isImage = jobs["isImageSelected"] ?? false;
               final List<dynamic> images = jobs['images'] ?? [];
-              final vehicleNumber =
-                  jobs['vehicleNumber'] ?? "N/A"; // Fetch the vehicle number
+              final vehicleNumber = jobs['vehicleNumber'] ?? "N/A";
 
               String dateString = '';
               if (jobs['date'] is Timestamp) {
@@ -227,8 +229,8 @@ class _UpcomingAndCompletedJobsScreenState
                     "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
               }
               final payMode = jobs["payMode"].toString();
-              final userLat = (jobs["userLat"] as num).toDouble();
-              final userLng = (jobs["userLong"] as num).toDouble();
+              final userLat = (jobs["userLat"] as num?)?.toDouble() ?? 0.0;
+              final userLng = (jobs["userLong"] as num?)?.toDouble() ?? 0.0;
 
               // Retrieve mecLatitude and mecLongitude from mechanicsOffer array
               double mecLatitude = 0.0;
@@ -283,6 +285,7 @@ class _UpcomingAndCompletedJobsScreenState
               return UpcomingRequestCard(
                 orderId: jobs["orderId"].toString(),
                 userName: jobs["userName"],
+                myCompany: jobs["myCompany"]?.toString() ?? "",
                 vehicleName: vehicleNumber,
                 address: jobs['userDeliveryAddress'] ?? "N/A",
                 serviceName: jobs['selectedService'] ?? "N/A",
@@ -294,7 +297,6 @@ class _UpcomingAndCompletedJobsScreenState
                 buttonName: "Start",
                 onButtonTap: _showStartDialog,
                 onCancelBtnTap: () {
-                  // Step 1: Show the first confirmation dialog (Are you sure?)
                   showDialog(
                     context: context,
                     builder: (context) {
@@ -330,20 +332,38 @@ class _UpcomingAndCompletedJobsScreenState
                   await launchUrl(launchUri);
                 },
                 onDirectionTapButton: () async {
-                  final Uri googleMapsUri = Uri.parse(
-                      'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
-                  // ignore: deprecated_member_use
-                  if (await canLaunch(googleMapsUri.toString())) {
-                    // ignore: deprecated_member_use
-                    await launch(googleMapsUri.toString());
-                  } else {
-                    // Handle the error if the URL cannot be launched
-                    print('Could not launch Google Maps');
+                  log("Direction button tapped");
+                  if (userLat == 0.0 && userLng == 0.0) {
+                    log("Invalid or missing destination coordinates: lat=$userLat, lng=$userLng");
+                    return;
+                  }
+
+                  try {
+                    if (Platform.isIOS) {
+                      final Uri appleMapsUri = Uri.parse(
+                          'https://maps.apple.com/?daddr=$userLat,$userLng&dirflg=d');
+                      if (await canLaunchUrl(appleMapsUri)) {
+                        await launchUrl(appleMapsUri,
+                            mode: LaunchMode.externalApplication);
+                      } else {
+                        log('Could not launch Apple Maps');
+                      }
+                    } else {
+                      final Uri googleMapsUri = Uri.parse(
+                          'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                      if (await canLaunchUrl(googleMapsUri)) {
+                        await launchUrl(googleMapsUri,
+                            mode: LaunchMode.externalApplication);
+                      } else {
+                        print('Could not launch Google Maps');
+                      }
+                    }
+                  } catch (e) {
+                    log("Error launching navigation: $e");
                   }
                 },
                 currentStatus: mechanicStatus,
-                companyNameAndVehicleName:
-                    "${jobs["companyName"]} (${vehicleNumber})",
+                companyNameAndVehicleName: "${vehicleNumber}",
                 onCompletedButtonTap: () {},
                 rating: jobs["mRating"].toString(),
                 arrivalCharges: arrivalCharges,
@@ -359,6 +379,7 @@ class _UpcomingAndCompletedJobsScreenState
                 cancelationReason: jobs["cancelReason"].toString(),
                 description: jobs["description"].toString(),
                 perHourCharges: perHourCharges,
+                orderDate: jobs['orderDate'] as Timestamp,
               );
             },
           ),

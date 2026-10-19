@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_shop_app/views/aboutUs/about_us_screen.dart';
-import 'package:regal_shop_app/views/adminContact/admin_contact_screen.dart';
 import 'package:regal_shop_app/views/helpContact/help_center.dart';
 import 'package:regal_shop_app/views/privacyPolicy/privacy_policy.dart';
 import 'package:regal_shop_app/views/profile/profile_detail_screen.dart';
@@ -128,8 +127,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         () => Get.to(() => TermsAndConditions())),
                     buildListTile("assets/privacy_bw.png", "Privacy Policy",
                         () => Get.to(() => PrivacyPolicyScreen())),
-                    buildListTile(
-                        "assets/out_bw.png", "Logout", () => signOut(context)),
+                    buildListTile("assets/out_bw.png", "Logout",
+                        () => _showLogoutConfirmationDialog(context)),
 
                     buildListTile(
                       "assets/delete.png",
@@ -299,6 +298,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       .doc(currentUId)
                       .update({
                     'status': 'deactivated',
+                    'active': false,
+                    'fcmToken': null,
                     'deactivatedAt': FieldValue.serverTimestamp(),
                   });
 
@@ -404,11 +405,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .snapshots(),
         builder:
             (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-          if (snapshot.hasError) {
-            return Text('Error: ${snapshot.error}');
-          }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.hasError ||
+              snapshot.connectionState == ConnectionState.waiting ||
+              !snapshot.hasData ||
+              snapshot.data?.data() == null) {
             return Container();
           }
 
@@ -480,20 +480,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  //====================== signOut from app =====================
+  //====================== logout popup & signOut =====================
+  void _showLogoutConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: kLightWhite,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: kPrimary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.logout_rounded,
+                  color: kPrimary,
+                  size: 22.sp,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Text(
+                "Logout",
+                style: appStyle(18, kDark, FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Text(
+            "Are you sure you want to logout?",
+            style: appStyle(14, kDark, FontWeight.normal),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                "No",
+                style: appStyle(14, kGray, FontWeight.w600),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                signOut(context);
+              },
+              child: Text(
+                "Yes",
+                style: appStyle(14, kWhite, FontWeight.w600),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void signOut(BuildContext context) async {
     try {
-      await auth.signOut().then((value) async {
+      final uid = _firebaseAuth.currentUser?.uid ?? auth.currentUser?.uid;
+      if (uid != null && uid.isNotEmpty) {
         await FirebaseFirestore.instance
             .collection('Mechanics')
-            .doc(currentUId)
+            .doc(uid)
             .update({
           'active': false,
-          'fcmToken': '',
+          'fcmToken': null,
         });
-        Get.offAll(() => LoginScreen());
-      });
+      }
+
+      Get.offAll(() => const LoginScreen());
+      await auth.signOut();
     } catch (e) {
+      log("Logout error: $e");
       showToastMessage("Error", e.toString(), Colors.red);
     }
   }

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "regal_shop_app" "\0"
+            VALUE "FileDescription", "Treno Mechanic" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "regal_shop_app" "\0"
+            VALUE "InternalName", "Treno Mechanic" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "regal_shop_app.exe" "\0"
-            VALUE "ProductName", "regal_shop_app" "\0"
+            VALUE "ProductName", "Treno Mechanic" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

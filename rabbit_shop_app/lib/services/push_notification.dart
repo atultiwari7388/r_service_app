@@ -36,25 +36,74 @@ class PushNotification {
   static const String _soundOfferAccepted = 'offer_accepted_sound';
   static const String _soundDefault = 'default_sound';
 
+  /// Safely retrieves the device FCM token.
+  /// On iOS, checks and waits for the APNs token first to avoid `apns-token-not-set` error.
+  /// Returns null safely on iOS Simulator or if APNs registration is unavailable.
+  static Future<String?> getDeviceToken() async {
+    try {
+      if (Platform.isIOS) {
+        String? apnsToken = await _firebaseMessaging.getAPNSToken();
+        int attempts = 0;
+        while (apnsToken == null && attempts < 5) {
+          await Future.delayed(const Duration(seconds: 1));
+          apnsToken = await _firebaseMessaging.getAPNSToken();
+          attempts++;
+        }
+
+        if (apnsToken == null) {
+          log("APNs token is not set yet. Skipping getToken (iOS Simulator or APNs pending).");
+          return null;
+        }
+      }
+
+      final fcmToken = await _firebaseMessaging.getToken();
+      return fcmToken;
+    } catch (e) {
+      log("Error fetching FCM token: $e");
+      return null;
+    }
+  }
+
   // Initialize Push Notifications
   Future init() async {
-    // Request notification permissions
-    await _firebaseMessaging.requestPermission(
-      alert: true,
-      announcement: true,
-      badge: true,
-      sound: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-    );
+    try {
+      // Request notification permissions
+      final settings = await _firebaseMessaging.requestPermission(
+        alert: true,
+        announcement: true,
+        badge: true,
+        sound: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+      );
+      log("Notification authorization status: ${settings.authorizationStatus}");
 
-    // Get the device token and store it in Firestore
-    final fcmToken = await _firebaseMessaging.getToken();
-    log("Device Token: $fcmToken");
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId != null && fcmToken != null) {
-      await updateUserFCMToken(userId, fcmToken);
+      // Configure foreground presentation options on iOS
+      await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      // Listen for FCM token updates (fires when APNs token is ready on physical devices)
+      _firebaseMessaging.onTokenRefresh.listen((newToken) async {
+        log("FCM Token refreshed: $newToken");
+        final userId = FirebaseAuth.instance.currentUser?.uid;
+        if (userId != null && newToken.isNotEmpty) {
+          await updateUserFCMToken(userId, newToken);
+        }
+      });
+
+      // Get the device token safely and store it in Firestore
+      final fcmToken = await getDeviceToken();
+      log("Device Token: $fcmToken");
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId != null && fcmToken != null && fcmToken.isNotEmpty) {
+        await updateUserFCMToken(userId, fcmToken);
+      }
+    } catch (e) {
+      log("Error during PushNotification init: $e");
     }
 
     // Handle foreground messages
@@ -101,10 +150,10 @@ class PushNotification {
     // iOS Initialization Settings
     final DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
-      onDidReceiveLocalNotification: (id, title, body, payload) async {
-        // Handle iOS local notification
-      },
-    );
+            // onDidReceiveLocalNotification: (id, title, body, payload) async {
+            //   // Handle iOS local notification
+            // },
+            );
 
     // Linux Initialization Settings
     final LinuxInitializationSettings initializationSettingsLinux =
@@ -309,11 +358,11 @@ class PushNotification {
   }
 
   // Update user FCM token in Firestore
-  Future<void> updateUserFCMToken(String userId, String fcmToken) async {
+  static Future<void> updateUserFCMToken(String userId, String fcmToken) async {
     try {
-      await _firestore.collection('Mechanics').doc(userId).update({
+      await FirebaseFirestore.instance.collection('Mechanics').doc(userId).set({
         'fcmToken': fcmToken,
-      });
+      }, SetOptions(merge: true));
       log('FCM token updated in Mechanics collection');
     } catch (error) {
       log('Error updating FCM token in Mechanics collection: $error');

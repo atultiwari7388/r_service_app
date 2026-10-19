@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
-version: 1.0.1+2
+version: 1.0.1+4
 
 environment:
   sdk: ">=3.2.6 <4.0.0"
@@ -13,21 +13,21 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.2
-  rename: ^2.1.1
+  rename: ^3.1.0
   get: ^4.6.5
-  google_fonts: ^4.0.4
-  pin_code_fields: ^7.4.0
+  google_fonts: ^6.3.2
+  # pin_code_fields: ^7.4.0
   cached_network_image: ^3.1.0
-  carousel_slider: ^4.2.1
-  firebase_core: ^3.6.0
-  firebase_auth: ^5.3.1
-  cloud_firestore: ^5.4.4
-  firebase_storage: ^12.3.3
+  carousel_slider: ^5.1.2
+  firebase_core: ^4.11.0
+  firebase_auth: ^6.5.3
+  cloud_firestore: ^6.6.0
+  firebase_storage: ^13.4.3
   firebase_messaging:
-  flutter_local_notifications: ^17.2.3
-  geocoding: ^3.0.0
+  flutter_local_notifications: ^19.5.0
+  geocoding: ^4.0.0
   geolocator: ^14.0.2
-  location: ^5.0.3
+  location: ^8.0.1
   lottie: ^3.0.0
   # otp_autofill: ^3.0.2
   shimmer: ^3.0.0
@@ -51,15 +51,14 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^2.0.0
 
 flutter_icons:
   android: true
-  ios: true
-  image_path: "assets/new_logo_m.png"
+  ios: false
+  image_path: "assets/trenoops_mechanic.png"
   min_sdk_android: 21
-
-  flutter_lints: ^2.0.0
 
 flutter:
   # The following line ensures that the Material Icons font is

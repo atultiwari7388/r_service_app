@@ -1,3 +1,6 @@
+import 'dart:developer';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -362,7 +365,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                   if (distance < 1) {
                                                     distance = 1;
                                                   }
-
                                                   // Logic to ensure job is nearby
                                                   if (distance <=
                                                       (job['nearByDistance'] ??
@@ -372,6 +374,16 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                           .toString(),
                                                       userName: job["userName"]
                                                           .toString(),
+                                                      userId: job["userId"]
+                                                              ?.toString() ??
+                                                          "",
+                                                      dId: job["userId"]
+                                                              ?.toString() ??
+                                                          "",
+                                                      myCompany: job[
+                                                                  "myCompany"]
+                                                              ?.toString() ??
+                                                          "",
                                                       vehicleName:
                                                           "${job["companyName"]} (${job['vehicleNumber']})",
                                                       address:
@@ -401,26 +413,70 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                             false,
                                                         controller,
                                                       ),
+                                                      // onDasMapButton: () async {
+                                                      //   final Uri
+                                                      //       googleMapsUri =
+                                                      //       Uri.parse(
+                                                      //           'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                                                      //   if (await canLaunch(
+                                                      //       googleMapsUri
+                                                      //           .toString())) {
+                                                      //     await launch(
+                                                      //         googleMapsUri
+                                                      //             .toString());
+                                                      //   } else {
+                                                      //     print(
+                                                      //         'Could not launch Google Maps');
+                                                      //   }
+                                                      // },
+
                                                       onDasMapButton: () async {
-                                                        final Uri
-                                                            googleMapsUri =
-                                                            Uri.parse(
-                                                                'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
-                                                        if (await canLaunch(
-                                                            googleMapsUri
-                                                                .toString())) {
-                                                          await launch(
-                                                              googleMapsUri
-                                                                  .toString());
-                                                        } else {
-                                                          print(
-                                                              'Could not launch Google Maps');
+                                                        log("Direction button tapped");
+                                                        if (userLat == 0.0 &&
+                                                            userLng == 0.0) {
+                                                          log("Invalid or missing destination coordinates: lat=$userLat, lng=$userLng");
+                                                          return;
+                                                        }
+
+                                                        try {
+                                                          if (Platform.isIOS) {
+                                                            final Uri
+                                                                appleMapsUri =
+                                                                Uri.parse(
+                                                                    'https://maps.apple.com/?daddr=$userLat,$userLng&dirflg=d');
+                                                            if (await canLaunchUrl(
+                                                                appleMapsUri)) {
+                                                              await launchUrl(
+                                                                  appleMapsUri,
+                                                                  mode: LaunchMode
+                                                                      .externalApplication);
+                                                            } else {
+                                                              log('Could not launch Apple Maps');
+                                                            }
+                                                          } else {
+                                                            final Uri
+                                                                googleMapsUri =
+                                                                Uri.parse(
+                                                                    'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                                                            if (await canLaunchUrl(
+                                                                googleMapsUri)) {
+                                                              await launchUrl(
+                                                                  googleMapsUri,
+                                                                  mode: LaunchMode
+                                                                      .externalApplication);
+                                                            } else {
+                                                              print(
+                                                                  'Could not launch Google Maps');
+                                                            }
+                                                          }
+                                                        } catch (e) {
+                                                          log("Error launching navigation: $e");
                                                         }
                                                       },
+
                                                       currentStatus:
                                                           mechanicStatus,
-                                                      rating:
-                                                          "4.5", // Assuming you will fetch or calculate this elsewhere
+                                                      rating: "4.5",
                                                       arrivalCharges: "30",
                                                       km: "${distance.toStringAsFixed(0)} miles",
                                                       isImage: isImage,
@@ -441,9 +497,12 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                       description:
                                                           job["description"]
                                                               .toString(),
+                                                      orderDate:
+                                                          job['orderDate']
+                                                              as Timestamp,
                                                     );
                                                   } else {
-                                                    return Container(); // Return an empty container if distance is greater than nearbyDistance
+                                                    return Container();
                                                   }
                                                 },
                                               );
@@ -505,19 +564,16 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
           Row(
             children: [
-              Icon(Icons.location_on_outlined,
-                  size: 16, color: kSecondary), // Reduce icon size if necessary
-              SizedBox(width: 5.w), // Add space between the icon and text
+              Icon(Icons.location_on_outlined, size: 16, color: kSecondary),
+              SizedBox(width: 5.w),
               SizedBox(
-                width: 160.w, // Limit the width to 150
+                width: 160.w,
                 child: ReusableText(
                   text: controller.appbarTitle.isEmpty
                       ? "Fetching Address..."
                       : controller.appbarTitle,
-                  style:
-                      appStyle(13, kGray, FontWeight.normal) // Make it unbold
-                          .copyWith(
-                              overflow: TextOverflow.ellipsis), // Add ellipsis
+                  style: appStyle(13, kGray, FontWeight.normal)
+                      .copyWith(overflow: TextOverflow.ellipsis),
                 ),
               ),
             ],
@@ -563,8 +619,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                 final data = snapshot.data!.data() as Map<String, dynamic>;
                 controller.userPhoto = data['profilePicture'] ?? '';
                 controller.userName = data['userName'] ?? '';
-                controller.phoneNumber = data['phoneNumber'] ?? '';
-                controller.perHourCharges = data["perHCharge"] ?? 0;
+                controller.phoneNumber = data['cellPhone'] ?? '';
+                // controller.perHourCharges = data["perHCharge"] ?? 0;
 
                 if (controller.userPhoto.isEmpty) {
                   return Text(
@@ -652,11 +708,12 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
       showAddArrivalChargesDialog2(userId, jobId, controller);
     } else if (isShowImage) {
       final TextEditingController arrivalChargesController =
-          TextEditingController();
+          TextEditingController(text: "0");
       final TextEditingController timeController =
           TextEditingController(text: "10");
       final TextEditingController perHourChargesController =
           TextEditingController(text: controller.perHourCharges.toString());
+      bool isSubmitting = false;
 
       Get.defaultDialog(
         title: "Confirm",
@@ -701,104 +758,127 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         textConfirm: "Submit",
         cancel: OutlinedButton(
           onPressed: () {
-            Get.back(); // Close the dialog if "Cancel" is pressed
+            Get.back();
           },
           child: Text("Cancel", style: TextStyle(color: Colors.red)),
         ),
-        confirm: ElevatedButton(
-          onPressed: () async {
-            setState(() {
-              isStatusUpdating = true;
-            });
+        confirm: StatefulBuilder(
+          builder: (context, setDialogState) {
+            return ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      final arrivalCharges = arrivalChargesController.text.trim();
+                      final perHourCharges = perHourChargesController.text.trim();
+                      final time = timeController.text.trim();
 
-            final arrivalCharges = arrivalChargesController.text;
-            final perHourCharges = perHourChargesController.text;
-            final time = timeController.text;
+                      if (arrivalCharges.isEmpty || perHourCharges.isEmpty) {
+                        Get.snackbar(
+                            "Error", "Please enter all required charges.");
+                        return;
+                      }
 
-            if (arrivalCharges.isNotEmpty && perHourCharges.isNotEmpty) {
-              Get.back(); // Close the current dialog
+                      setDialogState(() {
+                        isSubmitting = true;
+                      });
 
-              // Get the current mechanic location
-              loc.Location location = loc.Location();
-              loc.LocationData locationData = await location.getLocation();
+                      setState(() {
+                        isStatusUpdating = true;
+                      });
 
-              // Create a new offer for the mechanic
-              var mechanicOffer = {
-                "mId": currentUId.toString(),
-                "mName": controller.userName.toString(),
-                "mNumber": controller.phoneNumber.toString(),
-                "mDp": controller.userPhoto.toString(),
-                "arrivalCharges": arrivalCharges,
-                "perHourCharges": perHourCharges,
-                "fixPrice": 0,
-                "time": time,
-                "latitude": locationData.latitude,
-                "longitude": locationData.longitude,
-                "status": 1,
-                "rating": "4.3",
-                "reviewSubmitted": false,
-                "languages": controller.selectedLanguages,
-                "mechanicAddress": controller.appbarTitle,
-                "offerAcceptedDate": DateTime.now(),
-              };
+                      Get.back();
 
-              // Update the Firestore `jobs` collection
-              await FirebaseFirestore.instance
-                  .collection('jobs')
-                  .doc(jobId)
-                  .update({
-                "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
-              });
+                      try {
+                        // Get the current mechanic location
+                        loc.Location location = loc.Location();
+                        loc.LocationData locationData =
+                            await location.getLocation();
 
-              // Check if the history document exists
-              DocumentReference historyDoc = await FirebaseFirestore.instance
-                  .collection("Users")
-                  .doc(userId)
-                  .collection("history")
-                  .doc(jobId);
+                        // Create a new offer for the mechanic
+                        var mechanicOffer = {
+                          "mId": currentUId.toString(),
+                          "mName": controller.userName.toString(),
+                          "mNumber": controller.phoneNumber.toString(),
+                          "mDp": controller.userPhoto.toString(),
+                          "arrivalCharges":
+                              arrivalCharges.isEmpty ? 0 : arrivalCharges,
+                          "perHourCharges": perHourCharges,
+                          "fixPrice": 0,
+                          "time": time,
+                          "latitude": locationData.latitude,
+                          "longitude": locationData.longitude,
+                          "status": 1,
+                          "rating": "4.3",
+                          "reviewSubmitted": false,
+                          "languages": controller.selectedLanguages,
+                          "mechanicAddress": controller.appbarTitle,
+                          "offerAcceptedDate": DateTime.now(),
+                        };
 
-              // Get the history document snapshot
-              DocumentSnapshot docSnapshot = await historyDoc.get();
+                        // Update the Firestore `jobs` collection
+                        await FirebaseFirestore.instance
+                            .collection('jobs')
+                            .doc(jobId)
+                            .update({
+                          "mechanicsOffer":
+                              FieldValue.arrayUnion([mechanicOffer]),
+                        });
 
-              if (docSnapshot.exists) {
-                // If document exists, update it
-                await historyDoc.update({
-                  "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
-                }).then((value) {
-                  widget.setTab?.call(1);
-                  setState(() {
-                    isStatusUpdating = false;
-                  });
-                });
-              } else {
-                // If document does not exist, create it
-                await historyDoc.set({
-                  "mechanicsOffer": [mechanicOffer],
-                });
-                setState(() {
-                  isStatusUpdating = false;
-                });
-              }
-              // Optional: Show a confirmation message or navigate to another screen
-              Get.snackbar("Success", "Request Sent Successfully.");
-            } else {
-              setState(() {
-                isStatusUpdating = false;
-              });
-              Get.snackbar("Error", "Please enter all required charges.");
-            }
+                        // Check if the history document exists
+                        DocumentReference historyDoc = FirebaseFirestore
+                            .instance
+                            .collection("Users")
+                            .doc(userId)
+                            .collection("history")
+                            .doc(jobId);
+
+                        // Get the history document snapshot
+                        DocumentSnapshot docSnapshot = await historyDoc.get();
+
+                        if (docSnapshot.exists) {
+                          // If document exists, update it
+                          await historyDoc.update({
+                            "mechanicsOffer":
+                                FieldValue.arrayUnion([mechanicOffer]),
+                          }).then((value) {
+                            widget.setTab?.call(1);
+                            setState(() {
+                              isStatusUpdating = false;
+                            });
+                          });
+                        } else {
+                          // If document does not exist, create it
+                          await historyDoc.set({
+                            "mechanicsOffer": [mechanicOffer],
+                          });
+                          setState(() {
+                            isStatusUpdating = false;
+                          });
+                        }
+                        Get.snackbar("Success", "Request Sent Successfully.");
+                      } catch (e) {
+                        setState(() {
+                          isStatusUpdating = false;
+                        });
+                        Get.snackbar("Error", "Failed to send request: $e");
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isSubmitting ? Colors.grey : Colors.green,
+              ),
+              child: Text("Submit", style: TextStyle(color: Colors.white)),
+            );
           },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          child: Text("Submit", style: TextStyle(color: Colors.white)),
         ),
       );
     } else {
       final TextEditingController arrivalChargesController =
-          TextEditingController();
+          TextEditingController(text: "0");
       final TextEditingController timeController =
           TextEditingController(text: "10");
       final TextEditingController perHourChargesController =
           TextEditingController(text: controller.perHourCharges.toString());
+      bool isSubmitting = false;
 
       Get.defaultDialog(
         title: "Confirm",
@@ -847,91 +927,113 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
           },
           child: Text("Cancel", style: TextStyle(color: Colors.red)),
         ),
-        confirm: ElevatedButton(
-          onPressed: () async {
-            setState(() {
-              isStatusUpdating = true;
-            });
+        confirm: StatefulBuilder(
+          builder: (context, setDialogState) {
+            return ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      final arrivalCharges = arrivalChargesController.text.trim();
+                      final perHourCharges = perHourChargesController.text.trim();
+                      final time = timeController.text.trim();
 
-            final arrivalCharges = arrivalChargesController.text;
-            final perHourCharges = perHourChargesController.text;
-            final time = timeController.text;
+                      if (arrivalCharges.isEmpty || perHourCharges.isEmpty) {
+                        Get.snackbar(
+                            "Error", "Please enter all required charges.");
+                        return;
+                      }
 
-            if (arrivalCharges.isNotEmpty && perHourCharges.isNotEmpty) {
-              Get.back(); // Close the current dialog
+                      setDialogState(() {
+                        isSubmitting = true;
+                      });
 
-              // Get the current mechanic location
-              loc.Location location = loc.Location();
-              loc.LocationData locationData = await location.getLocation();
+                      setState(() {
+                        isStatusUpdating = true;
+                      });
 
-              // Create a new offer for the mechanic
-              var mechanicOffer = {
-                "mId": currentUId.toString(),
-                "mName": controller.userName.toString(),
-                "mNumber": controller.phoneNumber.toString(),
-                "mDp": controller.userPhoto.toString(),
-                "arrivalCharges": arrivalCharges,
-                "perHourCharges": perHourCharges,
-                "fixPrice": 0,
-                "time": time,
-                "latitude": locationData.latitude,
-                "longitude": locationData.longitude,
-                "status": 1,
-                "rating": "4.3",
-                "reviewSubmitted": false,
-                "languages": controller.selectedLanguages,
-                "mechanicAddress": controller.appbarTitle,
-                "offerAcceptedDate": DateTime.now(),
-              };
+                      Get.back(); // Close the current dialog
 
-              // Update the Firestore `jobs` collection
-              await FirebaseFirestore.instance
-                  .collection('jobs')
-                  .doc(jobId)
-                  .update({
-                "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
-              });
+                      try {
+                        // Get the current mechanic location
+                        loc.Location location = loc.Location();
+                        loc.LocationData locationData =
+                            await location.getLocation();
 
-              // Check if the history document exists
-              DocumentReference historyDoc = await FirebaseFirestore.instance
-                  .collection("Users")
-                  .doc(userId)
-                  .collection("history")
-                  .doc(jobId);
+                        // Create a new offer for the mechanic
+                        var mechanicOffer = {
+                          "mId": currentUId.toString(),
+                          "mName": controller.userName.toString(),
+                          "mNumber": controller.phoneNumber.toString(),
+                          "mDp": controller.userPhoto.toString(),
+                          "arrivalCharges":
+                              arrivalCharges.isEmpty ? 0 : arrivalCharges,
+                          "perHourCharges": perHourCharges,
+                          "fixPrice": 0,
+                          "time": time,
+                          "latitude": locationData.latitude,
+                          "longitude": locationData.longitude,
+                          "status": 1,
+                          "rating": "4.3",
+                          "reviewSubmitted": false,
+                          "languages": controller.selectedLanguages,
+                          "mechanicAddress": controller.appbarTitle,
+                          "offerAcceptedDate": DateTime.now(),
+                        };
 
-              // Get the history document snapshot
-              DocumentSnapshot docSnapshot = await historyDoc.get();
+                        // Update the Firestore `jobs` collection
+                        await FirebaseFirestore.instance
+                            .collection('jobs')
+                            .doc(jobId)
+                            .update({
+                          "mechanicsOffer":
+                              FieldValue.arrayUnion([mechanicOffer]),
+                        });
 
-              if (docSnapshot.exists) {
-                // If document exists, update it
-                await historyDoc.update({
-                  "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
-                }).then((value) {
-                  widget.setTab?.call(1);
-                  setState(() {
-                    isStatusUpdating = false;
-                  });
-                });
-              } else {
-                // If document does not exist, create it
-                await historyDoc.set({
-                  "mechanicsOffer": [mechanicOffer],
-                });
-                setState(() {
-                  isStatusUpdating = false;
-                });
-              }
-              // Optional: Show a confirmation message or navigate to another screen
-              Get.snackbar("Success", "Request Sent Successfully.");
-            } else {
-              setState(() {
-                isStatusUpdating = false;
-              });
-              Get.snackbar("Error", "Please enter all required charges.");
-            }
+                        // Check if the history document exists
+                        DocumentReference historyDoc = FirebaseFirestore
+                            .instance
+                            .collection("Users")
+                            .doc(userId)
+                            .collection("history")
+                            .doc(jobId);
+
+                        // Get the history document snapshot
+                        DocumentSnapshot docSnapshot = await historyDoc.get();
+
+                        if (docSnapshot.exists) {
+                          // If document exists, update it
+                          await historyDoc.update({
+                            "mechanicsOffer":
+                                FieldValue.arrayUnion([mechanicOffer]),
+                          }).then((value) {
+                            widget.setTab?.call(1);
+                            setState(() {
+                              isStatusUpdating = false;
+                            });
+                          });
+                        } else {
+                          // If document does not exist, create it
+                          await historyDoc.set({
+                            "mechanicsOffer": [mechanicOffer],
+                          });
+                          setState(() {
+                            isStatusUpdating = false;
+                          });
+                        }
+                        Get.snackbar("Success", "Request Sent Successfully.");
+                      } catch (e) {
+                        setState(() {
+                          isStatusUpdating = false;
+                        });
+                        Get.snackbar("Error", "Failed to send request: $e");
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isSubmitting ? Colors.grey : Colors.green,
+              ),
+              child: Text("Submit", style: TextStyle(color: Colors.white)),
+            );
           },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          child: Text("Submit", style: TextStyle(color: Colors.white)),
         ),
       );
     }
@@ -943,6 +1045,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         TextEditingController(text: "150");
     final TextEditingController timeController =
         TextEditingController(text: "10 ");
+    bool isSubmitting = false;
 
     Get.defaultDialog(
       title: "Add Fix Price",
@@ -986,90 +1089,109 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
               TextStyle(color: Colors.red), // Custom color for "Cancel" button
         ),
       ),
-      confirm: ElevatedButton(
-        onPressed: () async {
-          setState(() {
-            isStatusUpdating = true;
-          });
-          final fixCharge = fixPriceController.text;
-          final time = timeController.text;
-          if (fixCharge.isNotEmpty) {
-            Get.back();
-            loc.Location location = loc.Location();
-            loc.LocationData locationData = await location.getLocation();
+      confirm: StatefulBuilder(
+        builder: (context, setDialogState) {
+          return ElevatedButton(
+            onPressed: isSubmitting
+                ? null
+                : () async {
+                    final fixCharge = fixPriceController.text;
+                    final time = timeController.text;
 
-            var jobData = {
-              "status": 1,
-              "rating": "4.3",
-              "time": time,
-              "mId": currentUId.toString(),
-              "mName": controller.userName.toString(),
-              "mNumber": controller.phoneNumber.toString(),
-              "mDp": controller.userPhoto.toString(),
-              "languages": controller.selectedLanguages,
-              'arrivalCharges': 0,
-              'perHourCharges': 0,
-              "reviewSubmitted": false,
-              "fixPrice": fixCharge,
-              'mechanicAddress': controller.appbarTitle,
-              "latitude": locationData.latitude,
-              "longitude": locationData.longitude,
-            };
+                    if (fixCharge.isEmpty) {
+                      Get.snackbar(
+                          "Error", "Please enter all required charges.");
+                      return;
+                    }
 
-            // Update the Firestore `jobs` collection
-            await FirebaseFirestore.instance
-                .collection('jobs')
-                .doc(jobId)
-                .update({
-              "mechanicsOffer": FieldValue.arrayUnion([jobData]),
-            });
+                    setDialogState(() {
+                      isSubmitting = true;
+                    });
 
-            // Check if the history document exists
-            DocumentReference historyDoc = await FirebaseFirestore.instance
-                .collection("Users")
-                .doc(userId)
-                .collection("history")
-                .doc(jobId);
+                    setState(() {
+                      isStatusUpdating = true;
+                    });
 
-            // Get the history document snapshot
-            DocumentSnapshot docSnapshot = await historyDoc.get();
+                    Get.back();
 
-            if (docSnapshot.exists) {
-              // If document exists, update it
-              await historyDoc.update({
-                "mechanicsOffer": FieldValue.arrayUnion([jobData]),
-              }).then((value) {
-                widget.setTab?.call(1);
-                setState(() {
-                  isStatusUpdating = false;
-                });
-              });
-            } else {
-              // If document does not exist, create it
-              await historyDoc.set({
-                "mechanicsOffer": [jobData],
-              });
-              setState(() {
-                isStatusUpdating = false;
-              });
-            }
+                    try {
+                      loc.Location location = loc.Location();
+                      loc.LocationData locationData =
+                          await location.getLocation();
 
-            // Optional: Show a confirmation message or navigate to another screen
-            Get.snackbar("Success", "Request Sent Successfully.");
-          } else {
-            setState(() {
-              isStatusUpdating = false;
-            });
-            Get.snackbar("Error", "Please enter all required charges.");
-          }
+                      var jobData = {
+                        "status": 1,
+                        "rating": "4.3",
+                        "time": time,
+                        "mId": currentUId.toString(),
+                        "mName": controller.userName.toString(),
+                        "mNumber": controller.phoneNumber.toString(),
+                        "mDp": controller.userPhoto.toString(),
+                        "languages": controller.selectedLanguages,
+                        'arrivalCharges': 0,
+                        'perHourCharges': 0,
+                        "reviewSubmitted": false,
+                        "fixPrice": fixCharge,
+                        'mechanicAddress': controller.appbarTitle,
+                        "latitude": locationData.latitude,
+                        "longitude": locationData.longitude,
+                      };
+
+                      // Update the Firestore `jobs` collection
+                      await FirebaseFirestore.instance
+                          .collection('jobs')
+                          .doc(jobId)
+                          .update({
+                        "mechanicsOffer": FieldValue.arrayUnion([jobData]),
+                      });
+
+                      // Check if the history document exists
+                      DocumentReference historyDoc = FirebaseFirestore.instance
+                          .collection("Users")
+                          .doc(userId)
+                          .collection("history")
+                          .doc(jobId);
+
+                      // Get the history document snapshot
+                      DocumentSnapshot docSnapshot = await historyDoc.get();
+
+                      if (docSnapshot.exists) {
+                        // If document exists, update it
+                        await historyDoc.update({
+                          "mechanicsOffer": FieldValue.arrayUnion([jobData]),
+                        }).then((value) {
+                          widget.setTab?.call(1);
+                          setState(() {
+                            isStatusUpdating = false;
+                          });
+                        });
+                      } else {
+                        // If document does not exist, create it
+                        await historyDoc.set({
+                          "mechanicsOffer": [jobData],
+                        });
+                        setState(() {
+                          isStatusUpdating = false;
+                        });
+                      }
+
+                      Get.snackbar("Success", "Request Sent Successfully.");
+                    } catch (e) {
+                      setState(() {
+                        isStatusUpdating = false;
+                      });
+                      Get.snackbar("Error", "Failed to send request: $e");
+                    }
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isSubmitting ? Colors.grey : Colors.green,
+            ),
+            child: Text(
+              "Submit",
+              style: TextStyle(color: Colors.white),
+            ),
+          );
         },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green, // Custom color for "Submit" button
-        ),
-        child: Text(
-          "Submit",
-          style: TextStyle(color: Colors.white),
-        ),
       ),
     );
   }

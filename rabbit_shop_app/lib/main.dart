@@ -6,8 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_shop_app/services/push_notification.dart';
 import 'package:regal_shop_app/views/entry_screen.dart';
-import 'services/push_notification.dart';
 import 'package:regal_shop_app/utils/constants.dart';
 import 'package:regal_shop_app/views/splash/splash_screen.dart';
 
@@ -43,8 +43,8 @@ void main() async {
 
   // Initialize Push Notifications
   PushNotification pushNotification = PushNotification();
-  await pushNotification.localNotiInit(); // Initialize channels first
-  await pushNotification.init(); // Then initialize FCM and permissions
+  await pushNotification.localNotiInit();
+  await pushNotification.init();
 
   // Listen for background messages
   FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundMessaging);
@@ -138,6 +138,7 @@ class MyApp extends StatelessWidget {
             primarySwatch: Colors.grey,
           ),
           home: SplashScreen(),
+          // home: GoogleMapFlutterScreen(),
         );
       },
     );

@@ -195,6 +195,7 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
               return UpcomingRequestCard(
                 orderId: jobs["orderId"].toString(),
                 userName: jobs["userName"],
+                myCompany: jobs["myCompany"]?.toString() ?? "",
                 vehicleName: jobs['vehicleNumber'] ?? "N/A",
                 address: jobs['userDeliveryAddress'] ?? "N/A",
                 serviceName: jobs['selectedService'] ?? "N/A",
@@ -227,6 +228,7 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
                 dateTime: jobs["orderDate"].toDate(),
                 cancelationReason: jobs["cancelReason"].toString(),
                 description: jobs["description"].toString(),
+                orderDate: jobs['orderDate'] as Timestamp,
               );
             },
           ),
@@ -329,7 +331,6 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
     );
   }
 }
-
 
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:flutter/material.dart';

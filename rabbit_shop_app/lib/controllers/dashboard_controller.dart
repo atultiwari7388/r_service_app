@@ -1,12 +1,10 @@
 import 'package:get/get.dart';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:regal_shop_app/utils/constants.dart';
 import 'package:location/location.dart' as loc;
 import 'package:location/location.dart';
 import '../../services/collection_references.dart';
 import '../../services/latlng_converter.dart';
-import '../../utils/show_toast_msg.dart';
 
 class DashboardController extends GetxController {
   bool online = true;
@@ -145,9 +143,6 @@ class DashboardController extends GetxController {
     // Check if location permissions are granted
     permissionGranted = await location.hasPermission();
     if (permissionGranted == loc.PermissionStatus.denied) {
-      // showToastMessage(
-      //     "Error", "Please grant location permission in app settings", kRed);
-      // Open app settings to grant permission
       await loc.Location().requestPermission();
       permissionGranted = await location.hasPermission();
       permissionGranted = await location.requestPermission();

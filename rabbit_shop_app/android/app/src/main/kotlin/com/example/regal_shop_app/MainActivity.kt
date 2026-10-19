@@ -1,4 +1,4 @@
-package com.rabbit_mechanic_app.rabbit_services_app
+package com.trenoops.trenoops_mechanic
 
 import io.flutter.embedding.android.FlutterActivity
 

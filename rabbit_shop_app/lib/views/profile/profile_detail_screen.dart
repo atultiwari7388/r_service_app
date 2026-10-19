@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -24,6 +23,14 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _perHourCharge = TextEditingController();
+  final TextEditingController _workShopNameController = TextEditingController();
+  final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _stateController = TextEditingController();
+  final TextEditingController _countryController = TextEditingController();
+  final TextEditingController _postalCodeController = TextEditingController();
+  final TextEditingController _experienceController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
 
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
@@ -38,6 +45,47 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
 
   File? _image;
 
+  // Future<void> _uploadProfile() async {
+  //   setState(() {
+  //     isLoading = true;
+  //   });
+  //   try {
+  //     String? imageUrl;
+  //     if (_image != null) {
+  //       imageUrl = await _uploadImage();
+  //     } else if (_image == null) {
+  //       imageUrl = profilePictureUrl;
+  //     }
+  //     // Uncomment below for Firebase functionality
+  //     await FirebaseFirestore.instance
+  //         .collection("Mechanics")
+  //         .doc(currentUId)
+  //         .update({
+  //       'userName': _userNameController.text,
+  //       'email': _emailController.text,
+  //       'address': _addressController.text,
+  //       'profilePicture': imageUrl,
+  //       'cellPhone': _phoneNumberController.text,
+  //       "updated_at": DateTime.now(),
+  //     }).then((value) {
+  //       Navigator.pop(context);
+  //     });
+  //     setState(() {
+  //       isLoading = false;
+  //     });
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Profile updated successfully')),
+  //     );
+  //   } catch (e) {
+  //     setState(() {
+  //       isLoading = false;
+  //     });
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Failed to update profile: $e')),
+  //     );
+  //   }
+  // }
+
   Future<void> _uploadProfile() async {
     setState(() {
       isLoading = true;
@@ -49,20 +97,32 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       } else if (_image == null) {
         imageUrl = profilePictureUrl;
       }
-      // Uncomment below for Firebase functionality
+
+      // Update with all fields
       await FirebaseFirestore.instance
           .collection("Mechanics")
           .doc(currentUId)
           .update({
         'userName': _userNameController.text,
         'email': _emailController.text,
-        'phoneNumber': _phoneNumberController.text,
         'address': _addressController.text,
         'profilePicture': imageUrl,
+        'cellPhone': _phoneNumberController.text,
+        'workshopName': _workShopNameController.text,
+        'dateOfBirth': _dobController.text,
+        'city': _cityController.text,
+        'state': _stateController.text,
+        'country': _countryController.text,
+        'postalCode': _postalCodeController.text,
+        'experience': _experienceController.text,
+        'description': _descriptionController.text,
+        'perHCharge': num.tryParse(_perHourCharge.text) ?? 0,
+        'languages': languages,
         "updated_at": DateTime.now(),
       }).then((value) {
         Navigator.pop(context);
       });
+
       setState(() {
         isLoading = false;
       });
@@ -137,7 +197,19 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     });
   }
 
-  Map<String, bool> languages = {};
+  final List<String> defaultLanguages = [
+    'English',
+    'Hindi',
+    'Punjabi',
+    'Spanish',
+  ];
+
+  Map<String, bool> languages = {
+    'English': false,
+    'Hindi': false,
+    'Punjabi': false,
+    'Spanish': false,
+  };
 
   @override
   void initState() {
@@ -154,33 +226,71 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       // Update text fields with user data
       _userNameController.text = data['userName'] ?? '';
       _emailController.text = data['email'] ?? '';
-      _phoneNumberController.text = data['phoneNumber'] ?? '';
+      _phoneNumberController.text = data['cellPhone'] ?? '';
       _addressController.text = data['lastAddress'] ?? '';
-      _perHourCharge.text = data["perHCharge"] ?? 0;
+      _perHourCharge.text = (data["perHCharge"] ?? 0).toString();
+      _workShopNameController.text = data['workshopName'] ?? '';
+      _dobController.text = data['dateOfBirth'] ?? '';
+      _cityController.text = data['city'] ?? '';
+      _stateController.text = data['state'] ?? '';
+      _countryController.text = data['country'] ?? '';
+      _postalCodeController.text = data['postalCode'] ?? '';
+      _experienceController.text = data['experience'] ?? '';
+      _descriptionController.text = data['description'] ?? '';
     }).catchError((error) {
       print("Failed to fetch user data: $error");
     });
   }
 
   Future<void> fetchLanguagesFromDatabase() async {
-    // Fetch the document from Firestore
+    List<String> availableLanguages = List.from(defaultLanguages);
+
+    try {
+      // 1. Fetch dynamic master language list from metadata/languages
+      DocumentSnapshot metadataDoc = await FirebaseFirestore.instance
+          .collection('metadata')
+          .doc('languages')
+          .get();
+
+      if (metadataDoc.exists && metadataDoc.data() != null) {
+        final metaDataMap = metadataDoc.data() as Map<String, dynamic>;
+        final List<dynamic>? masterList = metaDataMap['data'] as List<dynamic>?;
+        if (masterList != null && masterList.isNotEmpty) {
+          availableLanguages = masterList.map((e) => e.toString()).toList();
+        }
+      }
+    } catch (e) {
+      print("Error fetching metadata languages: $e");
+    }
+
+    // 2. Fetch mechanic's selected languages
     DocumentSnapshot doc = await FirebaseFirestore.instance
         .collection('Mechanics')
-        .doc(currentUId) // replace with the actual mechanic's ID
+        .doc(currentUId)
         .get();
 
     if (doc.exists) {
-      // Ensure the data is a Map and cast it properly
       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      Map<String, dynamic> languagesData = {};
+      if (data.containsKey('languages') && data['languages'] != null) {
+        languagesData = Map<String, dynamic>.from(data['languages']);
+      }
 
-      // Extract the 'languages' field and cast it as Map<String, bool>
-      Map<String, bool> languagesData =
-          Map<String, bool>.from(data['languages']);
-
-      // Update the state with the languages data
       setState(() {
-        languages = languagesData;
-        print(languages);
+        // Sort available languages alphabetically A to Z
+        availableLanguages.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        Map<String, bool> updatedLanguages = {};
+        for (var lang in availableLanguages) {
+          updatedLanguages[lang] = languagesData[lang] == true;
+        }
+        List<String> extraKeys = languagesData.keys
+            .where((k) => !updatedLanguages.containsKey(k))
+            .toList();
+        extraKeys.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        for (var key in extraKeys) {
+          updatedLanguages[key] = languagesData[key] == true;
+        }
+        languages = updatedLanguages;
       });
     }
   }
@@ -217,8 +327,17 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 profilePictureUrl = data['profilePicture'] ?? '';
                 _userNameController.text = data['userName'] ?? '';
                 _emailController.text = data['email'] ?? '';
-                _phoneNumberController.text = data['phoneNumber'] ?? '';
+                _phoneNumberController.text = data['cellPhone'] ?? '';
                 _perHourCharge.text = data["perHCharge"].toString() ?? '';
+
+                _workShopNameController.text = data['workshopName'] ?? '';
+                _dobController.text = data['dateOfBirth'] ?? '';
+                _cityController.text = data['city'] ?? '';
+                _stateController.text = data['state'] ?? '';
+                _countryController.text = data['country'] ?? '';
+                _postalCodeController.text = data['postalCode'] ?? '';
+                _experienceController.text = data['experience'] ?? '';
+                _descriptionController.text = data['description'] ?? '';
 
                 return data.isNotEmpty
                     ? SingleChildScrollView(
@@ -268,8 +387,23 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                               onToggle: () => _toggleSection('personal'),
                               children: [
                                 TextFieldInputWidget(
-                                  hintText: "Company Name",
+                                  hintText: "User Name",
                                   textEditingController: _userNameController,
+                                  textInputType: TextInputType.text,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "Workshop Name",
+                                  textEditingController:
+                                      _workShopNameController,
+                                  textInputType: TextInputType.text,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "Date of Birth",
+                                  textEditingController: _dobController,
                                   textInputType: TextInputType.text,
                                   icon: Icons.abc,
                                   isIconApply: false,
@@ -280,6 +414,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                   textInputType: TextInputType.emailAddress,
                                   icon: Icons.abc,
                                   isIconApply: false,
+                                  isEnabled: false,
                                 ),
                                 TextFieldInputWidget(
                                   hintText: "Phone Number",
@@ -296,58 +431,57 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                   isIconApply: false,
                                 ),
                                 TextFieldInputWidget(
+                                  hintText: "City",
+                                  textEditingController: _cityController,
+                                  textInputType: TextInputType.visiblePassword,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "State",
+                                  textEditingController: _stateController,
+                                  textInputType: TextInputType.visiblePassword,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "Country",
+                                  textEditingController: _countryController,
+                                  textInputType: TextInputType.visiblePassword,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "Postal Code",
+                                  textEditingController: _postalCodeController,
+                                  textInputType: TextInputType.visiblePassword,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
                                   hintText: "Per hour charge",
                                   textEditingController: _perHourCharge,
                                   textInputType: TextInputType.phone,
                                   icon: Icons.abc,
                                   isIconApply: false,
                                 ),
+                                TextFieldInputWidget(
+                                  hintText: "Experience",
+                                  textEditingController: _experienceController,
+                                  textInputType: TextInputType.visiblePassword,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "Description",
+                                  textEditingController: _descriptionController,
+                                  textInputType: TextInputType.visiblePassword,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
                               ],
                             ),
                             SizedBox(height: 20.0.h),
-                            // _buildSectionCard(
-                            //   context,
-                            //   title: "Selected Languages",
-                            //   icon: Icons.language,
-                            //   isExpanded: _isLanguageDetailsExpanded,
-                            //   onToggle: () => _toggleSection('languages'),
-                            //   children: [
-                            //     Container(
-                            //       decoration: BoxDecoration(
-                            //         borderRadius: BorderRadius.circular(8.r),
-                            //       ),
-                            //       child: Scrollbar(
-                            //         thumbVisibility: true,
-                            //         child: ListView.builder(
-                            //           padding: EdgeInsets.zero,
-                            //           shrinkWrap: true,
-                            //           itemCount: languages.length,
-                            //           itemBuilder: (context, index) {
-                            //             return ListView(
-                            //               children:
-                            //                   languages.entries.map((entry) {
-                            //                 return entry.value
-                            //                     ? CheckboxListTile(
-                            //                         title: Text(entry.key),
-                            //                         value: entry.value,
-                            //                         onChanged: (bool? value) {
-                            //                           // Logic for toggling checkbox (if needed)
-                            //                           setState(() {
-                            //                             languages[entry.key] =
-                            //                                 value!;
-                            //                           });
-                            //                         },
-                            //                       )
-                            //                     : Container(); // Don't show the checkbox if the value is false
-                            //               }).toList(),
-                            //             );
-                            //           },
-                            //         ),
-                            //       ),
-                            //     ),
-                            //   ],
-                            //
-                            // ),
 
                             _buildSectionCard(
                               context,
@@ -365,25 +499,27 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                     // Keep thumbVisibility as true
                                     controller: scrollController,
                                     // Provide the ScrollController
-                                    child: ListView(
-                                      controller: scrollController,
-                                      // Use the same ScrollController
-                                      shrinkWrap: true,
-                                      padding: EdgeInsets.zero,
-                                      children: languages.entries.map((entry) {
-                                        return entry.value
-                                            ? CheckboxListTile(
-                                                title: Text(entry.key),
-                                                value: entry.value,
-                                                onChanged: (bool? value) {
-                                                  setState(() {
-                                                    languages[entry.key] =
-                                                        value!;
-                                                  });
-                                                },
-                                              )
-                                            : Container(); // Show nothing if the value is false
-                                      }).toList(),
+                                    child: StatefulBuilder(
+                                      builder: (context, setLanguageState) {
+                                        return ListView(
+                                          controller: scrollController,
+                                          // Use the same ScrollController
+                                          shrinkWrap: true,
+                                          padding: EdgeInsets.zero,
+                                          children: languages.entries.map((entry) {
+                                            return CheckboxListTile(
+                                              title: Text(entry.key),
+                                              value: entry.value,
+                                              onChanged: (bool? value) {
+                                                setLanguageState(() {
+                                                  languages[entry.key] =
+                                                      value ?? false;
+                                                });
+                                              },
+                                            );
+                                          }).toList(),
+                                        );
+                                      },
                                     ),
                                   ),
                                 ),
@@ -429,7 +565,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
         margin: EdgeInsets.all(12),
         height: 60.h,
         child: CustomButton(
-          text: "Upload Profile",
+          text: "Update Profile",
           onPress: _uploadProfile,
           color: kPrimary,
         ),

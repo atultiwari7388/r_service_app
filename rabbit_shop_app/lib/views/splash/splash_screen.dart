@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../utils/show_toast_msg.dart';
 import '../adminContact/admin_contact_screen.dart';
 import '../auth/login_screen.dart';
 import '../entry_screen.dart';
 import '../auth/registration_screen.dart';
+import '../../services/push_notification.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,6 +36,27 @@ class _SplashScreenState extends State<SplashScreen> {
 
         if (mechanicDoc.exists && mechanicDoc['uid'] == user!.uid) {
           if (mechanicDoc['isEnabled'] == true) {
+            final data = mechanicDoc.data();
+            final String storedFcmToken = (data?['fcmToken'] ?? '').toString();
+            final bool isMultiDeEnable = data?['isMultiDeEnable'] == true;
+
+            // Restrict access if stored fcmToken exists (not null/empty) and belongs to another active device, but multi-device access is disabled
+            if (storedFcmToken.trim().isNotEmpty && storedFcmToken != 'null' && !isMultiDeEnable) {
+              final currentToken = await PushNotification.getDeviceToken();
+              if (currentToken != null && storedFcmToken != currentToken) {
+                await FirebaseAuth.instance.signOut();
+                Get.offAll(() => const LoginScreen(),
+                    transition: Transition.cupertino,
+                    duration: const Duration(milliseconds: 900));
+                showToastMessage(
+                  "Access Restricted",
+                  "You are not enabled for multiple device login. Please log out from your active device or contact admin.",
+                  Colors.red,
+                );
+                return;
+              }
+            }
+
             Get.offAll(() => EntryScreen());
             showToastMessage("Welcome", "Welcome", Colors.green);
           } else {
@@ -78,7 +101,7 @@ class _SplashScreenState extends State<SplashScreen> {
             );
           },
           child: Image.asset(
-            "assets/new_logo_m.png",
+            "assets/new_mechanic_splash.png",
             height: 200.h,
             fit: BoxFit.cover,
           ),

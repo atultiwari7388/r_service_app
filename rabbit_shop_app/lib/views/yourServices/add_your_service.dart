@@ -127,6 +127,9 @@ class _AddYourServicesState extends State<AddYourServices> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Select Services'),
+        actions: [
+          TextButton(onPressed: saveSelectedServices, child: Text("Save"))
+        ],
       ),
       body: filteredServiceAndNetworkOptions.isEmpty
           ? Center(child: CircularProgressIndicator())
@@ -145,11 +148,11 @@ class _AddYourServicesState extends State<AddYourServices> {
                 );
               },
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: saveSelectedServices,
-        child: Icon(Icons.save),
-        tooltip: 'Save Selected Services',
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: saveSelectedServices,
+      //   child: Icon(Icons.save),
+      //   tooltip: 'Save Selected Services',
+      // ),
     );
   }
 }

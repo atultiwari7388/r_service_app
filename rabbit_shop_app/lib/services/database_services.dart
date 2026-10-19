@@ -1,45 +1,3 @@
-// import 'package:cloud_firestore/cloud_firestore.dart';
-
-// class DatabaseServices {
-//   String? uid;
-
-//   DatabaseServices({required this.uid});
-
-// //===============reference from user collection====================
-
-//   final fireStoreDatabase = FirebaseFirestore.instance.collection("Mechanics");
-
-// //save user data to firebase
-
-//   Future savingUserData(
-//     String emailAddress,
-//     String userName,
-//     String phoneNumber,
-//     String address,
-//     num perHourCharge,
-//     Map<String, dynamic> languages,
-//   ) async {
-//     return fireStoreDatabase.doc(uid!).set({
-//       "uid": uid,
-//       "email": emailAddress,
-//       "userName": userName,
-//       "phoneNumber": phoneNumber,
-//       "address": address,
-//       "perHCharge": perHourCharge,
-//       "lastAddress": "",
-//       "languages": languages,
-//       "profilePicture": "",
-//       "isNotificationOn": true,
-//       "wallet": 0,
-//       "active": true,
-//       "isEnabled": true,
-//       "selected_services": [],
-//       "created_at": DateTime.now(),
-//       "updated_at": DateTime.now(),
-//     });
-//   }
-// }
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DatabaseServices {
@@ -81,6 +39,10 @@ class DatabaseServices {
       "city": city,
       "state": state,
       "country": country,
+      "location": {
+        'latitude': 0,
+        'longitude': 0,
+      },
       "postalCode": postalCode,
       "dateOfBirth": dateOfBirth,
       "experience": experience,
@@ -88,11 +50,14 @@ class DatabaseServices {
       "perHCharge": perHourCharge,
       "lastAddress": "",
       "languages": languages,
-      "profilePicture": "",
+      "profilePicture":
+          "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
       "isNotificationOn": true,
       "wallet": 0,
       "active": true,
       "isEnabled": true,
+      "isMultiDeEnable": false,
+      "fcmToken": null,
       "selected_services": [],
       "created_at": DateTime.now(),
       "updated_at": DateTime.now(),

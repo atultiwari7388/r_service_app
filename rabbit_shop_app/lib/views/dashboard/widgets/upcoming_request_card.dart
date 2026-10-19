@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:regal_shop_app/services/collection_references.dart';
 import 'package:regal_shop_app/widgets/info_box.dart';
@@ -19,6 +20,8 @@ class UpcomingRequestCard extends StatefulWidget {
   const UpcomingRequestCard({
     super.key,
     required this.userName,
+    this.userId = "",
+    this.myCompany = "",
     required this.vehicleName,
     this.companyNameAndVehicleName = "",
     required this.address,
@@ -45,14 +48,17 @@ class UpcomingRequestCard extends StatefulWidget {
     this.images = const [],
     this.payMode = "",
     this.onCancelBtnTap,
-    required this.reviewSubmitted, // New parameter
+    required this.reviewSubmitted,
     required this.dateTime,
     required this.cancelationReason,
     required this.description,
     this.perHourCharges = "",
+    required this.orderDate,
   });
 
   final String userName;
+  final String userId;
+  final String myCompany;
   final String vehicleName;
   final String companyNameAndVehicleName;
   final String address;
@@ -84,6 +90,7 @@ class UpcomingRequestCard extends StatefulWidget {
   final String cancelationReason;
   final String description;
   final String perHourCharges;
+  final Timestamp orderDate;
 
   @override
   State<UpcomingRequestCard> createState() => _UpcomingRequestCardState();
@@ -179,7 +186,6 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // id
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -200,10 +206,48 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                       ],
                     ),
                     SizedBox(height: 4.h),
-                    //company Name
-                    Text(
-                      widget.userName,
-                      style: appStyle(16.sp, kDark, FontWeight.w500),
+                    // company Name / myCompany or username fallback
+                    SizedBox(
+                      width: 250.w,
+                      child: widget.myCompany.trim().isNotEmpty
+                          ? Text(
+                              widget.myCompany.trim(),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: appStyle(16.sp, kDark, FontWeight.w500),
+                            )
+                          : FutureBuilder<DocumentSnapshot>(
+                              future: (widget.userId.isNotEmpty || widget.dId.isNotEmpty)
+                                  ? FirebaseFirestore.instance
+                                      .collection('Users')
+                                      .doc(widget.userId.isNotEmpty
+                                          ? widget.userId
+                                          : widget.dId)
+                                      .get()
+                                  : null,
+                              builder: (context, snapshot) {
+                                String displayName = widget.userName;
+                                if (snapshot.hasData &&
+                                    snapshot.data != null &&
+                                    snapshot.data!.exists) {
+                                  final data =
+                                      snapshot.data!.data() as Map<String, dynamic>?;
+                                  final companyName =
+                                      (data?['companyName'] ?? data?['company_name'] ?? data?['company'] ?? '')
+                                          .toString()
+                                          .trim();
+                                  if (companyName.isNotEmpty) {
+                                    displayName = companyName;
+                                  }
+                                }
+                                return Text(
+                                  displayName,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: appStyle(16.sp, kDark, FontWeight.w500),
+                                );
+                              },
+                            ),
                     ),
 
                     SizedBox(height: 4.h),
@@ -215,6 +259,19 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                         maxLines: 2,
                         style: appStyle(15.sp, kGray, FontWeight.bold),
                       ),
+                    ),
+                    SizedBox(height: 4.h),
+                    //date time zone
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_month, size: 14.sp, color: kGray),
+                        SizedBox(width: 4.w),
+                        Text(
+                          DateFormat('MM/dd/yyyy hh:mm a')
+                              .format(widget.orderDate.toDate()),
+                          style: appStyle(12.sp, kGray, FontWeight.bold),
+                        ),
+                      ],
                     ),
 
                     // Display the timer here if it's enabled and currentStatus is 0
