@@ -7,11 +7,11 @@ export const metadata: Metadata = {
     "Commercial fleet management, heavy-duty truck & trailer maintenance, 24/7 roadside assistance, DOT annual inspections, air brakes, reefer & emergency bay diagnostics.",
   icons: {
     icon: [
-      { url: "/logo-new.png", type: "image/png" },
-      { url: "/favicon.ico" },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png" },
     ],
-    shortcut: "/logo-new.png",
-    apple: "/logo-new.png",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 };
 
