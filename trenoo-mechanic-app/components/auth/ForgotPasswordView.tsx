@@ -10,18 +10,6 @@ export interface ForgotPasswordViewProps {
   forgotState: UseForgotPasswordReturn;
 }
 
-/**
- * ForgotPasswordView
- * Recreates Flutter forgot_password.dart:
- * - Stack Background curves:
- *   - Top-left circular curve with kPrimary.withOpacity(0.3)
- *   - Bottom-right circular curve with kSecondary.withOpacity(0.3)
- * - Back button with arrow_back icon
- * - "Forgot \nPassword?" title in kPrimary (#F96176)
- * - Subtitle: "Don't worry it happens. Please enter the address associated with your account."
- * - Email ID input with MaterialCommunityIcons.email
- * - CustomButton "Submit" in kPrimary (#F96176)
- */
 export function ForgotPasswordView({ forgotState }: ForgotPasswordViewProps) {
   const { email, setEmail, isLoading, isSent, handleSubmit } = forgotState;
 
@@ -60,7 +48,8 @@ export function ForgotPasswordView({ forgotState }: ForgotPasswordViewProps) {
           Forgot <br /> Password?
         </h1>
         <p className="mt-2 text-xs text-gray-500 leading-relaxed">
-          Don&apos;t worry it happens. Please enter the address associated with your account.
+          Don&apos;t worry it happens. Please enter the address associated with
+          your account.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">

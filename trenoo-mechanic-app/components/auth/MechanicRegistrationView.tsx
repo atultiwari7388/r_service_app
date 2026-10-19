@@ -9,31 +9,6 @@ export interface MechanicRegistrationViewProps {
   registrationState: UseMechanicRegistrationReturn;
 }
 
-/**
- * MechanicRegistrationView
- * Recreates the Flutter registration_screen.dart:
- * - Two circular decorative blur curves (top-left kPrimary 0.3, bottom-right kSecondary 0.3)
- * - Centered "Sign up" title in kPrimary (#F96176)
- * - Fields with exact Flutter MaterialCommunityIcons equivalents:
- *   - Your Name* (account)
- *   - Workshop Name* (store)
- *   - Cell Phone* (phone)
- *   - Telephone (phone_classic)
- *   - Your Email* (email)
- *   - Address (home)
- *   - City* (city)
- *   - State* (map_marker)
- *   - Country* (earth)
- *   - Postal / Zip Code (zip_box)
- *   - Date of Birth (cake) with DOB format: (DD/MM/YYYY) hint
- *   - Experience (in years) (briefcase)
- *   - Description (text)
- *   - Password (security) with toggle visibility
- * - "Select Languages You Speak" scrollable checkbox list (English, Hindi, Punjabi, Spanish, etc.)
- * - "By continuing, you agree to our Terms of Services and Privacy Policy."
- * - "Create Account" button (kPrimary) with loading state
- * - "Joined us before? Login" redirect row
- */
 export function MechanicRegistrationView({
   registrationState,
 }: MechanicRegistrationViewProps) {
@@ -80,9 +55,12 @@ export function MechanicRegistrationView({
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 text-center">
         <div className="w-12 h-12 border-3 border-[#F96176] border-t-transparent rounded-full animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-gray-900">Registration Successful!</h2>
+        <h2 className="text-xl font-bold text-gray-900">
+          Registration Successful!
+        </h2>
         <p className="mt-2 text-xs text-gray-500 max-w-sm">
-          A verification link has been sent to your email. Please verify your email before logging in.
+          A verification link has been sent to your email. Please verify your
+          email before logging in.
         </p>
         <Link
           href="/login"
@@ -352,7 +330,9 @@ export function MechanicRegistrationView({
                 href="#terms"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert("Terms of Services: Treno Mechanic platform usage policies.");
+                  alert(
+                    "Terms of Services: Treno Mechanic platform usage policies."
+                  );
                 }}
                 className="font-medium text-[#F96176] hover:underline cursor-pointer"
               >
@@ -363,7 +343,9 @@ export function MechanicRegistrationView({
                 href="#privacy"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert("Privacy Policy: We protect your personal and location data.");
+                  alert(
+                    "Privacy Policy: We protect your personal and location data."
+                  );
                 }}
                 className="font-medium text-[#F96176] hover:underline cursor-pointer"
               >
@@ -382,7 +364,9 @@ export function MechanicRegistrationView({
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm font-medium">Creating Account...</span>
+                  <span className="text-sm font-medium">
+                    Creating Account...
+                  </span>
                 </div>
               ) : (
                 "Create Account"
