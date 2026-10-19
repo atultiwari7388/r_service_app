@@ -17,9 +17,14 @@ import {
   Star,
   ShieldCheck,
   LogOut,
+  User as UserIcon,
+  Wrench,
 } from "lucide-react";
 import { SIDEBAR_MENU_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContexts";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 // Map icons to the 7 menus
 const MENU_ICONS: Record<string, React.ReactNode> = {
@@ -34,6 +39,12 @@ const MENU_ICONS: Record<string, React.ReactNode> = {
 
 export default function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const auth = useAuth();
+  const user = auth?.user;
+  const mechanic = auth?.mechanicProfile;
+  const logout = auth?.logout;
+
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [unreadCount] = useState(3);
@@ -132,32 +143,57 @@ export default function AppSidebar() {
         </nav>
       </div>
 
-      {/* Bottom Section: LOGIN BUTTON, Notifications & Profile Avatar */}
+      {/* Bottom Section: LOGIN/LOGOUT BUTTON, Notifications & Profile Avatar */}
       <div className="flex flex-col items-center gap-2.5 w-full pb-1">
-        {/* LOGIN BUTTON IN SIDEBAR */}
-        <div
-          className="relative flex items-center justify-center w-full"
-          onMouseEnter={() => setHoveredKey("login-action")}
-          onMouseLeave={() => setHoveredKey(null)}
-        >
-          <Link
-            href="/login"
-            className={cn(
-              "group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
-              pathname === "/login"
-                ? "bg-[#58BB87] text-white shadow-lg shadow-[#58BB87]/30"
-                : "bg-[#1C2541] text-[#58BB87] hover:bg-[#58BB87] hover:text-white border border-[#58BB87]/40 shadow-xs"
-            )}
-            aria-label="Login"
+        {/* LOGIN OR LOGOUT QUICK ACTION IN SIDEBAR */}
+        {user ? (
+          <div
+            className="relative flex items-center justify-center w-full"
+            onMouseEnter={() => setHoveredKey("logout-action")}
+            onMouseLeave={() => setHoveredKey(null)}
           >
-            <LogIn size={20} className="group-hover:scale-110 transition-transform" />
-          </Link>
-          {hoveredKey === "login-action" && (
-            <div className="pointer-events-none absolute left-16 z-50 ml-2 whitespace-nowrap rounded-lg bg-[#58BB87] px-3 py-1.5 text-xs font-bold text-white shadow-xl">
-              Portal Sign In / Login
-            </div>
-          )}
-        </div>
+            <button
+              onClick={async () => {
+                if (logout) await logout();
+                toast.success("Logged out successfully");
+                router.push("/login");
+              }}
+              className="group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200 bg-[#1C2541] text-[#F96176] hover:bg-[#F96176] hover:text-white border border-[#F96176]/30 shadow-xs cursor-pointer"
+              aria-label="Logout"
+            >
+              <LogOut size={20} className="group-hover:scale-110 transition-transform" />
+            </button>
+            {hoveredKey === "logout-action" && (
+              <div className="pointer-events-none absolute left-16 z-50 ml-2 whitespace-nowrap rounded-lg bg-[#F96176] px-3 py-1.5 text-xs font-bold text-white shadow-xl">
+                Sign Out / Logout
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            className="relative flex items-center justify-center w-full"
+            onMouseEnter={() => setHoveredKey("login-action")}
+            onMouseLeave={() => setHoveredKey(null)}
+          >
+            <Link
+              href="/login"
+              className={cn(
+                "group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
+                pathname === "/login"
+                  ? "bg-[#58BB87] text-white shadow-lg shadow-[#58BB87]/30"
+                  : "bg-[#1C2541] text-[#58BB87] hover:bg-[#58BB87] hover:text-white border border-[#58BB87]/40 shadow-xs"
+              )}
+              aria-label="Login"
+            >
+              <LogIn size={20} className="group-hover:scale-110 transition-transform" />
+            </Link>
+            {hoveredKey === "login-action" && (
+              <div className="pointer-events-none absolute left-16 z-50 ml-2 whitespace-nowrap rounded-lg bg-[#58BB87] px-3 py-1.5 text-xs font-bold text-white shadow-xl">
+                Portal Sign In / Login
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Notifications Icon with Unread Badge */}
         <div
@@ -189,34 +225,69 @@ export default function AppSidebar() {
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="group relative h-10 w-10 rounded-full flex items-center justify-center ring-2 ring-transparent hover:ring-[#F96176] transition-all overflow-hidden focus:outline-none bg-[#1C2541] shadow-md cursor-pointer"
-            title="Fleet Manager Profile"
+            title={mechanic?.userName || mechanic?.workshopName || (user ? "Mechanic Profile" : "Guest")}
             aria-label="Profile"
           >
-            <div className="h-full w-full bg-gradient-to-tr from-[#0B132B] to-[#1C2541] text-white flex items-center justify-center text-xs font-bold">
-              TM
-            </div>
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-[#58BB87] ring-2 ring-[#0B132B]" />
+            {mechanic?.profilePicture || mechanic?.mDp ? (
+              <img
+                src={mechanic.profilePicture || mechanic.mDp}
+                alt={mechanic.userName || "Profile"}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as any).style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-tr from-[#0B132B] to-[#1C2541] text-white flex items-center justify-center text-xs font-bold">
+                {(mechanic?.userName || mechanic?.workshopName || user?.email || "TM")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </div>
+            )}
+            <span
+              className={cn(
+                "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-[#0B132B]",
+                user ? "bg-[#58BB87]" : "bg-gray-500"
+              )}
+            />
           </button>
 
           {/* Profile Dropdown Card */}
           {isProfileOpen && (
             <div className="absolute left-16 bottom-0 z-50 ml-2 w-72 rounded-2xl bg-[#0B132B] p-4 shadow-2xl border border-gray-700/80 animate-in fade-in slide-in-from-left-2 duration-150">
               <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
-                <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-[#F96176] to-[#ff9900] text-white flex items-center justify-center font-bold text-sm shadow">
-                  HD
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-[#F96176] to-[#ff9900] text-white flex items-center justify-center font-bold text-sm shadow shrink-0 overflow-hidden">
+                  {mechanic?.profilePicture ? (
+                    <img
+                      src={mechanic.profilePicture}
+                      alt={mechanic.userName || "Mechanic"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    (mechanic?.userName || mechanic?.workshopName || user?.email || "ME")
+                      .slice(0, 2)
+                      .toUpperCase()
+                  )}
                 </div>
-                <div className="overflow-hidden">
+                <div className="overflow-hidden min-w-0">
                   <h4 className="text-sm font-bold text-white truncate">
-                    Master Fleet Technician
+                    {mechanic?.workshopName || mechanic?.userName || (user ? "Mechanic Account" : "Guest User")}
                   </h4>
                   <p className="text-xs text-gray-400 truncate">
-                    team@trenoops.com
+                    {mechanic?.email || user?.email || "Not signed in"}
                   </p>
+                  {mechanic?.cellPhone && (
+                    <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                      📞 {mechanic.cellPhone}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     <span className="flex items-center gap-1 text-[11px] font-semibold text-yellow-400">
                       <Star size={12} fill="currentColor" /> 4.98
                     </span>
-                    <span className="text-[10px] text-gray-400">• Fresno Bay #3</span>
+                    <span className="text-[10px] text-gray-400 truncate">
+                      • {[mechanic?.city, mechanic?.state].filter(Boolean).join(", ") || "Shop Bay"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -225,43 +296,87 @@ export default function AppSidebar() {
               <div className="my-3 p-2.5 rounded-xl bg-[#1C2541] flex items-center justify-between text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-gray-400">
-                    Fleet Shop Status
+                    Mechanic Status
                   </span>
-                  <p className="text-xs font-bold text-[#58BB87]">DOT Certified Bay</p>
+                  <p className="text-xs font-bold text-[#58BB87]">
+                    {mechanic?.active !== false ? "Active & Available" : "Inactive"}
+                  </p>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-[#58BB87]/20 text-[#58BB87] text-[11px] font-bold">
-                  Online
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[11px] font-bold",
+                    user
+                      ? "bg-[#58BB87]/20 text-[#58BB87]"
+                      : "bg-gray-700 text-gray-400"
+                  )}
+                >
+                  {user ? "Online" : "Offline"}
                 </span>
               </div>
 
               {/* Menu Links */}
               <div className="flex flex-col gap-1 text-xs">
-                <Link
-                  href="/team"
-                  onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors"
-                >
-                  <Users size={14} className="text-gray-400" />
-                  <span>Manage Mechanics & Bays</span>
-                </Link>
-                <Link
-                  href="/inspections"
-                  onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors"
-                >
-                  <ShieldCheck size={14} className="text-[#58BB87]" />
-                  <span>DOT Annual Certifications</span>
-                </Link>
-                <div className="border-t border-gray-800 my-1 pt-1">
-                  <Link
-                    href="/login"
-                    onClick={() => setIsProfileOpen(false)}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-[#F96176] hover:bg-red-950/40 rounded-lg transition-colors font-semibold"
-                  >
-                    <LogOut size={14} />
-                    <span>Sign Out</span>
-                  </Link>
-                </div>
+                {user ? (
+                  <>
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors font-medium"
+                    >
+                      <UserIcon size={14} className="text-[#F96176]" />
+                      <span>My Profile & Settings</span>
+                    </Link>
+                    <Link
+                      href="/team"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors"
+                    >
+                      <Users size={14} className="text-gray-400" />
+                      <span>Manage Mechanics & Bays</span>
+                    </Link>
+                    <Link
+                      href="/inspections"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors"
+                    >
+                      <ShieldCheck size={14} className="text-[#58BB87]" />
+                      <span>DOT Annual Certifications</span>
+                    </Link>
+                    <div className="border-t border-gray-800 my-1 pt-1">
+                      <button
+                        onClick={async () => {
+                          setIsProfileOpen(false);
+                          if (logout) await logout();
+                          toast.success("Signed out successfully");
+                          router.push("/login");
+                        }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-[#F96176] hover:bg-red-950/40 rounded-lg transition-colors font-semibold cursor-pointer"
+                      >
+                        <LogOut size={14} />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-[#58BB87] hover:bg-[#1C2541] rounded-lg transition-colors font-semibold"
+                    >
+                      <LogIn size={14} />
+                      <span>Sign In to Your Account</span>
+                    </Link>
+                    <Link
+                      href="/sign-up"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors"
+                    >
+                      <Wrench size={14} className="text-[#F96176]" />
+                      <span>Register as Mechanic</span>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           )}

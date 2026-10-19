@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   },
 };
 
+import AuthContextProvider from "@/contexts/AuthContexts";
+import { Toaster } from "react-hot-toast";
+
 export default function RootLayout({
   children,
 }: {
@@ -23,7 +26,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased scroll-smooth">
       <body className="min-h-full flex flex-col bg-[#FAFAFC] text-gray-900 font-sans">
-        {children}
+        <AuthContextProvider>
+          <Toaster position="top-center" />
+          {children}
+        </AuthContextProvider>
       </body>
     </html>
   );

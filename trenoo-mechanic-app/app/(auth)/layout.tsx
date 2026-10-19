@@ -9,10 +9,5 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  return (
-    <AuthContextProvider>
-      <Toaster position="top-center" />
-      {children}
-    </AuthContextProvider>
-  );
+  return <>{children}</>;
 }
