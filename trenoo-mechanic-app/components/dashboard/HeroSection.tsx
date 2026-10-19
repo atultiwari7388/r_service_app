@@ -99,33 +99,33 @@ export default function HeroSection({
             </div>
 
             {/* Floating Mini-Card 1: Top Left - Engine Diagnostics */}
-            <div className="absolute -top-4 -left-4 z-20 bg-white px-3.5 py-2.5 rounded-2xl border border-gray-200 shadow-md flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-red-50 text-[#F96176] flex items-center justify-center shrink-0">
-                <Cpu size={16} />
+            <div className="absolute top-2 left-2 sm:-top-4 sm:-left-4 z-20 bg-white px-2.5 sm:px-3.5 py-1.5 sm:py-2.5 rounded-2xl border border-gray-200 shadow-md flex items-center gap-2 sm:gap-2.5">
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-red-50 text-[#F96176] flex items-center justify-center shrink-0">
+                <Cpu size={15} />
               </div>
               <div className="text-left">
-                <span className="text-[10px] uppercase font-bold text-gray-500 block leading-none">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-gray-500 block leading-none">
                   ECM Telemetry
                 </span>
-                <span className="text-xs font-black text-gray-900">Diagnostics OK</span>
+                <span className="text-[11px] sm:text-xs font-black text-gray-900">Diagnostics OK</span>
               </div>
             </div>
 
             {/* Floating Mini-Card 2: Bottom Right - 24/7 Roadside ETA */}
-            <div className="absolute -bottom-4 -right-4 z-20 bg-white px-3.5 py-2.5 rounded-2xl border border-gray-200 shadow-md flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-emerald-50 text-[#58BB87] flex items-center justify-center shrink-0">
-                <Clock size={16} />
+            <div className="absolute bottom-2 right-2 sm:-bottom-4 sm:-right-4 z-20 bg-white px-2.5 sm:px-3.5 py-1.5 sm:py-2.5 rounded-2xl border border-gray-200 shadow-md flex items-center gap-2 sm:gap-2.5">
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-emerald-50 text-[#58BB87] flex items-center justify-center shrink-0">
+                <Clock size={15} />
               </div>
               <div className="text-left">
-                <span className="text-[10px] uppercase font-bold text-gray-500 block leading-none">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-gray-500 block leading-none">
                   Mobile Unit
                 </span>
-                <span className="text-xs font-black text-[#58BB87]">22 Min Highway ETA</span>
+                <span className="text-[11px] sm:text-xs font-black text-[#58BB87]">22 Min Highway ETA</span>
               </div>
             </div>
 
             {/* Floating Mini-Card 3: Top Right - DOT Certified */}
-            <div className="absolute -top-3 right-4 z-20 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 text-[11px] font-bold text-gray-800">
+            <div className="absolute top-2 right-2 sm:-top-3 sm:right-4 z-20 bg-white border border-gray-200 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl shadow-md flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-gray-800">
               <CheckCircle2 size={13} className="text-[#58BB87]" />
               <span>DOT Certified Bay</span>
             </div>

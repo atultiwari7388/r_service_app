@@ -15,10 +15,10 @@ export default function TopBar() {
   const { contact, social } = APP_CONFIG;
 
   return (
-    <div className="bg-[#F96176] text-white py-2 px-4 sm:px-6 text-xs sm:text-sm font-medium tracking-wide transition-all shadow-xs border-b border-white/10 select-none">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5">
+    <div className="bg-[#F96176] text-white py-1.5 px-3 sm:px-6 text-[11px] sm:text-xs font-medium tracking-wide transition-all shadow-xs border-b border-white/10 select-none overflow-hidden">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
         {/* Left Section: Email, Address, WhatsApp Phone */}
-        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 sm:gap-6">
+        <div className="flex flex-wrap items-center justify-start gap-3 sm:gap-6">
           {/* Email */}
           <a
             href={`mailto:${contact.email}`}
@@ -27,15 +27,15 @@ export default function TopBar() {
             <span className="p-1 rounded-full bg-white/15 group-hover:bg-white/25 transition">
               <FaEnvelope className="text-xs" />
             </span>
-            <span>{contact.email}</span>
+            <span className="truncate max-w-[130px] sm:max-w-none">{contact.email}</span>
           </a>
 
-          {/* Address */}
-          <div className="flex items-center gap-1.5 text-white/95">
+          {/* Address (Hidden on very small screens, visible on sm+) */}
+          <div className="hidden sm:flex items-center gap-1.5 text-white/95">
             <span className="p-1 rounded-full bg-white/15">
               <FaMapMarkerAlt className="text-xs" />
             </span>
-            <span>{contact.address}</span>
+            <span className="truncate max-w-[200px] sm:max-w-none">{contact.address}</span>
           </div>
 
           {/* WhatsApp / Phone Direct Link */}
@@ -43,7 +43,7 @@ export default function TopBar() {
             href={contact.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 hover:text-white/80 transition-colors group"
+            className="flex items-center gap-1.5 hover:text-white/80 transition-colors group font-bold"
           >
             <span className="p-1 rounded-full bg-white/15 group-hover:bg-white/25 transition">
               <FaWhatsapp className="text-xs text-white" />
@@ -53,9 +53,9 @@ export default function TopBar() {
         </div>
 
         {/* Right Section: Fleet Dispatch Badge & Social Media Icons */}
-        <div className="flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-4">
           {/* Commercial Fleet Dispatch Badge */}
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white font-bold text-[11px] uppercase tracking-wider backdrop-blur-xs">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white font-bold text-[10px] uppercase tracking-wider backdrop-blur-xs">
             <span className="h-2 w-2 rounded-full bg-[#58BB87] animate-ping" />
             <span className="h-2 w-2 rounded-full bg-[#58BB87] -ml-3.5" />
             <span>Heavy Truck & Trailer Dispatch</span>

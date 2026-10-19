@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 };
 
 import AuthContextProvider from "@/contexts/AuthContexts";
+import { SidebarProvider } from "@/contexts/SidebarContext";
 import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({
@@ -27,8 +28,10 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased scroll-smooth">
       <body className="min-h-full flex flex-col bg-[#FAFAFC] text-gray-900 font-sans">
         <AuthContextProvider>
-          <Toaster position="top-center" />
-          {children}
+          <SidebarProvider>
+            <Toaster position="top-center" />
+            {children}
+          </SidebarProvider>
         </AuthContextProvider>
       </body>
     </html>
