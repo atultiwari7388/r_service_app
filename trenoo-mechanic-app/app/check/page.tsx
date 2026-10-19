@@ -65,7 +65,7 @@ export default function CheckPage() {
               <CheckSquare size={14} />
               <span>Disbursements & Payments</span>
             </div>
-            <h1 className="text-3xl font-black text-[#0B132B] mt-1">
+            <h1 className="text-3xl font-black text-gray-900 mt-1">
               Check Management & Ledger
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -87,7 +87,7 @@ export default function CheckPage() {
         {/* Check Register Table */}
         <div className="bg-white rounded-3xl border border-gray-200 shadow-xs p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-black text-[#0B132B]">
+            <h3 className="text-lg font-black text-gray-900">
               Recent Issued Checks
             </h3>
             <span className="text-xs font-semibold text-gray-500">
@@ -111,7 +111,7 @@ export default function CheckPage() {
               <tbody className="divide-y divide-gray-100">
                 {MOCK_CHECKS.map((chk) => (
                   <tr key={chk.id} className="hover:bg-gray-50">
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#0B132B]">
+                    <td className="py-3.5 px-4 font-mono font-bold text-gray-900">
                       {chk.checkNo}
                     </td>
                     <td className="py-3.5 px-4 font-bold text-gray-800">
@@ -123,7 +123,7 @@ export default function CheckPage() {
                     <td className="py-3.5 px-4 text-gray-500">
                       {chk.date}
                     </td>
-                    <td className="py-3.5 px-4 font-black text-[#0B132B]">
+                    <td className="py-3.5 px-4 font-black text-gray-900">
                       {formatCurrency(chk.amount)}
                     </td>
                     <td className="py-3.5 px-4">

@@ -21,12 +21,12 @@ export default function HomePage() {
     <MainLayout>
       <div className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-10 sm:space-y-12">
         {/* 1. TOP 24/7 EMERGENCY DISPATCH TICKER */}
-        <div className="rounded-2xl bg-gradient-to-r from-[#0B132B] via-[#1C2541] to-[#0B132B] p-3 sm:p-4 text-white border border-gray-800 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="rounded-2xl bg-white p-3 sm:p-4 text-gray-800 border border-gray-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 text-xs font-semibold">
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F96176] text-white text-[11px] font-black uppercase tracking-wider animate-pulse">
               <Flame size={12} /> 24/7 Roadside Hotline
             </span>
-            <span className="text-gray-200 hidden md:inline">
+            <span className="text-gray-600 hidden md:inline">
               Immediate heavy-duty truck & trailer emergency dispatch across freight corridors.
             </span>
           </div>
@@ -71,7 +71,7 @@ export default function HomePage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-[#0B132B] tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
                 Active Bay Work Orders
               </h2>
               <p className="text-xs text-gray-500">

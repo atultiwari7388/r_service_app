@@ -122,7 +122,7 @@ export default function NewJobRequests() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black text-[#0B132B] tracking-tight">
+              <h2 className="text-xl font-black text-gray-900 tracking-tight">
                 New Jobs Requests
               </h2>
               <span className="px-2.5 py-0.5 rounded-full bg-[#F96176] text-white text-xs font-black">
@@ -141,7 +141,7 @@ export default function NewJobRequests() {
             onClick={() => setActiveFilter("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeFilter === "all"
-                ? "bg-[#0B132B] text-white shadow-xs"
+                ? "bg-gray-900 text-white shadow-xs"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -223,7 +223,7 @@ export default function NewJobRequests() {
                   {/* Left Column: Unit details & Issue */}
                   <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <span className="text-sm font-black text-[#0B132B]">
+                      <span className="text-sm font-black text-gray-900">
                         {req.unit}
                       </span>
                       <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-md">
@@ -239,7 +239,7 @@ export default function NewJobRequests() {
                             ? "bg-amber-50 text-amber-700 border border-amber-300"
                             : req.urgency === "Trailer Structural"
                             ? "bg-purple-50 text-purple-700 border border-purple-200"
-                            : "bg-blue-50 text-[#0078A6] border border-blue-200"
+                            : "bg-blue-50 text-[#F96176] border border-blue-200"
                         }`}
                       >
                         {req.urgency === "Emergency Roadside" && <Flame size={12} />}
@@ -262,7 +262,7 @@ export default function NewJobRequests() {
 
                     {/* Location & Proximity */}
                     <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap pt-1">
-                      <div className="flex items-center gap-1 font-semibold text-[#0B132B]">
+                      <div className="flex items-center gap-1 font-semibold text-gray-900">
                         <MapPin size={13} className="text-[#F96176]" />
                         <span>{req.location}</span>
                       </div>

@@ -18,11 +18,7 @@ export default function AvailabilityCard({
 }: AvailabilityCardProps) {
   return (
     <div
-      className={`rounded-2xl transition-all duration-300 relative overflow-hidden ${
-        variant === "hero"
-          ? "bg-[#1C2541]/90 backdrop-blur-md border border-gray-700/80 shadow-2xl p-5 text-white"
-          : "bg-white border border-gray-200/90 shadow-sm hover:shadow-md p-5 text-gray-900"
-      } ${className}`}
+      className={`rounded-2xl transition-all duration-300 relative overflow-hidden bg-white border border-gray-200 shadow-xs p-5 text-gray-900 ${className}`}
       role="region"
       aria-label="Availability Status Control"
     >
@@ -37,11 +33,7 @@ export default function AvailabilityCard({
             }`}
             aria-hidden="true"
           />
-          <h2
-            className={`text-sm font-black uppercase tracking-wider ${
-              variant === "hero" ? "text-gray-200" : "text-[#0B132B]"
-            }`}
-          >
+          <h2 className="text-sm font-black uppercase tracking-wider text-gray-900">
             Your Availability
           </h2>
         </div>
@@ -50,8 +42,8 @@ export default function AvailabilityCard({
         <span
           className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wide uppercase transition-all duration-200 ${
             isActive
-              ? "bg-[#58BB87]/20 text-[#58BB87] border border-[#58BB87]/40"
-              : "bg-red-50 text-[#F96176] border border-[#F96176]/30"
+              ? "bg-emerald-50 text-[#58BB87] border border-emerald-200"
+              : "bg-red-50 text-[#F96176] border border-red-200"
           }`}
           aria-live="polite"
         >
@@ -66,11 +58,7 @@ export default function AvailabilityCard({
       </div>
 
       {/* Contextual Status Text */}
-      <p
-        className={`text-xs sm:text-sm font-semibold mb-4 leading-relaxed ${
-          variant === "hero" ? "text-gray-300" : "text-gray-600"
-        }`}
-      >
+      <p className="text-xs sm:text-sm font-semibold mb-4 leading-relaxed text-gray-600">
         {isActive
           ? "You're online and ready for new jobs."
           : "You're offline and won't receive new job requests."}
@@ -78,11 +66,7 @@ export default function AvailabilityCard({
 
       {/* Segmented / Toggle Control */}
       <div
-        className={`p-1.5 rounded-xl border flex items-center gap-1.5 ${
-          variant === "hero"
-            ? "bg-[#0B132B]/80 border-gray-700"
-            : "bg-gray-100 border-gray-200"
-        }`}
+        className="p-1.5 rounded-xl border flex items-center gap-1.5 bg-gray-100 border-gray-200"
         role="group"
         aria-label="Set availability state"
       >
@@ -93,9 +77,7 @@ export default function AvailabilityCard({
           aria-pressed={isActive}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-black transition-all duration-200 cursor-pointer ${
             isActive
-              ? "bg-[#58BB87] text-white shadow-md shadow-[#58BB87]/30 scale-[1.01]"
-              : variant === "hero"
-              ? "text-gray-400 hover:text-white hover:bg-white/5"
+              ? "bg-[#58BB87] text-white shadow-xs scale-[1.01]"
               : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
           }`}
         >
@@ -110,9 +92,7 @@ export default function AvailabilityCard({
           aria-pressed={!isActive}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-black transition-all duration-200 cursor-pointer ${
             !isActive
-              ? "bg-[#F96176] text-white shadow-md shadow-[#F96176]/30 scale-[1.01]"
-              : variant === "hero"
-              ? "text-gray-400 hover:text-white hover:bg-white/5"
+              ? "bg-[#F96176] text-white shadow-xs scale-[1.01]"
               : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
           }`}
         >
@@ -122,13 +102,7 @@ export default function AvailabilityCard({
       </div>
 
       {/* Footer Meta indicator */}
-      <div
-        className={`flex items-center justify-between text-[11px] font-medium mt-3 pt-2.5 border-t ${
-          variant === "hero"
-            ? "border-gray-800 text-gray-400"
-            : "border-gray-100 text-gray-500"
-        }`}
-      >
+      <div className="flex items-center justify-between text-[11px] font-medium mt-3 pt-2.5 border-t border-gray-100 text-gray-500">
         <span className="flex items-center gap-1">
           {isActive ? (
             <>

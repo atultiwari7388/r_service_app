@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Briefcase,
   FileText,
@@ -15,26 +15,25 @@ import {
   LogIn,
   Bell,
   Star,
-  ShieldCheck,
   LogOut,
   User as UserIcon,
-  Wrench,
+  ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
 import { SIDEBAR_MENU_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContexts";
-import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 // Map icons to the 7 menus
 const MENU_ICONS: Record<string, React.ReactNode> = {
-  "find-jobs": <Briefcase size={20} />,
-  invoice: <FileText size={20} />,
-  check: <CheckSquare size={20} />,
-  inspections: <ClipboardCheck size={20} />,
-  team: <Users size={20} />,
-  reports: <BarChart3 size={20} />,
-  export: <Download size={20} />,
+  "find-jobs": <Briefcase size={18} />,
+  invoice: <FileText size={18} />,
+  check: <CheckSquare size={18} />,
+  inspections: <ClipboardCheck size={18} />,
+  team: <Users size={18} />,
+  reports: <BarChart3 size={18} />,
+  export: <Download size={18} />,
 };
 
 export default function AppSidebar() {
@@ -45,26 +44,7 @@ export default function AppSidebar() {
   const mechanic = auth?.mechanicProfile;
   const logout = auth?.logout;
 
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [unreadCount] = useState(3);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close profile dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        profileMenuRef.current &&
-        !profileMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsProfileOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   const isMenuLinkActive = (href: string) => {
     if (href === "/" && pathname === "/") return true;
@@ -72,315 +52,195 @@ export default function AppSidebar() {
     return false;
   };
 
-  return (
-    <aside className="fixed left-0 top-0 z-50 h-screen w-16 bg-[#0B132B] flex flex-col items-center py-3.5 justify-between border-r border-gray-800/90 select-none shadow-2xl">
-      {/* Top Section: Brand Logo & 7 Menu Items (Direct links, NO submenus) */}
-      <div className="flex flex-col items-center gap-5 w-full">
-        {/* Brand Home Button */}
-        <Link
-          href="/"
-          className="group relative h-11 w-11 rounded-xl bg-[#1C2541] flex items-center justify-center text-white hover:bg-[#F96176] transition-all duration-300 shadow-md ring-1 ring-white/10"
-          title="Trenoo Fleet & Trailer Hub"
-          onMouseEnter={() => setHoveredKey("brand")}
-          onMouseLeave={() => setHoveredKey(null)}
-        >
-          <Image
-            src="/logo-new.png"
-            alt="Trenoo Logo"
-            width={26}
-            height={26}
-            className="object-contain group-hover:scale-110 transition-transform"
-          />
-          {/* Logo Tooltip */}
-          {hoveredKey === "brand" && (
-            <div className="pointer-events-none absolute left-16 z-50 ml-2 whitespace-nowrap rounded-lg bg-[#0B132B] border border-gray-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xl">
-              <span className="text-[#F96176] font-extrabold">Trenoo</span> Fleet & Trailer Hub
-            </div>
-          )}
-        </Link>
+  const handleLogout = async () => {
+    try {
+      if (logout) await logout();
+      toast.success("Signed out successfully");
+      router.push("/login");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to log out");
+    }
+  };
 
-        {/* 7 Sidebar Menus: Find Jobs, Invoice, Check, Inspections, Team, Reports, Export */}
-        <nav className="flex flex-col gap-2 w-full items-center">
+  return (
+    <aside className="fixed left-0 top-0 z-50 h-screen w-60 bg-white flex flex-col justify-between border-r border-gray-200 select-none shadow-xs">
+      {/* TOP SECTION: BRAND LOGO + NAVIGATION */}
+      <div className="flex flex-col w-full overflow-y-auto no-scrollbar">
+        {/* Brand Header */}
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="h-10 w-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center p-1.5 shadow-2xs group-hover:border-[#F96176] transition-colors">
+              <Image
+                src="/logo-new.png"
+                alt="Trenoo Logo"
+                width={26}
+                height={26}
+                className="object-contain"
+              />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-base font-extrabold text-gray-900 tracking-tight leading-tight">
+                TRENO<span className="text-[#F96176]">OPS</span>
+              </span>
+              <span className="text-[10px] font-bold text-[#58BB87] uppercase tracking-wider">
+                Fleet Mechanic Hub
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Navigation Category Label */}
+        <div className="px-5 pt-5 pb-2">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400">
+            Operations & Jobs
+          </span>
+        </div>
+
+        {/* 7 Menus with Icon + Name Together */}
+        <nav className="flex flex-col gap-1 px-3 w-full">
           {SIDEBAR_MENU_ITEMS.map((item) => {
             const isActive = isMenuLinkActive(item.href);
-            const isHovered = hoveredKey === item.key;
 
             return (
-              <div
+              <Link
                 key={item.key}
-                className="relative flex items-center justify-center w-full"
-                onMouseEnter={() => setHoveredKey(item.key)}
-                onMouseLeave={() => setHoveredKey(null)}
-              >
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
-                    isActive
-                      ? "bg-[#F96176] text-white shadow-lg shadow-[#F96176]/30 font-semibold"
-                      : "text-gray-400 hover:bg-[#1C2541] hover:text-white"
-                  )}
-                  aria-label={item.label}
-                >
-                  {MENU_ICONS[item.key] || <FileText size={20} />}
-
-                  {/* Active Indicator Bar on Left */}
-                  {isActive && (
-                    <span className="absolute -left-2 top-2 bottom-2 w-1 rounded-r-full bg-[#F96176]" />
-                  )}
-                </Link>
-
-                {/* Direct Single-Line Tooltip (No submenus) */}
-                {isHovered && (
-                  <div className="pointer-events-none absolute left-16 z-50 ml-2 whitespace-nowrap rounded-lg bg-[#0B132B] border border-gray-700/80 px-3 py-1.5 text-xs font-bold text-white shadow-2xl flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#F96176]" />
-                    <span>{item.label}</span>
-                  </div>
+                href={item.href}
+                className={cn(
+                  "group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150",
+                  isActive
+                    ? "bg-[#F96176] text-white shadow-xs shadow-[#F96176]/25 font-bold"
+                    : "text-gray-600 hover:bg-gray-100/80 hover:text-gray-900"
                 )}
-              </div>
+              >
+                <span
+                  className={cn(
+                    "shrink-0 transition-transform group-hover:scale-105",
+                    isActive ? "text-white" : "text-gray-500 group-hover:text-gray-800"
+                  )}
+                >
+                  {MENU_ICONS[item.key] || <FileText size={18} />}
+                </span>
+                <span className="truncate flex-1">{item.label}</span>
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                )}
+              </Link>
             );
           })}
+
+          {/* Profile & Settings direct link */}
+          <Link
+            href="/profile"
+            className={cn(
+              "group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 mt-1",
+              pathname === "/profile"
+                ? "bg-[#F96176] text-white shadow-xs shadow-[#F96176]/25 font-bold"
+                : "text-gray-600 hover:bg-gray-100/80 hover:text-gray-900"
+            )}
+          >
+            <UserIcon
+              size={18}
+              className={cn(
+                "shrink-0",
+                pathname === "/profile" ? "text-white" : "text-gray-500 group-hover:text-gray-800"
+              )}
+            />
+            <span className="truncate flex-1">My Profile</span>
+            {pathname === "/profile" && (
+              <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+            )}
+          </Link>
         </nav>
       </div>
 
-      {/* Bottom Section: LOGIN/LOGOUT BUTTON, Notifications & Profile Avatar */}
-      <div className="flex flex-col items-center gap-2.5 w-full pb-1">
-        {/* LOGIN OR LOGOUT QUICK ACTION IN SIDEBAR */}
+      {/* BOTTOM SECTION: REAL MECHANIC CARD & LOGOUT / LOGIN */}
+      <div className="p-3 border-t border-gray-100 bg-gray-50/60 flex flex-col gap-2.5 w-full">
         {user ? (
-          <div
-            className="relative flex items-center justify-center w-full"
-            onMouseEnter={() => setHoveredKey("logout-action")}
-            onMouseLeave={() => setHoveredKey(null)}
-          >
-            <button
-              onClick={async () => {
-                if (logout) await logout();
-                toast.success("Logged out successfully");
-                router.push("/login");
-              }}
-              className="group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200 bg-[#1C2541] text-[#F96176] hover:bg-[#F96176] hover:text-white border border-[#F96176]/30 shadow-xs cursor-pointer"
-              aria-label="Logout"
-            >
-              <LogOut size={20} className="group-hover:scale-110 transition-transform" />
-            </button>
-            {hoveredKey === "logout-action" && (
-              <div className="pointer-events-none absolute left-16 z-50 ml-2 whitespace-nowrap rounded-lg bg-[#F96176] px-3 py-1.5 text-xs font-bold text-white shadow-xl">
-                Sign Out / Logout
-              </div>
-            )}
-          </div>
-        ) : (
-          <div
-            className="relative flex items-center justify-center w-full"
-            onMouseEnter={() => setHoveredKey("login-action")}
-            onMouseLeave={() => setHoveredKey(null)}
-          >
+          <>
+            {/* Real Mechanic Profile Box */}
             <Link
-              href="/login"
-              className={cn(
-                "group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
-                pathname === "/login"
-                  ? "bg-[#58BB87] text-white shadow-lg shadow-[#58BB87]/30"
-                  : "bg-[#1C2541] text-[#58BB87] hover:bg-[#58BB87] hover:text-white border border-[#58BB87]/40 shadow-xs"
-              )}
-              aria-label="Login"
+              href="/profile"
+              className="flex items-center gap-3 p-2 rounded-2xl bg-white border border-gray-200/90 hover:border-gray-300 hover:shadow-xs transition group cursor-pointer"
             >
-              <LogIn size={20} className="group-hover:scale-110 transition-transform" />
-            </Link>
-            {hoveredKey === "login-action" && (
-              <div className="pointer-events-none absolute left-16 z-50 ml-2 whitespace-nowrap rounded-lg bg-[#58BB87] px-3 py-1.5 text-xs font-bold text-white shadow-xl">
-                Portal Sign In / Login
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Notifications Icon with Unread Badge */}
-        <div
-          className="relative flex items-center justify-center w-full"
-          onMouseEnter={() => setHoveredKey("notifications")}
-          onMouseLeave={() => setHoveredKey(null)}
-        >
-          <Link
-            href="/find-jobs"
-            className="group relative h-10 w-10 rounded-xl flex items-center justify-center text-gray-400 hover:bg-[#1C2541] hover:text-white transition-all duration-200"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#F96176] text-[10px] font-bold text-white shadow-md animate-pulse">
-                {unreadCount}
-              </span>
-            )}
-          </Link>
-          {hoveredKey === "notifications" && (
-            <div className="pointer-events-none absolute left-16 z-50 ml-2 whitespace-nowrap rounded-lg bg-[#0B132B] border border-gray-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xl">
-              Fleet Alerts ({unreadCount} new requests)
-            </div>
-          )}
-        </div>
-
-        {/* Profile Avatar with Popover */}
-        <div ref={profileMenuRef} className="relative flex items-center justify-center w-full">
-          <button
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="group relative h-10 w-10 rounded-full flex items-center justify-center ring-2 ring-transparent hover:ring-[#F96176] transition-all overflow-hidden focus:outline-none bg-[#1C2541] shadow-md cursor-pointer"
-            title={mechanic?.userName || mechanic?.workshopName || (user ? "Mechanic Profile" : "Guest")}
-            aria-label="Profile"
-          >
-            {mechanic?.profilePicture || mechanic?.mDp ? (
-              <img
-                src={mechanic.profilePicture || mechanic.mDp}
-                alt={mechanic.userName || "Profile"}
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as any).style.display = "none";
-                }}
-              />
-            ) : (
-              <div className="h-full w-full bg-gradient-to-tr from-[#0B132B] to-[#1C2541] text-white flex items-center justify-center text-xs font-bold">
-                {(mechanic?.userName || mechanic?.workshopName || user?.email || "TM")
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </div>
-            )}
-            <span
-              className={cn(
-                "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-[#0B132B]",
-                user ? "bg-[#58BB87]" : "bg-gray-500"
-              )}
-            />
-          </button>
-
-          {/* Profile Dropdown Card */}
-          {isProfileOpen && (
-            <div className="absolute left-16 bottom-0 z-50 ml-2 w-72 rounded-2xl bg-[#0B132B] p-4 shadow-2xl border border-gray-700/80 animate-in fade-in slide-in-from-left-2 duration-150">
-              <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
-                <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-[#F96176] to-[#ff9900] text-white flex items-center justify-center font-bold text-sm shadow shrink-0 overflow-hidden">
-                  {mechanic?.profilePicture ? (
+              {/* Avatar with Status Dot */}
+              <div className="relative shrink-0">
+                <div className="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-xs text-gray-700 shadow-2xs">
+                  {mechanic?.profilePicture || mechanic?.mDp ? (
                     <img
-                      src={mechanic.profilePicture}
+                      src={mechanic.profilePicture || mechanic.mDp}
                       alt={mechanic.userName || "Mechanic"}
                       className="h-full w-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as any).style.display = "none";
+                      }}
                     />
                   ) : (
-                    (mechanic?.userName || mechanic?.workshopName || user?.email || "ME")
-                      .slice(0, 2)
-                      .toUpperCase()
-                  )}
-                </div>
-                <div className="overflow-hidden min-w-0">
-                  <h4 className="text-sm font-bold text-white truncate">
-                    {mechanic?.workshopName || mechanic?.userName || (user ? "Mechanic Account" : "Guest User")}
-                  </h4>
-                  <p className="text-xs text-gray-400 truncate">
-                    {mechanic?.email || user?.email || "Not signed in"}
-                  </p>
-                  {mechanic?.cellPhone && (
-                    <p className="text-[11px] text-gray-400 truncate mt-0.5">
-                      📞 {mechanic.cellPhone}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="flex items-center gap-1 text-[11px] font-semibold text-yellow-400">
-                      <Star size={12} fill="currentColor" /> 4.98
+                    <span className="text-[#F96176] font-extrabold">
+                      {(mechanic?.userName || mechanic?.workshopName || user?.email || "ME")
+                        .slice(0, 2)
+                        .toUpperCase()}
                     </span>
-                    <span className="text-[10px] text-gray-400 truncate">
-                      • {[mechanic?.city, mechanic?.state].filter(Boolean).join(", ") || "Shop Bay"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Pill */}
-              <div className="my-3 p-2.5 rounded-xl bg-[#1C2541] flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gray-400">
-                    Mechanic Status
-                  </span>
-                  <p className="text-xs font-bold text-[#58BB87]">
-                    {mechanic?.active !== false ? "Active & Available" : "Inactive"}
-                  </p>
+                  )}
                 </div>
                 <span
                   className={cn(
-                    "px-2 py-0.5 rounded text-[11px] font-bold",
-                    user
-                      ? "bg-[#58BB87]/20 text-[#58BB87]"
-                      : "bg-gray-700 text-gray-400"
+                    "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white",
+                    mechanic?.active !== false ? "bg-[#58BB87]" : "bg-gray-400"
                   )}
-                >
-                  {user ? "Online" : "Offline"}
-                </span>
+                  title={mechanic?.active !== false ? "Active / Online" : "Offline / Busy"}
+                />
               </div>
 
-              {/* Menu Links */}
-              <div className="flex flex-col gap-1 text-xs">
-                {user ? (
-                  <>
-                    <Link
-                      href="/profile"
-                      onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors font-medium"
-                    >
-                      <UserIcon size={14} className="text-[#F96176]" />
-                      <span>My Profile & Settings</span>
-                    </Link>
-                    <Link
-                      href="/team"
-                      onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors"
-                    >
-                      <Users size={14} className="text-gray-400" />
-                      <span>Manage Mechanics & Bays</span>
-                    </Link>
-                    <Link
-                      href="/inspections"
-                      onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors"
-                    >
-                      <ShieldCheck size={14} className="text-[#58BB87]" />
-                      <span>DOT Annual Certifications</span>
-                    </Link>
-                    <div className="border-t border-gray-800 my-1 pt-1">
-                      <button
-                        onClick={async () => {
-                          setIsProfileOpen(false);
-                          if (logout) await logout();
-                          toast.success("Signed out successfully");
-                          router.push("/login");
-                        }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-[#F96176] hover:bg-red-950/40 rounded-lg transition-colors font-semibold cursor-pointer"
-                      >
-                        <LogOut size={14} />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/login"
-                      onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-[#58BB87] hover:bg-[#1C2541] rounded-lg transition-colors font-semibold"
-                    >
-                      <LogIn size={14} />
-                      <span>Sign In to Your Account</span>
-                    </Link>
-                    <Link
-                      href="/sign-up"
-                      onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-gray-300 hover:bg-[#1C2541] hover:text-white rounded-lg transition-colors"
-                    >
-                      <Wrench size={14} className="text-[#F96176]" />
-                      <span>Register as Mechanic</span>
-                    </Link>
-                  </>
-                )}
+              {/* Info */}
+              <div className="overflow-hidden min-w-0 flex-1">
+                <h4 className="text-xs font-bold text-gray-900 truncate group-hover:text-[#F96176] transition-colors">
+                  {mechanic?.workshopName || mechanic?.userName || "Mechanic Account"}
+                </h4>
+                <p className="text-[11px] text-gray-500 truncate">
+                  {mechanic?.email || user?.email}
+                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="flex items-center text-[10px] font-bold text-amber-500">
+                    <Star size={10} className="fill-amber-400 text-amber-400 mr-0.5" />
+                    4.98
+                  </span>
+                  <span className="text-[10px] text-gray-400">•</span>
+                  <span className="text-[10px] text-gray-500 font-medium truncate">
+                    {[mechanic?.city, mechanic?.state].filter(Boolean).join(", ") || "Bay Hub"}
+                  </span>
+                </div>
               </div>
+
+              <ChevronRight size={14} className="text-gray-400 group-hover:text-gray-600 shrink-0" />
+            </Link>
+
+            {/* Logout Action Button */}
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-red-200 bg-red-50 text-[#F96176] hover:bg-red-100 font-semibold text-xs transition cursor-pointer"
+            >
+              <LogOut size={14} />
+              <span>Log Out</span>
+            </button>
+          </>
+        ) : (
+          /* Guest / Logged Out Action */
+          <div className="flex flex-col gap-2">
+            <div className="p-2.5 rounded-xl bg-white border border-gray-200 text-center">
+              <span className="text-xs font-bold text-gray-800 block">Not Signed In</span>
+              <span className="text-[11px] text-gray-500 block">
+                Access work orders & bay logs
+              </span>
             </div>
-          )}
-        </div>
+            <Link
+              href="/login"
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white font-semibold text-xs shadow-xs transition"
+            >
+              <LogIn size={14} />
+              <span>Log In to Portal</span>
+            </Link>
+          </div>
+        )}
       </div>
     </aside>
   );

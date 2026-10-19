@@ -41,7 +41,7 @@ export default function ExportPage() {
             <Download size={14} />
             <span>Data Management</span>
           </div>
-          <h1 className="text-3xl font-black text-[#0B132B] mt-1">
+          <h1 className="text-3xl font-black text-gray-900 mt-1">
             Data Export & Integrations
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -66,7 +66,7 @@ export default function ExportPage() {
                   </span>
                 </div>
 
-                <h3 className="text-lg font-black text-[#0B132B] mb-1">
+                <h3 className="text-lg font-black text-gray-900 mb-1">
                   {card.title}
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 mb-6 leading-relaxed">
@@ -76,7 +76,7 @@ export default function ExportPage() {
 
               <button
                 onClick={() => alert(`Starting export: ${card.title}`)}
-                className="w-full py-3 rounded-xl bg-[#0B132B] hover:bg-[#F96176] text-white text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3 rounded-xl bg-gray-900 hover:bg-[#F96176] text-white text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Download size={16} />
                 <span>{card.actionText}</span>

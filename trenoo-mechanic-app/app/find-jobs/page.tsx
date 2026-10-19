@@ -16,7 +16,7 @@ export default function FindJobsPage() {
               <Briefcase size={14} />
               <span>Fleet Operations</span>
             </div>
-            <h1 className="text-3xl font-black text-[#0B132B] mt-1">
+            <h1 className="text-3xl font-black text-gray-900 mt-1">
               Find Jobs & Work Orders
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">

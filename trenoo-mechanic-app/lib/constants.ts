@@ -25,7 +25,7 @@ export const APP_CONFIG = {
     navyCard: "#1C2541",
     navyHover: "#273469",
     orange: "#FF9900",
-    tertiary: "#0078A6",
+    tertiary: "#F96176",
   },
 };
 

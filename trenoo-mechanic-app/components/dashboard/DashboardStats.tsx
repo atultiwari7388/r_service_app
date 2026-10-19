@@ -38,10 +38,10 @@ export default function DashboardStats() {
       label: MOCK_DASHBOARD_STATS.jobsThisMonthLabel,
       value: MOCK_DASHBOARD_STATS.jobsThisMonth.toString(),
       subtext: MOCK_DASHBOARD_STATS.jobsThisMonthSub,
-      icon: <Calendar size={22} className="text-[#0078A6]" />,
+      icon: <Calendar size={22} className="text-[#F96176]" />,
       iconBg: "bg-blue-50",
       badge: "+16.8%",
-      badgeColor: "bg-blue-50 text-[#0078A6]",
+      badgeColor: "bg-blue-50 text-[#F96176]",
     },
     {
       id: "rating",
@@ -59,7 +59,7 @@ export default function DashboardStats() {
     <section className="space-y-4">
       {/* Header with Demo Disclosure */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h2 className="text-sm font-black text-[#0B132B] uppercase tracking-wider flex items-center gap-2">
+        <h2 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-[#F96176]" />
           Operational Performance Metrics
         </h2>
@@ -88,7 +88,7 @@ export default function DashboardStats() {
             </div>
 
             <div className="mt-4">
-              <div className="text-2xl sm:text-3xl font-black text-[#0B132B] tracking-tight">
+              <div className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
                 {stat.value}
               </div>
               <div className="text-xs font-black text-gray-600 uppercase tracking-wider mt-0.5">

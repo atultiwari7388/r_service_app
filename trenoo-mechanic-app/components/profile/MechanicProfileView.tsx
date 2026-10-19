@@ -12,7 +12,6 @@ import {
   DollarSign,
   FileText,
   Camera,
-  CheckCircle2,
   Lock,
   Globe,
   Wallet,
@@ -64,18 +63,18 @@ export default function MechanicProfileView() {
 
   if (!user) {
     return (
-      <div className="max-w-xl mx-auto my-16 p-8 bg-white rounded-3xl border border-gray-100 shadow-xl text-center space-y-4">
+      <div className="max-w-xl mx-auto my-16 p-8 bg-white rounded-3xl border border-gray-200 shadow-sm text-center space-y-4">
         <div className="w-16 h-16 mx-auto rounded-2xl bg-red-50 text-[#F96176] flex items-center justify-center font-bold text-2xl">
           <Lock className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold text-[#0B132B]">Authentication Required</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Authentication Required</h2>
         <p className="text-gray-500 text-sm">
           You must be logged in as a registered mechanic to view and manage your profile.
         </p>
         <div className="pt-2">
           <Link
             href="/login"
-            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#F96176] text-white font-semibold shadow-md hover:bg-[#e04f63] transition"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#F96176] text-white font-semibold shadow-xs hover:bg-[#e0485d] transition"
           >
             Go to Mechanic Login
           </Link>
@@ -98,15 +97,13 @@ export default function MechanicProfileView() {
         }}
       />
 
-      {/* TOP HEADER / HERO PROFILE CARD */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0B132B] via-[#1C2541] to-[#0B132B] text-white p-6 sm:p-8 shadow-2xl border border-gray-800">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-[#F96176]/10 blur-3xl pointer-events-none" />
-
+      {/* TOP HEADER / HERO PROFILE CARD - CLEAN LIGHT STYLING (NO DARK BLUE) */}
+      <div className="relative overflow-hidden rounded-3xl bg-white text-gray-900 p-6 sm:p-8 shadow-xs border border-gray-200">
         <div className="relative flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
             {/* Avatar with Camera Icon */}
             <div className="relative group shrink-0">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl ring-4 ring-white/10 overflow-hidden bg-[#1C2541] shadow-xl flex items-center justify-center">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl ring-4 ring-gray-100 overflow-hidden bg-gray-50 border border-gray-200 shadow-xs flex items-center justify-center">
                 {profilePicture ? (
                   <img
                     src={profilePicture}
@@ -125,7 +122,7 @@ export default function MechanicProfileView() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingPhoto}
-                className="absolute -bottom-2 -right-2 p-2.5 rounded-xl bg-[#F96176] text-white shadow-lg hover:bg-[#e04f63] hover:scale-110 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                className="absolute -bottom-2 -right-2 p-2.5 rounded-xl bg-[#F96176] text-white shadow-md hover:bg-[#e0485d] hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 title="Change Profile Photo"
               >
                 {isUploadingPhoto ? (
@@ -139,44 +136,44 @@ export default function MechanicProfileView() {
             {/* Profile Core Details */}
             <div className="space-y-1.5 min-w-0">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white truncate">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 truncate">
                   {formData.workshopName || formData.userName || "Mechanic Workshop"}
                 </h1>
                 {formData.active ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#58BB87]/20 text-[#58BB87] border border-[#58BB87]/40 shadow-xs">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-[#58BB87] border border-emerald-200">
                     <span className="w-2 h-2 rounded-full bg-[#58BB87] animate-pulse" />
                     Available / Online
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-700/60 text-gray-300 border border-gray-600">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
                     <span className="w-2 h-2 rounded-full bg-gray-400" />
                     Offline / Busy
                   </span>
                 )}
               </div>
 
-              <p className="text-gray-300 font-medium text-sm sm:text-base flex items-center justify-center sm:justify-start gap-2">
+              <p className="text-gray-600 font-medium text-sm sm:text-base flex items-center justify-center sm:justify-start gap-2">
                 <User className="w-4 h-4 text-[#F96176]" />
-                <span>{formData.userName || "Registered Specialist"}</span>
-                <span className="text-gray-500">•</span>
-                <span className="text-gray-400 text-xs sm:text-sm">{formData.email}</span>
+                <span className="text-gray-900 font-bold">{formData.userName || "Registered Specialist"}</span>
+                <span className="text-gray-300">•</span>
+                <span className="text-gray-500 text-xs sm:text-sm">{formData.email}</span>
               </p>
 
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs text-gray-300 pt-1">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs text-gray-600 pt-1">
                 {formData.cellPhone && (
-                  <span className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
+                  <span className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 font-medium">
                     <Phone className="w-3.5 h-3.5 text-[#58BB87]" />
                     {formData.cellPhone}
                   </span>
                 )}
                 {(formData.city || formData.state) && (
-                  <span className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
-                    <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 font-medium">
+                    <MapPin className="w-3.5 h-3.5 text-[#F96176]" />
                     {[formData.city, formData.state].filter(Boolean).join(", ")}
                   </span>
                 )}
-                <span className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 text-yellow-400 font-medium">
-                  <Star className="w-3.5 h-3.5 fill-current" />
+                <span className="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 text-amber-700 font-bold">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                   4.98 Rating
                 </span>
               </div>
@@ -186,28 +183,28 @@ export default function MechanicProfileView() {
           {/* Quick Action & Wallet Widget */}
           <div className="flex flex-col sm:flex-row md:flex-col items-center sm:items-end gap-3 shrink-0">
             {/* Wallet Box */}
-            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/15 shadow-inner">
-              <div className="p-2 rounded-xl bg-[#58BB87]/20 text-[#58BB87]">
+            <div className="flex items-center gap-3 bg-emerald-50 px-4 py-2.5 rounded-2xl border border-emerald-200/80 shadow-2xs">
+              <div className="p-2 rounded-xl bg-emerald-100 text-[#58BB87]">
                 <Wallet className="w-5 h-5" />
               </div>
               <div className="text-right">
-                <span className="text-[11px] uppercase tracking-wider text-gray-300 block font-semibold">
+                <span className="text-[10px] uppercase tracking-wider text-emerald-800 block font-bold">
                   Wallet Balance
                 </span>
-                <span className="text-xl font-extrabold text-white">
+                <span className="text-xl font-black text-emerald-950">
                   ${wallet.toFixed(2)}
                 </span>
               </div>
             </div>
 
             {/* Availability Toggle */}
-            <div className="flex items-center gap-2.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
-              <span className="text-xs text-gray-300 font-medium">Service Call Dispatch:</span>
+            <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+              <span className="text-xs text-gray-700 font-medium">Service Dispatch:</span>
               <button
                 type="button"
                 onClick={() => handleActiveToggle(!formData.active)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  formData.active ? "bg-[#58BB87]" : "bg-gray-600"
+                  formData.active ? "bg-[#58BB87]" : "bg-gray-300"
                 }`}
               >
                 <span
@@ -274,7 +271,7 @@ export default function MechanicProfileView() {
 
       {/* TAB CONTENT: 1. DETAILS */}
       {activeTab === "details" && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 space-y-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Mechanic & Workshop Details</h2>
@@ -286,7 +283,7 @@ export default function MechanicProfileView() {
               type="button"
               onClick={saveProfile}
               disabled={isSaving}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-md hover:bg-[#e04f63] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-xs hover:bg-[#e0485d] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Changes
@@ -524,7 +521,7 @@ export default function MechanicProfileView() {
               type="button"
               onClick={saveProfile}
               disabled={isSaving}
-              className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-md hover:bg-[#e04f63] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-xs hover:bg-[#e0485d] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Update Profile Details
@@ -535,7 +532,7 @@ export default function MechanicProfileView() {
 
       {/* TAB CONTENT: 2. LANGUAGES */}
       {activeTab === "languages" && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 space-y-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Supported Languages</h2>
@@ -547,7 +544,7 @@ export default function MechanicProfileView() {
               type="button"
               onClick={saveProfile}
               disabled={isSaving}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-md hover:bg-[#e04f63] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-xs hover:bg-[#e0485d] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Languages
@@ -562,7 +559,7 @@ export default function MechanicProfileView() {
                   key={lang}
                   className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer select-none ${
                     isChecked
-                      ? "border-[#F96176] bg-red-50/50 shadow-xs ring-1 ring-[#F96176]"
+                      ? "border-[#F96176] bg-red-50/50 shadow-2xs ring-1 ring-[#F96176]"
                       : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   }`}
                 >
@@ -591,7 +588,7 @@ export default function MechanicProfileView() {
 
       {/* TAB CONTENT: 3. SECURITY */}
       {activeTab === "security" && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 space-y-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-6">
           <div className="pb-4 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">Change Portal Password</h2>
             <p className="text-xs text-gray-500">
@@ -634,7 +631,7 @@ export default function MechanicProfileView() {
               type="button"
               onClick={handlePasswordChange}
               disabled={passwordState.isUpdating}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0B132B] text-white font-semibold text-sm shadow-md hover:bg-[#1C2541] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-xs hover:bg-[#e0485d] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             >
               {passwordState.isUpdating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -647,9 +644,9 @@ export default function MechanicProfileView() {
         </div>
       )}
 
-      {/* TAB CONTENT: 4. ACCOUNT & DANGER ZONE */}
+      {/* TAB CONTENT: 4. ACCOUNT & DANGER ZONE - NO BLUE */}
       {activeTab === "account" && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 space-y-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-6">
           <div className="pb-4 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">Account Management & Lifecycle</h2>
             <p className="text-xs text-gray-500">
@@ -658,41 +655,41 @@ export default function MechanicProfileView() {
           </div>
 
           <div className="space-y-4">
-            {/* Temporary Deactivation Card */}
-            <div className="p-6 rounded-2xl border border-blue-100 bg-blue-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Temporary Deactivation Card (Warm Amber/Neutral - No Blue) */}
+            <div className="p-6 rounded-2xl border border-amber-200 bg-amber-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-blue-900 flex items-center gap-2">
-                  <Radio className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-bold text-amber-900 flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-amber-600" />
                   Temporary Account Deactivation
                 </h3>
-                <p className="text-xs text-blue-700/80 leading-relaxed max-w-xl">
+                <p className="text-xs text-amber-800/90 leading-relaxed max-w-xl">
                   Temporarily hides your workshop from search queries and pauses job dispatch notifications. All data, past invoices, and history are preserved for when you return.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowDeactivateModal(true)}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-xs hover:bg-blue-700 active:scale-95 transition shadow-xs whitespace-nowrap cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700 active:scale-95 transition shadow-2xs whitespace-nowrap cursor-pointer"
               >
                 Deactivate Account
               </button>
             </div>
 
             {/* Permanent Deletion Card */}
-            <div className="p-6 rounded-2xl border border-red-100 bg-red-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="p-6 rounded-2xl border border-red-200 bg-red-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <h3 className="text-sm font-bold text-red-900 flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-red-600" />
                   Permanent Account Deletion
                 </h3>
-                <p className="text-xs text-red-700/80 leading-relaxed max-w-xl">
+                <p className="text-xs text-red-800/90 leading-relaxed max-w-xl">
                   Irreversible action. Permanently purges your mechanic account, linked team profiles, and certifications according to data privacy retention standards.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(true)}
-                className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-xs hover:bg-red-700 active:scale-95 transition shadow-xs whitespace-nowrap cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-xs hover:bg-red-700 active:scale-95 transition shadow-2xs whitespace-nowrap cursor-pointer"
               >
                 Delete Account Forever
               </button>
@@ -701,11 +698,11 @@ export default function MechanicProfileView() {
         </div>
       )}
 
-      {/* CONFIRMATION MODAL: DEACTIVATE */}
+      {/* CONFIRMATION MODAL: DEACTIVATE (Warm Amber theme - No Blue) */}
       {showDeactivateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-2xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-xl border border-gray-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
               <Radio className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-gray-900">Temporarily Deactivate Account?</h3>
@@ -723,7 +720,7 @@ export default function MechanicProfileView() {
               <button
                 type="button"
                 onClick={deactivateAccount}
-                className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer"
+                className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 transition cursor-pointer"
               >
                 Confirm Deactivation
               </button>
@@ -734,8 +731,8 @@ export default function MechanicProfileView() {
 
       {/* CONFIRMATION MODAL: PERMANENT DELETE */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-2xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-xl border border-gray-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center font-bold">
               <AlertTriangle className="w-6 h-6" />
             </div>

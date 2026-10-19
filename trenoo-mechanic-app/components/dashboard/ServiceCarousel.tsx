@@ -69,7 +69,7 @@ export default function ServiceCarousel() {
       case "engine":
         return <Cpu size={20} className="text-[#F96176]" />;
       case "trailer":
-        return <Layers size={20} className="text-[#0078A6]" />;
+        return <Layers size={20} className="text-[#F96176]" />;
       case "brake":
         return <ShieldCheck size={20} className="text-[#58BB87]" />;
       case "tire":
@@ -77,7 +77,7 @@ export default function ServiceCarousel() {
       case "roadside":
         return <Flame size={20} className="text-[#F96176]" />;
       case "maintenance":
-        return <Wrench size={20} className="text-[#0B132B]" />;
+        return <Wrench size={20} className="text-gray-900" />;
       default:
         return <Wrench size={20} className="text-[#F96176]" />;
     }
@@ -94,7 +94,7 @@ export default function ServiceCarousel() {
               Specialized Capabilities
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-[#0B132B] mt-1 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1 tracking-tight">
             Built for Every Mile.
           </h2>
           <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-2xl">
@@ -110,7 +110,7 @@ export default function ServiceCarousel() {
             disabled={!canScrollLeft}
             className={`h-11 w-11 rounded-2xl flex items-center justify-center border transition-all cursor-pointer ${
               canScrollLeft
-                ? "bg-white hover:bg-gray-100 text-[#0B132B] border-gray-200 shadow-sm"
+                ? "bg-white hover:bg-gray-100 text-gray-900 border-gray-200 shadow-sm"
                 : "bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed"
             }`}
             aria-label="Previous services"
@@ -148,7 +148,7 @@ export default function ServiceCarousel() {
             {/* Card Visual Header with Image */}
             <div className="relative h-44 w-full bg-gradient-to-tr from-gray-50 via-gray-100 to-white flex items-center justify-center p-4 border-b border-gray-100 overflow-hidden">
               {/* Category Badge */}
-              <span className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-xs text-[11px] font-black uppercase text-[#0B132B] border border-gray-200 shadow-xs">
+              <span className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-xs text-[11px] font-black uppercase text-gray-900 border border-gray-200 shadow-xs">
                 {service.badge}
               </span>
 
@@ -179,7 +179,7 @@ export default function ServiceCarousel() {
                   </span>
                 </div>
 
-                <h3 className="text-lg font-black text-[#0B132B] group-hover:text-[#F96176] transition-colors">
+                <h3 className="text-lg font-black text-gray-900 group-hover:text-[#F96176] transition-colors">
                   {service.title}
                 </h3>
 

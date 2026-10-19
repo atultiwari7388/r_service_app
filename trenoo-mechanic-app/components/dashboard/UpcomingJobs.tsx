@@ -50,7 +50,7 @@ export default function UpcomingJobs() {
               Dispatch Pipeline
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-[#0B132B] mt-1 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1 tracking-tight">
             Upcoming Job Requests
           </h2>
           <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-2xl">
@@ -60,7 +60,7 @@ export default function UpcomingJobs() {
 
         {/* Mock Data Note Badge */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-600 text-xs font-semibold border border-gray-200">
-          <Info size={14} className="text-[#0078A6]" />
+          <Info size={14} className="text-[#F96176]" />
           <span>Interactive Mock Data (Demo Only)</span>
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function UpcomingJobs() {
                 </span>
                 <h3
                   id="modal-job-title"
-                  className="text-lg font-black text-[#0B132B] mt-0.5"
+                  className="text-lg font-black text-gray-900 mt-0.5"
                 >
                   {selectedJob.vehicleModel}
                 </h3>
@@ -180,7 +180,7 @@ export default function UpcomingJobs() {
                         key={part}
                         className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-gray-700 text-[11px] font-semibold flex items-center gap-1"
                       >
-                        <Wrench size={11} className="text-[#0B132B]" />
+                        <Wrench size={11} className="text-gray-900" />
                         <span>{part}</span>
                       </span>
                     ))}
@@ -206,7 +206,7 @@ export default function UpcomingJobs() {
                   <span className="text-[10px] uppercase font-bold text-gray-400 block">
                     Estimated Labor & Payout
                   </span>
-                  <p className="text-lg font-black text-[#0B132B] mt-0.5">
+                  <p className="text-lg font-black text-gray-900 mt-0.5">
                     ${selectedJob.estimatedPayment.toLocaleString()}
                   </p>
                   <p className="text-[10px] text-gray-500 font-mono">

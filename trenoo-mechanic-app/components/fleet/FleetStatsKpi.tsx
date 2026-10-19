@@ -67,7 +67,7 @@ export default function FleetStatsKpi({
       subtext: "100% DOT Certified & Cleared",
       badge: "Avg 2.2 hrs",
       badgeType: "success",
-      icon: <CheckCircle2 size={24} className="text-[#0078A6]" />,
+      icon: <CheckCircle2 size={24} className="text-[#F96176]" />,
       iconBg: "bg-cyan-50",
       borderColor: "border-cyan-200/80",
       highlight: false,
@@ -99,7 +99,7 @@ export default function FleetStatsKpi({
                   ? "bg-[#EAF8F1] text-[#58BB87]"
                   : stat.badgeType === "urgent"
                   ? "bg-amber-100 text-amber-800"
-                  : "bg-cyan-50 text-[#0078A6]"
+                  : "bg-cyan-50 text-[#F96176]"
               }`}
             >
               {stat.badge}
@@ -107,7 +107,7 @@ export default function FleetStatsKpi({
           </div>
 
           <div className="mt-4">
-            <div className="text-3xl sm:text-4xl font-black text-[#0B132B] tracking-tight">
+            <div className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
               {stat.headline}
             </div>
             <div className="text-xs font-black text-gray-500 uppercase tracking-wider mt-1 flex items-center gap-1.5">

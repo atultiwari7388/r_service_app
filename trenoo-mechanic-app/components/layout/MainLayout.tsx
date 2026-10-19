@@ -16,7 +16,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <AppSidebar />
 
       {/* Main Content Area shifted right by sidebar width */}
-      <div className="flex-1 min-w-0 flex flex-col ml-16 transition-all duration-200">
+      <div className="flex-1 min-w-0 flex flex-col ml-60 transition-all duration-200">
         <TopBar />
         <main className="flex-1 min-w-0 w-full">{children}</main>
         <Footer />

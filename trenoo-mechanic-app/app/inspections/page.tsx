@@ -58,7 +58,7 @@ export default function InspectionsPage() {
               <ShieldCheck size={14} />
               <span>Federal & State Compliance</span>
             </div>
-            <h1 className="text-3xl font-black text-[#0B132B] mt-1">
+            <h1 className="text-3xl font-black text-gray-900 mt-1">
               DOT & Commercial Trailer Inspections
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -79,7 +79,7 @@ export default function InspectionsPage() {
 
         {/* Inspections Table */}
         <div className="bg-white rounded-3xl border border-gray-200 shadow-xs p-6">
-          <h3 className="text-lg font-black text-[#0B132B] mb-4">
+          <h3 className="text-lg font-black text-gray-900 mb-4">
             Recent Inspection Certificates
           </h3>
           <div className="overflow-x-auto">

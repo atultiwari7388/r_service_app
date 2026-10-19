@@ -49,8 +49,8 @@ export default function JobRequestCard({
         };
       default:
         return {
-          icon: <Truck size={15} className="text-[#0078A6]" />,
-          bg: "bg-blue-50 text-[#0078A6] border-blue-200",
+          icon: <Truck size={15} className="text-[#F96176]" />,
+          bg: "bg-blue-50 text-[#F96176] border-blue-200",
         };
     }
   };
@@ -81,7 +81,7 @@ export default function JobRequestCard({
         <div className="flex items-start justify-between gap-3 pt-1">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-xs font-black text-[#0B132B] bg-gray-100 px-2 py-0.5 rounded">
+              <span className="font-mono text-xs font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
                 #{job.id}
               </span>
               <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">
@@ -92,7 +92,7 @@ export default function JobRequestCard({
               </span>
             </div>
 
-            <h3 className="text-base font-black text-[#0B132B] mt-1 line-clamp-1">
+            <h3 className="text-base font-black text-gray-900 mt-1 line-clamp-1">
               {job.vehicleModel}
             </h3>
             <p className="text-xs font-semibold text-gray-500">
@@ -120,7 +120,7 @@ export default function JobRequestCard({
                 isAccepted
                   ? "bg-[#58BB87] text-white"
                   : job.status === "In Progress"
-                  ? "bg-[#0B132B] text-white"
+                  ? "bg-gray-900 text-white"
                   : "bg-gray-100 text-gray-700"
               }`}
             >
@@ -163,7 +163,7 @@ export default function JobRequestCard({
         <div className="flex items-center justify-between text-xs pt-1">
           <div className="flex items-center gap-1">
             <span className="text-gray-500 font-medium">Est. Payment:</span>
-            <span className="text-base font-black text-[#0B132B]">
+            <span className="text-base font-black text-gray-900">
               ${job.estimatedPayment.toLocaleString()}
             </span>
           </div>

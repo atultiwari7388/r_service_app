@@ -65,7 +65,7 @@ export default function InvoicePage() {
               <FileText size={14} />
               <span>Financial Ledger</span>
             </div>
-            <h1 className="text-3xl font-black text-[#0B132B] mt-1">
+            <h1 className="text-3xl font-black text-gray-900 mt-1">
               Fleet Invoices & Statements
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -88,7 +88,7 @@ export default function InvoicePage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs">
             <span className="text-xs text-gray-500 font-bold uppercase">Total Invoiced (MTD)</span>
-            <div className="text-2xl font-black text-[#0B132B] mt-1">$48,920.00</div>
+            <div className="text-2xl font-black text-gray-900 mt-1">$48,920.00</div>
             <span className="text-xs text-[#58BB87] font-semibold">32 Invoices Issued</span>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs">
@@ -105,7 +105,7 @@ export default function InvoicePage() {
 
         {/* Invoices List */}
         <div className="bg-white rounded-3xl border border-gray-200 shadow-xs p-6">
-          <h3 className="text-lg font-black text-[#0B132B] mb-4">
+          <h3 className="text-lg font-black text-gray-900 mb-4">
             Recent Fleet Statements
           </h3>
           <div className="overflow-x-auto">
@@ -136,7 +136,7 @@ export default function InvoicePage() {
                     <td className="py-3.5 px-4 text-gray-500">
                       {inv.date}
                     </td>
-                    <td className="py-3.5 px-4 font-black text-[#0B132B]">
+                    <td className="py-3.5 px-4 font-black text-gray-900">
                       {formatCurrency(inv.amount)}
                     </td>
                     <td className="py-3.5 px-4">
@@ -155,7 +155,7 @@ export default function InvoicePage() {
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => alert(`Downloading ${inv.invoiceNo}.pdf`)}
-                        className="p-1.5 rounded-lg bg-gray-100 hover:bg-[#0B132B] hover:text-white transition text-gray-600"
+                        className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-900 hover:text-white transition text-gray-600"
                         title="Download Invoice"
                       >
                         <Download size={14} />

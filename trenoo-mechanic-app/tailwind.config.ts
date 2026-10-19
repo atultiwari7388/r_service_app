@@ -28,7 +28,7 @@ const config: Config = {
           DEFAULT: "#FF9900",
         },
         tertiary: {
-          DEFAULT: "#0078A6",
+          DEFAULT: "#F96176",
         },
       },
     },

@@ -29,7 +29,7 @@ export default function TruckTrailerSpecialtiesGrid() {
       link: "/find-jobs#semi-tractor",
     },
     {
-      icon: <Layers size={28} className="text-[#0078A6]" />,
+      icon: <Layers size={28} className="text-[#F96176]" />,
       title: "Commercial Semi-Trailer Maintenance",
       badge: "Dry Van & Flatbed",
       desc: "Comprehensive repair for Great Dane, Utility, Wabash, and Hyundai commercial trailers, intermodal chassis, and specialized lowboys.",
@@ -81,7 +81,7 @@ export default function TruckTrailerSpecialtiesGrid() {
       link: "/find-jobs#aftertreatment",
     },
     {
-      icon: <Wrench size={28} className="text-[#0B132B]" />,
+      icon: <Wrench size={28} className="text-gray-900" />,
       title: "Fleet Scheduled PM Services (A/B/C)",
       badge: "Fleet Volume Accounts",
       desc: "Preventative maintenance tailored for commercial freight carriers to minimize roadside downtime and maximize highway uptime.",
@@ -101,7 +101,7 @@ export default function TruckTrailerSpecialtiesGrid() {
         <span className="text-xs font-black uppercase tracking-wider text-[#F96176]">
           Heavy Duty Repair Capabilities
         </span>
-        <h3 className="text-2xl sm:text-3xl font-black text-[#0B132B] mt-1">
+        <h3 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">
           Specialized Commercial Fleet Bays
         </h3>
         <p className="text-xs sm:text-sm text-gray-500 mt-2">
@@ -125,7 +125,7 @@ export default function TruckTrailerSpecialtiesGrid() {
                 </span>
               </div>
 
-              <h4 className="text-lg font-black text-[#0B132B] mb-2">
+              <h4 className="text-lg font-black text-gray-900 mb-2">
                 {spec.title}
               </h4>
               <p className="text-xs text-gray-600 mb-5 leading-relaxed">

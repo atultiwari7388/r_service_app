@@ -153,7 +153,7 @@ export default function ActiveWorkOrdersTable() {
           <span className="text-xs font-black uppercase tracking-wider text-[#F96176]">
             Live Dispatch Board
           </span>
-          <h3 className="text-xl sm:text-2xl font-black text-[#0B132B]">
+          <h3 className="text-xl sm:text-2xl font-black text-gray-900">
             Commercial Truck & Trailer Work Orders
           </h3>
         </div>
@@ -176,7 +176,7 @@ export default function ActiveWorkOrdersTable() {
             <button
               onClick={() => setFilter("all")}
               className={`px-3 py-1.5 rounded-lg transition ${
-                filter === "all" ? "bg-white text-[#0B132B] shadow-xs" : "hover:text-gray-900"
+                filter === "all" ? "bg-white text-gray-900 shadow-xs" : "hover:text-gray-900"
               }`}
             >
               All
@@ -205,7 +205,7 @@ export default function ActiveWorkOrdersTable() {
 
           <Link
             href="/find-jobs"
-            className="px-4 py-2 rounded-xl bg-[#0B132B] text-white text-xs font-bold hover:bg-[#1C2541] transition flex items-center gap-1.5 ml-auto"
+            className="px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition flex items-center gap-1.5 ml-auto"
           >
             <span>Full Jobs Board</span>
             <ArrowRight size={14} />
@@ -234,7 +234,7 @@ export default function ActiveWorkOrdersTable() {
                 className="hover:bg-gray-50/80 transition-colors group"
               >
                 <td className="py-3.5 px-4">
-                  <div className="font-extrabold text-[#0B132B] flex items-center gap-1.5">
+                  <div className="font-extrabold text-gray-900 flex items-center gap-1.5">
                     <Truck size={15} className="text-[#F96176]" />
                     <span>{wo.unitNumber}</span>
                   </div>
@@ -257,7 +257,7 @@ export default function ActiveWorkOrdersTable() {
                   </span>
                 </td>
                 <td className="py-3.5 px-4">
-                  <span className="font-bold text-[#0B132B]">{wo.assignedBay}</span>
+                  <span className="font-bold text-gray-900">{wo.assignedBay}</span>
                   <div className="text-[11px] text-gray-500 truncate">
                     {wo.leadTechnician}
                   </div>

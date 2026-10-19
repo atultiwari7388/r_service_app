@@ -15,7 +15,7 @@ export default function ReportsPage() {
               <BarChart3 size={14} />
               <span>Fleet Intelligence</span>
             </div>
-            <h1 className="text-3xl font-black text-[#0B132B] mt-1">
+            <h1 className="text-3xl font-black text-gray-900 mt-1">
               Shop Reports & Fleet Analytics
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -26,7 +26,7 @@ export default function ReportsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => alert("Exporting monthly analytics report.")}
-              className="px-4 py-2.5 rounded-xl bg-[#0B132B] hover:bg-[#1C2541] text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
             >
               <Download size={16} />
               <span>Export Full Analytics</span>
@@ -38,7 +38,7 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="p-6 rounded-3xl bg-white border border-gray-200 shadow-xs">
             <span className="text-xs text-gray-500 font-bold uppercase">Bay Turnaround Average</span>
-            <div className="text-3xl font-black text-[#0B132B] mt-2">3.4 Hours</div>
+            <div className="text-3xl font-black text-gray-900 mt-2">3.4 Hours</div>
             <p className="text-xs text-[#58BB87] font-semibold mt-1">
               ↓ 18% reduction in truck downtime
             </p>

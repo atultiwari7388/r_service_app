@@ -51,7 +51,7 @@ export default function MechanicDutyControl({
 
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-black text-[#0B132B] tracking-tight">
+              <h2 className="text-base font-black text-gray-900 tracking-tight">
                 Bay #3 & Mobile Unit 01 — Heavy-Duty Dispatch
               </h2>
               {/* Status Badge */}
@@ -76,7 +76,7 @@ export default function MechanicDutyControl({
               <div className="flex items-center gap-1 font-semibold text-gray-800">
                 <MapPin size={13} className="text-[#F96176]" />
                 <span>Live Address:</span>
-                <span className="text-[#0B132B] font-bold">
+                <span className="text-gray-900 font-bold">
                   {APP_CONFIG.contact.address}
                 </span>
                 <span className="text-gray-400 font-normal hidden sm:inline">

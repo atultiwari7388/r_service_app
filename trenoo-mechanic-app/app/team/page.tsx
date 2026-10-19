@@ -59,7 +59,7 @@ export default function TeamPage() {
               <Users size={14} />
               <span>Workshop Personnel</span>
             </div>
-            <h1 className="text-3xl font-black text-[#0B132B] mt-1">
+            <h1 className="text-3xl font-black text-gray-900 mt-1">
               Heavy Duty Technician Team
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -97,17 +97,17 @@ export default function TeamPage() {
                     ● {tech.status === "in_bay" ? "In Bay" : "Available"}
                   </span>
                   {tech.aseCertified && (
-                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#0078A6]">
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#F96176]">
                       <ShieldCheck size={14} /> ASE
                     </span>
                   )}
                 </div>
 
-                <div className="h-12 w-12 rounded-xl bg-[#0B132B] text-white flex items-center justify-center font-bold text-base mb-3 shadow">
+                <div className="h-12 w-12 rounded-xl bg-gray-900 text-white flex items-center justify-center font-bold text-base mb-3 shadow">
                   {tech.name.split(" ").map((n) => n[0]).join("")}
                 </div>
 
-                <h3 className="text-base font-black text-[#0B132B]">
+                <h3 className="text-base font-black text-gray-900">
                   {tech.name}
                 </h3>
                 <p className="text-xs text-gray-500 font-semibold mb-2">
