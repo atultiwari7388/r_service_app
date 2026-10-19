@@ -56,3 +56,27 @@ export interface LoginResult {
   user?: any;
   mechanicData?: MechanicProfile;
 }
+
+export interface MechanicRegistrationData {
+  name: string;
+  workshopName: string;
+  cellPhone: string;
+  telephone?: string;
+  email: string;
+  address?: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode?: string;
+  dateOfBirth?: string;
+  experience?: string;
+  description?: string;
+  password: string;
+  languages: Record<string, boolean>;
+}
+
+export interface RegistrationResult {
+  success: boolean;
+  message?: string;
+  user?: any;
+}
