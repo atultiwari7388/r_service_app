@@ -1104,11 +1104,17 @@ class ReportsController extends GetxController {
           .doc(selectedVehicle)
           .get();
 
-      final existingVehicleMiles = int.tryParse(
-              (vehicleDoc.data()?['currentMiles'] ?? '0').toString()) ??
+      final vData = vehicleDoc.data() ?? {};
+      final rawMiles = vData['currentMiles'] ?? vData['miles'] ?? '0';
+      final cleanMilesStr = rawMiles.toString().replaceAll(',', '').replaceAll(' ', '').trim();
+      final existingVehicleMiles = int.tryParse(cleanMilesStr) ??
+          double.tryParse(cleanMilesStr)?.toInt() ??
           0;
-      final existingVehicleHours = int.tryParse(
-              (vehicleDoc.data()?['hoursReading'] ?? '0').toString()) ??
+
+      final rawHours = vData['hoursReading'] ?? vData['hours'] ?? '0';
+      final cleanHoursStr = rawHours.toString().replaceAll(',', '').replaceAll(' ', '').trim();
+      final existingVehicleHours = int.tryParse(cleanHoursStr) ??
+          double.tryParse(cleanHoursStr)?.toInt() ??
           0;
 
       final currentMiles = enteredMiles ?? existingVehicleMiles;
@@ -1337,7 +1343,9 @@ class ReportsController extends GetxController {
             ? currentMiles
             : selectedVehicleData?['vehicleType'] == "Truck" &&
                     selectedServiceData.any((s) => s['vType'] == "Truck")
-                ? int.parse(currentMiles.toString())
+                ? (int.tryParse(currentMiles.toString().replaceAll(',', '').replaceAll(' ', '').trim()) ??
+                    double.tryParse(currentMiles.toString().replaceAll(',', '').replaceAll(' ', '').trim())?.toInt() ??
+                    0)
                 : 0,
         "hours": isEditing
             ? int.tryParse(hoursController.text) ?? 0

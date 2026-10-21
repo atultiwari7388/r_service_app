@@ -132,32 +132,49 @@ class _ReportsScreenState extends State<ReportsScreen>
                                           final now = DateTime.now();
                                           reController.selectedDate = now;
                                           reController.dateController.text =
-                                              DateFormat('MM-dd-yyyy').format(now);
+                                              DateFormat('MM-dd-yyyy')
+                                                  .format(now);
 
-                                          if (reController.selectedVehicleData != null &&
-                                              reController.selectedVehicleData!.isNotEmpty) {
-                                            final vType = (reController.selectedVehicleData!['vehicleType'] ?? '')
+                                          if (reController
+                                                      .selectedVehicleData !=
+                                                  null &&
+                                              reController.selectedVehicleData!
+                                                  .isNotEmpty) {
+                                            final vType = (reController
+                                                            .selectedVehicleData![
+                                                        'vehicleType'] ??
+                                                    '')
                                                 .toString();
                                             if (vType == 'Truck') {
-                                              final cMiles = reController.selectedVehicleData!['currentMiles']
+                                              final cMiles = reController
+                                                  .selectedVehicleData![
+                                                      'currentMiles']
                                                   ?.toString()
                                                   .trim();
-                                              reController.milesController.text =
-                                                  (cMiles != null && cMiles.isNotEmpty && cMiles != '0')
-                                                      ? cMiles
-                                                      : '25000';
+                                              reController.milesController
+                                                  .text = (cMiles != null &&
+                                                      cMiles.isNotEmpty &&
+                                                      cMiles != '0')
+                                                  ? cMiles
+                                                  : '25000';
                                             } else if (vType == 'Trailer') {
-                                              final cHours = reController.selectedVehicleData!['hoursReading']
+                                              final cHours = reController
+                                                  .selectedVehicleData![
+                                                      'hoursReading']
                                                   ?.toString()
                                                   .trim();
-                                              reController.hoursController.text =
-                                                  (cHours != null && cHours.isNotEmpty && cHours != '0')
-                                                      ? cHours
-                                                      : '2500';
+                                              reController.hoursController
+                                                  .text = (cHours != null &&
+                                                      cHours.isNotEmpty &&
+                                                      cHours != '0')
+                                                  ? cHours
+                                                  : '2500';
                                             }
                                           } else {
-                                            reController.milesController.text = '25000';
-                                            reController.hoursController.text = '2500';
+                                            reController.milesController.text =
+                                                '25000';
+                                            reController.hoursController.text =
+                                                '2500';
                                           }
                                         }
                                       });
@@ -636,7 +653,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                       dynamic>;
                                                           final date = reController
                                                               .formatDateSafe(
-                                                                  record['date']);
+                                                                  record[
+                                                                      'date']);
 
                                                           return Container(
                                                             child:
@@ -1142,9 +1160,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                       ? null
                       : () async {
                           // Check which controller to use based on vehicle type
-                          final isTruck =
-                              reController.selectedVehicleData?['vehicleType'] ==
-                                  'Truck';
+                          final isTruck = reController
+                                  .selectedVehicleData?['vehicleType'] ==
+                              'Truck';
                           final controller = isTruck
                               ? reController.todayMilesController
                               : reController.hoursController;
@@ -1160,17 +1178,35 @@ class _ReportsScreenState extends State<ReportsScreen>
                             return;
                           }
 
+                          final cleanValue = value
+                              .replaceAll(',', '')
+                              .replaceAll(' ', '')
+                              .trim();
+                          final int? parsedEnteredValue =
+                              int.tryParse(cleanValue) ??
+                                  double.tryParse(cleanValue)?.toInt();
+
+                          if (parsedEnteredValue == null) {
+                            showToastMessage(
+                              "Invalid Input",
+                              "Please enter a valid number for ${isTruck ? 'miles' : 'hours'}",
+                              kPrimary,
+                            );
+                            return;
+                          }
+
                           setState(() {
                             _isSavingMiles = true;
                           });
 
                           try {
-                            final int enteredValue = int.parse(value);
+                            final int enteredValue = parsedEnteredValue;
                             final vehicleId = reController.selectedVehicle!;
-                            final vehicleNumber = (reController
-                                        .selectedVehicleData?['vehicleNumber'] ??
-                                    'Vehicle')
-                                .toString();
+                            final vehicleNumber =
+                                (reController.selectedVehicleData?[
+                                            'vehicleNumber'] ??
+                                        'Vehicle')
+                                    .toString();
                             final companyName = (reController
                                         .selectedVehicleData?['companyName'] ??
                                     '')
@@ -1181,13 +1217,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 .toString();
 
                             // Check if DataServices subcollection exists and is not empty
-                            final dataServicesSnapshot =
-                                await FirebaseFirestore.instance
-                                    .collection("Users")
-                                    .doc(reController.effectiveUserId)
-                                    .collection("DataServices")
-                                    .where("vehicleId", isEqualTo: vehicleId)
-                                    .get();
+                            final dataServicesSnapshot = await FirebaseFirestore
+                                .instance
+                                .collection("Users")
+                                .doc(reController.effectiveUserId)
+                                .collection("DataServices")
+                                .where("vehicleId", isEqualTo: vehicleId)
+                                .get();
 
                             // Fetch current reading (Miles/Hours) for the selected vehicle
                             final vehicleDoc = await FirebaseFirestore.instance
@@ -1201,12 +1237,31 @@ class _ReportsScreenState extends State<ReportsScreen>
                               throw 'Vehicle data not found';
                             }
 
-                            final int currentReading = int.parse(
-                              vehicleDoc[isTruck
-                                      ? 'currentMiles'
-                                      : 'hoursReading'] ??
-                                  '0',
-                            );
+                            final vehicleData = vehicleDoc.data() ?? {};
+                            final dynamic rawReading = isTruck
+                                ? (vehicleData['currentMiles'] ??
+                                    vehicleData['miles'] ??
+                                    vehicleData['prevMilesValue'] ??
+                                    reController
+                                        .selectedVehicleData?['currentMiles'] ??
+                                    reController.selectedVehicleData?['miles'])
+                                : (vehicleData['hoursReading'] ??
+                                    vehicleData['hours'] ??
+                                    vehicleData['prevHoursReadingValue'] ??
+                                    reController
+                                        .selectedVehicleData?['hoursReading'] ??
+                                    reController.selectedVehicleData?['hours']);
+
+                            final String cleanReadingStr = (rawReading ?? '0')
+                                .toString()
+                                .replaceAll(',', '')
+                                .replaceAll(' ', '')
+                                .trim();
+
+                            final int currentReading =
+                                int.tryParse(cleanReadingStr) ??
+                                    double.tryParse(cleanReadingStr)?.toInt() ??
+                                    0;
 
                             final data = {
                               "updatedAt": DateFormat('yyyy-MM-dd')
@@ -1220,9 +1275,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                               isTruck ? "miles" : "hoursReading":
                                   enteredValue.toString(),
                               isTruck
-                                      ? 'currentMilesArray'
-                                      : 'hoursReadingArray':
-                                  FieldValue.arrayUnion([
+                                  ? 'currentMilesArray'
+                                  : 'hoursReadingArray': FieldValue.arrayUnion([
                                 {
                                   isTruck ? "miles" : "hours": enteredValue,
                                   "date": DateTime.now().toIso8601String(),
@@ -1334,9 +1388,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     final msg = resMap['message']
                                         .toString()
                                         .toLowerCase();
-                                    hasNotifications = msg.contains('notifications sent to') ||
-                                        msg.contains('service reminder') ||
-                                        msg.contains('needs attention');
+                                    hasNotifications =
+                                        msg.contains('notifications sent to') ||
+                                            msg.contains('service reminder') ||
+                                            msg.contains('needs attention');
                                   }
                                   isFirstTime = resMap['isFirstTime'] == true;
                                   if (resMap['serviceNotifications'] is List) {
@@ -1367,9 +1422,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     final msg = resMap['message']
                                         .toString()
                                         .toLowerCase();
-                                    hasNotifications = msg.contains('notifications sent to') ||
-                                        msg.contains('service reminder') ||
-                                        msg.contains('needs attention');
+                                    hasNotifications =
+                                        msg.contains('notifications sent to') ||
+                                            msg.contains('service reminder') ||
+                                            msg.contains('needs attention');
                                   }
                                   isFirstTime = resMap['isFirstTime'] == true;
                                   if (resMap['serviceNotifications'] is List) {
@@ -1381,7 +1437,26 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 }
                               }
                             } catch (cfErr) {
-                              debugPrint('Cloud Function execution note: $cfErr');
+                              debugPrint(
+                                  'Cloud Function execution note: $cfErr');
+                            }
+
+                            // Update local vehicle data so old vehicles immediately reflect the updated reading
+                            for (var v in reController.vehicles) {
+                              if (v['id'] == vehicleId) {
+                                if (isTruck) {
+                                  v['currentMiles'] = enteredValue.toString();
+                                  v['miles'] = enteredValue.toString();
+                                  v['prevMilesValue'] =
+                                      currentReading.toString();
+                                } else {
+                                  v['hoursReading'] = enteredValue.toString();
+                                  v['hours'] = enteredValue.toString();
+                                  v['prevHoursReadingValue'] =
+                                      currentReading.toString();
+                                }
+                                break;
+                              }
                             }
 
                             // Clear form fields

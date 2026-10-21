@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/userRoleService.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/aboutUs/about_us_screen.dart';
+import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/auth/registration_screen.dart';
 import 'package:regal_service_d_app/views/app/helpContact/help_center.dart';
 import 'package:regal_service_d_app/views/app/history/history_screen.dart';
@@ -427,18 +428,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return Container(
         height: 120.h,
         width: double.maxFinite,
-        padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 12.w),
+        // padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 12.w),
         decoration: BoxDecoration(
           color: kLightWhite,
           borderRadius: BorderRadius.circular(12.r),
         ),
-        child: Center(
-          child: CustomButton(
-              text: "Register/Login",
-              onPress: () {
-                Get.to(() => const RegistrationScreen());
-              },
-              color: kPrimary),
+        child: Row(
+          // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: CustomButton(
+                  text: "Register",
+                  onPress: () {
+                    Get.to(() => const RegistrationScreen());
+                  },
+                  color: kPrimary),
+            ),
+            Expanded(
+              child: CustomButton(
+                  text: "Login",
+                  onPress: () {
+                    Get.to(() => const LoginScreen());
+                  },
+                  color: kSecondary),
+            ),
+          ],
         ),
       );
     }
