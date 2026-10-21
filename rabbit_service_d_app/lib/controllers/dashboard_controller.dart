@@ -202,6 +202,12 @@ class DashboardController extends GetxController {
           };
         }).toList();
 
+        // Sort alphabetically A-Z by title (case-insensitive)
+        allServiceAndNetworkOptions.sort((a, b) => (a['title'] ?? '')
+            .toString()
+            .toLowerCase()
+            .compareTo((b['title'] ?? '').toString().toLowerCase()));
+
         // Initialize filtered list with all options
         filteredServiceAndNetworkOptions =
             List.from(allServiceAndNetworkOptions);
@@ -227,10 +233,20 @@ class DashboardController extends GetxController {
               query.toLowerCase())) // Show items that start with the query
           .toList();
 
+      filteredList.sort((a, b) => (a['title'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['title'] ?? '').toString().toLowerCase()));
+
       filteredServiceAndNetworkOptions = filteredList;
     } else {
       // If the search query is empty, show all options
-      filteredServiceAndNetworkOptions = List.from(allServiceAndNetworkOptions);
+      final list = List<Map<String, dynamic>>.from(allServiceAndNetworkOptions);
+      list.sort((a, b) => (a['title'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['title'] ?? '').toString().toLowerCase()));
+      filteredServiceAndNetworkOptions = list;
     }
 
     print('New Filter List: $filteredServiceAndNetworkOptions');

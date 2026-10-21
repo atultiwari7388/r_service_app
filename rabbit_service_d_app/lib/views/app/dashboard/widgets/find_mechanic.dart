@@ -390,10 +390,15 @@ class _FindMechanicState extends State<FindMechanic> {
   //=========================== Show Services options==================
   void showServiceAndNetworkOptions(
       BuildContext context, DashboardController serviceController) {
-    // Initialize filtered options
-    serviceController.filteredServiceAndNetworkOptions =
+    // Initialize filtered options sorted alphabetically
+    List<Map<String, dynamic>> sortedOptions =
         List<Map<String, dynamic>>.from(
             serviceController.allServiceAndNetworkOptions);
+    sortedOptions.sort((a, b) => (a['title'] ?? '')
+        .toString()
+        .toLowerCase()
+        .compareTo((b['title'] ?? '').toString().toLowerCase()));
+    serviceController.filteredServiceAndNetworkOptions = sortedOptions;
 
     showModalBottomSheet(
       context: context,
