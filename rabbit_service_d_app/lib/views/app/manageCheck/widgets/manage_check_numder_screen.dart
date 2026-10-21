@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
@@ -46,7 +45,8 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
       List<Map<String, dynamic>> loadedCompanies = [];
       for (var doc in companiesSnapshot.docs) {
         final cData = doc.data();
-        final cName = (cData['companyName'] ?? cData['name'] ?? '').toString().trim();
+        final cName =
+            (cData['companyName'] ?? cData['name'] ?? '').toString().trim();
         final bool isActive = cData['isActive'] != false;
         if (cName.isNotEmpty && isActive) {
           loadedCompanies.add({
@@ -64,7 +64,8 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
             .get();
         if (userDoc.exists) {
           final data = userDoc.data() as Map<String, dynamic>?;
-          final rootCompanyName = (data?['companyName'] ?? '').toString().trim();
+          final rootCompanyName =
+              (data?['companyName'] ?? '').toString().trim();
           if (rootCompanyName.isNotEmpty) {
             loadedCompanies.add({
               'id': 'default',
@@ -75,9 +76,10 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
         }
       }
 
-      loadedCompanies.sort((a, b) =>
-          (a['companyName'] ?? '').toString().toLowerCase().compareTo(
-              (b['companyName'] ?? '').toString().toLowerCase()));
+      loadedCompanies.sort((a, b) => (a['companyName'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['companyName'] ?? '').toString().toLowerCase()));
 
       if (mounted) {
         setState(() {
@@ -324,7 +326,8 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Select Company',
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
                 value: _selectedCompanyId,
                 items: _companies.map((comp) {
@@ -384,7 +387,8 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
                                           borderRadius:
                                               BorderRadius.circular(6),
                                           border: Border.all(
-                                              color: Colors.blue.withOpacity(0.3)),
+                                              color:
+                                                  Colors.blue.withOpacity(0.3)),
                                         ),
                                         child: Text(
                                           compName,

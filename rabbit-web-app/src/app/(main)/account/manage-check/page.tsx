@@ -3315,31 +3315,30 @@ function ManageCheckScreenContent() {
       )}
 
       {/* Filters Section */}
-      <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
-        <div className="flex items-center justify-center mb-6">
-          <div className="bg-blue-100 p-2 rounded-full mr-3">
-            <FiFilter className="text-[#F96176]" size={20} />
+      <div className="bg-white rounded-xl shadow-md p-5 mb-8 border border-gray-100">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* Header Badge */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="bg-rose-50 p-2 rounded-full">
+              <FiFilter className="text-[#F96176]" size={18} />
+            </div>
+            <h3 className="text-lg font-serif font-bold text-gray-800">
+              Filter Checks
+            </h3>
           </div>
-          <h3 className="text-xl font-serif font-bold text-gray-800">
-            Filter Checks
-          </h3>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Type Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
-              Filter by Type
-            </label>
-            <div className="flex flex-wrap justify-center gap-2">
+          {/* All Filters In One Row */}
+          <div className="flex flex-wrap items-center gap-3 flex-grow justify-start lg:justify-end">
+            {/* Type Filter Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
               {["Manager", "Accountant", "Driver", "Vendor", "Other Staff"].map(
                 (type) => (
                   <button
                     key={type}
-                    className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium shadow-sm transition-all ${
+                    className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm transition-all ${
                       filterType === type
                         ? "bg-[#F96176] text-white border border-[#F96176]"
-                        : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                        : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                     }`}
                     onClick={() => {
                       const newFilterType = filterType === type ? null : type;
@@ -3354,14 +3353,12 @@ function ManageCheckScreenContent() {
                 )
               )}
             </div>
-          </div>
 
-          {/* Company Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
-              Filter by Company
-            </label>
-            <div className="flex flex-col items-center">
+            {/* Divider */}
+            <div className="hidden lg:block h-6 w-px bg-gray-200" />
+
+            {/* Company Filter (Small / Compact Width) */}
+            <div className="flex items-center gap-1">
               <select
                 value={filterCompanyId || ""}
                 onChange={(e) => {
@@ -3369,7 +3366,8 @@ function ManageCheckScreenContent() {
                   setFilterCompanyId(newCompanyId);
                   setLoadingChecks(true);
                 }}
-                className="w-full max-w-xs p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] text-sm text-gray-700 bg-white"
+                className="w-36 sm:w-44 py-1.5 px-2.5 border border-gray-200 rounded-full shadow-sm focus:ring-[#F96176] focus:border-[#F96176] text-xs font-medium text-gray-700 bg-white truncate"
+                title="Filter by Company"
               >
                 <option value="">All Companies</option>
                 {companies.map((comp) => (
@@ -3384,30 +3382,29 @@ function ManageCheckScreenContent() {
                     setFilterCompanyId(null);
                     setLoadingChecks(true);
                   }}
-                  className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1 transition-colors"
+                  className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"
+                  title="Clear Company Filter"
                 >
-                  <FiX size={12} /> Clear Company Filter
+                  <FiX size={14} />
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Date Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
-              Date Range
-            </label>
-            <div className="flex items-center justify-center space-x-2">
+            {/* Divider */}
+            <div className="hidden lg:block h-6 w-px bg-gray-200" />
+
+            {/* Date Range Filter */}
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setShowDatePicker(!showDatePicker)}
-                className={`flex items-center px-4 py-1.5 rounded-full shadow-sm transition-all ${
+                className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium shadow-sm transition-all ${
                   startDate
                     ? "bg-[#F96176] text-white"
-                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                    : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                 }`}
               >
-                <FiCalendar className="mr-2" />
-                {startDate ? format(startDate, "MMM dd, yyyy") : "Start Date"}
+                <FiCalendar className="mr-1.5" size={13} />
+                {startDate ? format(startDate, "MMM dd, yyyy") : "Date Range"}
                 {endDate && ` - ${format(endDate, "MMM dd, yyyy")}`}
               </button>
               {(startDate || endDate) && (
@@ -3417,9 +3414,10 @@ function ManageCheckScreenContent() {
                     setEndDate(null);
                     fetchChecks();
                   }}
-                  className="flex items-center px-3 py-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+                  className="flex items-center px-2 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 text-xs transition-all"
+                  title="Clear Date Filter"
                 >
-                  <FiX className="mr-1" />
+                  <FiX size={13} className="mr-0.5" />
                   Clear
                 </button>
               )}
