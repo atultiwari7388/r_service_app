@@ -20,6 +20,9 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
   final TextEditingController _endNumberController = TextEditingController();
   // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
   List<Map<String, dynamic>> _checkSeries = [];
+  List<Map<String, dynamic>> _companies = [];
+  String? _selectedCompanyId;
+  String? _selectedCompanyName;
   bool _isLoading = true;
   String _errorMessage = '';
   String? _currentCheckNumber;
@@ -29,6 +32,68 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
     super.initState();
     _fetchCheckSeries();
     _fetchCurrentCheckNumber();
+    _fetchCompanies();
+  }
+
+  Future<void> _fetchCompanies() async {
+    try {
+      final companiesSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(widget.currentUId)
+          .collection('myCompanies')
+          .get();
+
+      List<Map<String, dynamic>> loadedCompanies = [];
+      for (var doc in companiesSnapshot.docs) {
+        final cData = doc.data();
+        final cName = (cData['companyName'] ?? cData['name'] ?? '').toString().trim();
+        final bool isActive = cData['isActive'] != false;
+        if (cName.isNotEmpty && isActive) {
+          loadedCompanies.add({
+            'id': doc.id,
+            'companyName': cName,
+            'isDefault': cData['isDefault'] == true,
+          });
+        }
+      }
+
+      if (loadedCompanies.isEmpty) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(widget.currentUId)
+            .get();
+        if (userDoc.exists) {
+          final data = userDoc.data() as Map<String, dynamic>?;
+          final rootCompanyName = (data?['companyName'] ?? '').toString().trim();
+          if (rootCompanyName.isNotEmpty) {
+            loadedCompanies.add({
+              'id': 'default',
+              'companyName': rootCompanyName,
+              'isDefault': true,
+            });
+          }
+        }
+      }
+
+      loadedCompanies.sort((a, b) =>
+          (a['companyName'] ?? '').toString().toLowerCase().compareTo(
+              (b['companyName'] ?? '').toString().toLowerCase()));
+
+      if (mounted) {
+        setState(() {
+          _companies = loadedCompanies;
+          if (_selectedCompanyId == null && loadedCompanies.isNotEmpty) {
+            final defaultComp = loadedCompanies.firstWhere(
+                (c) => c['isDefault'] == true,
+                orElse: () => loadedCompanies.first);
+            _selectedCompanyId = defaultComp['id'];
+            _selectedCompanyName = defaultComp['companyName'];
+          }
+        });
+      }
+    } catch (e) {
+      print('Error fetching companies in ManageCheckNumbersScreen: $e');
+    }
   }
 
   Future<void> _fetchCheckSeries() async {
@@ -161,6 +226,8 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
         'endNumber': end,
         'createdAt': FieldValue.serverTimestamp(),
         'totalChecks': checkNumbers.length,
+        if (_selectedCompanyId != null) 'companyId': _selectedCompanyId,
+        if (_selectedCompanyName != null) 'companyName': _selectedCompanyName,
       });
 
       // Save individual check numbers to a subcollection
@@ -178,6 +245,8 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
           'seriesId': seriesRef.id,
           'userId': widget.currentUId,
           'createdAt': FieldValue.serverTimestamp(),
+          if (_selectedCompanyId != null) 'companyId': _selectedCompanyId,
+          if (_selectedCompanyName != null) 'companyName': _selectedCompanyName,
         });
       }
 
@@ -250,6 +319,36 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
               ],
             ),
             const SizedBox(height: 10),
+            if (_companies.isNotEmpty) ...[
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Select Company',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                value: _selectedCompanyId,
+                items: _companies.map((comp) {
+                  return DropdownMenuItem<String>(
+                    value: comp['id'],
+                    child: Text(
+                      comp['companyName'],
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    _selectedCompanyId = val;
+                    final match = _companies.firstWhere(
+                      (c) => c['id'] == val,
+                      orElse: () => <String, dynamic>{},
+                    );
+                    _selectedCompanyName = match['companyName'];
+                  });
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
             CustomButton(
                 text: "Save Check Series",
                 onPress: _saveCheckSeries,
@@ -267,10 +366,37 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
                           itemCount: _checkSeries.length,
                           itemBuilder: (context, index) {
                             final series = _checkSeries[index];
+                            final compName = series['companyName']?.toString();
                             return Card(
                               child: ListTile(
-                                title: Text(
-                                    '${series['startNumber']} - ${series['endNumber']}'),
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                          '${series['startNumber']} - ${series['endNumber']}'),
+                                    ),
+                                    if (compName != null && compName.isNotEmpty)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          border: Border.all(
+                                              color: Colors.blue.withOpacity(0.3)),
+                                        ),
+                                        child: Text(
+                                          compName,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                                 subtitle: Text(
                                     '${series['totalChecks']} checks • ${DateFormat('MMM dd, yyyy').format(series['createdAt'])}'),
                                 trailing: IconButton(

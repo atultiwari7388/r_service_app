@@ -51,6 +51,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   String? _selectedType;
   String? _selectedUserId;
   String? _selectedUserName;
+  String? _selectedCompanyId;
+  String? _selectedCompanyName;
   final List<Map<String, dynamic>> _serviceDetails = [];
   final TextEditingController _memoNumberController = TextEditingController();
   final TextEditingController _checkNumberController = TextEditingController();
@@ -58,6 +60,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   double _totalAmount = 0.0;
   bool isAnonymous = true;
   bool isProfileComplete = false;
+
+  // Companies & Check Series state
+  List<Map<String, dynamic>> _companies = [];
+  List<Map<String, dynamic>> _checkSeries = [];
+  String? _filterCompanyId;
 
   // For displaying checks
   List<Map<String, dynamic>> _checks = [];
@@ -123,6 +130,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       });
     }
     fetchUserDetails().then((_) {
+      _fetchCompanies();
+      _fetchCheckSeries();
       _fetchCurrentCheckNumber().then((_) {
         if (widget.autoOpenWriteCheck) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -133,6 +142,140 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       fetchTeamMembersWithVehicles();
       fetchChecks();
     });
+  }
+
+  Future<void> _fetchCompanies() async {
+    try {
+      final companiesSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(_effectiveUserId)
+          .collection('myCompanies')
+          .get();
+
+      List<Map<String, dynamic>> loadedCompanies = [];
+      for (var doc in companiesSnapshot.docs) {
+        final cData = doc.data();
+        final cName =
+            (cData['companyName'] ?? cData['name'] ?? '').toString().trim();
+        final bool isActive = cData['isActive'] != false;
+        if (cName.isNotEmpty && isActive) {
+          loadedCompanies.add({
+            'id': doc.id,
+            'companyName': cName,
+            'isDefault': cData['isDefault'] == true,
+          });
+        }
+      }
+
+      if (loadedCompanies.isEmpty) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(_effectiveUserId)
+            .get();
+        if (userDoc.exists) {
+          final data = userDoc.data() as Map<String, dynamic>?;
+          final rootCompanyName =
+              (data?['companyName'] ?? '').toString().trim();
+          if (rootCompanyName.isNotEmpty) {
+            loadedCompanies.add({
+              'id': 'default',
+              'companyName': rootCompanyName,
+              'isDefault': true,
+            });
+          }
+        }
+      }
+
+      loadedCompanies.sort((a, b) => (a['companyName'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['companyName'] ?? '').toString().toLowerCase()));
+
+      if (mounted) {
+        setState(() {
+          _companies = loadedCompanies;
+        });
+      }
+    } catch (e) {
+      print('Error fetching companies in ManageCheckScreen: $e');
+    }
+  }
+
+  Future<void> _fetchCheckSeries() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('CheckSeries')
+          .where('userId', isEqualTo: _effectiveUserId)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _checkSeries = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              ...data,
+            };
+          }).toList();
+        });
+      }
+    } catch (e) {
+      print('Error fetching check series in ManageCheckScreen: $e');
+    }
+  }
+
+  void _autoSelectCompanyForCheck(String? checkNum) {
+    if (checkNum == null || checkNum.isEmpty) {
+      _applyDefaultCompanyFallback();
+      return;
+    }
+
+    try {
+      final prefix = checkNum.replaceAll(RegExp(r'[0-9]'), '');
+      final numStr = checkNum.replaceAll(prefix, '');
+      final currentNum = int.tryParse(numStr);
+
+      if (currentNum != null) {
+        for (final series in _checkSeries) {
+          final sStart = series['startNumber']?.toString() ?? '';
+          final sEnd = series['endNumber']?.toString() ?? '';
+          final sPrefix = sStart.replaceAll(RegExp(r'[0-9]'), '');
+          final sStartNum = int.tryParse(sStart.replaceAll(sPrefix, ''));
+          final sEndNum = int.tryParse(sEnd.replaceAll(sPrefix, ''));
+
+          if (sPrefix == prefix && sStartNum != null && sEndNum != null) {
+            if (currentNum >= sStartNum && currentNum <= sEndNum) {
+              final seriesCompId = series['companyId']?.toString();
+              final seriesCompName = series['companyName']?.toString();
+              if (seriesCompId != null && seriesCompId.isNotEmpty) {
+                _selectedCompanyId = seriesCompId;
+                _selectedCompanyName = seriesCompName;
+                return;
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error matching check series: $e');
+    }
+
+    _applyDefaultCompanyFallback();
+  }
+
+  void _applyDefaultCompanyFallback() {
+    if (_companies.isEmpty) {
+      _selectedCompanyId = null;
+      _selectedCompanyName = null;
+      return;
+    }
+
+    final defaultComp = _companies.firstWhere(
+      (c) => c['isDefault'] == true,
+      orElse: () => _companies.first,
+    );
+    _selectedCompanyId = defaultComp['id'];
+    _selectedCompanyName = defaultComp['companyName'];
   }
 
   Future<void> _fetchCurrentCheckNumber() async {
@@ -286,16 +429,25 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
       QuerySnapshot snapshot = await query.get();
 
-      setState(() {
-        _checks = snapshot.docs.map((doc) {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          return {
-            'id': doc.id,
-            ...data,
-            'date': _parseDate(data['date']),
-            'totalAmount': _parseAmount(data['totalAmount']),
-          };
+      var loadedChecks = snapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          ...data,
+          'date': _parseDate(data['date']),
+          'totalAmount': _parseAmount(data['totalAmount']),
+        };
+      }).toList();
+
+      if (_filterCompanyId != null && _filterCompanyId!.isNotEmpty) {
+        loadedChecks = loadedChecks.where((c) {
+          final compId = c['companyId']?.toString();
+          return compId == _filterCompanyId;
         }).toList();
+      }
+
+      setState(() {
+        _checks = loadedChecks;
         _loadingChecks = false;
       });
     } catch (e) {
@@ -550,7 +702,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                             font: universeFont),
                       ),
                       pw.Text(
-                        DateFormat('MM/dd/yyyy').format(_parseDate(check['date'])),
+                        DateFormat('MM/dd/yyyy')
+                            .format(_parseDate(check['date'])),
                         style: pw.TextStyle(fontSize: 15, font: universeFont),
                       ),
                     ],
@@ -558,7 +711,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   pw.SizedBox(height: 10),
                   ...printableDetails.map<pw.Widget>((detail) {
                     final numberFormat = NumberFormat("#,##0.00", "en_US");
-                    final formattedTotal = numberFormat.format(_parseAmount(detail['amount']));
+                    final formattedTotal =
+                        numberFormat.format(_parseAmount(detail['amount']));
                     return pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
@@ -732,14 +886,17 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
     List<Map<String, dynamic>> initialAttachedInvoices = [];
     if (check['attachedInvoices'] is List) {
-      initialAttachedInvoices = (check['attachedInvoices'] as List).map((x) {
-        if (x is Map) {
-          final m = Map<String, dynamic>.from(x);
-          m['amount'] = _parseAmount(m['amount'] ?? m['amountPaid']);
-          return m;
-        }
-        return <String, dynamic>{};
-      }).where((m) => m.isNotEmpty).toList();
+      initialAttachedInvoices = (check['attachedInvoices'] as List)
+          .map((x) {
+            if (x is Map) {
+              final m = Map<String, dynamic>.from(x);
+              m['amount'] = _parseAmount(m['amount'] ?? m['amountPaid']);
+              return m;
+            }
+            return <String, dynamic>{};
+          })
+          .where((m) => m.isNotEmpty)
+          .toList();
     }
 
     final initialDetails = (check['serviceDetails'] as List? ?? []).map((x) {
@@ -767,7 +924,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             for (var inv in data['invoices']) {
               if (inv is Map) {
                 final invMap = Map<String, dynamic>.from(inv);
-                invMap['amount'] = _parseAmount(invMap['amount'] ?? invMap['amountPaid']);
+                invMap['amount'] =
+                    _parseAmount(invMap['amount'] ?? invMap['amountPaid']);
                 initialAttachedInvoices.add(invMap);
               }
             }
@@ -799,8 +957,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
           sd['vehicleNumber'] = matched['vehicleNumber'];
         } else {
           // Extract invoice number using pattern match (e.g. Inv #1001, Inv 1001, 1001)
-          final regexMatch = RegExp(
-                  r'(?:Inv|Invoice)?\s*#?\s*([a-zA-Z0-9_-]+)',
+          final regexMatch = RegExp(r'(?:Inv|Invoice)?\s*#?\s*([a-zA-Z0-9_-]+)',
                   caseSensitive: false)
               .firstMatch(serviceName);
           final extractedNum = regexMatch?.group(1);
@@ -822,7 +979,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 sd['invoiceNumber'] = dsData['invoice'] ?? extractedNum;
                 sd['vehicleNumber'] = dsData['vehicleNumber'] ?? '';
 
-                if (!initialAttachedInvoices.any((p) => p['recordId'] == dsDoc.id)) {
+                if (!initialAttachedInvoices
+                    .any((p) => p['recordId'] == dsDoc.id)) {
                   initialAttachedInvoices.add({
                     'recordId': dsDoc.id,
                     'invoiceNumber': sd['invoiceNumber'],
@@ -841,6 +999,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       _isEditing = true;
       _editingCheckId = checkId;
       _editingCheckNumber = checkNumStr;
+      _selectedCompanyId = check['companyId'];
+      _selectedCompanyName = check['companyName'];
       _selectedType = check['type'];
       _selectedUserId = check['userId'];
       _selectedUserName = check['userName'];
@@ -879,6 +1039,40 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       readOnly: true,
                       enabled: false,
                     ),
+                    if (_companies.isNotEmpty) ...[
+                      SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Company (Optional)',
+                          labelStyle: appStyle(14, kDark, FontWeight.normal),
+                          border: OutlineInputBorder(),
+                        ),
+                        value:
+                            _companies.any((c) => c['id'] == _selectedCompanyId)
+                                ? _selectedCompanyId
+                                : null,
+                        items: _companies
+                            .map<DropdownMenuItem<String>>(
+                                (comp) => DropdownMenuItem<String>(
+                                      value: comp['id'],
+                                      child: Text(
+                                        comp['companyName'] ?? '',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCompanyId = value;
+                            final matched = _companies.firstWhere(
+                              (c) => c['id'] == value,
+                              orElse: () => <String, dynamic>{},
+                            );
+                            _selectedCompanyName = matched['companyName'];
+                          });
+                        },
+                      ),
+                    ],
                     SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
@@ -987,29 +1181,29 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 4),
                               child: Row(
                                 children: [
-                                    Expanded(
-                                      child: Text(
-                                        '${detail['serviceName']}: \$${detail['amount']}',
-                                        style: appStyle(
-                                            12, kDark, FontWeight.normal),
-                                      ),
+                                  Expanded(
+                                    child: Text(
+                                      '${detail['serviceName']}: \$${detail['amount']}',
+                                      style: appStyle(
+                                          12, kDark, FontWeight.normal),
                                     ),
-                                    IconButton(
-                                      icon: Icon(Icons.edit, color: kPrimary),
-                                      onPressed: () {
-                                        _showEditDetailDialog(
-                                            context, setState, index);
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () {
-                                        setState(() {
-                                          _serviceDetails.removeAt(index);
-                                          _calculateTotal();
-                                        });
-                                      },
-                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: kPrimary),
+                                    onPressed: () {
+                                      _showEditDetailDialog(
+                                          context, setState, index);
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () {
+                                      setState(() {
+                                        _serviceDetails.removeAt(index);
+                                        _calculateTotal();
+                                      });
+                                    },
+                                  ),
                                 ],
                               ),
                             );
@@ -1067,7 +1261,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                           Navigator.of(context).pop();
                         },
                   child: Text('Cancel',
-                      style: appStyle(14, _isSavingCheck ? kGray : kDark, FontWeight.normal)),
+                      style: appStyle(14, _isSavingCheck ? kGray : kDark,
+                          FontWeight.normal)),
                 ),
                 ElevatedButton(
                   onPressed: (_serviceDetails.isEmpty || _isSavingCheck)
@@ -1157,9 +1352,12 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   _serviceDetails[index] = {
                     'serviceName': serviceNameController.text,
                     'amount': double.parse(amountController.text),
-                    if (detail['recordId'] != null) 'recordId': detail['recordId'],
-                    if (detail['invoiceNumber'] != null) 'invoiceNumber': detail['invoiceNumber'],
-                    if (detail['vehicleNumber'] != null) 'vehicleNumber': detail['vehicleNumber'],
+                    if (detail['recordId'] != null)
+                      'recordId': detail['recordId'],
+                    if (detail['invoiceNumber'] != null)
+                      'invoiceNumber': detail['invoiceNumber'],
+                    if (detail['vehicleNumber'] != null)
+                      'vehicleNumber': detail['vehicleNumber'],
                   };
                   _calculateTotal();
                 });
@@ -1191,9 +1389,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     setState(() => _isSavingCheck = true);
 
     try {
-      final checkRef = FirebaseFirestore.instance
-          .collection('Checks')
-          .doc(_editingCheckId);
+      final checkRef =
+          FirebaseFirestore.instance.collection('Checks').doc(_editingCheckId);
 
       final prevCheckSnap = await checkRef.get();
       final prevCheckData = prevCheckSnap.exists
@@ -1344,6 +1541,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             : _memoNumberController.text,
         'date': _selectedDate,
         'attachedInvoices': updatedAttachedInvoices,
+        'companyId': _selectedCompanyId,
+        'companyName': _selectedCompanyName,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
@@ -1364,8 +1563,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             .get();
         final memberIds = teamSnap.docs.map((d) => d.id).toList();
 
-        Future<void> syncRecordAdjustment(
-            String recordId, String action, [double newAmount = 0.0]) async {
+        Future<void> syncRecordAdjustment(String recordId, String action,
+            [double newAmount = 0.0]) async {
           if (recordId.isEmpty) return;
 
           final ownerDocRef = FirebaseFirestore.instance
@@ -1560,6 +1759,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       _selectedType = null;
       _selectedUserId = null;
       _selectedUserName = null;
+      _selectedCompanyId = null;
+      _selectedCompanyName = null;
       _serviceDetails.clear();
       _memoNumberController.clear();
       _selectedDate = DateTime.now();
@@ -1584,9 +1785,40 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Check #${check['checkNumber']}',
-                  style: appStyle(16, kPrimary, FontWeight.bold),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Column(
+                      children: [
+                        Text(
+                          'Check #${check['checkNumber']}',
+                          style: appStyle(16, kPrimary, FontWeight.bold),
+                        ),
+                        if (check['companyName'] != null &&
+                            check['companyName'].toString().isNotEmpty) ...[
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: kSecondary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                  color: kSecondary.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              check['companyName'].toString(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: kSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    )
+                  ],
                 ),
                 Text(
                   DateFormat('MMM dd, yyyy').format(check['date']),
@@ -1673,82 +1905,245 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   }
 
   Widget _buildFilterRow() {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Filter by Type',
-                labelStyle: appStyle(14, kDark, FontWeight.normal),
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-              value: _filterType,
-              items: [
-                DropdownMenuItem(value: null, child: Text('All Types')),
-                ...['Manager', 'Accountant', 'Driver', 'Vendor', 'Other Staff']
-                    .map((type) => DropdownMenuItem(
-                          value: type,
-                          child: Text(type),
-                        ))
-                    .toList(),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _filterType = value;
-                  _loadingChecks = true; // Show loading immediately
-                });
-                fetchChecks(); // Fetch checks with new filter
-              },
-            ),
-          ),
-          SizedBox(width: 8),
-          if (role == "Owner" || role == "SubOwner")
-            GestureDetector(
-                onTap: () =>
-                    Get.to(() => AddTeamMember(currentUId: currentUId)),
-                child: CircleAvatar(
-                    backgroundColor: kPrimary,
-                    radius: 20.r,
-                    child: Icon(Icons.add, color: kWhite))),
-          SizedBox(width: 8),
-          IconButton(
-            icon: Icon(Icons.calendar_today, color: kPrimary),
-            onPressed: () async {
-              final DateTimeRange? picked = await showDateRangePicker(
-                context: context,
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2100),
-                initialDateRange: _dateRange ??
-                    DateTimeRange(
-                      start: DateTime.now().subtract(Duration(days: 30)),
-                      end: DateTime.now(),
-                    ),
-              );
+    final bool hasActiveFilters =
+        _filterType != null || _filterCompanyId != null || _dateRange != null;
 
-              if (picked != null) {
-                setState(() {
-                  _dateRange = picked;
-                  _loadingChecks = true;
-                });
-                await fetchChecks();
-              }
-            },
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: kWhite,
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          if (_dateRange != null)
-            IconButton(
-              icon: Icon(Icons.clear, color: Colors.red),
-              onPressed: () async {
-                setState(() {
-                  _dateRange = null;
-                  _loadingChecks = true; // Show loading immediately
-                });
-                await fetchChecks();
-              },
-            ),
+        ],
+        border: Border.all(color: Colors.grey.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row 1: Dropdowns (Type & Company)
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: 'Type',
+                    labelStyle: appStyle(12, kDark, FontWeight.normal),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
+                  ),
+                  value: _filterType,
+                  items: [
+                    DropdownMenuItem<String>(
+                      value: null,
+                      child: Text(
+                        'All Types',
+                        style: appStyle(12, kDark, FontWeight.normal),
+                      ),
+                    ),
+                    ...[
+                      'Manager',
+                      'Accountant',
+                      'Driver',
+                      'Vendor',
+                      'Other Staff'
+                    ].map((type) => DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(
+                            type,
+                            style: appStyle(12, kDark, FontWeight.normal),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _filterType = value;
+                      _loadingChecks = true;
+                    });
+                    fetchChecks();
+                  },
+                ),
+              ),
+              if (_companies.isNotEmpty) ...[
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'Company',
+                      labelStyle: appStyle(12, kDark, FontWeight.normal),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 10.w, vertical: 10.h),
+                    ),
+                    value: _filterCompanyId,
+                    items: [
+                      DropdownMenuItem<String>(
+                        value: null,
+                        child: Text(
+                          'All Companies',
+                          style: appStyle(12, kDark, FontWeight.normal),
+                        ),
+                      ),
+                      ..._companies.map((c) => DropdownMenuItem<String>(
+                            value: c['id'],
+                            child: Text(
+                              c['companyName'] ?? '',
+                              style: appStyle(12, kDark, FontWeight.normal),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _filterCompanyId = value;
+                        _loadingChecks = true;
+                      });
+                      fetchChecks();
+                    },
+                  ),
+                ),
+              ],
+            ],
+          ),
+          SizedBox(height: 10.h),
+          // Row 2: Date Picker Bar & Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final DateTimeRange? picked = await showDateRangePicker(
+                      context: context,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                      initialDateRange: _dateRange ??
+                          DateTimeRange(
+                            start: DateTime.now()
+                                .subtract(const Duration(days: 30)),
+                            end: DateTime.now(),
+                          ),
+                    );
+
+                    if (picked != null) {
+                      setState(() {
+                        _dateRange = picked;
+                        _loadingChecks = true;
+                      });
+                      await fetchChecks();
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(8.r),
+                  child: Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 10.w, vertical: 9.h),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: _dateRange != null
+                            ? kPrimary
+                            : Colors.grey.withOpacity(0.5),
+                      ),
+                      borderRadius: BorderRadius.circular(8.r),
+                      color: _dateRange != null
+                          ? kPrimary.withOpacity(0.05)
+                          : Colors.transparent,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 16.sp,
+                          color: _dateRange != null ? kPrimary : kGray,
+                        ),
+                        SizedBox(width: 6.w),
+                        Expanded(
+                          child: Text(
+                            _dateRange != null
+                                ? '${DateFormat('MMM dd').format(_dateRange!.start)} - ${DateFormat('MMM dd, yyyy').format(_dateRange!.end)}'
+                                : 'Select Date Range',
+                            style: appStyle(
+                              12,
+                              _dateRange != null ? kPrimary : kGray,
+                              _dateRange != null
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (_dateRange != null)
+                          GestureDetector(
+                            onTap: () async {
+                              setState(() {
+                                _dateRange = null;
+                                _loadingChecks = true;
+                              });
+                              await fetchChecks();
+                            },
+                            child: Icon(Icons.close,
+                                size: 16.sp, color: Colors.red),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (hasActiveFilters) ...[
+                SizedBox(width: 8.w),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _filterType = null;
+                      _filterCompanyId = null;
+                      _dateRange = null;
+                      _loadingChecks = true;
+                    });
+                    fetchChecks();
+                  },
+                  icon: Icon(Icons.refresh, size: 14.sp, color: Colors.red),
+                  label: Text(
+                    'Clear',
+                    style: appStyle(11, Colors.red, FontWeight.w500),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                ),
+              ],
+              if (role == "Owner" || role == "SubOwner") ...[
+                SizedBox(width: 8.w),
+                GestureDetector(
+                  onTap: () =>
+                      Get.to(() => AddTeamMember(currentUId: currentUId)),
+                  child: Container(
+                    padding: EdgeInsets.all(8.r),
+                    decoration: const BoxDecoration(
+                      color: kPrimary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.person_add, color: kWhite, size: 18.sp),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -1876,8 +2271,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     }
 
     if (_selectedUserId != null && _selectedUserName != null) {
-      final exists = _allMembers
-          .any((m) => m['memberId']?.toString() == _selectedUserId);
+      final exists =
+          _allMembers.any((m) => m['memberId']?.toString() == _selectedUserId);
       if (!exists) {
         _allMembers.add(<String, dynamic>{
           'name': _selectedUserName!,
@@ -1897,6 +2292,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
     if (nextCheckNumber != null) {
       _checkNumberController.text = nextCheckNumber;
+      _autoSelectCompanyForCheck(nextCheckNumber);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1928,6 +2324,40 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       ),
                       readOnly: true,
                     ),
+                    if (_companies.isNotEmpty) ...[
+                      SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Company (Optional)',
+                          labelStyle: appStyle(14, kDark, FontWeight.normal),
+                          border: OutlineInputBorder(),
+                        ),
+                        value:
+                            _companies.any((c) => c['id'] == _selectedCompanyId)
+                                ? _selectedCompanyId
+                                : null,
+                        items: _companies
+                            .map<DropdownMenuItem<String>>(
+                                (comp) => DropdownMenuItem<String>(
+                                      value: comp['id'],
+                                      child: Text(
+                                        comp['companyName'] ?? '',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCompanyId = value;
+                            final matched = _companies.firstWhere(
+                              (c) => c['id'] == value,
+                              orElse: () => <String, dynamic>{},
+                            );
+                            _selectedCompanyName = matched['companyName'];
+                          });
+                        },
+                      ),
+                    ],
                     SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
@@ -2100,9 +2530,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: _isSavingCheck ? null : () => Navigator.of(context).pop(),
+                  onPressed:
+                      _isSavingCheck ? null : () => Navigator.of(context).pop(),
                   child: Text('Cancel',
-                      style: appStyle(14, _isSavingCheck ? kGray : kDark, FontWeight.normal)),
+                      style: appStyle(14, _isSavingCheck ? kGray : kDark,
+                          FontWeight.normal)),
                 ),
                 ElevatedButton(
                   onPressed: (_serviceDetails.isEmpty || _isSavingCheck)
@@ -2236,7 +2668,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 setState(() {
                   _serviceDetails.add(<String, dynamic>{
                     'serviceName': serviceNameController.text.trim(),
-                    'amount': double.tryParse(amountController.text.trim()) ?? 0.0,
+                    'amount':
+                        double.tryParse(amountController.text.trim()) ?? 0.0,
                   });
                   _calculateTotal();
                 });
@@ -2315,7 +2748,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       }
 
       // Create check document
-      final checkDocRef = await FirebaseFirestore.instance.collection('Checks').add({
+      final checkDocRef =
+          await FirebaseFirestore.instance.collection('Checks').add({
         'checkNumber': checkNumber,
         'type': _selectedType,
         'userId': _selectedUserId,
@@ -2330,6 +2764,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         'createdByUser': currentUId,
         'createdAt': FieldValue.serverTimestamp(),
         'attachedInvoices': activeAttachedInvoices,
+        if (_selectedCompanyId != null) 'companyId': _selectedCompanyId,
+        if (_selectedCompanyName != null) 'companyName': _selectedCompanyName,
       });
 
       // MARK CHECK NUMBER AS USED
@@ -2374,7 +2810,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             if (ownerSnap.exists) {
               final recData = ownerSnap.data() as Map<String, dynamic>;
               final rawTotal = recData['invoiceAmount'];
-              final totalStr = rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ?? '0';
+              final totalStr =
+                  rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ??
+                      '0';
               totalInv = double.tryParse(totalStr) ?? 0.0;
               currentPaid = (recData['paidAmount'] as num?)?.toDouble() ?? 0.0;
               if (recData['paymentHistory'] is List) {
@@ -2389,9 +2827,12 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
               if (gSnap.exists) {
                 final recData = gSnap.data() as Map<String, dynamic>;
                 final rawTotal = recData['invoiceAmount'];
-                final totalStr = rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ?? '0';
+                final totalStr =
+                    rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ??
+                        '0';
                 totalInv = double.tryParse(totalStr) ?? 0.0;
-                currentPaid = (recData['paidAmount'] as num?)?.toDouble() ?? 0.0;
+                currentPaid =
+                    (recData['paidAmount'] as num?)?.toDouble() ?? 0.0;
                 if (recData['paymentHistory'] is List) {
                   existingHist = List<dynamic>.from(recData['paymentHistory']);
                 }
@@ -2399,7 +2840,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             }
 
             final newPaid = currentPaid + payAmt;
-            final newBalance = (totalInv - newPaid) > 0 ? (totalInv - newPaid) : 0.0;
+            final newBalance =
+                (totalInv - newPaid) > 0 ? (totalInv - newPaid) : 0.0;
             final newStatus = newBalance <= 0 ? 'Paid' : 'Partially Paid';
 
             final paymentEntry = {
@@ -2480,7 +2922,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
           await batch.commit();
         } catch (invoiceSyncError) {
-          print('Error updating invoice records on check creation: $invoiceSyncError');
+          print(
+              'Error updating invoice records on check creation: $invoiceSyncError');
         }
       }
 
@@ -2564,8 +3007,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     )
                   else
                     Column(
-                      children:
-                          _checks.map((check) => _buildCheckCard(check)).toList(),
+                      children: _checks
+                          .map((check) => _buildCheckCard(check))
+                          .toList(),
                     ),
                 ],
               ),
