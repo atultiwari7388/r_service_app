@@ -11,13 +11,7 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  setDoc,
-} from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, setDoc } from "firebase/firestore";
 import { useLoadScript } from "@react-google-maps/api";
 import usePlacesAutocomplete, { getGeocode } from "use-places-autocomplete";
 import {
@@ -35,6 +29,12 @@ import {
   FaInfoCircle,
   FaCheckCircle,
 } from "react-icons/fa";
+import {
+  SUPPORTED_COUNTRIES,
+  COUNTRY_REGISTRATION_FIELDS,
+  normalizeCountry,
+  CountryRegistrationFieldKey,
+} from "@/utils/countryFields";
 
 const GOOGLE_LIBRARIES: "places"[] = ["places"];
 
@@ -137,8 +137,11 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
               country = "USA";
             } else if (c.short_name === "CA" || c.long_name === "Canada") {
               country = "Canada";
-            } else if (c.short_name === "GB" || c.long_name === "United Kingdom") {
-              country = "England";
+            } else if (
+              c.short_name === "GB" ||
+              c.long_name === "United Kingdom"
+            ) {
+              country = "UK";
             } else if (c.short_name === "AU" || c.long_name === "Australia") {
               country = "Australia";
             } else if (c.short_name === "MX" || c.long_name === "Mexico") {
@@ -230,10 +233,19 @@ const Signup: React.FC = () => {
     companyName: "",
     dot: "",
     mc: "",
+    nsc: "",
+    cvor: "",
+    nir: "",
+    cbsa: "",
+    rfc: "",
+    ftp: "",
+    voln: "",
+    abn: "",
+    hva: "",
     address: "",
     city: "",
     state: "",
-    country: "",
+    country: "USA",
     postalCode: "",
   });
 
@@ -265,7 +277,9 @@ const Signup: React.FC = () => {
       address: details.address || prev.address,
       city: details.city || prev.city,
       state: details.state || prev.state,
-      country: details.country || prev.country,
+      country: details.country
+        ? normalizeCountry(details.country)
+        : prev.country,
       postalCode: details.postalCode || prev.postalCode,
     }));
   };
@@ -283,7 +297,10 @@ const Signup: React.FC = () => {
               phone = userDoc.data()?.phoneNumber || "";
             }
           } catch (err) {
-            console.warn("Could not fetch user document for phone number:", err);
+            console.warn(
+              "Could not fetch user document for phone number:",
+              err
+            );
           }
         }
 
@@ -302,13 +319,7 @@ const Signup: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const countryOptions = [
-    "USA",
-    "Canada",
-    "England",
-    "Australia",
-    "Mexico",
-  ];
+  const countryOptions = [...SUPPORTED_COUNTRIES];
 
   const vehicleOptions = [
     "1 to 5",
@@ -372,7 +383,10 @@ const Signup: React.FC = () => {
           const userCredential = await linkWithCredential(user, credential);
           user = userCredential.user;
         } catch (linkErr: unknown) {
-          console.warn("Account link error, falling back to new account:", linkErr);
+          console.warn(
+            "Account link error, falling back to new account:",
+            linkErr
+          );
           // If already linked or error, create fresh user
           const userCredential = await createUserWithEmailAndPassword(
             auth,
@@ -400,7 +414,9 @@ const Signup: React.FC = () => {
         const mechanicDoc = await getDoc(doc(db, "Mechanics", user.uid));
         if (mechanicDoc.exists()) {
           await auth.signOut();
-          setError("This email is registered with a mechanic account. Please try with another email.");
+          setError(
+            "This email is registered with a mechanic account. Please try with another email."
+          );
           setLoading(false);
           return;
         }
@@ -428,6 +444,15 @@ const Signup: React.FC = () => {
         country: formValues.country.trim(),
         dot: formValues.dot.trim() || "",
         mc: formValues.mc.trim() || "",
+        nsc: formValues.nsc.trim() || "",
+        cvor: formValues.cvor.trim() || "",
+        nir: formValues.nir.trim() || "",
+        cbsa: formValues.cbsa.trim() || "",
+        rfc: formValues.rfc.trim() || "",
+        ftp: formValues.ftp.trim() || "",
+        voln: formValues.voln.trim() || "",
+        abn: formValues.abn.trim() || "",
+        hva: formValues.hva.trim() || "",
         postalCode: formValues.postalCode.trim() || "",
         licNumber: "",
         licExpDate: new Date(),
@@ -475,6 +500,15 @@ const Signup: React.FC = () => {
           companyName: formValues.companyName.trim(),
           dot: formValues.dot.trim() || "",
           mc: formValues.mc.trim() || "",
+          nsc: formValues.nsc.trim() || "",
+          cvor: formValues.cvor.trim() || "",
+          nir: formValues.nir.trim() || "",
+          cbsa: formValues.cbsa.trim() || "",
+          rfc: formValues.rfc.trim() || "",
+          ftp: formValues.ftp.trim() || "",
+          voln: formValues.voln.trim() || "",
+          abn: formValues.abn.trim() || "",
+          hva: formValues.hva.trim() || "",
           address: formValues.address.trim(),
           city: formValues.city.trim(),
           state: formValues.state.trim(),
@@ -562,7 +596,10 @@ const Signup: React.FC = () => {
           <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl flex items-start gap-3 shadow-sm">
             <FaInfoCircle className="text-amber-500 text-lg mt-0.5 flex-shrink-0" />
             <div className="text-xs sm:text-sm text-amber-900">
-              <span className="font-bold">Guest Account Detected:</span> We will link your verified phone number (<strong>{formValues.phoneNumber}</strong>) so all your previous jobs and breakdown history are preserved.
+              <span className="font-bold">Guest Account Detected:</span> We will
+              link your verified phone number (
+              <strong>{formValues.phoneNumber}</strong>) so all your previous
+              jobs and breakdown history are preserved.
             </div>
           </div>
         )}
@@ -588,7 +625,10 @@ const Signup: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 {/* Full Name */}
                 <div className="sm:col-span-2">
-                  <label htmlFor="name" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  <label
+                    htmlFor="name"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
                     Full Name *
                   </label>
                   <div className="relative rounded-lg shadow-sm">
@@ -610,7 +650,10 @@ const Signup: React.FC = () => {
 
                 {/* Email Address */}
                 <div>
-                  <label htmlFor="email" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  <label
+                    htmlFor="email"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
                     Email Address *
                   </label>
                   <div className="relative rounded-lg shadow-sm">
@@ -664,7 +707,10 @@ const Signup: React.FC = () => {
 
                 {/* Password */}
                 <div>
-                  <label htmlFor="password" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  <label
+                    htmlFor="password"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
                     Password *
                   </label>
                   <div className="relative rounded-lg shadow-sm">
@@ -693,7 +739,10 @@ const Signup: React.FC = () => {
 
                 {/* Number of Vehicles */}
                 <div>
-                  <label htmlFor="numberOfVehicles" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  <label
+                    htmlFor="numberOfVehicles"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
                     Number of Vehicles *
                   </label>
                   <div className="relative rounded-lg shadow-sm">
@@ -739,7 +788,10 @@ const Signup: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 {/* Company Name */}
                 <div className="sm:col-span-2">
-                  <label htmlFor="companyName" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  <label
+                    htmlFor="companyName"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
                     Company Name *
                   </label>
                   <div className="relative rounded-lg shadow-sm">
@@ -759,47 +811,85 @@ const Signup: React.FC = () => {
                   </div>
                 </div>
 
-                {/* DOT (Optional) */}
-                <div>
-                  <label htmlFor="dot" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                    DOT Number <span className="text-gray-400 font-normal">(Optional)</span>
+                {/* Country Dropdown */}
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="country"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
+                    Country *
                   </label>
-                  <input
-                    type="text"
-                    id="dot"
-                    name="dot"
-                    placeholder="e.g. 1234567"
-                    value={formValues.dot}
-                    onChange={handleChange}
-                    className="block w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-                  />
+                  <div className="relative rounded-lg shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                      <FaGlobeAmericas className="text-sm" />
+                    </div>
+                    <select
+                      id="country"
+                      name="country"
+                      value={formValues.country}
+                      onChange={handleChange}
+                      className="block w-full pl-10 pr-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
+                      required
+                    >
+                      {countryOptions.map((country) => (
+                        <option key={country} value={country}>
+                          {country}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {/* MC (Optional) */}
-                <div>
-                  <label htmlFor="mc" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                    MC Number <span className="text-gray-400 font-normal">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="mc"
-                    name="mc"
-                    placeholder="e.g. MC-987654"
-                    value={formValues.mc}
-                    onChange={handleChange}
-                    className="block w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-                  />
-                </div>
+                {/* Country Specific Registration Fields */}
+                {COUNTRY_REGISTRATION_FIELDS[
+                  normalizeCountry(formValues.country)
+                ]?.map((field) => (
+                  <div
+                    key={field.key}
+                    className={
+                      COUNTRY_REGISTRATION_FIELDS[
+                        normalizeCountry(formValues.country)
+                      ].length === 1
+                        ? "sm:col-span-2"
+                        : ""
+                    }
+                  >
+                    <label
+                      htmlFor={field.key}
+                      className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                    >
+                      {field.label}{" "}
+                      <span className="text-gray-400 font-normal">
+                        ({field.optional ? "Optional" : "Required"})
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      id={field.key}
+                      name={field.key}
+                      placeholder={field.placeholder}
+                      value={
+                        formValues[field.key as keyof typeof formValues] || ""
+                      }
+                      onChange={handleChange}
+                      className="block w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
+                    />
+                  </div>
+                ))}
 
                 {/* Street Address with Google Places Autocomplete */}
                 <div className="sm:col-span-2">
                   <div className="flex items-center justify-between mb-1">
-                    <label htmlFor="address" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <label
+                      htmlFor="address"
+                      className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                    >
                       Street Address *
                     </label>
                     {isLoaded && (
                       <span className="text-[10px] text-gray-400 font-normal flex items-center gap-1">
-                        <FaMapMarkerAlt className="text-[#F96176]" /> Powered by Google Places
+                        <FaMapMarkerAlt className="text-[#F96176]" /> Powered by
+                        Google Places
                       </span>
                     )}
                   </div>
@@ -830,7 +920,10 @@ const Signup: React.FC = () => {
 
                 {/* City */}
                 <div>
-                  <label htmlFor="city" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  <label
+                    htmlFor="city"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
                     City *
                   </label>
                   <div className="relative rounded-lg shadow-sm">
@@ -852,7 +945,10 @@ const Signup: React.FC = () => {
 
                 {/* State */}
                 <div>
-                  <label htmlFor="state" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  <label
+                    htmlFor="state"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
                     State *
                   </label>
                   <input
@@ -869,7 +965,10 @@ const Signup: React.FC = () => {
 
                 {/* Postal / Zip Code */}
                 <div>
-                  <label htmlFor="postalCode" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  <label
+                    htmlFor="postalCode"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
                     Postal / Zip Code
                   </label>
                   <input
@@ -881,33 +980,6 @@ const Signup: React.FC = () => {
                     onChange={handleChange}
                     className="block w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
                   />
-                </div>
-
-                {/* Country Dropdown */}
-                <div>
-                  <label htmlFor="country" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                    Country *
-                  </label>
-                  <div className="relative rounded-lg shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                      <FaGlobeAmericas className="text-sm" />
-                    </div>
-                    <select
-                      id="country"
-                      name="country"
-                      value={formValues.country}
-                      onChange={handleChange}
-                      className="block w-full pl-10 pr-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-                      required
-                    >
-                      <option value="">Select country</option>
-                      {countryOptions.map((country) => (
-                        <option key={country} value={country}>
-                          {country}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
               </div>
             </div>

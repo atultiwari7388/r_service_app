@@ -32,16 +32,17 @@ import {
   FaTruck,
 } from "react-icons/fa";
 import { CompanyType } from "@/types/types";
+import {
+  SUPPORTED_COUNTRIES,
+  COUNTRY_REGISTRATION_FIELDS,
+  normalizeCountry,
+  ALL_COUNTRY_REGISTRATION_KEYS,
+  CountryRegistrationFieldKey,
+} from "@/utils/countryFields";
 
 const GOOGLE_LIBRARIES: "places"[] = ["places"];
 
-const COUNTRY_OPTIONS = [
-  "USA",
-  "Canada",
-  "England",
-  "Australia",
-  "Mexico",
-];
+const COUNTRY_OPTIONS = [...SUPPORTED_COUNTRIES];
 
 interface AddressAutocompleteInputProps {
   value: string;
@@ -143,7 +144,7 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
             } else if (c.short_name === "CA" || c.long_name === "Canada") {
               country = "Canada";
             } else if (c.short_name === "GB" || c.long_name === "United Kingdom") {
-              country = "England";
+              country = "UK";
             } else if (c.short_name === "AU" || c.long_name === "Australia") {
               country = "Australia";
             } else if (c.short_name === "MX" || c.long_name === "Mexico") {
@@ -229,10 +230,20 @@ interface CompanyFormData {
   companyName: string;
   dot: string;
   mc: string;
+  nsc: string;
+  cvor: string;
+  nir: string;
+  cbsa: string;
+  rfc: string;
+  ftp: string;
+  voln: string;
+  abn: string;
+  hva: string;
   address: string;
   city: string;
   state: string;
   country: string;
+  postalCode?: string;
   isDefault: boolean;
   isActive: boolean;
 }
@@ -241,10 +252,20 @@ const initialFormData: CompanyFormData = {
   companyName: "",
   dot: "",
   mc: "",
+  nsc: "",
+  cvor: "",
+  nir: "",
+  cbsa: "",
+  rfc: "",
+  ftp: "",
+  voln: "",
+  abn: "",
+  hva: "",
   address: "",
   city: "",
   state: "",
   country: "USA",
+  postalCode: "",
   isDefault: false,
   isActive: true,
 };
@@ -332,10 +353,20 @@ export default function MyCompaniesPage() {
             companyName: data.companyName || data.name || "Unnamed Company",
             dot: data.dot || "",
             mc: data.mc || "",
+            nsc: data.nsc || "",
+            cvor: data.cvor || "",
+            nir: data.nir || "",
+            cbsa: data.cbsa || "",
+            rfc: data.rfc || "",
+            ftp: data.ftp || "",
+            voln: data.voln || "",
+            abn: data.abn || "",
+            hva: data.hva || "",
             address: data.address || "",
             city: data.city || "",
             state: data.state || "",
             country: data.country || "",
+            postalCode: data.postalCode || "",
             isDefault: Boolean(data.isDefault),
             isActive: data.isActive !== false, // default to true if undefined
             created_at: data.created_at,
@@ -394,12 +425,22 @@ export default function MyCompaniesPage() {
     setEditingCompanyId(company.id);
     setFormData({
       companyName: company.companyName,
-      dot: company.dot,
-      mc: company.mc,
-      address: company.address,
-      city: company.city,
-      state: company.state,
-      country: company.country || "USA",
+      dot: company.dot || "",
+      mc: company.mc || "",
+      nsc: company.nsc || "",
+      cvor: company.cvor || "",
+      nir: company.nir || "",
+      cbsa: company.cbsa || "",
+      rfc: company.rfc || "",
+      ftp: company.ftp || "",
+      voln: company.voln || "",
+      abn: company.abn || "",
+      hva: company.hva || "",
+      address: company.address || "",
+      city: company.city || "",
+      state: company.state || "",
+      country: company.country ? normalizeCountry(company.country) : "USA",
+      postalCode: company.postalCode || "",
       isDefault: company.isDefault,
       isActive: company.isActive,
     });
@@ -430,7 +471,8 @@ export default function MyCompaniesPage() {
       address: details.address || prev.address,
       city: details.city || prev.city,
       state: details.state || prev.state,
-      country: details.country || prev.country || "USA",
+      country: details.country ? normalizeCountry(details.country) : prev.country || "USA",
+      postalCode: details.postalCode || prev.postalCode,
     }));
   };
 
@@ -489,10 +531,20 @@ export default function MyCompaniesPage() {
         companyName: formData.companyName.trim(),
         dot: formData.dot.trim(),
         mc: formData.mc.trim(),
+        nsc: formData.nsc.trim(),
+        cvor: formData.cvor.trim(),
+        nir: formData.nir.trim(),
+        cbsa: formData.cbsa.trim(),
+        rfc: formData.rfc.trim(),
+        ftp: formData.ftp.trim(),
+        voln: formData.voln.trim(),
+        abn: formData.abn.trim(),
+        hva: formData.hva.trim(),
         address: formData.address.trim(),
         city: formData.city.trim(),
         state: formData.state.trim(),
         country: formData.country.trim(),
+        postalCode: (formData.postalCode || "").trim(),
         isDefault: makeDefault,
         isActive: formData.isActive,
         updated_at: serverTimestamp(),
@@ -518,10 +570,20 @@ export default function MyCompaniesPage() {
           companyName: formData.companyName.trim(),
           dot: formData.dot.trim(),
           mc: formData.mc.trim(),
+          nsc: formData.nsc.trim(),
+          cvor: formData.cvor.trim(),
+          nir: formData.nir.trim(),
+          cbsa: formData.cbsa.trim(),
+          rfc: formData.rfc.trim(),
+          ftp: formData.ftp.trim(),
+          voln: formData.voln.trim(),
+          abn: formData.abn.trim(),
+          hva: formData.hva.trim(),
           address: formData.address.trim(),
           city: formData.city.trim(),
           state: formData.state.trim(),
           country: formData.country.trim(),
+          postalCode: (formData.postalCode || "").trim(),
           updated_at: new Date(),
         });
       }
@@ -552,12 +614,22 @@ export default function MyCompaniesPage() {
       // Sync root user document
       await updateDoc(doc(db, "Users", effectiveUserId), {
         companyName: company.companyName,
-        dot: company.dot,
-        mc: company.mc,
-        address: company.address,
-        city: company.city,
-        state: company.state,
-        country: company.country,
+        dot: company.dot || "",
+        mc: company.mc || "",
+        nsc: company.nsc || "",
+        cvor: company.cvor || "",
+        nir: company.nir || "",
+        cbsa: company.cbsa || "",
+        rfc: company.rfc || "",
+        ftp: company.ftp || "",
+        voln: company.voln || "",
+        abn: company.abn || "",
+        hva: company.hva || "",
+        address: company.address || "",
+        city: company.city || "",
+        state: company.state || "",
+        country: company.country || "",
+        postalCode: company.postalCode || "",
         updated_at: new Date(),
       });
 
@@ -794,21 +866,44 @@ export default function MyCompaniesPage() {
                     </div>
                   </div>
 
-                  {/* DOT & MC Badges */}
-                  {(company.dot || company.mc) && (
-                    <div className="flex flex-wrap gap-2 my-3">
-                      {company.dot && (
-                        <span className="inline-block px-2.5 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-md border border-gray-200">
-                          DOT: {company.dot}
+                  {/* Country & Registration Badges */}
+                  <div className="flex flex-wrap gap-2 my-3">
+                    {company.country && (
+                      <span className="inline-block px-2.5 py-1 bg-red-50 text-[#F96176] text-xs font-semibold rounded-md border border-[#F96176]/20">
+                        {normalizeCountry(company.country)}
+                      </span>
+                    )}
+                    {(() => {
+                      const countryKey = normalizeCountry(company.country);
+                      const fieldConfigs = COUNTRY_REGISTRATION_FIELDS[countryKey] || [];
+                      const renderedBadges = fieldConfigs
+                        .filter((f) => Boolean(company[f.key]))
+                        .map((f) => (
+                          <span
+                            key={f.key}
+                            className="inline-block px-2.5 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-md border border-gray-200"
+                          >
+                            {f.badgeLabel}: {company[f.key]}
+                          </span>
+                        ));
+
+                      const otherKeys = ALL_COUNTRY_REGISTRATION_KEYS.filter(
+                        (k) =>
+                          !fieldConfigs.some((f) => f.key === k) &&
+                          Boolean(company[k])
+                      );
+                      const otherBadges = otherKeys.map((k) => (
+                        <span
+                          key={k}
+                          className="inline-block px-2.5 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-md border border-gray-200"
+                        >
+                          {k.toUpperCase()}: {company[k]}
                         </span>
-                      )}
-                      {company.mc && (
-                        <span className="inline-block px-2.5 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-md border border-gray-200">
-                          MC: {company.mc}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                      ));
+
+                      return [...renderedBadges, ...otherBadges];
+                    })()}
+                  </div>
                 </div>
 
                 {/* Footer Section */}
@@ -877,36 +972,57 @@ export default function MyCompaniesPage() {
                 />
               </div>
 
-              {/* DOT & MC */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                    DOT Number
-                  </label>
-                  <input
-                    type="text"
-                    name="dot"
-                    value={formData.dot}
-                    onChange={handleFormChange}
-                    placeholder="e.g. 1234567"
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F96176] focus:border-transparent bg-gray-50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                    MC Number
-                  </label>
-                  <input
-                    type="text"
-                    name="mc"
-                    value={formData.mc}
-                    onChange={handleFormChange}
-                    placeholder="e.g. MC-987654"
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F96176] focus:border-transparent bg-gray-50"
-                  />
-                </div>
+              {/* Country Select */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  Country *
+                </label>
+                <select
+                  name="country"
+                  value={formData.country}
+                  onChange={handleFormChange}
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F96176] focus:border-transparent bg-gray-50"
+                  required
+                >
+                  {COUNTRY_OPTIONS.map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {/* Dynamic Country Registration Fields */}
+              {(() => {
+                const currentFields =
+                  COUNTRY_REGISTRATION_FIELDS[normalizeCountry(formData.country)] || [];
+                if (currentFields.length === 0) return null;
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {currentFields.map((field) => (
+                      <div
+                        key={field.key}
+                        className={currentFields.length === 1 ? "sm:col-span-2" : ""}
+                      >
+                        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                          {field.label}{" "}
+                          <span className="text-gray-400 font-normal">
+                            ({field.optional ? "Optional" : "Required"})
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          name={field.key}
+                          value={formData[field.key as keyof CompanyFormData] as string || ""}
+                          onChange={handleFormChange}
+                          placeholder={field.placeholder}
+                          className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F96176] focus:border-transparent bg-gray-50"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Street Address */}
               <div>
@@ -953,24 +1069,19 @@ export default function MyCompaniesPage() {
                 </div>
               </div>
 
-              {/* Country Select */}
+              {/* Postal Code */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                  Country *
+                  Postal / Zip Code <span className="text-gray-400 font-normal">(Optional)</span>
                 </label>
-                <select
-                  name="country"
-                  value={formData.country}
+                <input
+                  type="text"
+                  name="postalCode"
+                  value={formData.postalCode || ""}
                   onChange={handleFormChange}
+                  placeholder="e.g. 75201"
                   className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F96176] focus:border-transparent bg-gray-50"
-                  required
-                >
-                  {COUNTRY_OPTIONS.map((country) => (
-                    <option key={country} value={country}>
-                      {country}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               {/* Active Status Switch */}
