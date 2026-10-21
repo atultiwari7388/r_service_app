@@ -39,7 +39,8 @@ import {
   FiHash,
   FiTrash2,
 } from "react-icons/fi";
-import { FaFileAlt } from "react-icons/fa";
+import { FaFileAlt, FaBuilding } from "react-icons/fa";
+import { CompanyType } from "@/types/types";
 
 interface ServiceDetail {
   serviceName: string;
@@ -90,6 +91,8 @@ interface Check {
     amount?: number;
     description?: string;
   }>;
+  companyId?: string;
+  companyName?: string;
 }
 
 interface CheckSeries {
@@ -99,7 +102,17 @@ interface CheckSeries {
   endNumber: string;
   totalChecks: number;
   createdAt: Date;
+  companyId?: string;
+  companyName?: string;
 }
+
+const DEFAULT_SERVICE_DETAILS: ServiceDetail[] = [
+  { serviceName: "", amount: 0 },
+  { serviceName: "", amount: 0 },
+  { serviceName: "", amount: 0 },
+  { serviceName: "", amount: 0 },
+  { serviceName: "", amount: 0 },
+];
 
 function ManageCheckScreenContent() {
   const [role, setUserRole] = useState<string>("");
@@ -118,7 +131,9 @@ function ManageCheckScreenContent() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
-  const [serviceDetails, setServiceDetails] = useState<ServiceDetail[]>([]);
+  const [serviceDetails, setServiceDetails] = useState<ServiceDetail[]>(
+    DEFAULT_SERVICE_DETAILS
+  );
   const [memoNumber, setMemoNumber] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [totalAmount, setTotalAmount] = useState<number>(0);
@@ -137,7 +152,12 @@ function ManageCheckScreenContent() {
   const [showCheckSeries, setShowCheckSeries] = useState<boolean>(false);
   const [startSeriesNumber, setStartSeriesNumber] = useState<string>("");
   const [endSeriesNumber, setEndSeriesNumber] = useState<string>("");
+  const [selectedSeriesCompanyId, setSelectedSeriesCompanyId] = useState<string>("");
   const [addingSeries, setAddingSeries] = useState<boolean>(false);
+  const [companies, setCompanies] = useState<CompanyType[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedCompanyName, setSelectedCompanyName] = useState<string | null>(null);
+  const [filterCompanyId, setFilterCompanyId] = useState<string | null>(null);
   const [editingCheckNumber, setEditingCheckNumber] = useState<string>("");
   const [isSavingCheck, setIsSavingCheck] = useState<boolean>(false);
   const [isUpdatingCheck, setIsUpdatingCheck] = useState<boolean>(false);
@@ -229,6 +249,7 @@ function ManageCheckScreenContent() {
       fetchTeamMembersWithVehicles();
       fetchChecks();
       fetchCheckSeries();
+      fetchCompanies();
     }
   }, [effectiveUserId, isCheque]);
 
@@ -296,6 +317,7 @@ function ManageCheckScreenContent() {
         getNextAvailableCheckNumber().then((nextCheckNumber) => {
           if (nextCheckNumber) {
             setCheckNumber(nextCheckNumber);
+            autoSelectCompanyForCheck(nextCheckNumber);
             setShowWriteCheck(true);
           } else {
             toast.error(
@@ -400,7 +422,7 @@ function ManageCheckScreenContent() {
       }
 
       const snapshot = await getDocs(checksQuery);
-      const checksData: Check[] = snapshot.docs.map((doc) => {
+      let checksData: Check[] = snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -420,8 +442,20 @@ function ManageCheckScreenContent() {
           country: data.country || "",
           postalCode: data.postalCode || "",
           attachedInvoices: data.attachedInvoices || [],
+          companyId: data.companyId || undefined,
+          companyName: data.companyName || undefined,
         };
       });
+
+      if (filterCompanyId) {
+        checksData = checksData.filter(
+          (c) =>
+            c.companyId === filterCompanyId ||
+            c.companyName === filterCompanyId ||
+            companies.find((comp) => comp.id === filterCompanyId)?.companyName ===
+              c.companyName
+        );
+      }
 
       setChecks(checksData);
     } catch (error) {
@@ -432,9 +466,113 @@ function ManageCheckScreenContent() {
     }
   };
 
+  const fetchCompanies = async () => {
+    try {
+      if (!effectiveUserId) return [];
+      const companiesRef = collection(
+        db,
+        "Users",
+        effectiveUserId,
+        "myCompanies"
+      );
+      const snap = await getDocs(companiesRef);
+      const loaded: CompanyType[] = [];
+      snap.forEach((docSnap) => {
+        const data = docSnap.data();
+        loaded.push({
+          id: docSnap.id,
+          companyName: data.companyName || data.name || "Unnamed Company",
+          dot: data.dot || "",
+          mc: data.mc || "",
+          address: data.address || "",
+          city: data.city || "",
+          state: data.state || "",
+          country: data.country || "",
+          isDefault: Boolean(data.isDefault),
+          isActive: data.isActive !== false,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+        });
+      });
+      loaded.sort((a, b) => {
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+        return a.companyName.localeCompare(b.companyName);
+      });
+      setCompanies(loaded);
+      return loaded;
+    } catch (err) {
+      console.error("Error fetching companies in manage-check:", err);
+      return [];
+    }
+  };
+
+  const isCheckNumberInSeries = (
+    checkNum: string,
+    series: CheckSeries
+  ): boolean => {
+    try {
+      if (!checkNum || !series.startNumber || !series.endNumber) return false;
+      const startPrefix = series.startNumber.replace(/\d/g, "");
+      const endPrefix = series.endNumber.replace(/\d/g, "");
+      const checkPrefix = checkNum.replace(/\d/g, "");
+
+      if (startPrefix !== checkPrefix || endPrefix !== checkPrefix) {
+        return false;
+      }
+
+      const startVal = parseInt(series.startNumber.replace(startPrefix, ""), 10);
+      const endVal = parseInt(series.endNumber.replace(endPrefix, ""), 10);
+      const checkVal = parseInt(checkNum.replace(checkPrefix, ""), 10);
+
+      if (isNaN(startVal) || isNaN(endVal) || isNaN(checkVal)) {
+        return false;
+      }
+
+      return checkVal >= startVal && checkVal <= endVal;
+    } catch {
+      return false;
+    }
+  };
+
+  const autoSelectCompanyForCheck = (
+    cNumber: string,
+    currentSeriesList: CheckSeries[] = checkSeries,
+    currentCompanies: CompanyType[] = companies
+  ) => {
+    if (!cNumber) return;
+    // 1. Try to find the series this checkNumber belongs to
+    const matching = currentSeriesList.find((s) =>
+      isCheckNumberInSeries(cNumber, s)
+    );
+    if (matching && matching.companyId) {
+      setSelectedCompanyId(matching.companyId);
+      setSelectedCompanyName(matching.companyName || "");
+      return;
+    }
+
+    // 2. Fallback to default company
+    const defaultComp = currentCompanies.find((c) => c.isDefault);
+    if (defaultComp) {
+      setSelectedCompanyId(defaultComp.id);
+      setSelectedCompanyName(defaultComp.companyName);
+      return;
+    }
+
+    // 3. Fallback to first company if available
+    if (currentCompanies.length > 0) {
+      setSelectedCompanyId(currentCompanies[0].id);
+      setSelectedCompanyName(currentCompanies[0].companyName);
+      return;
+    }
+
+    setSelectedCompanyId(null);
+    setSelectedCompanyName(null);
+  };
+
   const fetchCheckSeries = async () => {
     try {
-      if (!effectiveUserId) return;
+      if (!effectiveUserId) return [];
 
       const seriesQuery = query(
         collection(db, "CheckSeries"),
@@ -452,12 +590,16 @@ function ManageCheckScreenContent() {
           endNumber: data.endNumber,
           totalChecks: data.totalChecks || 0,
           createdAt: data.createdAt?.toDate() || new Date(),
+          companyId: data.companyId || undefined,
+          companyName: data.companyName || undefined,
         };
       });
 
       setCheckSeries(seriesData);
+      return seriesData;
     } catch (error) {
       console.error(error);
+      return [];
     }
   };
 
@@ -480,11 +622,18 @@ function ManageCheckScreenContent() {
         return;
       }
 
+      const chosenCompany = companies.find(
+        (c) => c.id === selectedSeriesCompanyId
+      );
+      const chosenCompanyName = chosenCompany?.companyName || "";
+
       // Save the series to Firestore using effectiveUserId (owner's ID)
       const seriesRef = await addDoc(collection(db, "CheckSeries"), {
         userId: effectiveUserId,
         startNumber: startSeriesNumber,
         endNumber: endSeriesNumber,
+        companyId: selectedSeriesCompanyId || null,
+        companyName: chosenCompanyName || null,
         createdAt: serverTimestamp(),
         totalChecks: checkNumbers.length,
       });
@@ -501,6 +650,8 @@ function ManageCheckScreenContent() {
           isUsed: false,
           seriesId: seriesRef.id,
           userId: effectiveUserId,
+          companyId: selectedSeriesCompanyId || null,
+          companyName: chosenCompanyName || null,
           createdAt: serverTimestamp(),
         });
       }
@@ -526,8 +677,17 @@ function ManageCheckScreenContent() {
       // Refresh data
       await fetchCheckSeries();
 
-      // Automatically open Write Check form with newly created series
+      // Automatically open Write Check form with newly created series and its company
+      setSelectedType(null);
+      setSelectedUserId(null);
+      setSelectedUserName(null);
+      setServiceDetails(DEFAULT_SERVICE_DETAILS);
+      setMemoNumber("");
+      setSelectedDate(new Date());
+      setTotalAmount(0);
       setCheckNumber(createdStartNumber);
+      setSelectedCompanyId(selectedSeriesCompanyId || null);
+      setSelectedCompanyName(chosenCompanyName || null);
       setShowWriteCheck(true);
     } catch (error) {
       toast.error("Error saving check series");
@@ -541,14 +701,15 @@ function ManageCheckScreenContent() {
     if (effectiveUserId && isCheque) {
       fetchChecks();
     }
-  }, [filterType, startDate, endDate, effectiveUserId, isCheque]);
+  }, [filterType, filterCompanyId, startDate, endDate, effectiveUserId, isCheque]);
 
   useEffect(() => {
     // Calculate total whenever serviceDetails changes
     const total = serviceDetails.reduce((sum, detail, index) => {
+      const sName = (detail?.serviceName || "").trim();
       // First row: must have service name (amount can be 0, positive, or negative)
       if (index === 0) {
-        if (detail.serviceName.trim() !== "") {
+        if (sName !== "") {
           // For first row, include the amount even if it's 0 or negative
           return (
             sum +
@@ -559,7 +720,7 @@ function ManageCheckScreenContent() {
       }
       // Other rows: include amount if it's entered (can be 0, positive, or negative)
       // Service name is optional for other rows
-      else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
+      else if (detail.amount !== 0 || sName !== "") {
         return (
           sum +
           (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
@@ -572,9 +733,10 @@ function ManageCheckScreenContent() {
 
   const calculateTotal = (details: ServiceDetail[]) => {
     const total = details.reduce((sum, detail, index) => {
+      const sName = (detail?.serviceName || "").trim();
       // First row: must have service name (amount can be 0, positive, or negative)
       if (index === 0) {
-        if (detail.serviceName.trim() !== "") {
+        if (sName !== "") {
           // For first row, include the amount even if it's 0 or negative
           return (
             sum +
@@ -584,7 +746,7 @@ function ManageCheckScreenContent() {
         return sum;
       }
       // Other rows: include amount if it's entered OR if service name exists
-      else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
+      else if (detail.amount !== 0 || sName !== "") {
         return (
           sum +
           (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
@@ -767,6 +929,7 @@ function ManageCheckScreenContent() {
     const nextCheckNumber = await getNextAvailableCheckNumber();
     if (nextCheckNumber) {
       setCheckNumber(nextCheckNumber);
+      autoSelectCompanyForCheck(nextCheckNumber);
       setShowWriteCheck(true);
     } else {
       toast.error(
@@ -788,6 +951,8 @@ function ManageCheckScreenContent() {
         setSelectedType(checkData.type);
         setSelectedUserId(checkData.userId);
         setSelectedUserName(checkData.userName);
+        setSelectedCompanyId(checkData.companyId || null);
+        setSelectedCompanyName(checkData.companyName || null);
 
         const savedServiceDetails: ServiceDetail[] = (
           checkData.serviceDetails || []
@@ -817,6 +982,10 @@ function ManageCheckScreenContent() {
               }
             }
           });
+        }
+
+        while (savedServiceDetails.length < 5) {
+          savedServiceDetails.push({ serviceName: "", amount: 0 });
         }
 
         setServiceDetails(savedServiceDetails);
@@ -862,7 +1031,9 @@ function ManageCheckScreenContent() {
     setSelectedType(null);
     setSelectedUserId(null);
     setSelectedUserName(null);
-    setServiceDetails([]);
+    setSelectedCompanyId(null);
+    setSelectedCompanyName(null);
+    setServiceDetails(DEFAULT_SERVICE_DETAILS);
     setAttachedInvoices([]);
     setMemoNumber("");
     setSelectedDate(new Date());
@@ -874,7 +1045,9 @@ function ManageCheckScreenContent() {
     setSelectedType(null);
     setSelectedUserId(null);
     setSelectedUserName(null);
-    setServiceDetails([]);
+    setSelectedCompanyId(null);
+    setSelectedCompanyName(null);
+    setServiceDetails(DEFAULT_SERVICE_DETAILS);
     setAttachedInvoices([]);
     setMemoNumber("");
     setSelectedDate(new Date());
@@ -889,10 +1062,10 @@ function ManageCheckScreenContent() {
     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
       // First row: must have service name (amount can be 0 or negative)
       if (index === 0) {
-        return detail.serviceName.trim() !== "";
+        return (detail?.serviceName || "").trim() !== "";
       }
       // Other rows: can have either service name OR amount (amount can be 0 or negative)
-      return detail.serviceName.trim() !== "" || detail.amount !== 0;
+      return (detail?.serviceName || "").trim() !== "" || detail.amount !== 0;
     });
 
     if (
@@ -965,6 +1138,10 @@ function ManageCheckScreenContent() {
     setIsSavingCheck(true);
 
     try {
+      const chosenCompany = companies.find((c) => c.id === selectedCompanyId);
+      const finalCompanyName =
+        selectedCompanyName || chosenCompany?.companyName || null;
+
       const checkData = {
         checkNumber: checkNumber,
         type: selectedType,
@@ -977,6 +1154,8 @@ function ManageCheckScreenContent() {
         createdBy: effectiveUserId, // Always use effectiveUserId (owner's ID)
         createdAt: serverTimestamp(),
         attachedInvoices: activeAttachedInvoices,
+        companyId: selectedCompanyId || null,
+        companyName: finalCompanyName,
       };
 
       const checkDocRef = await addDoc(collection(db, "Checks"), checkData);
@@ -1180,10 +1359,10 @@ function ManageCheckScreenContent() {
     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
       // First row: must have service name (amount can be 0 or negative)
       if (index === 0) {
-        return detail.serviceName.trim() !== "";
+        return (detail?.serviceName || "").trim() !== "";
       }
       // Other rows: can have either service name OR amount (amount can be 0 or negative)
-      return detail.serviceName.trim() !== "" || detail.amount !== 0;
+      return (detail?.serviceName || "").trim() !== "" || detail.amount !== 0;
     });
 
     if (!selectedUserId || nonEmptyDetails.length === 0 || !effectiveUserId) {
@@ -1289,6 +1468,10 @@ function ManageCheckScreenContent() {
         return prevInv && prevInv.amount !== currInv.amount;
       });
 
+      const chosenCompany = companies.find((c) => c.id === selectedCompanyId);
+      const finalCompanyName =
+        selectedCompanyName || chosenCompany?.companyName || null;
+
       // Update check document in Firestore
       await updateDoc(checkRef, {
         type: selectedType,
@@ -1299,6 +1482,8 @@ function ManageCheckScreenContent() {
         memoNumber: memoNumber || null,
         date: Timestamp.fromDate(selectedDate),
         attachedInvoices: updatedAttachedInvoices,
+        companyId: selectedCompanyId || null,
+        companyName: finalCompanyName,
         updatedAt: serverTimestamp(),
       });
 
@@ -2191,7 +2376,13 @@ function ManageCheckScreenContent() {
             </button>
 
             <button
-              onClick={() => setShowAddSeries(true)}
+              onClick={() => {
+                const defComp = companies.find((c) => c.isDefault);
+                setSelectedSeriesCompanyId(
+                  defComp?.id || (companies[0]?.id ?? "")
+                );
+                setShowAddSeries(true);
+              }}
               className="flex items-center px-5 sm:px-6 py-2 sm:py-2.5 bg-[#58BB87] rounded-full shadow-md hover:bg-[#58BB87] transition-all duration-300 text-white text-sm sm:text-base"
             >
               <FiHash className="mr-2" />
@@ -2236,6 +2427,29 @@ function ManageCheckScreenContent() {
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company
+                </label>
+                <select
+                  value={selectedSeriesCompanyId}
+                  onChange={(e) => setSelectedSeriesCompanyId(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] bg-white text-gray-800"
+                >
+                  <option value="">Select Company (Optional)</option>
+                  {companies.map((comp) => (
+                    <option key={comp.id} value={comp.id}>
+                      {comp.companyName} {comp.isDefault ? "(Default)" : ""}
+                    </option>
+                  ))}
+                </select>
+                {companies.length === 0 && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    No companies available. You can add companies under My Companies.
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Start Number (e.g., RMS001)
@@ -2336,9 +2550,17 @@ function ManageCheckScreenContent() {
                     className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-green-300 transition-all"
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-semibold text-gray-800">
-                        {series.startNumber} - {series.endNumber}
-                      </h4>
+                      <div>
+                        <h4 className="font-semibold text-gray-800">
+                          {series.startNumber} - {series.endNumber}
+                        </h4>
+                        {series.companyName && (
+                          <span className="inline-flex items-center gap-1 mt-1 bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-md border border-blue-200 font-medium">
+                            <FaBuilding className="text-[10px]" />
+                            {series.companyName}
+                          </span>
+                        )}
+                      </div>
                       <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                         {series.totalChecks} checks
                       </span>
@@ -2377,7 +2599,7 @@ function ManageCheckScreenContent() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Check Number
@@ -2392,6 +2614,29 @@ function ManageCheckScreenContent() {
               <p className="mt-2 text-sm text-gray-500">
                 Check number cannot be changed
               </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Company
+              </label>
+              <select
+                value={selectedCompanyId || ""}
+                onChange={(e) => {
+                  const cId = e.target.value;
+                  setSelectedCompanyId(cId || null);
+                  const comp = companies.find((c) => c.id === cId);
+                  setSelectedCompanyName(comp?.companyName || null);
+                }}
+                className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] bg-white text-gray-800"
+              >
+                <option value="">Select Company (Optional)</option>
+                {companies.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.companyName} {comp.isDefault ? "(Default)" : ""}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -2680,11 +2925,10 @@ function ManageCheckScreenContent() {
                   disabled={
                     isUpdatingCheck ||
                     // First row must have service name (amount can be 0)
-                    serviceDetails[0].serviceName.trim() === ""
+                    !serviceDetails[0]?.serviceName?.trim()
                   }
                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
-                    isUpdatingCheck ||
-                    serviceDetails[0].serviceName.trim() === ""
+                    isUpdatingCheck || !serviceDetails[0]?.serviceName?.trim()
                       ? "bg-gray-300 cursor-not-allowed"
                       : "bg-[#F96176] hover:bg-[#F96176] cursor-pointer"
                   } text-white`}
@@ -2730,7 +2974,7 @@ function ManageCheckScreenContent() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Check Number
@@ -2738,13 +2982,45 @@ function ManageCheckScreenContent() {
               <input
                 type="text"
                 value={checkNumber}
-                onChange={(e) => setCheckNumber(e.target.value)}
+                onChange={(e) => {
+                  setCheckNumber(e.target.value);
+                  autoSelectCompanyForCheck(e.target.value);
+                }}
                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] bg-gray-50"
                 readOnly
               />
               <p className="mt-2 text-sm text-gray-500">
                 Next available check number
               </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Company
+              </label>
+              <select
+                value={selectedCompanyId || ""}
+                onChange={(e) => {
+                  const cId = e.target.value;
+                  setSelectedCompanyId(cId || null);
+                  const comp = companies.find((c) => c.id === cId);
+                  setSelectedCompanyName(comp?.companyName || null);
+                }}
+                className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] bg-white text-gray-800"
+              >
+                <option value="">Select Company (Optional)</option>
+                {companies.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.companyName} {comp.isDefault ? "(Default)" : ""}
+                  </option>
+                ))}
+              </select>
+              {selectedCompanyName && (
+                <p className="mt-2 text-xs text-blue-600 font-medium flex items-center gap-1">
+                  <FaBuilding className="text-[10px]" />
+                  Auto-selected from check series
+                </p>
+              )}
             </div>
 
             <div>
@@ -3012,10 +3288,10 @@ function ManageCheckScreenContent() {
                   disabled={
                     isSavingCheck ||
                     // First row must have service name (amount can be 0)
-                    serviceDetails[0].serviceName.trim() === ""
+                    !serviceDetails[0]?.serviceName?.trim()
                   }
                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
-                    isSavingCheck || serviceDetails[0].serviceName.trim() === ""
+                    isSavingCheck || !serviceDetails[0]?.serviceName?.trim()
                       ? "bg-gray-300 cursor-not-allowed"
                       : "bg-[#F96176] hover:bg-[#F96176]/80 cursor-pointer"
                   } text-white`}
@@ -3049,7 +3325,7 @@ function ManageCheckScreenContent() {
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Type Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
@@ -3060,7 +3336,7 @@ function ManageCheckScreenContent() {
                 (type) => (
                   <button
                     key={type}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium shadow-sm transition-all ${
+                    className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium shadow-sm transition-all ${
                       filterType === type
                         ? "bg-[#F96176] text-white border border-[#F96176]"
                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
@@ -3073,9 +3349,45 @@ function ManageCheckScreenContent() {
                     }}
                   >
                     {type}
-                    {filterType === type && <FiX className="ml-2 inline" />}
+                    {filterType === type && <FiX className="ml-1 inline" />}
                   </button>
                 )
+              )}
+            </div>
+          </div>
+
+          {/* Company Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
+              Filter by Company
+            </label>
+            <div className="flex flex-col items-center">
+              <select
+                value={filterCompanyId || ""}
+                onChange={(e) => {
+                  const newCompanyId = e.target.value || null;
+                  setFilterCompanyId(newCompanyId);
+                  setLoadingChecks(true);
+                }}
+                className="w-full max-w-xs p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] text-sm text-gray-700 bg-white"
+              >
+                <option value="">All Companies</option>
+                {companies.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.companyName} {comp.isDefault ? "(Default)" : ""}
+                  </option>
+                ))}
+              </select>
+              {filterCompanyId && (
+                <button
+                  onClick={() => {
+                    setFilterCompanyId(null);
+                    setLoadingChecks(true);
+                  }}
+                  className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1 transition-colors"
+                >
+                  <FiX size={12} /> Clear Company Filter
+                </button>
               )}
             </div>
           </div>
@@ -3213,21 +3525,29 @@ function ManageCheckScreenContent() {
                 {/* Check Header */}
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                        check.type === "Manager"
-                          ? "bg-purple-100 text-purple-800"
-                          : check.type === "Accountant"
-                          ? "bg-green-100 text-green-800"
-                          : check.type === "Driver"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : check.type === "Vendor"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {check.type}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                          check.type === "Manager"
+                            ? "bg-purple-100 text-purple-800"
+                            : check.type === "Accountant"
+                            ? "bg-green-100 text-green-800"
+                            : check.type === "Driver"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : check.type === "Vendor"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {check.type}
+                      </span>
+                      {check.companyName && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                          <FaBuilding className="text-[10px]" />
+                          {check.companyName}
+                        </span>
+                      )}
+                    </div>
                     <h3 className="text-xl font-bold mt-2 text-gray-800">
                       Check #{check.checkNumber}
                     </h3>
