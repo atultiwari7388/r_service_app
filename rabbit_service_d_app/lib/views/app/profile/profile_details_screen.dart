@@ -35,6 +35,24 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   final TextEditingController _stateController = TextEditingController();
   final TextEditingController _countryController = TextEditingController();
 
+  // Country-specific registration controllers
+  // USA : DOT NUMBER, MC NUMBER
+  final TextEditingController _dotController = TextEditingController();
+  final TextEditingController _mcController = TextEditingController();
+  // CANADA : NSC, CVOR, NIR, CBSA
+  final TextEditingController _nscController = TextEditingController();
+  final TextEditingController _cvorController = TextEditingController();
+  final TextEditingController _nirController = TextEditingController();
+  final TextEditingController _cbsaController = TextEditingController();
+  // MEXICO: RFC, FTP
+  final TextEditingController _rfcController = TextEditingController();
+  final TextEditingController _ftpController = TextEditingController();
+  // UK : VOLN
+  final TextEditingController _volnController = TextEditingController();
+  // AUSTRALIA: ABN, HVA
+  final TextEditingController _abnController = TextEditingController();
+  final TextEditingController _hvaController = TextEditingController();
+
   String profilePictureUrl = "";
   String selectedVehicleRange = '';
   String role = "";
@@ -83,6 +101,18 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
         'address': _addressController.text,
         'profilePicture': imageUrl,
         'companyName': _companyNameController.text,
+        // Country-specific registration numbers
+        'dot': _dotController.text.trim(),
+        'mc': _mcController.text.trim(),
+        'nsc': _nscController.text.trim(),
+        'cvor': _cvorController.text.trim(),
+        'nir': _nirController.text.trim(),
+        'cbsa': _cbsaController.text.trim(),
+        'rfc': _rfcController.text.trim(),
+        'ftp': _ftpController.text.trim(),
+        'voln': _volnController.text.trim(),
+        'abn': _abnController.text.trim(),
+        'hva': _hvaController.text.trim(),
         "vehicleRange": selectedVehicleRange,
         "updated_at": DateTime.now(),
       }).then((value) {
@@ -163,6 +193,32 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   }
 
   @override
+  void dispose() {
+    _userNameController.dispose();
+    _emailController.dispose();
+    _phoneNumberController.dispose();
+    _addressController.dispose();
+    _companyNameController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _countryController.dispose();
+    _dotController.dispose();
+    _mcController.dispose();
+    _nscController.dispose();
+    _cvorController.dispose();
+    _nirController.dispose();
+    _cbsaController.dispose();
+    _rfcController.dispose();
+    _ftpController.dispose();
+    _volnController.dispose();
+    _abnController.dispose();
+    _hvaController.dispose();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     // Fetch user data from Firestore
@@ -181,6 +237,17 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       _stateController.text = data['state'] ?? '';
       _countryController.text = data['country'] ?? '';
       _companyNameController.text = data['companyName'] ?? '';
+      _dotController.text = data['dot'] ?? '';
+      _mcController.text = data['mc'] ?? '';
+      _nscController.text = data['nsc'] ?? '';
+      _cvorController.text = data['cvor'] ?? '';
+      _nirController.text = data['nir'] ?? '';
+      _cbsaController.text = data['cbsa'] ?? '';
+      _rfcController.text = data['rfc'] ?? '';
+      _ftpController.text = data['ftp'] ?? '';
+      _volnController.text = data['voln'] ?? '';
+      _abnController.text = data['abn'] ?? '';
+      _hvaController.text = data['hva'] ?? '';
       selectedVehicleRange = data['vehicleRange'] ?? '';
       profilePictureUrl = data['profilePicture'] ?? '';
       role = data['role'] ?? '';
@@ -222,6 +289,17 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 _cityController.text = data['city'] ?? '';
                 _stateController.text = data['state'] ?? '';
                 _countryController.text = data['country'] ?? '';
+                _dotController.text = data['dot'] ?? '';
+                _mcController.text = data['mc'] ?? '';
+                _nscController.text = data['nsc'] ?? '';
+                _cvorController.text = data['cvor'] ?? '';
+                _nirController.text = data['nir'] ?? '';
+                _cbsaController.text = data['cbsa'] ?? '';
+                _rfcController.text = data['rfc'] ?? '';
+                _ftpController.text = data['ftp'] ?? '';
+                _volnController.text = data['voln'] ?? '';
+                _abnController.text = data['abn'] ?? '';
+                _hvaController.text = data['hva'] ?? '';
 
                 return data.isNotEmpty
                     ? SingleChildScrollView(
@@ -333,6 +411,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                         isIconApply: false,
                                       )
                                     : SizedBox(),
+                                _buildCountrySpecificProfileFields(
+                                    _countryController.text),
                                 SizedBox(height: 10.0.h),
                                 role == "Owner"
                                     ? DropdownButtonFormField<String>(
@@ -787,4 +867,116 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   //     );
   //   }
   // }
+
+  Widget _buildCountrySpecificProfileFields(String countryRaw) {
+    final country = countryRaw.trim().toLowerCase();
+
+    if (country == 'canada' || country == 'ca') {
+      return Column(
+        children: [
+          TextFieldInputWidget(
+            hintText: "NSC Number",
+            textEditingController: _nscController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+          TextFieldInputWidget(
+            hintText: "CVOR Number",
+            textEditingController: _cvorController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+          TextFieldInputWidget(
+            hintText: "NIR Number",
+            textEditingController: _nirController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+          TextFieldInputWidget(
+            hintText: "CBSA Carrier Code",
+            textEditingController: _cbsaController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+        ],
+      );
+    } else if (country == 'mexico' || country == 'mx') {
+      return Column(
+        children: [
+          TextFieldInputWidget(
+            hintText: "RFC Number",
+            textEditingController: _rfcController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+          TextFieldInputWidget(
+            hintText: "FTP Number",
+            textEditingController: _ftpController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+        ],
+      );
+    } else if (country == 'uk' ||
+        country == 'england' ||
+        country == 'united kingdom' ||
+        country == 'gb') {
+      return Column(
+        children: [
+          TextFieldInputWidget(
+            hintText: "VOLN",
+            textEditingController: _volnController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+        ],
+      );
+    } else if (country == 'australia' || country == 'au') {
+      return Column(
+        children: [
+          TextFieldInputWidget(
+            hintText: "ABN Number",
+            textEditingController: _abnController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+          TextFieldInputWidget(
+            hintText: "HVA Number",
+            textEditingController: _hvaController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+        ],
+      );
+    } else {
+      // Default to USA (DOT Number, MC Number)
+      return Column(
+        children: [
+          TextFieldInputWidget(
+            hintText: "DOT Number",
+            textEditingController: _dotController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+          TextFieldInputWidget(
+            hintText: "MC Number",
+            textEditingController: _mcController,
+            textInputType: TextInputType.text,
+            icon: Icons.badge_outlined,
+            isIconApply: false,
+          ),
+        ],
+      );
+    }
+  }
 }

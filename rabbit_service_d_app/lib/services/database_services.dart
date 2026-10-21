@@ -13,20 +13,29 @@ class DatabaseServices {
 
 //save user data to firebase
 
-  Future savingUserData(
-    String emailAddress,
-    String userName,
-    String phoneNumber,
-    String address,
-    String companyName,
-    String dot,
-    String mc,
-    String city,
-    String state,
-    String country,
-    String selectedVehicleRange,
+  Future savingUserData({
+    required String emailAddress,
+    required String userName,
+    required String phoneNumber,
+    required String address,
+    required String companyName,
+    String dot = '',
+    String mc = '',
+    String nsc = '',
+    String cvor = '',
+    String nir = '',
+    String cbsa = '',
+    String rfc = '',
+    String ftp = '',
+    String voln = '',
+    String abn = '',
+    String hva = '',
+    required String city,
+    required String state,
+    required String country,
+    required String selectedVehicleRange,
     String? deviceId,
-  ) async {
+  }) async {
     // 1. Save main User doc
     await fireStoreDatabase.doc(uid!).set({
       "status": "active", //active and deleted
@@ -53,8 +62,22 @@ class DatabaseServices {
       "active": true,
       'perMileCharge': "",
       "companyName": companyName,
+      // USA
       "dot": dot,
       "mc": mc,
+      // CANADA
+      "nsc": nsc,
+      "cvor": cvor,
+      "nir": nir,
+      "cbsa": cbsa,
+      // MEXICO
+      "rfc": rfc,
+      "ftp": ftp,
+      // UK
+      "voln": voln,
+      // AUSTRALIA
+      "abn": abn,
+      "hva": hva,
       "vehicleRange": selectedVehicleRange,
       "isTeamMember": false,
       "isMultiDeEnable": false,
@@ -89,6 +112,15 @@ class DatabaseServices {
         "companyName": companyName,
         "dot": dot,
         "mc": mc,
+        "nsc": nsc,
+        "cvor": cvor,
+        "nir": nir,
+        "cbsa": cbsa,
+        "rfc": rfc,
+        "ftp": ftp,
+        "voln": voln,
+        "abn": abn,
+        "hva": hva,
         "address": address,
         "city": city,
         "state": state,

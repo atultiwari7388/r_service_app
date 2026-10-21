@@ -32,16 +32,30 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   static const List<String> _countries = [
     "USA",
     "Canada",
-    "England",
-    "Australia",
     "Mexico",
+    "UK",
+    "Australia",
   ];
+
+  String? _normalizeCountry(String country) {
+    if (country.trim().isEmpty) return null;
+    final lower = country.trim().toLowerCase();
+    if (lower == 'usa' || lower == 'us' || lower == 'united states') return 'USA';
+    if (lower == 'canada' || lower == 'ca') return 'Canada';
+    if (lower == 'mexico' || lower == 'mx') return 'Mexico';
+    if (lower == 'uk' || lower == 'england' || lower == 'united kingdom' || lower == 'great britain' || lower == 'gb') return 'UK';
+    if (lower == 'australia' || lower == 'au') return 'Australia';
+    if (_countries.contains(country)) return country;
+    return 'USA';
+  }
 
   @override
   void initState() {
     super.initState();
     if (Get.isRegistered<AuthController>()) {
-      Get.find<AuthController>().clearAllControllers();
+      final authCtrl = Get.find<AuthController>();
+      authCtrl.clearAllControllers();
+      authCtrl.countryController.text = "USA";
     }
   }
 
@@ -252,21 +266,77 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ),
                     SizedBox(height: 10.h),
 
-                    buildTextFieldInputWidget(
-                      "Enter DOT (Optional)",
-                      TextInputType.text,
-                      controller.dotController,
-                      MaterialCommunityIcons.card_bulleted_outline,
+                    // Country Selection
+                    Container(
+                      margin: EdgeInsets.symmetric(vertical: 4.0.h),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.0.r),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        value: _normalizeCountry(controller.countryController.text),
+                        hint: Text(
+                          "Select your country*",
+                          style: appStyle(14, kGrayLight, FontWeight.normal),
+                        ),
+                        decoration: InputDecoration(
+                          labelText: "Country*",
+                          labelStyle: appStyle(14, kPrimary, FontWeight.normal),
+                          prefixIcon: const Icon(MaterialCommunityIcons.earth,
+                              color: kPrimary),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0.r),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1.0,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0.r),
+                            borderSide: const BorderSide(
+                              color: kPrimary,
+                              width: 1.5,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0.r),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1.0,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 12),
+                        ),
+                        items: _countries.map((String country) {
+                          return DropdownMenuItem<String>(
+                            value: country,
+                            child: Text(
+                              country,
+                              style: appStyle(14, kDark, FontWeight.normal),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            controller.countryController.text = newValue ?? '';
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return "Please select your country";
+                          }
+                          return null;
+                        },
+                      ),
                     ),
                     SizedBox(height: 10.h),
 
-                    buildTextFieldInputWidget(
-                      "Enter MC (Optional)",
-                      TextInputType.text,
-                      controller.mcController,
-                      MaterialCommunityIcons.card_text_outline,
-                    ),
-                    SizedBox(height: 10.h),
+                    // Country-Specific Registration Fields
+                    _buildCountrySpecificFields(controller),
 
                     buildTextFieldInputWidget(
                       "Enter your address*",
@@ -341,75 +411,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         }
                         return null;
                       },
-                    ),
-                    SizedBox(height: 10.h),
-
-                    Container(
-                      margin: EdgeInsets.symmetric(vertical: 4.0.h),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12.0.r),
-                      ),
-                      child: DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        value: _countries
-                                .contains(controller.countryController.text)
-                            ? controller.countryController.text
-                            : null,
-                        hint: Text(
-                          "Select your country*",
-                          style: appStyle(14, kGrayLight, FontWeight.normal),
-                        ),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(MaterialCommunityIcons.earth,
-                              color: kPrimary),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12.0.r),
-                            borderSide: BorderSide(
-                              color: Colors.grey.shade300,
-                              width: 1.0,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12.0.r),
-                            borderSide: const BorderSide(
-                              color: kPrimary,
-                              width: 1.5,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12.0.r),
-                            borderSide: BorderSide(
-                              color: Colors.grey.shade300,
-                              width: 1.0,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 12),
-                        ),
-                        items: _countries.map((String country) {
-                          return DropdownMenuItem<String>(
-                            value: country,
-                            child: Text(
-                              country,
-                              style: appStyle(14, kDark, FontWeight.normal),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            controller.countryController.text = newValue ?? '';
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return "Please select your country";
-                          }
-                          return null;
-                        },
-                      ),
                     ),
                     SizedBox(height: 16.h),
 
@@ -623,6 +624,118 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         "Address Selected",
         "Street address, city, state and country auto-filled.",
         kSuccess,
+      );
+    }
+  }
+
+  Widget _buildCountrySpecificFields(AuthController controller) {
+    final country = controller.countryController.text.trim().toLowerCase();
+
+    if (country == 'canada' || country == 'ca') {
+      return Column(
+        children: [
+          buildTextFieldInputWidget(
+            "Enter NSC (Optional)",
+            TextInputType.text,
+            controller.nscController,
+            MaterialCommunityIcons.card_bulleted_outline,
+          ),
+          SizedBox(height: 10.h),
+          buildTextFieldInputWidget(
+            "Enter CVOR (Optional)",
+            TextInputType.text,
+            controller.cvorController,
+            MaterialCommunityIcons.card_text_outline,
+          ),
+          SizedBox(height: 10.h),
+          buildTextFieldInputWidget(
+            "Enter NIR (Optional)",
+            TextInputType.text,
+            controller.nirController,
+            MaterialCommunityIcons.card_account_details_outline,
+          ),
+          SizedBox(height: 10.h),
+          buildTextFieldInputWidget(
+            "Enter CBSA (Optional)",
+            TextInputType.text,
+            controller.cbsaController,
+            MaterialCommunityIcons.shield_check_outline,
+          ),
+          SizedBox(height: 10.h),
+        ],
+      );
+    } else if (country == 'mexico' || country == 'mx') {
+      return Column(
+        children: [
+          buildTextFieldInputWidget(
+            "Enter RFC (Optional)",
+            TextInputType.text,
+            controller.rfcController,
+            MaterialCommunityIcons.card_bulleted_outline,
+          ),
+          SizedBox(height: 10.h),
+          buildTextFieldInputWidget(
+            "Enter FTP (Optional)",
+            TextInputType.text,
+            controller.ftpController,
+            MaterialCommunityIcons.card_text_outline,
+          ),
+          SizedBox(height: 10.h),
+        ],
+      );
+    } else if (country == 'uk' ||
+        country == 'england' ||
+        country == 'united kingdom' ||
+        country == 'gb') {
+      return Column(
+        children: [
+          buildTextFieldInputWidget(
+            "Enter VOLN (Optional)",
+            TextInputType.text,
+            controller.volnController,
+            MaterialCommunityIcons.card_bulleted_outline,
+          ),
+          SizedBox(height: 10.h),
+        ],
+      );
+    } else if (country == 'australia' || country == 'au') {
+      return Column(
+        children: [
+          buildTextFieldInputWidget(
+            "Enter ABN (Optional)",
+            TextInputType.text,
+            controller.abnController,
+            MaterialCommunityIcons.card_bulleted_outline,
+          ),
+          SizedBox(height: 10.h),
+          buildTextFieldInputWidget(
+            "Enter HVA (Optional)",
+            TextInputType.text,
+            controller.hvaController,
+            MaterialCommunityIcons.card_text_outline,
+          ),
+          SizedBox(height: 10.h),
+        ],
+      );
+    } else {
+      // Default to USA (DOT NUMBER, MC NUMBER)
+      return Column(
+        children: [
+          buildTextFieldInputWidget(
+            "Enter DOT Number (Optional)",
+            TextInputType.text,
+            controller.dotController,
+            MaterialCommunityIcons.card_bulleted_outline,
+          ),
+          SizedBox(height: 10.h),
+          buildTextFieldInputWidget(
+            "Enter MC Number (Optional)",
+            TextInputType.text,
+            controller.mcController,
+            MaterialCommunityIcons.card_text_outline,
+          ),
+          SizedBox(height: 10.h),
+        ],
       );
     }
   }

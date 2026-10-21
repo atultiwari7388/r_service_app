@@ -19,8 +19,23 @@ class AuthController extends GetxController {
   // final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
+  // USA
   final TextEditingController _dotController = TextEditingController();
   final TextEditingController _mcController = TextEditingController();
+  // CANADA
+  final TextEditingController _nscController = TextEditingController();
+  final TextEditingController _cvorController = TextEditingController();
+  final TextEditingController _nirController = TextEditingController();
+  final TextEditingController _cbsaController = TextEditingController();
+  // MEXICO
+  final TextEditingController _rfcController = TextEditingController();
+  final TextEditingController _ftpController = TextEditingController();
+  // UK
+  final TextEditingController _volnController = TextEditingController();
+  // AUSTRALIA
+  final TextEditingController _abnController = TextEditingController();
+  final TextEditingController _hvaController = TextEditingController();
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
@@ -48,6 +63,24 @@ class AuthController extends GetxController {
   TextEditingController get dotController => _dotController;
 
   TextEditingController get mcController => _mcController;
+
+  TextEditingController get nscController => _nscController;
+
+  TextEditingController get cvorController => _cvorController;
+
+  TextEditingController get nirController => _nirController;
+
+  TextEditingController get cbsaController => _cbsaController;
+
+  TextEditingController get rfcController => _rfcController;
+
+  TextEditingController get ftpController => _ftpController;
+
+  TextEditingController get volnController => _volnController;
+
+  TextEditingController get abnController => _abnController;
+
+  TextEditingController get hvaController => _hvaController;
 
   TextEditingController get vehicleRangeController => _vehicleRangeController;
 
@@ -111,6 +144,15 @@ class AuthController extends GetxController {
     _companyNameController.clear();
     _dotController.clear();
     _mcController.clear();
+    _nscController.clear();
+    _cvorController.clear();
+    _nirController.clear();
+    _cbsaController.clear();
+    _rfcController.clear();
+    _ftpController.clear();
+    _volnController.clear();
+    _abnController.clear();
+    _hvaController.clear();
     _emailController.clear();
     _addressController.clear();
     _cityController.clear();
@@ -139,18 +181,27 @@ class AuthController extends GetxController {
           password: _passController.text.trim());
 
       await DatabaseServices(uid: user.user!.uid).savingUserData(
-        _emailController.text.trim(),
-        _nameController.text.trim(),
-        _phoneNumberController.text.trim(),
-        _addressController.text.trim(),
-        _companyNameController.text.trim(),
-        _dotController.text.trim(),
-        _mcController.text.trim(),
-        _cityController.text.trim(),
-        _stateController.text.trim(),
-        _countryController.text.trim(),
-        selectedVehicleRange.value,
-        deviceId ?? null,
+        emailAddress: _emailController.text.trim(),
+        userName: _nameController.text.trim(),
+        phoneNumber: _phoneNumberController.text.trim(),
+        address: _addressController.text.trim(),
+        companyName: _companyNameController.text.trim(),
+        dot: _dotController.text.trim(),
+        mc: _mcController.text.trim(),
+        nsc: _nscController.text.trim(),
+        cvor: _cvorController.text.trim(),
+        nir: _nirController.text.trim(),
+        cbsa: _cbsaController.text.trim(),
+        rfc: _rfcController.text.trim(),
+        ftp: _ftpController.text.trim(),
+        voln: _volnController.text.trim(),
+        abn: _abnController.text.trim(),
+        hva: _hvaController.text.trim(),
+        city: _cityController.text.trim(),
+        state: _stateController.text.trim(),
+        country: _countryController.text.trim(),
+        selectedVehicleRange: selectedVehicleRange.value,
+        deviceId: deviceId,
       );
 
       // Send email verification

@@ -27,11 +27,45 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dotController = TextEditingController();
   final TextEditingController _mcController = TextEditingController();
+  final TextEditingController _nscController = TextEditingController();
+  final TextEditingController _cvorController = TextEditingController();
+  final TextEditingController _nirController = TextEditingController();
+  final TextEditingController _cbsaController = TextEditingController();
+  final TextEditingController _rfcController = TextEditingController();
+  final TextEditingController _ftpController = TextEditingController();
+  final TextEditingController _volnController = TextEditingController();
+  final TextEditingController _abnController = TextEditingController();
+  final TextEditingController _hvaController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _stateController = TextEditingController();
   final TextEditingController _countryController = TextEditingController();
   final GlobalKey<FormState> _dialogFormKey = GlobalKey<FormState>();
+
+  static const List<String> _countries = [
+    "USA",
+    "Canada",
+    "Mexico",
+    "UK",
+    "Australia",
+  ];
+
+  String? _normalizeCountry(String country) {
+    if (country.trim().isEmpty) return null;
+    final lower = country.trim().toLowerCase();
+    if (lower == 'usa' || lower == 'us' || lower == 'united states')
+      return 'USA';
+    if (lower == 'canada' || lower == 'ca') return 'Canada';
+    if (lower == 'mexico' || lower == 'mx') return 'Mexico';
+    if (lower == 'uk' ||
+        lower == 'england' ||
+        lower == 'united kingdom' ||
+        lower == 'great britain' ||
+        lower == 'gb') return 'UK';
+    if (lower == 'australia' || lower == 'au') return 'Australia';
+    if (_countries.contains(country)) return country;
+    return 'USA';
+  }
 
   bool _isDefaultCompany = false;
   bool _isActiveCompany = true;
@@ -40,14 +74,27 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
   @override
   void initState() {
     super.initState();
-    currentUId = widget.currentUId ??
-        FirebaseAuth.instance.currentUser?.uid ??
-        '';
+    currentUId =
+        widget.currentUId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
     _resolveEffectiveUserId();
   }
 
   Future<void> _resolveEffectiveUserId() async {
     try {
+      if (currentUId.isEmpty) {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null && uid.isNotEmpty) {
+          if (mounted) {
+            setState(() {
+              currentUId = uid;
+            });
+          } else {
+            currentUId = uid;
+          }
+        }
+      }
+      if (currentUId.isEmpty) return;
+
       DocumentSnapshot userDoc =
           await _firestore.collection('Users').doc(currentUId).get();
       if (userDoc.exists) {
@@ -73,6 +120,15 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
     _nameController.dispose();
     _dotController.dispose();
     _mcController.dispose();
+    _nscController.dispose();
+    _cvorController.dispose();
+    _nirController.dispose();
+    _cbsaController.dispose();
+    _rfcController.dispose();
+    _ftpController.dispose();
+    _volnController.dispose();
+    _abnController.dispose();
+    _hvaController.dispose();
     _addressController.dispose();
     _cityController.dispose();
     _stateController.dispose();
@@ -84,10 +140,19 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
     _nameController.clear();
     _dotController.clear();
     _mcController.clear();
+    _nscController.clear();
+    _cvorController.clear();
+    _nirController.clear();
+    _cbsaController.clear();
+    _rfcController.clear();
+    _ftpController.clear();
+    _volnController.clear();
+    _abnController.clear();
+    _hvaController.clear();
     _addressController.clear();
     _cityController.clear();
     _stateController.clear();
-    _countryController.clear();
+    _countryController.text = "USA";
     _isDefaultCompany = false;
     _isActiveCompany = true;
   }
@@ -101,15 +166,25 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
 
     if (isEditing) {
       _nameController.text =
-          initialData["companyName"] ?? initialData["name"] ?? "";
-      _dotController.text = initialData["dot"] ?? "";
-      _mcController.text = initialData["mc"] ?? "";
-      _addressController.text = initialData["address"] ?? "";
-      _cityController.text = initialData["city"] ?? "";
-      _stateController.text = initialData["state"] ?? "";
-      _countryController.text = initialData["country"] ?? "";
-      _isDefaultCompany = initialData["isDefault"] ?? false;
-      _isActiveCompany = initialData["isActive"] ?? true;
+          (initialData["companyName"] ?? initialData["name"] ?? "").toString();
+      _dotController.text = (initialData["dot"] ?? "").toString();
+      _mcController.text = (initialData["mc"] ?? "").toString();
+      _nscController.text = (initialData["nsc"] ?? "").toString();
+      _cvorController.text = (initialData["cvor"] ?? "").toString();
+      _nirController.text = (initialData["nir"] ?? "").toString();
+      _cbsaController.text = (initialData["cbsa"] ?? "").toString();
+      _rfcController.text = (initialData["rfc"] ?? "").toString();
+      _ftpController.text = (initialData["ftp"] ?? "").toString();
+      _volnController.text = (initialData["voln"] ?? "").toString();
+      _abnController.text = (initialData["abn"] ?? "").toString();
+      _hvaController.text = (initialData["hva"] ?? "").toString();
+      _addressController.text = (initialData["address"] ?? "").toString();
+      _cityController.text = (initialData["city"] ?? "").toString();
+      _stateController.text = (initialData["state"] ?? "").toString();
+      final rawCountry = (initialData["country"] ?? "USA").toString();
+      _countryController.text = _normalizeCountry(rawCountry) ?? "USA";
+      _isDefaultCompany = initialData["isDefault"] == true;
+      _isActiveCompany = initialData["isActive"] != false;
     } else {
       _clearControllers();
     }
@@ -122,6 +197,9 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.88,
+              ),
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
@@ -129,324 +207,299 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
               ),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
-                child: Form(
-                  key: _dialogFormKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Drag Handle
-                        Center(
-                          child: Container(
-                            width: 40.w,
-                            height: 4.h,
-                            margin: EdgeInsets.only(bottom: 16.h),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+                  child: Form(
+                    key: _dialogFormKey,
+                    child: SingleChildScrollView(
+                      physics: const ClampingScrollPhysics(),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Drag Handle
+                          Center(
+                            child: Container(
+                              width: 40.w,
+                              height: 4.h,
+                              margin: EdgeInsets.only(bottom: 16.h),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+
+                          // Title
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                isEditing ? "Edit Company" : "Add New Company",
+                                style: appStyle(18, kDark, FontWeight.bold),
+                              ),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.close, color: kGray),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16.h),
+
+                          // Company Name Field
+                          _buildInputField(
+                            controller: _nameController,
+                            label: "Company Name*",
+                            hint: "Enter company name",
+                            icon: MaterialCommunityIcons.office_building,
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return "Company name is required";
+                              }
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: 12.h),
+
+                          // Country Dropdown
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Country*",
+                                style: appStyle(13, kDark, FontWeight.w600),
+                              ),
+                              SizedBox(height: 6.h),
+                              DropdownButtonFormField<String>(
+                                isExpanded: true,
+                                value: _normalizeCountry(
+                                        _countryController.text) ??
+                                    "USA",
+                                hint: Text(
+                                  "Select country",
+                                  style: appStyle(13, kGray, FontWeight.normal),
+                                ),
+                                decoration: InputDecoration(
+                                  prefixIcon: Icon(MaterialCommunityIcons.earth,
+                                      size: 18.sp, color: kPrimary),
+                                  filled: true,
+                                  fillColor: kLightWhite,
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12.w, vertical: 10.h),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    borderSide:
+                                        BorderSide(color: Colors.grey.shade200),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    borderSide:
+                                        BorderSide(color: Colors.grey.shade200),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    borderSide: const BorderSide(
+                                        color: kPrimary, width: 1.5),
+                                  ),
+                                ),
+                                items: _countries.map((String country) {
+                                  return DropdownMenuItem<String>(
+                                    value: country,
+                                    child: Text(
+                                      country,
+                                      style: appStyle(
+                                          14, kDark, FontWeight.normal),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? val) {
+                                  setModalState(() {
+                                    _countryController.text = val ?? "USA";
+                                  });
+                                },
+                                validator: (val) {
+                                  if (val == null || val.trim().isEmpty) {
+                                    return "Country is required";
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12.h),
+
+                          // Country-Specific Registration Fields
+                          _buildDialogCountryFields(),
+
+                          // Address Field
+                          _buildInputField(
+                            controller: _addressController,
+                            label: "Address*",
+                            hint: "Enter street address",
+                            icon: MaterialCommunityIcons.home_outline,
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return "Address is required";
+                              }
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: 12.h),
+
+                          // City & State in Row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildInputField(
+                                  controller: _cityController,
+                                  label: "City*",
+                                  hint: "Enter city",
+                                  icon: MaterialCommunityIcons.city,
+                                  validator: (val) {
+                                    if (val == null || val.trim().isEmpty) {
+                                      return "City is required";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: _buildInputField(
+                                  controller: _stateController,
+                                  label: "State*",
+                                  hint: "Enter state",
+                                  icon: MaterialCommunityIcons.home_account,
+                                  validator: (val) {
+                                    if (val == null || val.trim().isEmpty) {
+                                      return "State is required";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 14.h),
+
+                          // Active / Inactive Switch
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12.w, vertical: 8.h),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(2),
+                              color: kLightWhite,
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(color: Colors.grey.shade200),
                             ),
-                          ),
-                        ),
-
-                        // Title
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              isEditing ? "Edit Company" : "Add New Company",
-                              style: appStyle(18, kDark, FontWeight.bold),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: const Icon(Icons.close, color: kGray),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16.h),
-
-                        // Company Name Field
-                        _buildInputField(
-                          controller: _nameController,
-                          label: "Company Name*",
-                          hint: "Enter company name",
-                          icon: MaterialCommunityIcons.office_building,
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return "Company name is required";
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: 12.h),
-
-                        // DOT & MC Fields in Row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildInputField(
-                                controller: _dotController,
-                                label: "DOT (Optional)",
-                                hint: "e.g. 1234567",
-                                icon: MaterialCommunityIcons
-                                    .card_bulleted_outline,
-                              ),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: _buildInputField(
-                                controller: _mcController,
-                                label: "MC (Optional)",
-                                hint: "e.g. 987654",
-                                icon: MaterialCommunityIcons.card_text_outline,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12.h),
-
-                        // Address Field
-                        _buildInputField(
-                          controller: _addressController,
-                          label: "Address*",
-                          hint: "Enter street address",
-                          icon: MaterialCommunityIcons.home_outline,
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return "Address is required";
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: 12.h),
-
-                        // City & State in Row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildInputField(
-                                controller: _cityController,
-                                label: "City*",
-                                hint: "Enter city",
-                                icon: MaterialCommunityIcons.city,
-                                validator: (val) {
-                                  if (val == null || val.trim().isEmpty) {
-                                    return "City is required";
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: _buildInputField(
-                                controller: _stateController,
-                                label: "State*",
-                                hint: "Enter state",
-                                icon: MaterialCommunityIcons.home_account,
-                                validator: (val) {
-                                  if (val == null || val.trim().isEmpty) {
-                                    return "State is required";
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12.h),
-
-                        // Country Dropdown
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Country*",
-                              style: appStyle(13, kDark, FontWeight.w600),
-                            ),
-                            SizedBox(height: 6.h),
-                            DropdownButtonFormField<String>(
-                              isExpanded: true,
-                              value: const [
-                                "USA",
-                                "Canada",
-                                "England",
-                                "Australia",
-                                "Mexico"
-                              ].contains(_countryController.text)
-                                  ? _countryController.text
-                                  : null,
-                              hint: Text(
-                                "Select country",
-                                style:
-                                    appStyle(13, kGray, FontWeight.normal),
-                              ),
-                              decoration: InputDecoration(
-                                prefixIcon: Icon(MaterialCommunityIcons.earth,
-                                    size: 18.sp, color: kPrimary),
-                                filled: true,
-                                fillColor: kLightWhite,
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12.w, vertical: 10.h),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide:
-                                      BorderSide(color: Colors.grey.shade200),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Active Status",
+                                      style:
+                                          appStyle(14, kDark, FontWeight.w600),
+                                    ),
+                                    Text(
+                                      _isActiveCompany
+                                          ? "Company is operational & active"
+                                          : "Company is closed / inactive",
+                                      style: appStyle(
+                                          11,
+                                          _isActiveCompany
+                                              ? Colors.green.shade700
+                                              : kGray,
+                                          FontWeight.normal),
+                                    ),
+                                  ],
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide:
-                                      BorderSide(color: Colors.grey.shade200),
+                                Switch(
+                                  value: _isActiveCompany,
+                                  activeColor: Colors.green,
+                                  onChanged: (val) {
+                                    setModalState(() {
+                                      _isActiveCompany = val;
+                                    });
+                                  },
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide: const BorderSide(
-                                      color: kPrimary, width: 1.5),
-                                ),
-                              ),
-                              items: const [
-                                "USA",
-                                "Canada",
-                                "England",
-                                "Australia",
-                                "Mexico"
-                              ].map((String country) {
-                                return DropdownMenuItem<String>(
-                                  value: country,
-                                  child: Text(
-                                    country,
-                                    style:
-                                        appStyle(14, kDark, FontWeight.normal),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (String? val) {
-                                setModalState(() {
-                                  _countryController.text = val ?? "";
-                                });
-                              },
-                              validator: (val) {
-                                if (val == null || val.trim().isEmpty) {
-                                  return "Country is required";
-                                }
-                                return null;
-                              },
+                              ],
                             ),
-                          ],
-                        ),
-                        SizedBox(height: 14.h),
+                          ),
+                          SizedBox(height: 10.h),
 
-                        // Active / Inactive Switch
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 12.w, vertical: 8.h),
-                          decoration: BoxDecoration(
-                            color: kLightWhite,
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(color: Colors.grey.shade200),
+                          // Default Switch
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12.w, vertical: 8.h),
+                            decoration: BoxDecoration(
+                              color: kLightWhite,
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Set as Default Company",
+                                      style:
+                                          appStyle(14, kDark, FontWeight.w600),
+                                    ),
+                                    Text(
+                                      "Use for primary dispatch & profile",
+                                      style: appStyle(
+                                          11, kGray, FontWeight.normal),
+                                    ),
+                                  ],
+                                ),
+                                Switch(
+                                  value: _isDefaultCompany,
+                                  activeColor: kPrimary,
+                                  onChanged: (val) {
+                                    setModalState(() {
+                                      _isDefaultCompany = val;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Active Status",
-                                    style: appStyle(14, kDark, FontWeight.w600),
-                                  ),
-                                  Text(
-                                    _isActiveCompany
-                                        ? "Company is operational & active"
-                                        : "Company is closed / inactive",
-                                    style: appStyle(
-                                        11,
-                                        _isActiveCompany
-                                            ? Colors.green.shade700
-                                            : kGray,
-                                        FontWeight.normal),
-                                  ),
-                                ],
-                              ),
-                              Switch(
-                                value: _isActiveCompany,
-                                activeColor: Colors.green,
-                                onChanged: (val) {
-                                  setModalState(() {
-                                    _isActiveCompany = val;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 10.h),
+                          SizedBox(height: 20.h),
 
-                        // Default Switch
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 12.w, vertical: 8.h),
-                          decoration: BoxDecoration(
-                            color: kLightWhite,
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(color: Colors.grey.shade200),
+                          // Save Button
+                          CustomButton(
+                            text: _isSubmitting
+                                ? "Saving..."
+                                : (isEditing
+                                    ? "Update Company"
+                                    : "Save Company"),
+                            onPress: _isSubmitting
+                                ? null
+                                : () async {
+                                    if (_dialogFormKey.currentState!
+                                        .validate()) {
+                                      setModalState(() => _isSubmitting = true);
+                                      await _saveCompanyToFirestore(
+                                        companyId: companyId,
+                                        isEditing: isEditing,
+                                      );
+                                      setModalState(
+                                          () => _isSubmitting = false);
+                                      if (mounted) Navigator.pop(context);
+                                    }
+                                  },
+                            color: kPrimary,
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Set as Default Company",
-                                    style: appStyle(14, kDark, FontWeight.w600),
-                                  ),
-                                  Text(
-                                    "Use for primary dispatch & profile",
-                                    style:
-                                        appStyle(11, kGray, FontWeight.normal),
-                                  ),
-                                ],
-                              ),
-                              Switch(
-                                value: _isDefaultCompany,
-                                activeColor: kPrimary,
-                                onChanged: (val) {
-                                  setModalState(() {
-                                    _isDefaultCompany = val;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 20.h),
-
-                        // Save Button
-                        CustomButton(
-                          text: _isSubmitting
-                              ? "Saving..."
-                              : (isEditing ? "Update Company" : "Save Company"),
-                          onPress: _isSubmitting
-                              ? null
-                              : () async {
-                                  if (_dialogFormKey.currentState!.validate()) {
-                                    setModalState(() => _isSubmitting = true);
-                                    await _saveCompanyToFirestore(
-                                      companyId: companyId,
-                                      isEditing: isEditing,
-                                    );
-                                    setModalState(() => _isSubmitting = false);
-                                    if (mounted) Navigator.pop(context);
-                                  }
-                                },
-                          color: kPrimary,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -466,10 +519,20 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
     final String name = _nameController.text.trim();
     final String dot = _dotController.text.trim();
     final String mc = _mcController.text.trim();
+    final String nsc = _nscController.text.trim();
+    final String cvor = _cvorController.text.trim();
+    final String nir = _nirController.text.trim();
+    final String cbsa = _cbsaController.text.trim();
+    final String rfc = _rfcController.text.trim();
+    final String ftp = _ftpController.text.trim();
+    final String voln = _volnController.text.trim();
+    final String abn = _abnController.text.trim();
+    final String hva = _hvaController.text.trim();
     final String address = _addressController.text.trim();
     final String city = _cityController.text.trim();
     final String state = _stateController.text.trim();
-    final String country = _countryController.text.trim();
+    final String country = _normalizeCountry(_countryController.text) ??
+        _countryController.text.trim();
 
     try {
       final companiesRef = _firestore
@@ -497,6 +560,15 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
         "companyName": name,
         "dot": dot,
         "mc": mc,
+        "nsc": nsc,
+        "cvor": cvor,
+        "nir": nir,
+        "cbsa": cbsa,
+        "rfc": rfc,
+        "ftp": ftp,
+        "voln": voln,
+        "abn": abn,
+        "hva": hva,
         "address": address,
         "city": city,
         "state": state,
@@ -521,6 +593,15 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
           "companyName": name,
           "dot": dot,
           "mc": mc,
+          "nsc": nsc,
+          "cvor": cvor,
+          "nir": nir,
+          "cbsa": cbsa,
+          "rfc": rfc,
+          "ftp": ftp,
+          "voln": voln,
+          "abn": abn,
+          "hva": hva,
           "address": address,
           "city": city,
           "state": state,
@@ -583,6 +664,15 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
         "companyName": companyData["companyName"] ?? "",
         "dot": companyData["dot"] ?? "",
         "mc": companyData["mc"] ?? "",
+        "nsc": companyData["nsc"] ?? "",
+        "cvor": companyData["cvor"] ?? "",
+        "nir": companyData["nir"] ?? "",
+        "cbsa": companyData["cbsa"] ?? "",
+        "rfc": companyData["rfc"] ?? "",
+        "ftp": companyData["ftp"] ?? "",
+        "voln": companyData["voln"] ?? "",
+        "abn": companyData["abn"] ?? "",
+        "hva": companyData["hva"] ?? "",
         "address": companyData["address"] ?? "",
         "city": companyData["city"] ?? "",
         "state": companyData["state"] ?? "",
@@ -598,12 +688,163 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
     }
   }
 
+  Widget _buildDialogCountryFields() {
+    final String normalized =
+        _normalizeCountry(_countryController.text) ?? "USA";
+
+    if (normalized == "Canada") {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildInputField(
+                  controller: _nscController,
+                  label: "NSC (Optional)",
+                  hint: "e.g. 123456789",
+                  icon: MaterialCommunityIcons.card_bulleted_outline,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _buildInputField(
+                  controller: _cvorController,
+                  label: "CVOR (Optional)",
+                  hint: "e.g. 123-456-789",
+                  icon: MaterialCommunityIcons.card_text_outline,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInputField(
+                  controller: _nirController,
+                  label: "NIR (Optional)",
+                  hint: "e.g. R-123456-7",
+                  icon: MaterialCommunityIcons.card_account_details_outline,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _buildInputField(
+                  controller: _cbsaController,
+                  label: "CBSA (Optional)",
+                  hint: "e.g. 12345",
+                  icon: MaterialCommunityIcons.shield_check_outline,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+        ],
+      );
+    } else if (normalized == "Mexico") {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildInputField(
+                  controller: _rfcController,
+                  label: "RFC (Optional)",
+                  hint: "e.g. ABCD123456XYZ",
+                  icon: MaterialCommunityIcons.card_bulleted_outline,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _buildInputField(
+                  controller: _ftpController,
+                  label: "FTP (Optional)",
+                  hint: "e.g. 123456",
+                  icon: MaterialCommunityIcons.card_text_outline,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+        ],
+      );
+    } else if (normalized == "UK") {
+      return Column(
+        children: [
+          _buildInputField(
+            controller: _volnController,
+            label: "VOLN (Optional)",
+            hint: "e.g. OD1234567",
+            icon: MaterialCommunityIcons.card_bulleted_outline,
+          ),
+          SizedBox(height: 12.h),
+        ],
+      );
+    } else if (normalized == "Australia") {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildInputField(
+                  controller: _abnController,
+                  label: "ABN (Optional)",
+                  hint: "e.g. 12 345 678 901",
+                  icon: MaterialCommunityIcons.card_bulleted_outline,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _buildInputField(
+                  controller: _hvaController,
+                  label: "HVA (Optional)",
+                  hint: "e.g. 123456",
+                  icon: MaterialCommunityIcons.card_text_outline,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+        ],
+      );
+    } else {
+      // Default to USA (DOT, MC)
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildInputField(
+                  controller: _dotController,
+                  label: "DOT (Optional)",
+                  hint: "e.g. 1234567",
+                  icon: MaterialCommunityIcons.card_bulleted_outline,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _buildInputField(
+                  controller: _mcController,
+                  label: "MC (Optional)",
+                  hint: "e.g. 987654",
+                  icon: MaterialCommunityIcons.card_text_outline,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+        ],
+      );
+    }
+  }
+
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
     required String hint,
     required IconData icon,
     String? Function(String?)? validator,
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -616,6 +857,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
         TextFormField(
           controller: controller,
           validator: validator,
+          textCapitalization: textCapitalization,
           style: appStyle(14, kDark, FontWeight.normal),
           decoration: InputDecoration(
             hintText: hint,
@@ -667,312 +909,365 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
           SizedBox(width: 8.w),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore
-            .collection("Users")
-            .doc(currentUId)
-            .collection("myCompanies")
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-                child: CircularProgressIndicator(color: kPrimary));
-          }
+      body: currentUId.isEmpty
+          ? const Center(child: CircularProgressIndicator(color: kPrimary))
+          : StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection("Users")
+                  .doc(currentUId)
+                  .collection("myCompanies")
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                      child: CircularProgressIndicator(color: kPrimary));
+                }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 30.w),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(20.w),
-                      decoration: BoxDecoration(
-                        color: kPrimary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        MaterialCommunityIcons.domain,
-                        size: 60.sp,
-                        color: kPrimary,
-                      ),
-                    ),
-                    SizedBox(height: 20.h),
-                    Text(
-                      "No Companies Added Yet",
-                      style: appStyle(18, kDark, FontWeight.bold),
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      "Add your company profile with DOT, MC, and address details to manage them easily.",
-                      textAlign: TextAlign.center,
-                      style: appStyle(13, kGray, FontWeight.normal),
-                    ),
-                    SizedBox(height: 24.h),
-                    ElevatedButton.icon(
-                      onPressed: () => _openCompanyFormDialog(),
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: Text(
-                        "Add Company",
-                        style: appStyle(14, Colors.white, FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimary,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 24.w, vertical: 12.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final companyDocs = snapshot.data!.docs;
-
-          return ListView.separated(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-            itemCount: companyDocs.length,
-            separatorBuilder: (_, __) => SizedBox(height: 12.h),
-            itemBuilder: (context, index) {
-              final doc = companyDocs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              final String name =
-                  data["companyName"] ?? data["name"] ?? "Unnamed Company";
-              final String dot = data["dot"] ?? "";
-              final String mc = data["mc"] ?? "";
-              final String address = data["address"] ?? "";
-              final String city = data["city"] ?? "";
-              final String state = data["state"] ?? "";
-              final String country = data["country"] ?? "";
-              final bool isDefault = data["isDefault"] ?? false;
-              final bool isActive = data["isActive"] ?? true;
-
-              // Build address string
-              final List<String> addressParts = [
-                if (address.isNotEmpty) address,
-                if (city.isNotEmpty) city,
-                if (state.isNotEmpty) state,
-                if (country.isNotEmpty) country,
-              ];
-              final String fullAddress = addressParts.join(", ");
-
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(
-                    color: isDefault
-                        ? kPrimary.withOpacity(0.6)
-                        : Colors.grey.shade200,
-                    width: isDefault ? 1.5 : 1.0,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(16.w),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header Row: Icon + Name + Default/Active Badges + Menu
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 30.w),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            padding: EdgeInsets.all(10.w),
+                            padding: EdgeInsets.all(20.w),
                             decoration: BoxDecoration(
-                              color: isDefault
-                                  ? kPrimary.withOpacity(0.12)
-                                  : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12.r),
+                              color: kPrimary.withOpacity(0.1),
+                              shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              MaterialCommunityIcons.office_building,
-                              color: isDefault ? kPrimary : kDark,
-                              size: 24.sp,
+                              MaterialCommunityIcons.domain,
+                              size: 60.sp,
+                              color: kPrimary,
                             ),
                           ),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        name,
-                                        style: appStyle(
-                                            16, kDark, FontWeight.bold),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 8.w, vertical: 3.h),
-                                      decoration: BoxDecoration(
-                                        color: isActive
-                                            ? Colors.green.withOpacity(0.12)
-                                            : Colors.orange.withOpacity(0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(20.r),
-                                        border: Border.all(
-                                            color: isActive
-                                                ? Colors.green.withOpacity(0.4)
-                                                : Colors.orange
-                                                    .withOpacity(0.4)),
-                                      ),
-                                      child: Text(
-                                        isActive ? "Active" : "Closed",
-                                        style: appStyle(
-                                            11,
-                                            isActive
-                                                ? Colors.green.shade700
-                                                : Colors.orange.shade800,
-                                            FontWeight.bold),
-                                      ),
-                                    ),
-                                    if (isDefault) ...[
-                                      SizedBox(width: 6.w),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 8.w, vertical: 3.h),
-                                        decoration: BoxDecoration(
-                                          color: kPrimary.withOpacity(0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(20.r),
-                                          border: Border.all(
-                                              color:
-                                                  kPrimary.withOpacity(0.4)),
-                                        ),
-                                        child: Text(
-                                          "Default",
-                                          style: appStyle(
-                                              11, kPrimary, FontWeight.bold),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                if (dot.isNotEmpty || mc.isNotEmpty) ...[
-                                  SizedBox(height: 6.h),
-                                  Wrap(
-                                    spacing: 8.w,
-                                    runSpacing: 4.h,
-                                    children: [
-                                      if (dot.isNotEmpty)
-                                        _buildInfoBadge("DOT: $dot"),
-                                      if (mc.isNotEmpty)
-                                        _buildInfoBadge("MC: $mc"),
-                                    ],
-                                  ),
-                                ],
-                              ],
-                            ),
+                          SizedBox(height: 20.h),
+                          Text(
+                            "No Companies Added Yet",
+                            style: appStyle(18, kDark, FontWeight.bold),
                           ),
-                          // Actions Popup Menu
-                          PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, color: kGray),
-                            onSelected: (value) {
-                              if (value == "default") {
-                                _setAsDefault(doc.id, data);
-                              } else if (value == "toggle_status") {
-                                _toggleCompanyStatus(doc.id, isActive);
-                              } else if (value == "edit") {
-                                _openCompanyFormDialog(
-                                  companyId: doc.id,
-                                  initialData: data,
-                                );
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              PopupMenuItem(
-                                value: "toggle_status",
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      isActive
-                                          ? Icons.pause_circle_outline
-                                          : Icons.play_circle_outline,
-                                      color: isActive
-                                          ? Colors.orange
-                                          : Colors.green,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(isActive
-                                        ? "Mark as Closed"
-                                        : "Mark as Active"),
-                                  ],
-                                ),
-                              ),
-                              if (!isDefault)
-                                const PopupMenuItem(
-                                  value: "default",
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.check_circle_outline,
-                                          color: kPrimary, size: 18),
-                                      SizedBox(width: 8),
-                                      Text("Set as Default"),
-                                    ],
-                                  ),
-                                ),
-                              const PopupMenuItem(
-                                value: "edit",
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.edit_outlined,
-                                        color: kDark, size: 18),
-                                    SizedBox(width: 8),
-                                    Text("Edit"),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          SizedBox(height: 8.h),
+                          Text(
+                            "Add your company profile with DOT, MC, and address details to manage them easily.",
+                            textAlign: TextAlign.center,
+                            style: appStyle(13, kGray, FontWeight.normal),
+                          ),
+                          SizedBox(height: 24.h),
+                          ElevatedButton.icon(
+                            onPressed: () => _openCompanyFormDialog(),
+                            icon: const Icon(Icons.add, color: Colors.white),
+                            label: Text(
+                              "Add Company",
+                              style:
+                                  appStyle(14, Colors.white, FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kPrimary,
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 24.w, vertical: 12.h),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.r)),
+                            ),
                           ),
                         ],
                       ),
+                    ),
+                  );
+                }
 
-                      if (fullAddress.isNotEmpty) ...[
-                        SizedBox(height: 12.h),
-                        Divider(height: 1, color: Colors.grey.shade100),
-                        SizedBox(height: 10.h),
-                        Row(
+                final companyDocs = snapshot.data!.docs;
+
+                return ListView.separated(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                  itemCount: companyDocs.length,
+                  separatorBuilder: (_, __) => SizedBox(height: 12.h),
+                  itemBuilder: (context, index) {
+                    final doc = companyDocs[index];
+                    final data = doc.data() as Map<String, dynamic>;
+                    final String name = (data["companyName"] ??
+                            data["name"] ??
+                            "Unnamed Company")
+                        .toString();
+                    final String dot = (data["dot"] ?? "").toString();
+                    final String mc = (data["mc"] ?? "").toString();
+                    final String nsc = (data["nsc"] ?? "").toString();
+                    final String cvor = (data["cvor"] ?? "").toString();
+                    final String nir = (data["nir"] ?? "").toString();
+                    final String cbsa = (data["cbsa"] ?? "").toString();
+                    final String rfc = (data["rfc"] ?? "").toString();
+                    final String ftp = (data["ftp"] ?? "").toString();
+                    final String voln = (data["voln"] ?? "").toString();
+                    final String abn = (data["abn"] ?? "").toString();
+                    final String hva = (data["hva"] ?? "").toString();
+                    final String address = (data["address"] ?? "").toString();
+                    final String city = (data["city"] ?? "").toString();
+                    final String state = (data["state"] ?? "").toString();
+                    final String country = (data["country"] ?? "").toString();
+                    final bool isDefault = data["isDefault"] == true;
+                    final bool isActive = data["isActive"] != false;
+
+                    // Build address string
+                    final List<String> addressParts = [
+                      if (address.isNotEmpty) address,
+                      if (city.isNotEmpty) city,
+                      if (state.isNotEmpty) state,
+                      if (country.isNotEmpty) country,
+                    ];
+                    final String fullAddress = addressParts.join(", ");
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(
+                          color: isDefault
+                              ? kPrimary.withOpacity(0.6)
+                              : Colors.grey.shade200,
+                          width: isDefault ? 1.5 : 1.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16.w),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 16.sp,
-                              color: kGray,
+                            // Header Row: Icon + Name + Default/Active Badges + Menu
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10.w),
+                                  decoration: BoxDecoration(
+                                    color: isDefault
+                                        ? kPrimary.withOpacity(0.12)
+                                        : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: Icon(
+                                    MaterialCommunityIcons.office_building,
+                                    color: isDefault ? kPrimary : kDark,
+                                    size: 24.sp,
+                                  ),
+                                ),
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              name,
+                                              style: appStyle(
+                                                  16, kDark, FontWeight.bold),
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8.w, vertical: 3.h),
+                                            decoration: BoxDecoration(
+                                              color: isActive
+                                                  ? Colors.green
+                                                      .withOpacity(0.12)
+                                                  : Colors.orange
+                                                      .withOpacity(0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(20.r),
+                                              border: Border.all(
+                                                  color: isActive
+                                                      ? Colors.green
+                                                          .withOpacity(0.4)
+                                                      : Colors.orange
+                                                          .withOpacity(0.4)),
+                                            ),
+                                            child: Text(
+                                              isActive ? "Active" : "Closed",
+                                              style: appStyle(
+                                                  11,
+                                                  isActive
+                                                      ? Colors.green.shade700
+                                                      : Colors.orange.shade800,
+                                                  FontWeight.bold),
+                                            ),
+                                          ),
+                                          if (isDefault) ...[
+                                            SizedBox(width: 6.w),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 8.w,
+                                                  vertical: 3.h),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    kPrimary.withOpacity(0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(20.r),
+                                                border: Border.all(
+                                                    color: kPrimary
+                                                        .withOpacity(0.4)),
+                                              ),
+                                              child: Text(
+                                                "Default",
+                                                style: appStyle(11, kPrimary,
+                                                    FontWeight.bold),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      if (country.isNotEmpty ||
+                                          dot.isNotEmpty ||
+                                          mc.isNotEmpty ||
+                                          nsc.isNotEmpty ||
+                                          cvor.isNotEmpty ||
+                                          nir.isNotEmpty ||
+                                          cbsa.isNotEmpty ||
+                                          rfc.isNotEmpty ||
+                                          ftp.isNotEmpty ||
+                                          voln.isNotEmpty ||
+                                          abn.isNotEmpty ||
+                                          hva.isNotEmpty) ...[
+                                        SizedBox(height: 6.h),
+                                        Wrap(
+                                          spacing: 8.w,
+                                          runSpacing: 4.h,
+                                          children: [
+                                            if (country.isNotEmpty)
+                                              _buildInfoBadge(country),
+                                            if (dot.isNotEmpty)
+                                              _buildInfoBadge("DOT: $dot"),
+                                            if (mc.isNotEmpty)
+                                              _buildInfoBadge("MC: $mc"),
+                                            if (nsc.isNotEmpty)
+                                              _buildInfoBadge("NSC: $nsc"),
+                                            if (cvor.isNotEmpty)
+                                              _buildInfoBadge("CVOR: $cvor"),
+                                            if (nir.isNotEmpty)
+                                              _buildInfoBadge("NIR: $nir"),
+                                            if (cbsa.isNotEmpty)
+                                              _buildInfoBadge("CBSA: $cbsa"),
+                                            if (rfc.isNotEmpty)
+                                              _buildInfoBadge("RFC: $rfc"),
+                                            if (ftp.isNotEmpty)
+                                              _buildInfoBadge("FTP: $ftp"),
+                                            if (voln.isNotEmpty)
+                                              _buildInfoBadge("VOLN: $voln"),
+                                            if (abn.isNotEmpty)
+                                              _buildInfoBadge("ABN: $abn"),
+                                            if (hva.isNotEmpty)
+                                              _buildInfoBadge("HVA: $hva"),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                // Actions Popup Menu
+                                PopupMenuButton<String>(
+                                  icon:
+                                      const Icon(Icons.more_vert, color: kGray),
+                                  onSelected: (value) {
+                                    if (value == "default") {
+                                      _setAsDefault(doc.id, data);
+                                    } else if (value == "toggle_status") {
+                                      _toggleCompanyStatus(doc.id, isActive);
+                                    } else if (value == "edit") {
+                                      _openCompanyFormDialog(
+                                        companyId: doc.id,
+                                        initialData: data,
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    PopupMenuItem(
+                                      value: "toggle_status",
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            isActive
+                                                ? Icons.pause_circle_outline
+                                                : Icons.play_circle_outline,
+                                            color: isActive
+                                                ? Colors.orange
+                                                : Colors.green,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(isActive
+                                              ? "Mark as Closed"
+                                              : "Mark as Active"),
+                                        ],
+                                      ),
+                                    ),
+                                    if (!isDefault)
+                                      const PopupMenuItem(
+                                        value: "default",
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.check_circle_outline,
+                                                color: kPrimary, size: 18),
+                                            SizedBox(width: 8),
+                                            Text("Set as Default"),
+                                          ],
+                                        ),
+                                      ),
+                                    const PopupMenuItem(
+                                      value: "edit",
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.edit_outlined,
+                                              color: kDark, size: 18),
+                                          SizedBox(width: 8),
+                                          Text("Edit"),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 6.w),
-                            Expanded(
-                              child: Text(
-                                fullAddress,
-                                style: appStyle(12, kGray, FontWeight.normal),
+
+                            if (fullAddress.isNotEmpty) ...[
+                              SizedBox(height: 12.h),
+                              Divider(height: 1, color: Colors.grey.shade100),
+                              SizedBox(height: 10.h),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.location_on_outlined,
+                                    size: 16.sp,
+                                    color: kGray,
+                                  ),
+                                  SizedBox(width: 6.w),
+                                  Expanded(
+                                    child: Text(
+                                      fullAddress,
+                                      style: appStyle(
+                                          12, kGray, FontWeight.normal),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
+                            ],
                           ],
                         ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openCompanyFormDialog(),
         backgroundColor: kPrimary,

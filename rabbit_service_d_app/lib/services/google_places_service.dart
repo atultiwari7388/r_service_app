@@ -209,7 +209,7 @@ class GooglePlacesService {
         name == 'uk' ||
         code == 'GB' ||
         code == 'UK') {
-      return 'England';
+      return 'UK';
     } else if (name.contains('australia') || code == 'AU') {
       return 'Australia';
     } else if (name.contains('mexico') || code == 'MX') {
