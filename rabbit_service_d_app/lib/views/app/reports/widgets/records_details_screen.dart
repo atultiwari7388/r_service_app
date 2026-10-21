@@ -155,7 +155,12 @@ class RecordsDetailsScreen extends StatelessWidget {
 
   void _shareRecordDetails() {
     final vehicle = record['vehicleDetails'] as Map<String, dynamic>? ?? {};
-    final services = record['services'] as List<dynamic>? ?? [];
+    final rawServices = record['services'] as List<dynamic>? ?? [];
+    final services = List<dynamic>.from(rawServices)
+      ..sort((a, b) => (a['serviceName'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['serviceName'] ?? '').toString().toLowerCase()));
     final date = _formatDateSafe(record['date']);
     final vehicleType = vehicle['vehicleType'] ?? 'N/A';
 
@@ -197,6 +202,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                 ?.map((s) => s['name'] as String)
                 .toList() ??
             [];
+        subServices.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
         if (subServices.isNotEmpty) {
           buffer.writeln(
               "  • $serviceName$nextDueStr [Subservices: ${subServices.join(', ')}]");
@@ -217,7 +223,12 @@ class RecordsDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final services = record['services'] as List<dynamic>? ?? [];
+    final rawServices = record['services'] as List<dynamic>? ?? [];
+    final services = List<dynamic>.from(rawServices)
+      ..sort((a, b) => (a['serviceName'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['serviceName'] ?? '').toString().toLowerCase()));
     final date = _formatDateSafe(record['date']);
     final vehicleType = record['vehicleDetails']['vehicleType'] ?? 'N/A';
     final imageUrl = record['imageUrl'];
@@ -306,6 +317,8 @@ class RecordsDetailsScreen extends StatelessWidget {
                             ?.map((s) => s['name'] as String)
                             .toList() ??
                         [];
+                    subServices.sort(
+                        (a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
                     final hasNextNotification =
                         service['nextNotificationValue'] != null &&
                             service['nextNotificationValue'] != 0;
@@ -701,11 +714,18 @@ class RecordsDetailsScreen extends StatelessWidget {
   }
 
   List<pw.Widget> _buildServicesList(List<dynamic> services) {
-    return services.map((service) {
+    final sortedServices = List<dynamic>.from(services)
+      ..sort((a, b) => (a['serviceName'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['serviceName'] ?? '').toString().toLowerCase()));
+
+    return sortedServices.map((service) {
       final subServices = (service['subServices'] as List?)
               ?.map((s) => s['name'] as String)
               .toList() ??
           [];
+      subServices.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
       return pw.Container(
         margin: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 2),
