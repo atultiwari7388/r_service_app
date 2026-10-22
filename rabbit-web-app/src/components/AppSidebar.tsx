@@ -48,6 +48,12 @@ interface UserData {
   role: string;
   createdBy?: string;
   isGuest?: boolean;
+  isTeamMember?: boolean;
+  expensesPermission?: {
+    view?: boolean;
+    edit?: boolean;
+    add?: boolean;
+  };
 }
 
 interface Notification {
@@ -60,6 +66,7 @@ interface SubMenuItem {
   label: string;
   href: string;
   icon?: React.ReactNode;
+  visible?: boolean;
 }
 
 interface NavCategory {
@@ -265,6 +272,11 @@ export default function AppSidebar() {
           label: "Other Expenses",
           href: "/other-expenses",
           icon: <DollarSign size={16} />,
+          visible:
+            userData?.role === "Owner" ||
+            userData?.role === "SubOwner" ||
+            (userData?.isTeamMember === true &&
+              userData?.expensesPermission?.view === true),
         },
         {
           label: "Write Check",
@@ -339,7 +351,9 @@ export default function AppSidebar() {
         return true;
     }
     if (category.subItems) {
-      return category.subItems.some((item) => pathname.startsWith(item.href));
+      return category.subItems
+        .filter((item) => item.visible !== false)
+        .some((item) => pathname.startsWith(item.href));
     }
     return false;
   };
@@ -367,9 +381,9 @@ export default function AppSidebar() {
           {currentNavCategories.map((cat) => {
             const isActive = isCategoryActive(cat);
             const isHovered = hoveredCategory === cat.key;
-            const hasSubItems = Boolean(
-              cat.subItems && cat.subItems.length > 0
-            );
+            const visibleSubItems =
+              cat.subItems?.filter((sub) => sub.visible !== false) || [];
+            const hasSubItems = visibleSubItems.length > 0;
 
             return (
               <div
@@ -412,7 +426,7 @@ export default function AppSidebar() {
                 )}
 
                 {/* Flyout Submenu (if HAS subItems) */}
-                {hasSubItems && isHovered && cat.subItems && (
+                {hasSubItems && isHovered && (
                   <div
                     className="absolute left-16 top-0 z-50 ml-2 min-w-[200px] rounded-xl bg-[#0B132B] p-2 shadow-2xl border border-gray-700/80 animate-in fade-in slide-in-from-left-2 duration-150"
                     onMouseEnter={() => handleMouseEnter(cat.key)}
@@ -422,7 +436,7 @@ export default function AppSidebar() {
                       {cat.label}
                     </div>
                     <div className="flex flex-col gap-1">
-                      {cat.subItems.map((sub) => {
+                      {visibleSubItems.map((sub) => {
                         const isSubActive =
                           pathname === sub.href ||
                           pathname.startsWith(sub.href + "/");

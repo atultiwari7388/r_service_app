@@ -55,6 +55,11 @@ interface TeamMember {
   isEdit: boolean;
   isAdd: boolean;
   isCheque: boolean;
+  expensesPermission?: {
+    view: boolean;
+    edit: boolean;
+    add: boolean;
+  };
   licenseExpiryDate: Date | Timestamp | null;
   dateOfBirth: Date | Timestamp | null;
   lastDrugTestDate: Date | Timestamp | null;
@@ -113,6 +118,11 @@ export default function EditTeamMemberPage() {
   const [selectedChequeAccess, setSelectedChequeAccess] = useState<string[]>(
     []
   );
+  const [expensesPermission, setExpensesPermission] = useState({
+    view: false,
+    edit: false,
+    add: false,
+  });
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
 
   useEffect(() => {
@@ -163,6 +173,21 @@ export default function EditTeamMemberPage() {
         const chequeAccess = [];
         if (data.isCheque) chequeAccess.push("Cheque");
         setSelectedChequeAccess(chequeAccess);
+
+        if (data.expensesPermission) {
+          const expPerm = data.expensesPermission as any;
+          setExpensesPermission({
+            view: !!expPerm.view,
+            edit: !!expPerm.edit,
+            add: !!expPerm.add,
+          });
+        } else {
+          setExpensesPermission({
+            view: false,
+            edit: false,
+            add: false,
+          });
+        }
       } else {
         toast.error("Member not found");
         router.push("/account/manage-team");
@@ -340,6 +365,11 @@ export default function EditTeamMemberPage() {
         isEdit: selectedRecordAccess.includes("Edit"),
         isAdd: selectedRecordAccess.includes("Add"),
         isCheque: selectedChequeAccess.includes("Cheque"),
+        expensesPermission: {
+          view: expensesPermission.view,
+          edit: expensesPermission.edit,
+          add: expensesPermission.add,
+        },
         licenseExpiryDate: formData.licenseExpiryDate || null,
         dateOfBirth: formData.dateOfBirth || null,
         lastDrugTestDate: formData.lastDrugTestDate || null,
@@ -887,6 +917,33 @@ export default function EditTeamMemberPage() {
                           }
                         />
                         <span>{access}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Expenses Permission */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Expenses Permission
+                  </label>
+                  <div className="space-y-2 border rounded p-2">
+                    {(["view", "edit", "add"] as const).map((perm) => (
+                      <label
+                        key={perm}
+                        className="flex items-center space-x-2"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={expensesPermission[perm]}
+                          onChange={(e) =>
+                            setExpensesPermission((prev) => ({
+                              ...prev,
+                              [perm]: e.target.checked,
+                            }))
+                          }
+                        />
+                        <span className="capitalize">{perm}</span>
                       </label>
                     ))}
                   </div>

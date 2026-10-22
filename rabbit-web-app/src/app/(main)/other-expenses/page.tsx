@@ -218,8 +218,12 @@ export default function OtherExpensesPage() {
           const uData = userDoc.data() as ProfileValues;
           setUserData(uData);
 
-          if (uData.role === "SubOwner" && uData.createdBy) {
-            setEffectiveUserId(uData.createdBy);
+          if (
+            (uData.role === "SubOwner" || (uData as any).isTeamMember) &&
+            uData.createdBy &&
+            uData.createdBy.trim().length > 0
+          ) {
+            setEffectiveUserId(uData.createdBy.trim());
           } else {
             setEffectiveUserId(user.uid);
           }
@@ -234,6 +238,27 @@ export default function OtherExpensesPage() {
 
     fetchEffectiveUserData();
   }, [user?.uid]);
+
+  const userRole = userData?.role || "";
+  const isTeamMember = (userData as any)?.isTeamMember === true;
+  const expensesPermission = (userData as any)?.expensesPermission;
+
+  const canView =
+    !userData
+      ? true
+      : userRole === "Owner" ||
+        userRole === "SubOwner" ||
+        (isTeamMember && expensesPermission?.view === true);
+
+  const canAdd =
+    userRole === "Owner" ||
+    userRole === "SubOwner" ||
+    (isTeamMember && expensesPermission?.add === true);
+
+  const canEdit =
+    userRole === "Owner" ||
+    userRole === "SubOwner" ||
+    (isTeamMember && expensesPermission?.edit === true);
 
   // 2. Fetch companies to determine default company name
   useEffect(() => {
@@ -765,18 +790,30 @@ export default function OtherExpensesPage() {
 
   // Open modal for Create
   const handleOpenAddModal = () => {
+    if (!canAdd) {
+      toast.error("You do not have permission to add expenses");
+      return;
+    }
     setEditingRecord(null);
     setIsModalOpen(true);
   };
 
   // Open modal for Edit
   const handleOpenEditModal = (rec: OtherExpenseRecord) => {
+    if (!canEdit) {
+      toast.error("You do not have permission to edit expenses");
+      return;
+    }
     setEditingRecord(rec);
     setIsModalOpen(true);
   };
 
   // Handle Delete
   const handleDeleteConfirm = async () => {
+    if (!canEdit) {
+      toast.error("You do not have permission to delete expenses");
+      return;
+    }
     if (!deleteTarget || !effectiveUserId) return;
     setIsDeleting(true);
     try {
@@ -936,6 +973,31 @@ export default function OtherExpensesPage() {
     }
   };
 
+  if (userData && !canView) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full">
+          <div className="w-14 h-14 bg-rose-50 text-[#F96176] rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+            <FaExclamationTriangle />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Access Restricted
+          </h2>
+          <p className="text-sm text-gray-500 mb-6">
+            You do not have permission to view Other Expenses. Please contact
+            your account owner.
+          </p>
+          <Link
+            href="/records"
+            className="inline-flex items-center justify-center px-5 py-2.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-sm font-semibold rounded-xl transition shadow-xs"
+          >
+            Back to Records
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-16">
       {/* Top Header */}
@@ -990,13 +1052,15 @@ export default function OtherExpensesPage() {
               </button>
 
               {/* Add Expense Button */}
-              <button
-                onClick={handleOpenAddModal}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow-md cursor-pointer active:scale-95"
-              >
-                <FaPlus className="text-xs" />
-                <span>Add Expense</span>
-              </button>
+              {canAdd && (
+                <button
+                  onClick={handleOpenAddModal}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow-md cursor-pointer active:scale-95"
+                >
+                  <FaPlus className="text-xs" />
+                  <span>Add Expense</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1288,13 +1352,15 @@ export default function OtherExpensesPage() {
                   ? "Try adjusting your search query, company, vehicle type, vehicle, filter type, or date range."
                   : "Record cash inflows (Credit) and cash outflows (Debit) to keep your financials organized."}
               </p>
-              <button
-                onClick={handleOpenAddModal}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
-              >
-                <FaPlus className="text-xs" />
-                <span>Add Other Expense</span>
-              </button>
+              {canAdd && (
+                <button
+                  onClick={handleOpenAddModal}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                >
+                  <FaPlus className="text-xs" />
+                  <span>Add Other Expense</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1306,7 +1372,9 @@ export default function OtherExpensesPage() {
                     <th className="py-3.5 px-4 sm:px-6">Type</th>
                     <th className="py-3.5 px-4 sm:px-6">Amount</th>
                     <th className="py-3.5 px-4 sm:px-6">Description / Notes</th>
-                    <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
+                    {canEdit && (
+                      <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
@@ -1409,24 +1477,26 @@ export default function OtherExpensesPage() {
                         </td>
 
                         {/* Actions */}
-                        <td className="py-4 px-4 sm:px-6 whitespace-nowrap text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleOpenEditModal(record)}
-                              className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                              title="Edit Record"
-                            >
-                              <FaEdit className="text-sm" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteTarget(record)}
-                              className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                              title="Delete Record"
-                            >
-                              <FaTrash className="text-sm" />
-                            </button>
-                          </div>
-                        </td>
+                        {canEdit && (
+                          <td className="py-4 px-4 sm:px-6 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditModal(record)}
+                                className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Record"
+                              >
+                                <FaEdit className="text-sm" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget(record)}
+                                className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                title="Delete Record"
+                              >
+                                <FaTrash className="text-sm" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

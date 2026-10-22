@@ -51,6 +51,11 @@ interface CreateTeamMemberForm {
   assignedVehicles: string[];
   recordAccess: string[];
   chequeAccess: string[];
+  expensesPermission: {
+    view: boolean;
+    edit: boolean;
+    add: boolean;
+  };
   licExpiryDate: Date | null;
   dob: Date | null;
   lastDrugTest: Date | null;
@@ -122,6 +127,11 @@ export default function CreateTeamMemberPage() {
     assignedVehicles: [],
     recordAccess: [],
     chequeAccess: [],
+    expensesPermission: {
+      view: false,
+      edit: false,
+      add: false,
+    },
     licExpiryDate: null,
     dob: null,
     lastDrugTest: null,
@@ -307,6 +317,7 @@ export default function CreateTeamMemberPage() {
         perMileCharge: formData.perMileCharge,
         selectedRecordAccess: formData.recordAccess,
         selectedChequeAccess: formData.chequeAccess,
+        expensesPermission: formData.expensesPermission,
         licExpiryDate: formData.licExpiryDate?.toISOString(),
         recordAccess: formData.recordAccess,
         chequeAccess: formData.chequeAccess,
@@ -860,6 +871,38 @@ export default function CreateTeamMemberPage() {
                             }
                           />
                           <span>{access}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expenses Permission - Show for non-Vendor roles except SubOwner */}
+                {formData.role !== "SubOwner" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Expenses Permission
+                    </label>
+                    <div className="space-y-2 border rounded p-2">
+                      {(["view", "edit", "add"] as const).map((perm) => (
+                        <label
+                          key={perm}
+                          className="flex items-center space-x-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.expensesPermission[perm]}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                expensesPermission: {
+                                  ...prev.expensesPermission,
+                                  [perm]: e.target.checked,
+                                },
+                              }))
+                            }
+                          />
+                          <span className="capitalize">{perm}</span>
                         </label>
                       ))}
                     </div>

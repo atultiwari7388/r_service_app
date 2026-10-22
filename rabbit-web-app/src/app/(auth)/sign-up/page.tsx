@@ -486,6 +486,11 @@ const Signup: React.FC = () => {
         isEdit: true,
         isDelete: true,
         isAdd: true,
+        expensesPermission: {
+          view: true,
+          edit: true,
+          add: true,
+        },
         currentDeviceId: null,
         createdFrom: "web",
         lastLogin: new Date(),

@@ -754,6 +754,25 @@ export default function RecordsPage() {
   >([]);
   const [isOtherExpenseModalOpen, setIsOtherExpenseModalOpen] = useState(false);
 
+  const expensesEffectiveUserId =
+    ((userData?.role === "SubOwner" || (userData as any)?.isTeamMember) &&
+      userData?.createdBy &&
+      userData.createdBy.trim().length > 0)
+      ? userData.createdBy.trim()
+      : (effectiveUserId || user?.uid || "");
+
+  const canViewOtherExpenses =
+    role === "Owner" ||
+    role === "SubOwner" ||
+    ((userData as any)?.isTeamMember === true &&
+      (userData as any)?.expensesPermission?.view === true);
+
+  const canAddOtherExpenses =
+    role === "Owner" ||
+    role === "SubOwner" ||
+    ((userData as any)?.isTeamMember === true &&
+      (userData as any)?.expensesPermission?.add === true);
+
   const [validationErrors, setValidationErrors] = useState<{
     [key: string]: string;
   }>({});
@@ -2222,12 +2241,12 @@ export default function RecordsPage() {
 
   // Real-time listener for user's Other Expenses (record_otherExpenses)
   useEffect(() => {
-    if (!effectiveUserId) return;
+    if (!expensesEffectiveUserId) return;
 
     const expensesRef = collection(
       db,
       "Users",
-      effectiveUserId,
+      expensesEffectiveUserId,
       "record_otherExpenses"
     );
 
@@ -2261,7 +2280,7 @@ export default function RecordsPage() {
     );
 
     return () => unsubscribe();
-  }, [effectiveUserId]);
+  }, [expensesEffectiveUserId]);
 
   //print record lists
   const handlePrint = async () => {
@@ -4201,35 +4220,39 @@ export default function RecordsPage() {
               </p>
             </div>
 
-            <div className="bg-rose-50/70 border border-rose-100 p-3.5 sm:p-4 rounded-xl flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-              <div>
-                <h3 className="text-xs sm:text-sm font-medium text-rose-700">
-                  Other Expenses
-                </h3>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
-                  {otherExpensesNetBalance < 0
-                    ? `-$${Math.abs(otherExpensesNetBalance).toFixed(0)}`
-                    : `$${otherExpensesNetBalance.toFixed(0)}`}
-                </p>
+            {canViewOtherExpenses && (
+              <div className="bg-rose-50/70 border border-rose-100 p-3.5 sm:p-4 rounded-xl flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-medium text-rose-700">
+                    Other Expenses
+                  </h3>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
+                    {otherExpensesNetBalance < 0
+                      ? `-$${Math.abs(otherExpensesNetBalance).toFixed(0)}`
+                      : `$${otherExpensesNetBalance.toFixed(0)}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                  {canAddOtherExpenses && (
+                    <button
+                      type="button"
+                      onClick={() => setIsOtherExpenseModalOpen(true)}
+                      className="px-2.5 py-1.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-semibold rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer active:scale-95"
+                      title="Add Other Expense"
+                    >
+                      <IoMdAdd className="text-sm" /> Add
+                    </button>
+                  )}
+                  <Link
+                    href="/other-expenses"
+                    className="px-2.5 py-1.5 bg-white hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg shadow-2xs transition flex items-center gap-1"
+                    title="View Other Expenses"
+                  >
+                    <FaEye className="text-xs text-gray-500" /> View
+                  </Link>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setIsOtherExpenseModalOpen(true)}
-                  className="px-2.5 py-1.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-semibold rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer active:scale-95"
-                  title="Add Other Expense"
-                >
-                  <IoMdAdd className="text-sm" /> Add
-                </button>
-                <Link
-                  href="/other-expenses"
-                  className="px-2.5 py-1.5 bg-white hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg shadow-2xs transition flex items-center gap-1"
-                  title="View Other Expenses"
-                >
-                  <FaEye className="text-xs text-gray-500" /> View
-                </Link>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -5598,7 +5621,7 @@ export default function RecordsPage() {
       <AddOtherExpenseModal
         isOpen={isOtherExpenseModalOpen}
         onClose={() => setIsOtherExpenseModalOpen(false)}
-        effectiveUserId={effectiveUserId}
+        effectiveUserId={expensesEffectiveUserId}
       />
     </div>
   ) : (
