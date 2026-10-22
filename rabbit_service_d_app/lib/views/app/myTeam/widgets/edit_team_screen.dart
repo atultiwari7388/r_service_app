@@ -86,10 +86,12 @@ class _EditTeamMemberState extends State<EditTeamMember> {
   String? selectedRole;
   List<String> selectedRecordAccess = [];
   List<String> selectedChequeAccess = [];
+  List<String> selectedExpensesPermission = [];
   List<String> recordAccessCheckBox = ["View", "Edit", "Add"];
   List<String> chequeAccessCheckBox = [
     "Cheque",
   ];
+  List<String> expensesPermissionCheckBox = ["View", "Edit", "Add"];
 
   @override
   void initState() {
@@ -160,6 +162,15 @@ class _EditTeamMemberState extends State<EditTeamMember> {
         if (memberDoc['isEdit'] == true) selectedRecordAccess.add('Edit');
         if (memberDoc['isAdd'] == true) selectedRecordAccess.add('Add');
         if (memberDoc['isCheque'] == true) selectedChequeAccess.add('Cheque');
+
+        final expPerm = memberData['expensesPermission'];
+        if (expPerm is Map) {
+          if (expPerm['view'] == true) selectedExpensesPermission.add('View');
+          if (expPerm['edit'] == true) selectedExpensesPermission.add('Edit');
+          if (expPerm['add'] == true) selectedExpensesPermission.add('Add');
+        } else if (memberData['role'] == 'SubOwner') {
+          selectedExpensesPermission.addAll(['View', 'Edit', 'Add']);
+        }
 
         // Fetch member's vehicles
         QuerySnapshot vehiclesSnapshot = await _firestore
@@ -469,6 +480,32 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                                   selectedRecordAccess.add(access);
                                 } else {
                                   selectedRecordAccess.remove(access);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+
+                      // Expenses permission section
+                      SizedBox(height: 15.h),
+                      Text(
+                        "Expenses Permission",
+                        style: appStyle(16, Colors.black, FontWeight.bold),
+                      ),
+                      SizedBox(height: 10.h),
+                      Divider(),
+                      Column(
+                        children: expensesPermissionCheckBox.map((permission) {
+                          return CheckboxListTile(
+                            title: Text(permission),
+                            value: selectedExpensesPermission.contains(permission),
+                            onChanged: (bool? selected) {
+                              setState(() {
+                                if (selected == true) {
+                                  selectedExpensesPermission.add(permission);
+                                } else {
+                                  selectedExpensesPermission.remove(permission);
                                 }
                               });
                             },
@@ -791,6 +828,11 @@ class _EditTeamMemberState extends State<EditTeamMember> {
         "isEdit": selectedRecordAccess.contains("Edit"),
         "isAdd": selectedRecordAccess.contains("Add"),
         "isCheque": selectedChequeAccess.contains("Cheque"),
+        "expensesPermission": {
+          "view": selectedRole == "SubOwner" ? true : selectedExpensesPermission.contains("View"),
+          "edit": selectedRole == "SubOwner" ? true : selectedExpensesPermission.contains("Edit"),
+          "add": selectedRole == "SubOwner" ? true : selectedExpensesPermission.contains("Add"),
+        },
         "updated_at": FieldValue.serverTimestamp(),
       };
 

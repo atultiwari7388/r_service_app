@@ -59,6 +59,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   String? selectedPayType;
   List<String> selectedRecordAccess = [];
   List<String> selectedChequeAccess = [];
+  List<String> selectedExpensesPermission = [];
   List<String> recordAccessCheckBox = [
     "View",
     "Edit",
@@ -66,6 +67,11 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   ];
   List<String> chequeAccessCheckBox = [
     "Cheque",
+  ];
+  List<String> expensesPermissionCheckBox = [
+    "View",
+    "Edit",
+    "Add",
   ];
 
   // UI display names
@@ -444,6 +450,34 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     );
                   }).toList(),
                 ),
+
+                SizedBox(height: 15.h),
+
+                // Expenses Permission
+                Text(
+                  "Expenses Permission",
+                  style: appStyle(16, Colors.black, FontWeight.bold),
+                ),
+                SizedBox(height: 10.h),
+                Divider(),
+
+                Column(
+                  children: expensesPermissionCheckBox.map((permission) {
+                    return CheckboxListTile(
+                      title: Text(permission),
+                      value: selectedExpensesPermission.contains(permission),
+                      onChanged: (bool? selected) {
+                        setState(() {
+                          if (selected == true) {
+                            selectedExpensesPermission.add(permission);
+                          } else {
+                            selectedExpensesPermission.remove(permission);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
               ],
               SizedBox(height: 15.h),
               if (selectedRole == "Manager" ||
@@ -673,6 +707,13 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                             perMileCharge: perMileChargeController.text,
                             selectedRecordAccess: selectedRecordAccess,
                             selectedChequeAccess: selectedChequeAccess,
+                            expensesPermission: {
+                              'view':
+                                  selectedExpensesPermission.contains('View'),
+                              'edit':
+                                  selectedExpensesPermission.contains('Edit'),
+                              'add': selectedExpensesPermission.contains('Add'),
+                            },
                           );
                         }
                       },
@@ -858,6 +899,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     required String perMileCharge,
     required List<String> selectedRecordAccess,
     required List<String> selectedChequeAccess,
+    required Map<String, dynamic> expensesPermission,
   }) async {
     setState(() {
       isUserAcCreated = true;
@@ -889,6 +931,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         'perMileCharge': perMileCharge,
         'selectedRecordAccess': selectedRecordAccess,
         'selectedChequeAccess': selectedChequeAccess,
+        'expensesPermission': expensesPermission,
         'licExpiryDate': licExpiryDate?.toIso8601String(),
         'dob': dob?.toIso8601String(),
         'lastDrugTest': lastDrugTest?.toIso8601String(),
@@ -918,6 +961,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         selectedVehicles.clear();
         selectedRole = "";
         selectedRecordAccess.clear();
+        selectedChequeAccess.clear();
+        selectedExpensesPermission.clear();
         licExpiryDate = null;
         dob = null;
         lastDrugTest = null;

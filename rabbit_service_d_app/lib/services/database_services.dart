@@ -95,6 +95,11 @@ class DatabaseServices {
       'isVendor': false,
       "isView": true,
       "isCheque": true,
+      "expensesPermission": {
+        "view": true,
+        "edit": true,
+        "add": true,
+      },
       'payMode': '',
       "isEdit": true,
       "isDelete": true,

@@ -166,6 +166,7 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
     selectedVehicles,
     selectedRecordAccess,
     selectedChequeAccess,
+    expensesPermission,
     licExpiryDate,
     dob,
     lastDrugTest,
@@ -255,6 +256,26 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
         selectedRole == "SubOwner"
           ? true
           : selectedChequeAccess.includes("Cheque"),
+      expensesPermission:
+        selectedRole == "SubOwner"
+          ? { view: true, edit: true, add: true }
+          : {
+              view:
+                expensesPermission &&
+                typeof expensesPermission.view === "boolean"
+                  ? expensesPermission.view
+                  : false,
+              edit:
+                expensesPermission &&
+                typeof expensesPermission.edit === "boolean"
+                  ? expensesPermission.edit
+                  : false,
+              add:
+                expensesPermission &&
+                typeof expensesPermission.add === "boolean"
+                  ? expensesPermission.add
+                  : false,
+            },
       isOwner: false,
       isTeamMember: true,
       isMultiDeEnable: false,

@@ -32,6 +32,8 @@ class UserModel {
   String abn;
   String hva;
 
+  Map<String, dynamic> expensesPermission;
+
   DateTime createdAt;
   DateTime updatedAt;
 
@@ -59,9 +61,11 @@ class UserModel {
     this.voln = '',
     this.abn = '',
     this.hva = '',
+    Map<String, dynamic>? expensesPermission,
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : createdAt = createdAt ?? DateTime.now(),
+  })  : expensesPermission = expensesPermission ?? {'view': true, 'edit': true, 'add': true},
+        createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
   // Convert a UserModel object into a Map object to store in Firestore
@@ -90,6 +94,7 @@ class UserModel {
       'voln': voln,
       'abn': abn,
       'hva': hva,
+      'expensesPermission': expensesPermission,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
@@ -121,6 +126,9 @@ class UserModel {
       voln: map['voln'] ?? '',
       abn: map['abn'] ?? '',
       hva: map['hva'] ?? '',
+      expensesPermission: map['expensesPermission'] is Map
+          ? Map<String, dynamic>.from(map['expensesPermission'])
+          : {'view': true, 'edit': true, 'add': true},
       createdAt: map['createdAt'] is Timestamp
           ? (map['createdAt'] as Timestamp).toDate()
           : (map['created_at'] is Timestamp
