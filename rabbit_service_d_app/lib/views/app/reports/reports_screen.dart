@@ -229,7 +229,8 @@ class _ReportsScreenState extends State<ReportsScreen>
 
                               // Invoice Summary Box
                               (reController.role == "Owner" ||
-                                      reController.role == "SubOwner")
+                                      reController.role == "SubOwner" ||
+                                      reController.role == "Accountant")
                                   ? Card(
                                       elevation: 4,
                                       margin: EdgeInsets.symmetric(vertical: 8),
