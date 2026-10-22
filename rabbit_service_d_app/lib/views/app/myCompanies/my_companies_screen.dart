@@ -13,7 +13,8 @@ import "package:regal_service_d_app/widgets/reusable_text.dart";
 
 class MyCompaniesScreen extends StatefulWidget {
   final String? currentUId;
-  const MyCompaniesScreen({super.key, this.currentUId});
+  final String? role;
+  const MyCompaniesScreen({super.key, this.currentUId, this.role});
 
   @override
   State<MyCompaniesScreen> createState() => _MyCompaniesScreenState();
@@ -21,6 +22,7 @@ class MyCompaniesScreen extends StatefulWidget {
 
 class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
   late String currentUId;
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Form Controllers
@@ -887,6 +889,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAllow = widget.role == "Owner" || widget.role == "SubOwner";
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -900,14 +903,16 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
           text: "My Companies",
           style: appStyle(18, kDark, FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: kPrimary, size: 28),
-            onPressed: () => _openCompanyFormDialog(),
-            tooltip: "Add Company",
-          ),
-          SizedBox(width: 8.w),
-        ],
+        actions: isAllow
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.add_circle, color: kPrimary, size: 28),
+                  onPressed: () => _openCompanyFormDialog(),
+                  tooltip: "Add Company",
+                ),
+                SizedBox(width: 8.w),
+              ]
+            : [],
       ),
       body: currentUId.isEmpty
           ? const Center(child: CircularProgressIndicator(color: kPrimary))
@@ -1173,67 +1178,75 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                                   ),
                                 ),
                                 // Actions Popup Menu
-                                PopupMenuButton<String>(
-                                  icon:
-                                      const Icon(Icons.more_vert, color: kGray),
-                                  onSelected: (value) {
-                                    if (value == "default") {
-                                      _setAsDefault(doc.id, data);
-                                    } else if (value == "toggle_status") {
-                                      _toggleCompanyStatus(doc.id, isActive);
-                                    } else if (value == "edit") {
-                                      _openCompanyFormDialog(
-                                        companyId: doc.id,
-                                        initialData: data,
-                                      );
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    PopupMenuItem(
-                                      value: "toggle_status",
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            isActive
-                                                ? Icons.pause_circle_outline
-                                                : Icons.play_circle_outline,
-                                            color: isActive
-                                                ? Colors.orange
-                                                : Colors.green,
-                                            size: 18,
+                                isAllow
+                                    ? PopupMenuButton<String>(
+                                        icon: const Icon(Icons.more_vert,
+                                            color: kGray),
+                                        onSelected: (value) {
+                                          if (value == "default") {
+                                            _setAsDefault(doc.id, data);
+                                          } else if (value == "toggle_status") {
+                                            _toggleCompanyStatus(
+                                                doc.id, isActive);
+                                          } else if (value == "edit") {
+                                            _openCompanyFormDialog(
+                                              companyId: doc.id,
+                                              initialData: data,
+                                            );
+                                          }
+                                        },
+                                        itemBuilder: (context) => [
+                                          PopupMenuItem(
+                                            value: "toggle_status",
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  isActive
+                                                      ? Icons
+                                                          .pause_circle_outline
+                                                      : Icons
+                                                          .play_circle_outline,
+                                                  color: isActive
+                                                      ? Colors.orange
+                                                      : Colors.green,
+                                                  size: 18,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(isActive
+                                                    ? "Mark as Closed"
+                                                    : "Mark as Active"),
+                                              ],
+                                            ),
                                           ),
-                                          const SizedBox(width: 8),
-                                          Text(isActive
-                                              ? "Mark as Closed"
-                                              : "Mark as Active"),
+                                          if (!isDefault)
+                                            const PopupMenuItem(
+                                              value: "default",
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                      Icons
+                                                          .check_circle_outline,
+                                                      color: kPrimary,
+                                                      size: 18),
+                                                  SizedBox(width: 8),
+                                                  Text("Set as Default"),
+                                                ],
+                                              ),
+                                            ),
+                                          const PopupMenuItem(
+                                            value: "edit",
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.edit_outlined,
+                                                    color: kDark, size: 18),
+                                                SizedBox(width: 8),
+                                                Text("Edit"),
+                                              ],
+                                            ),
+                                          ),
                                         ],
-                                      ),
-                                    ),
-                                    if (!isDefault)
-                                      const PopupMenuItem(
-                                        value: "default",
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.check_circle_outline,
-                                                color: kPrimary, size: 18),
-                                            SizedBox(width: 8),
-                                            Text("Set as Default"),
-                                          ],
-                                        ),
-                                      ),
-                                    const PopupMenuItem(
-                                      value: "edit",
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.edit_outlined,
-                                              color: kDark, size: 18),
-                                          SizedBox(width: 8),
-                                          Text("Edit"),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                      )
+                                    : SizedBox(),
                               ],
                             ),
 
@@ -1268,15 +1281,17 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                 );
               },
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openCompanyFormDialog(),
-        backgroundColor: kPrimary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          "Add Company",
-          style: appStyle(14, Colors.white, FontWeight.bold),
-        ),
-      ),
+      floatingActionButton: isAllow
+          ? FloatingActionButton.extended(
+              onPressed: () => _openCompanyFormDialog(),
+              backgroundColor: kPrimary,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: Text(
+                "Add Company",
+                style: appStyle(14, Colors.white, FontWeight.bold),
+              ),
+            )
+          : SizedBox(),
     );
   }
 

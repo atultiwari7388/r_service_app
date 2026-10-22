@@ -641,8 +641,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                   ),
                                   trailing: const Icon(Icons.arrow_forward_ios,
                                       size: 14, color: kGray),
-                                  onTap: () =>
-                                      Get.to(() => const MyCompaniesScreen()),
+                                  onTap: () => Get.to(() => MyCompaniesScreen(
+                                        role: role,
+                                      )),
                                 ),
                               ),
                               SizedBox(height: 16.0.h),

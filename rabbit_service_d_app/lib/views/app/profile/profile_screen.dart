@@ -143,15 +143,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Get.to(() => ProfileDetailsScreen());
                       }
                     }),
-                    if (role == "Owner" || role == "SubOwner") ...[
+                    if (role == "Owner" ||
+                        role == "SubOwner" ||
+                        role == "Accountant" ||
+                        role == "Manager") ...[
                       buildListTile("assets/companyProfile.png", "My Companies",
                           () {
                         if (isAnonymous == true || isProfileComplete == false) {
                           Get.to(() => const RegistrationScreen());
                         } else {
-                          Get.to(() => const MyCompaniesScreen());
+                          Get.to(() => MyCompaniesScreen(
+                                role: role,
+                              ));
                         }
                       }),
+                    ],
+
+                    if (role == "Owner" || role == "SubOwner") ...[
                       buildListTile("assets/invoice.png", "Pay Invoice", () {
                         if (isAnonymous == true || isProfileComplete == false) {
                           Get.to(() => const RegistrationScreen());
