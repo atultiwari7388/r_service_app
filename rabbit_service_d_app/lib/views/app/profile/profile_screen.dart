@@ -49,6 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final String currentUId = FirebaseAuth.instance.currentUser!.uid;
   bool isAnonymous = true;
   bool isProfileComplete = false;
+  Map<String, dynamic>? expensesPermission;
 
   Future<void> fetchUserDetails() async {
     try {
@@ -67,6 +68,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           isTeamMember = userData["isTeamMember"] ?? false;
           isAnonymous = userData["isAnonymous"] ?? true;
           isProfileComplete = userData["isProfileComplete"] ?? false;
+          expensesPermission = userData["expensesPermission"] != null
+              ? Map<String, dynamic>.from(userData["expensesPermission"])
+              : null;
         });
         log("Role set to ${role} and isCheque set to ${isCheque} for user ID: $currentUId and isTeamMember set to ${isTeamMember}");
       } else {
@@ -167,6 +171,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Get.to(() => const PayInvoiceScreen());
                         }
                       }),
+                    ],
+                    if (role == "Owner" ||
+                        role == "SubOwner" ||
+                        (isTeamMember &&
+                            expensesPermission?['view'] == true)) ...[
                       buildListTile(
                           "assets/other_expenses.png", "Other Expenses", () {
                         if (isAnonymous == true || isProfileComplete == false) {

@@ -31,7 +31,17 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
 
   String _effectiveUserId = '';
   String _userRole = '';
+  bool _isTeamMember = false;
+  Map<String, dynamic> _expensesPermission = {};
   bool _isLoadingUser = true;
+
+  bool get _canAdd =>
+      (_userRole == 'Owner' || _userRole == 'SubOwner') ||
+      (_isTeamMember && _expensesPermission['add'] == true);
+
+  bool get _canEdit =>
+      (_userRole == 'Owner' || _userRole == 'SubOwner') ||
+      (_isTeamMember && _expensesPermission['edit'] == true);
 
   // Search and Filters
   final TextEditingController _searchController = TextEditingController();
@@ -66,8 +76,12 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
         _userRole = data['role']?.toString() ?? '';
+        _isTeamMember = data['isTeamMember'] == true;
+        _expensesPermission = data['expensesPermission'] != null
+            ? Map<String, dynamic>.from(data['expensesPermission'])
+            : {};
 
-        if (_userRole == 'SubOwner' &&
+        if ((_userRole == 'SubOwner' || _isTeamMember) &&
             data['createdBy'] != null &&
             data['createdBy'].toString().trim().isNotEmpty) {
           _effectiveUserId = data['createdBy'].toString().trim();
@@ -86,6 +100,17 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
   }
 
   void _openAddExpenseModal({OtherExpenseModel? expenseToEdit}) async {
+    if (expenseToEdit != null && !_canEdit) {
+      showToastMessage(
+          "Error", "You do not have permission to edit expenses", Colors.red);
+      return;
+    }
+    if (expenseToEdit == null && !_canAdd) {
+      showToastMessage(
+          "Error", "You do not have permission to add expenses", Colors.red);
+      return;
+    }
+
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -102,6 +127,12 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
   }
 
   Future<void> _deleteExpense(OtherExpenseModel expense) async {
+    if (!_canEdit) {
+      showToastMessage(
+          "Error", "You do not have permission to delete expenses", Colors.red);
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -565,13 +596,15 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openAddExpenseModal(),
-        backgroundColor: kPrimary,
-        icon: Icon(Icons.add_rounded, size: 20.sp, color: Colors.white),
-        label: Text("Add Expense",
-            style: appStyle(13, Colors.white, FontWeight.bold)),
-      ),
+      floatingActionButton: _canAdd
+          ? FloatingActionButton.extended(
+              onPressed: () => _openAddExpenseModal(),
+              backgroundColor: kPrimary,
+              icon: Icon(Icons.add_rounded, size: 20.sp, color: Colors.white),
+              label: Text("Add Expense",
+                  style: appStyle(13, Colors.white, FontWeight.bold)),
+            )
+          : null,
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
             .collection('Users')
@@ -896,7 +929,10 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                             Text("No expense records found",
                                 style: appStyle(14, kGray, FontWeight.bold)),
                             SizedBox(height: 4.h),
-                            Text("Tap '+ Add Expense' to record a transaction",
+                            Text(
+                                _canAdd
+                                    ? "Tap '+ Add Expense' to record a transaction"
+                                    : "No expense records to display",
                                 style: appStyle(
                                     12, kGrayLight, FontWeight.normal)),
                           ],
@@ -925,8 +961,10 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                               ],
                             ),
                             child: InkWell(
-                              onTap: () =>
-                                  _openAddExpenseModal(expenseToEdit: item),
+                              onTap: _canEdit
+                                  ? () =>
+                                      _openAddExpenseModal(expenseToEdit: item)
+                                  : null,
                               borderRadius: BorderRadius.circular(14.r),
                               child: Padding(
                                 padding: EdgeInsets.all(12.w),
@@ -1047,7 +1085,8 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
                                         ),
 
                                         // Edit & Delete actions
-                                        PopupMenuButton<String>(
+                                        if (_canEdit)
+                                          PopupMenuButton<String>(
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(),
                                           icon: Icon(Icons.more_horiz_rounded,
