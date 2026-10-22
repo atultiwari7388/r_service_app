@@ -22,6 +22,9 @@ class MyCompaniesScreen extends StatefulWidget {
 
 class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
   late String currentUId;
+  String? _currentUserRole;
+  String? _ownerId;
+  String? _actualUserUid;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -76,39 +79,51 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
   @override
   void initState() {
     super.initState();
-    currentUId =
-        widget.currentUId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    final loggedUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    _actualUserUid = loggedUid;
+    currentUId = widget.currentUId ?? loggedUid;
+    _currentUserRole = widget.role;
     _resolveEffectiveUserId();
   }
 
   Future<void> _resolveEffectiveUserId() async {
     try {
-      if (currentUId.isEmpty) {
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null && uid.isNotEmpty) {
-          if (mounted) {
-            setState(() {
-              currentUId = uid;
-            });
-          } else {
-            currentUId = uid;
-          }
-        }
-      }
-      if (currentUId.isEmpty) return;
+      final loggedUid =
+          _actualUserUid ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (loggedUid.isEmpty) return;
 
       DocumentSnapshot userDoc =
-          await _firestore.collection('Users').doc(currentUId).get();
+          await _firestore.collection('Users').doc(loggedUid).get();
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>?;
-        if (data != null &&
-            data.containsKey('createdBy') &&
-            data['createdBy'] != null &&
-            data['createdBy'].toString().trim().isNotEmpty) {
+        if (data != null) {
+          final fetchedRole = data['role']?.toString();
+          final createdBy = data['createdBy']?.toString().trim();
+
           if (mounted) {
             setState(() {
-              currentUId = data['createdBy'].toString().trim();
+              if (_currentUserRole == null || _currentUserRole!.isEmpty) {
+                _currentUserRole = fetchedRole;
+              }
+              if (createdBy != null && createdBy.isNotEmpty) {
+                _ownerId = createdBy;
+                currentUId = createdBy;
+              } else {
+                _ownerId = loggedUid;
+                currentUId = loggedUid;
+              }
             });
+          } else {
+            if (_currentUserRole == null || _currentUserRole!.isEmpty) {
+              _currentUserRole = fetchedRole;
+            }
+            if (createdBy != null && createdBy.isNotEmpty) {
+              _ownerId = createdBy;
+              currentUId = createdBy;
+            } else {
+              _ownerId = loggedUid;
+              currentUId = loggedUid;
+            }
           }
         }
       }
@@ -889,7 +904,10 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAllow = widget.role == "Owner" || widget.role == "SubOwner";
+    final effectiveRole = _currentUserRole ?? widget.role;
+    final isAllow = effectiveRole == "Owner" || effectiveRole == "SubOwner";
+    final isStaff = effectiveRole == "Manager" || effectiveRole == "Accountant";
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -900,7 +918,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
           onPressed: () => Get.back(),
         ),
         title: ReusableText(
-          text: "My Companies",
+          text: isStaff ? "Assigned Companies" : "My Companies",
           style: appStyle(18, kDark, FontWeight.bold),
         ),
         actions: isAllow
@@ -914,50 +932,69 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
               ]
             : [],
       ),
-      body: currentUId.isEmpty
-          ? const Center(child: CircularProgressIndicator(color: kPrimary))
-          : StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection("Users")
-                  .doc(currentUId)
-                  .collection("myCompanies")
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator(color: kPrimary));
-                }
+      body: isStaff
+          ? _buildStaffCompaniesView()
+          : _buildOwnerCompaniesView(isAllow),
+      floatingActionButton: isAllow
+          ? FloatingActionButton.extended(
+              onPressed: () => _openCompanyFormDialog(),
+              backgroundColor: kPrimary,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: Text(
+                "Add Company",
+                style: appStyle(14, Colors.white, FontWeight.bold),
+              ),
+            )
+          : null,
+    );
+  }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 30.w),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(20.w),
-                            decoration: BoxDecoration(
-                              color: kPrimary.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              MaterialCommunityIcons.domain,
-                              size: 60.sp,
-                              color: kPrimary,
-                            ),
+  Widget _buildOwnerCompaniesView(bool isAllow) {
+    return currentUId.isEmpty
+        ? const Center(child: CircularProgressIndicator(color: kPrimary))
+        : StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection("Users")
+                .doc(currentUId)
+                .collection("myCompanies")
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                    child: CircularProgressIndicator(color: kPrimary));
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 30.w),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(20.w),
+                          decoration: BoxDecoration(
+                            color: kPrimary.withOpacity(0.1),
+                            shape: BoxShape.circle,
                           ),
-                          SizedBox(height: 20.h),
-                          Text(
-                            "No Companies Added Yet",
-                            style: appStyle(18, kDark, FontWeight.bold),
+                          child: Icon(
+                            MaterialCommunityIcons.domain,
+                            size: 60.sp,
+                            color: kPrimary,
                           ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            "Add your company profile with DOT, MC, and address details to manage them easily.",
-                            textAlign: TextAlign.center,
-                            style: appStyle(13, kGray, FontWeight.normal),
-                          ),
+                        ),
+                        SizedBox(height: 20.h),
+                        Text(
+                          "No Companies Added Yet",
+                          style: appStyle(18, kDark, FontWeight.bold),
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          "Add your company profile with DOT, MC, and address details to manage them easily.",
+                          textAlign: TextAlign.center,
+                          style: appStyle(13, kGray, FontWeight.normal),
+                        ),
+                        if (isAllow) ...[
                           SizedBox(height: 24.h),
                           ElevatedButton.icon(
                             onPressed: () => _openCompanyFormDialog(),
@@ -976,337 +1013,501 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                             ),
                           ),
                         ],
-                      ),
+                      ],
                     ),
+                  ),
+                );
+              }
+
+              final companyDocs = snapshot.data!.docs;
+
+              return ListView.separated(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                itemCount: companyDocs.length,
+                separatorBuilder: (_, __) => SizedBox(height: 12.h),
+                itemBuilder: (context, index) {
+                  final doc = companyDocs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  return _buildCompanyCard(
+                    docId: doc.id,
+                    data: data,
+                    isAllow: isAllow,
                   );
+                },
+              );
+            },
+          );
+  }
+
+  Widget _buildStaffCompaniesView() {
+    final staffUid =
+        _actualUserUid ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (staffUid.isEmpty) {
+      return const Center(child: CircularProgressIndicator(color: kPrimary));
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection("Users")
+          .doc(staffUid)
+          .collection("Vehicles")
+          .snapshots(),
+      builder: (context, vehicleSnapshot) {
+        if (vehicleSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(color: kPrimary));
+        }
+
+        final vehicleDocs = vehicleSnapshot.data?.docs ?? [];
+        if (vehicleDocs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 30.w),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(20.w),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      MaterialCommunityIcons.truck_outline,
+                      size: 60.sp,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  SizedBox(height: 20.h),
+                  Text(
+                    "No Vehicles Assigned",
+                    style: appStyle(18, kDark, FontWeight.bold),
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    "There are currently no vehicles assigned to your account. Companies associated with your assigned vehicles will appear here.",
+                    textAlign: TextAlign.center,
+                    style: appStyle(13, kGray, FontWeight.normal),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Group assigned vehicles by company name
+        // Key: Normalized company name
+        // Value: Map containing companyName, companyId (if any), list of vehicle numbers
+        final Map<String, Map<String, dynamic>> companyGroups = {};
+
+        for (var vDoc in vehicleDocs) {
+          final vData = vDoc.data() as Map<String, dynamic>;
+          final rawMyCompany = (vData['myCompany'] ?? '').toString().trim();
+          final rawComId = (vData['mycomId'] ?? '').toString().trim();
+          final fallbackCompany =
+              (vData['companyName'] ?? '').toString().trim();
+          final vehicleNum = (vData['vehicleNumber'] ?? '').toString().trim();
+
+          final resolvedCompName = rawMyCompany.isNotEmpty
+              ? rawMyCompany
+              : (fallbackCompany.isNotEmpty
+                  ? fallbackCompany
+                  : 'Assigned Company');
+
+          final groupKey = resolvedCompName.toLowerCase();
+
+          if (!companyGroups.containsKey(groupKey)) {
+            companyGroups[groupKey] = {
+              'companyName': resolvedCompName,
+              'companyId': rawComId,
+              'vehicles': <String>[],
+            };
+          }
+
+          if (vehicleNum.isNotEmpty) {
+            final List<String> vList = companyGroups[groupKey]!['vehicles'];
+            if (!vList.contains(vehicleNum)) {
+              vList.add(vehicleNum);
+            }
+          }
+        }
+
+        final ownerUid = _ownerId ?? currentUId;
+
+        // Fetch owner's myCompanies to enrich details (DOT, MC, address, etc.)
+        return StreamBuilder<QuerySnapshot>(
+          stream: ownerUid.isNotEmpty
+              ? _firestore
+                  .collection("Users")
+                  .doc(ownerUid)
+                  .collection("myCompanies")
+                  .snapshots()
+              : const Stream.empty(),
+          builder: (context, ownerCompSnapshot) {
+            final ownerCompanies = ownerCompSnapshot.data?.docs ?? [];
+            final groupsList = companyGroups.values.toList();
+
+            return ListView.separated(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+              itemCount: groupsList.length,
+              separatorBuilder: (_, __) => SizedBox(height: 12.h),
+              itemBuilder: (context, index) {
+                final group = groupsList[index];
+                final String compName = group['companyName'];
+                final String compId = group['companyId'] ?? '';
+                final List<String> assignedVehicles =
+                    List<String>.from(group['vehicles'] ?? []);
+
+                // Find matching company document from owner if available
+                Map<String, dynamic> enrichedData = {
+                  'companyName': compName,
+                  'isActive': true,
+                };
+
+                for (var oDoc in ownerCompanies) {
+                  final oData = oDoc.data() as Map<String, dynamic>;
+                  final oName =
+                      (oData['companyName'] ?? oData['name'] ?? '').toString();
+                  if ((compId.isNotEmpty && oDoc.id == compId) ||
+                      oName.trim().toLowerCase() ==
+                          compName.trim().toLowerCase()) {
+                    enrichedData = Map<String, dynamic>.from(oData);
+                    enrichedData['companyName'] =
+                        oName.isNotEmpty ? oName : compName;
+                    break;
+                  }
                 }
 
-                final companyDocs = snapshot.data!.docs;
+                return _buildCompanyCard(
+                  docId: compId.isNotEmpty ? compId : 'staff_$index',
+                  data: enrichedData,
+                  isAllow: false, // Read-only for staff
+                  assignedVehicles: assignedVehicles,
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
 
-                return ListView.separated(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-                  itemCount: companyDocs.length,
-                  separatorBuilder: (_, __) => SizedBox(height: 12.h),
-                  itemBuilder: (context, index) {
-                    final doc = companyDocs[index];
-                    final data = doc.data() as Map<String, dynamic>;
-                    final String name = (data["companyName"] ??
-                            data["name"] ??
-                            "Unnamed Company")
-                        .toString();
-                    final String dot = (data["dot"] ?? "").toString();
-                    final String mc = (data["mc"] ?? "").toString();
-                    final String nsc = (data["nsc"] ?? "").toString();
-                    final String cvor = (data["cvor"] ?? "").toString();
-                    final String nir = (data["nir"] ?? "").toString();
-                    final String cbsa = (data["cbsa"] ?? "").toString();
-                    final String rfc = (data["rfc"] ?? "").toString();
-                    final String ftp = (data["ftp"] ?? "").toString();
-                    final String voln = (data["voln"] ?? "").toString();
-                    final String abn = (data["abn"] ?? "").toString();
-                    final String hva = (data["hva"] ?? "").toString();
-                    final String address = (data["address"] ?? "").toString();
-                    final String city = (data["city"] ?? "").toString();
-                    final String state = (data["state"] ?? "").toString();
-                    final String country = (data["country"] ?? "").toString();
-                    final bool isDefault = data["isDefault"] == true;
-                    final bool isActive = data["isActive"] != false;
+  Widget _buildCompanyCard({
+    required String docId,
+    required Map<String, dynamic> data,
+    required bool isAllow,
+    List<String> assignedVehicles = const [],
+  }) {
+    final String name =
+        (data["companyName"] ?? data["name"] ?? "Unnamed Company").toString();
+    final String dot = (data["dot"] ?? "").toString();
+    final String mc = (data["mc"] ?? "").toString();
+    final String nsc = (data["nsc"] ?? "").toString();
+    final String cvor = (data["cvor"] ?? "").toString();
+    final String nir = (data["nir"] ?? "").toString();
+    final String cbsa = (data["cbsa"] ?? "").toString();
+    final String rfc = (data["rfc"] ?? "").toString();
+    final String ftp = (data["ftp"] ?? "").toString();
+    final String voln = (data["voln"] ?? "").toString();
+    final String abn = (data["abn"] ?? "").toString();
+    final String hva = (data["hva"] ?? "").toString();
+    final String address = (data["address"] ?? "").toString();
+    final String city = (data["city"] ?? "").toString();
+    final String state = (data["state"] ?? "").toString();
+    final String country = (data["country"] ?? "").toString();
+    final bool isDefault = data["isDefault"] == true;
+    final bool isActive = data["isActive"] != false;
 
-                    // Build address string
-                    final List<String> addressParts = [
-                      if (address.isNotEmpty) address,
-                      if (city.isNotEmpty) city,
-                      if (state.isNotEmpty) state,
-                      if (country.isNotEmpty) country,
-                    ];
-                    final String fullAddress = addressParts.join(", ");
+    // Build address string
+    final List<String> addressParts = [
+      if (address.isNotEmpty) address,
+      if (city.isNotEmpty) city,
+      if (state.isNotEmpty) state,
+      if (country.isNotEmpty) country,
+    ];
+    final String fullAddress = addressParts.join(", ");
 
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(
-                          color: isDefault
-                              ? kPrimary.withOpacity(0.6)
-                              : Colors.grey.shade200,
-                          width: isDefault ? 1.5 : 1.0,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: isDefault ? kPrimary.withOpacity(0.6) : Colors.grey.shade200,
+          width: isDefault ? 1.5 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row: Icon + Name + Default/Active Badges + Menu
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    color: isDefault
+                        ? kPrimary.withOpacity(0.12)
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Icon(
+                    MaterialCommunityIcons.office_building,
+                    color: isDefault ? kPrimary : kDark,
+                    size: 24.sp,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: appStyle(16, kDark, FontWeight.bold),
+                            ),
                           ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8.w, vertical: 3.h),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? Colors.green.withOpacity(0.12)
+                                  : Colors.orange.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20.r),
+                              border: Border.all(
+                                  color: isActive
+                                      ? Colors.green.withOpacity(0.4)
+                                      : Colors.orange.withOpacity(0.4)),
+                            ),
+                            child: Text(
+                              isActive ? "Active" : "Closed",
+                              style: appStyle(
+                                  11,
+                                  isActive
+                                      ? Colors.green.shade700
+                                      : Colors.orange.shade800,
+                                  FontWeight.bold),
+                            ),
+                          ),
+                          if (isDefault) ...[
+                            SizedBox(width: 6.w),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w, vertical: 3.h),
+                              decoration: BoxDecoration(
+                                color: kPrimary.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(20.r),
+                                border: Border.all(
+                                    color: kPrimary.withOpacity(0.4)),
+                              ),
+                              child: Text(
+                                "Default",
+                                style: appStyle(11, kPrimary, FontWeight.bold),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      if (country.isNotEmpty ||
+                          dot.isNotEmpty ||
+                          mc.isNotEmpty ||
+                          nsc.isNotEmpty ||
+                          cvor.isNotEmpty ||
+                          nir.isNotEmpty ||
+                          cbsa.isNotEmpty ||
+                          rfc.isNotEmpty ||
+                          ftp.isNotEmpty ||
+                          voln.isNotEmpty ||
+                          abn.isNotEmpty ||
+                          hva.isNotEmpty) ...[
+                        SizedBox(height: 6.h),
+                        Wrap(
+                          spacing: 8.w,
+                          runSpacing: 4.h,
                           children: [
-                            // Header Row: Icon + Name + Default/Active Badges + Menu
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(10.w),
-                                  decoration: BoxDecoration(
-                                    color: isDefault
-                                        ? kPrimary.withOpacity(0.12)
-                                        : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                  child: Icon(
-                                    MaterialCommunityIcons.office_building,
-                                    color: isDefault ? kPrimary : kDark,
-                                    size: 24.sp,
-                                  ),
-                                ),
-                                SizedBox(width: 12.w),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              name,
-                                              style: appStyle(
-                                                  16, kDark, FontWeight.bold),
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 8.w, vertical: 3.h),
-                                            decoration: BoxDecoration(
-                                              color: isActive
-                                                  ? Colors.green
-                                                      .withOpacity(0.12)
-                                                  : Colors.orange
-                                                      .withOpacity(0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(20.r),
-                                              border: Border.all(
-                                                  color: isActive
-                                                      ? Colors.green
-                                                          .withOpacity(0.4)
-                                                      : Colors.orange
-                                                          .withOpacity(0.4)),
-                                            ),
-                                            child: Text(
-                                              isActive ? "Active" : "Closed",
-                                              style: appStyle(
-                                                  11,
-                                                  isActive
-                                                      ? Colors.green.shade700
-                                                      : Colors.orange.shade800,
-                                                  FontWeight.bold),
-                                            ),
-                                          ),
-                                          if (isDefault) ...[
-                                            SizedBox(width: 6.w),
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 8.w,
-                                                  vertical: 3.h),
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    kPrimary.withOpacity(0.12),
-                                                borderRadius:
-                                                    BorderRadius.circular(20.r),
-                                                border: Border.all(
-                                                    color: kPrimary
-                                                        .withOpacity(0.4)),
-                                              ),
-                                              child: Text(
-                                                "Default",
-                                                style: appStyle(11, kPrimary,
-                                                    FontWeight.bold),
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                      if (country.isNotEmpty ||
-                                          dot.isNotEmpty ||
-                                          mc.isNotEmpty ||
-                                          nsc.isNotEmpty ||
-                                          cvor.isNotEmpty ||
-                                          nir.isNotEmpty ||
-                                          cbsa.isNotEmpty ||
-                                          rfc.isNotEmpty ||
-                                          ftp.isNotEmpty ||
-                                          voln.isNotEmpty ||
-                                          abn.isNotEmpty ||
-                                          hva.isNotEmpty) ...[
-                                        SizedBox(height: 6.h),
-                                        Wrap(
-                                          spacing: 8.w,
-                                          runSpacing: 4.h,
-                                          children: [
-                                            if (country.isNotEmpty)
-                                              _buildInfoBadge(country),
-                                            if (dot.isNotEmpty)
-                                              _buildInfoBadge("DOT: $dot"),
-                                            if (mc.isNotEmpty)
-                                              _buildInfoBadge("MC: $mc"),
-                                            if (nsc.isNotEmpty)
-                                              _buildInfoBadge("NSC: $nsc"),
-                                            if (cvor.isNotEmpty)
-                                              _buildInfoBadge("CVOR: $cvor"),
-                                            if (nir.isNotEmpty)
-                                              _buildInfoBadge("NIR: $nir"),
-                                            if (cbsa.isNotEmpty)
-                                              _buildInfoBadge("CBSA: $cbsa"),
-                                            if (rfc.isNotEmpty)
-                                              _buildInfoBadge("RFC: $rfc"),
-                                            if (ftp.isNotEmpty)
-                                              _buildInfoBadge("FTP: $ftp"),
-                                            if (voln.isNotEmpty)
-                                              _buildInfoBadge("VOLN: $voln"),
-                                            if (abn.isNotEmpty)
-                                              _buildInfoBadge("ABN: $abn"),
-                                            if (hva.isNotEmpty)
-                                              _buildInfoBadge("HVA: $hva"),
-                                          ],
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                // Actions Popup Menu
-                                isAllow
-                                    ? PopupMenuButton<String>(
-                                        icon: const Icon(Icons.more_vert,
-                                            color: kGray),
-                                        onSelected: (value) {
-                                          if (value == "default") {
-                                            _setAsDefault(doc.id, data);
-                                          } else if (value == "toggle_status") {
-                                            _toggleCompanyStatus(
-                                                doc.id, isActive);
-                                          } else if (value == "edit") {
-                                            _openCompanyFormDialog(
-                                              companyId: doc.id,
-                                              initialData: data,
-                                            );
-                                          }
-                                        },
-                                        itemBuilder: (context) => [
-                                          PopupMenuItem(
-                                            value: "toggle_status",
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  isActive
-                                                      ? Icons
-                                                          .pause_circle_outline
-                                                      : Icons
-                                                          .play_circle_outline,
-                                                  color: isActive
-                                                      ? Colors.orange
-                                                      : Colors.green,
-                                                  size: 18,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(isActive
-                                                    ? "Mark as Closed"
-                                                    : "Mark as Active"),
-                                              ],
-                                            ),
-                                          ),
-                                          if (!isDefault)
-                                            const PopupMenuItem(
-                                              value: "default",
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                      Icons
-                                                          .check_circle_outline,
-                                                      color: kPrimary,
-                                                      size: 18),
-                                                  SizedBox(width: 8),
-                                                  Text("Set as Default"),
-                                                ],
-                                              ),
-                                            ),
-                                          const PopupMenuItem(
-                                            value: "edit",
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.edit_outlined,
-                                                    color: kDark, size: 18),
-                                                SizedBox(width: 8),
-                                                Text("Edit"),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : SizedBox(),
-                              ],
+                            if (country.isNotEmpty) _buildInfoBadge(country),
+                            if (dot.isNotEmpty) _buildInfoBadge("DOT: $dot"),
+                            if (mc.isNotEmpty) _buildInfoBadge("MC: $mc"),
+                            if (nsc.isNotEmpty) _buildInfoBadge("NSC: $nsc"),
+                            if (cvor.isNotEmpty) _buildInfoBadge("CVOR: $cvor"),
+                            if (nir.isNotEmpty) _buildInfoBadge("NIR: $nir"),
+                            if (cbsa.isNotEmpty) _buildInfoBadge("CBSA: $cbsa"),
+                            if (rfc.isNotEmpty) _buildInfoBadge("RFC: $rfc"),
+                            if (ftp.isNotEmpty) _buildInfoBadge("FTP: $ftp"),
+                            if (voln.isNotEmpty) _buildInfoBadge("VOLN: $voln"),
+                            if (abn.isNotEmpty) _buildInfoBadge("ABN: $abn"),
+                            if (hva.isNotEmpty) _buildInfoBadge("HVA: $hva"),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Actions Popup Menu (Only for Owner/SubOwner)
+                if (isAllow)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: kGray),
+                    onSelected: (value) {
+                      if (value == "default") {
+                        _setAsDefault(docId, data);
+                      } else if (value == "toggle_status") {
+                        _toggleCompanyStatus(docId, isActive);
+                      } else if (value == "edit") {
+                        _openCompanyFormDialog(
+                          companyId: docId,
+                          initialData: data,
+                        );
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: "toggle_status",
+                        child: Row(
+                          children: [
+                            Icon(
+                              isActive
+                                  ? Icons.pause_circle_outline
+                                  : Icons.play_circle_outline,
+                              color: isActive ? Colors.orange : Colors.green,
+                              size: 18,
                             ),
-
-                            if (fullAddress.isNotEmpty) ...[
-                              SizedBox(height: 12.h),
-                              Divider(height: 1, color: Colors.grey.shade100),
-                              SizedBox(height: 10.h),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.location_on_outlined,
-                                    size: 16.sp,
-                                    color: kGray,
-                                  ),
-                                  SizedBox(width: 6.w),
-                                  Expanded(
-                                    child: Text(
-                                      fullAddress,
-                                      style: appStyle(
-                                          12, kGray, FontWeight.normal),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            const SizedBox(width: 8),
+                            Text(
+                                isActive ? "Mark as Closed" : "Mark as Active"),
                           ],
                         ),
                       ),
-                    );
-                  },
-                );
-              },
+                      if (!isDefault)
+                        const PopupMenuItem(
+                          value: "default",
+                          child: Row(
+                            children: [
+                              Icon(Icons.check_circle_outline,
+                                  color: kPrimary, size: 18),
+                              SizedBox(width: 8),
+                              Text("Set as Default"),
+                            ],
+                          ),
+                        ),
+                      const PopupMenuItem(
+                        value: "edit",
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, color: kDark, size: 18),
+                            SizedBox(width: 8),
+                            Text("Edit"),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
-      floatingActionButton: isAllow
-          ? FloatingActionButton.extended(
-              onPressed: () => _openCompanyFormDialog(),
-              backgroundColor: kPrimary,
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: Text(
-                "Add Company",
-                style: appStyle(14, Colors.white, FontWeight.bold),
-              ),
-            )
-          : SizedBox(),
-    );
-  }
 
-  Widget _buildInfoBadge(String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(6.r),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Text(
-        text,
-        style: appStyle(11, kDark, FontWeight.w600),
+            // Assigned Vehicles Chips Section (Shown for Staff or when vehicles available)
+            if (assignedVehicles.isNotEmpty) ...[
+              SizedBox(height: 12.h),
+              Divider(height: 1, color: Colors.grey.shade100),
+              SizedBox(height: 10.h),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    MaterialCommunityIcons.truck,
+                    size: 16.sp,
+                    color: kPrimary,
+                  ),
+                  SizedBox(width: 6.w),
+                  Text(
+                    "Assigned Vehicles:",
+                    style: appStyle(12, kDark, FontWeight.bold),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6.w,
+                      runSpacing: 4.h,
+                      children: assignedVehicles.map((vNum) {
+                        return Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 8.w, vertical: 2.h),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(6.r),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.25),
+                            ),
+                          ),
+                          child: Text(
+                            vNum,
+                            style: appStyle(
+                              11,
+                              Colors.blue.shade800,
+                              FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            // Address Row
+            if (fullAddress.isNotEmpty) ...[
+              SizedBox(height: 12.h),
+              Divider(height: 1, color: Colors.grey.shade100),
+              SizedBox(height: 10.h),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 16.sp,
+                    color: kGray,
+                  ),
+                  SizedBox(width: 6.w),
+                  Expanded(
+                    child: Text(
+                      fullAddress,
+                      style: appStyle(12, kGray, FontWeight.normal),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
+}
+
+Widget _buildInfoBadge(String text) {
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade100,
+      borderRadius: BorderRadius.circular(6.r),
+      border: Border.all(color: Colors.grey.shade300),
+    ),
+    child: Text(
+      text,
+      style: appStyle(11, kDark, FontWeight.w600),
+    ),
+  );
 }
