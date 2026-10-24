@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { HashLoader } from "react-spinners";
 import { format } from "date-fns";
 import { FaExclamationTriangle, FaCheck } from "react-icons/fa";
+import { logActivity } from "@/lib/auditLogger";
 
 export interface ExistingVehicleMatch {
   rowNumber: number;
@@ -800,6 +801,25 @@ export default function ImportVehicle() {
     setIsSaving(false);
 
     if (addedCount > 0 || updatedCount > 0) {
+      if (user) {
+        logActivity({
+          userId: user.uid,
+          ownerId: effectiveUserId,
+          userName: user.displayName || user.email || "User",
+          userEmail: user.email || "",
+          action: "IMPORT_EXCEL",
+          category: "Vehicles",
+          title: `Imported Vehicles (${addedCount} added, ${updatedCount} updated)`,
+          description: `Uploaded and parsed vehicle Excel sheet with ${excelData.length} entries`,
+          metadata: {
+            addedCount,
+            updatedCount,
+            failureCount: errors.length,
+            totalRows: excelData.length,
+          },
+        });
+      }
+
       let successMsg = "";
       if (updatedCount > 0 && addedCount > 0) {
         successMsg = `Successfully updated ${updatedCount} existing and added ${addedCount} new vehicles!`;

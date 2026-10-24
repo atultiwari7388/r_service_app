@@ -37,6 +37,7 @@ import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
 import { sendLoadCompletionEmail } from "@/utils/sendLoadCompletionEmail";
+import { logActivity } from "@/lib/auditLogger";
 import {
   collection,
   deleteField,
@@ -1705,6 +1706,29 @@ function CreateNewLoadPageContent() {
         loadPayload,
         { merge: true }
       );
+
+      // Audit Log
+      if (user?.uid) {
+        logActivity({
+          ownerId: effectiveUserId || user.uid,
+          userId: user.uid,
+          action: editingLoadId ? "LOAD_UPDATE" : "LOAD_CREATE",
+          category: "Dispatch",
+          title: editingLoadId
+            ? `Updated Load #${loadPayload.loadNumber || loadRef.id}`
+            : `Created Load #${loadPayload.loadNumber || loadRef.id}`,
+          description: `Status: ${statusToSave}, Carrier: ${loadPayload.carrierName || "N/A"}, Fee: $${loadPayload.carrierFee || 0}`,
+          targetId: loadRef.id,
+          targetName: `Load #${loadPayload.loadNumber || loadRef.id}`,
+          metadata: {
+            loadNumber: loadPayload.loadNumber,
+            status: statusToSave,
+            carrierName: loadPayload.carrierName,
+            carrierFee: loadPayload.carrierFee,
+          },
+          path: "/create-new-load",
+        });
+      }
 
       if (statusToSave === "Completed" || statusToSave === "Completed Toun") {
         sendLoadCompletionEmail({

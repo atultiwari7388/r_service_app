@@ -40,6 +40,7 @@ import AddOtherExpenseModal, {
   OtherExpenseRecord,
   OtherExpenseServiceOption,
 } from "@/components/records/AddOtherExpenseModal";
+import { logActivity } from "@/lib/auditLogger";
 
 const DEFAULT_SERVICES: string[] = [
   "Cash Advance",
@@ -830,6 +831,28 @@ export default function OtherExpensesPage() {
         updatedAt: new Date().toISOString(),
       });
 
+      // Audit Log
+      if (user?.uid) {
+        logActivity({
+          ownerId: effectiveUserId,
+          userId: user.uid,
+          action: "EXPENSE_DELETE",
+          category: "Expenses",
+          title: "Deleted Other Expense",
+          description: `Deleted ${deleteTarget.type} expense of $${deleteTarget.amount} for ${deleteTarget.serviceName}`,
+          targetId: deleteTarget.id,
+          targetName: `${deleteTarget.serviceName} - $${deleteTarget.amount}`,
+          metadata: {
+            amount: deleteTarget.amount,
+            type: deleteTarget.type,
+            service: deleteTarget.serviceName,
+            company: deleteTarget.companyName || "",
+            vehicle: deleteTarget.vehicleNumber || "",
+          },
+          path: "/other-expenses",
+        });
+      }
+
       toast.success("Expense record deleted successfully");
       setDeleteTarget(null);
     } catch (error) {
@@ -890,6 +913,24 @@ export default function OtherExpensesPage() {
         wb,
         `other_expenses_${format(new Date(), "yyyy-MM-dd")}.xlsx`
       );
+
+      if (user) {
+        logActivity({
+          userId: user.uid,
+          ownerId: effectiveUserId,
+          userName: user.displayName || user.email || "User",
+          userEmail: user.email || "",
+          action: "EXPORT_DATA",
+          category: "Expenses",
+          title: `Exported Other Expenses to Excel (${exportData.length} entries)`,
+          description: `Downloaded Excel report for other expenses containing ${exportData.length} records`,
+          metadata: {
+            recordCount: exportData.length,
+            format: "xlsx",
+          },
+        });
+      }
+
       toast.success("Excel exported successfully!");
     } catch (error) {
       console.error("Export error:", error);
@@ -964,6 +1005,25 @@ export default function OtherExpensesPage() {
       )}.pdf`;
 
       pdf.save(filename);
+
+      if (user) {
+        logActivity({
+          userId: user.uid,
+          ownerId: effectiveUserId,
+          userName: user.displayName || user.email || "User",
+          userEmail: user.email || "",
+          action: "EXPORT_DATA",
+          category: "Expenses",
+          title: `Exported Other Expenses PDF Report`,
+          description: `Downloaded PDF report ${filename} containing ${filteredRecords.length} records`,
+          metadata: {
+            filename,
+            recordCount: filteredRecords.length,
+            format: "pdf",
+          },
+        });
+      }
+
       toast.success("PDF exported successfully!", { id: toastId });
     } catch (error) {
       console.error("PDF generation error:", error);

@@ -38,6 +38,7 @@ import {
 } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { GlobalToastError } from "@/utils/globalErrorToast";
+import { logActivity } from "@/lib/auditLogger";
 
 type TabId =
   | "shippers"
@@ -1191,6 +1192,27 @@ export default function SettingPage() {
         toast.success(`${currentTab.label} created successfully.`);
       }
 
+      // Audit Log
+      if (user?.uid) {
+        logActivity({
+          ownerId: effectiveUserId || user.uid,
+          userId: user.uid,
+          action: editingItem ? "DISPATCH_SETTINGS_UPDATE" : "DISPATCH_SETTINGS_CREATE",
+          category: "Dispatch",
+          title: editingItem
+            ? `Updated ${currentTab.label} in Dispatch Settings`
+            : `Added ${currentTab.label} in Dispatch Settings`,
+          description: `Name: ${payload.name || (payload as any).companyName || "N/A"}`,
+          targetId: editingItem?.id || "",
+          targetName: payload.name || (payload as any).companyName || currentTab.label,
+          metadata: {
+            tab: currentTab.label,
+            collection: currentTab.collectionName,
+          },
+          path: "/dispatch-settings",
+        });
+      }
+
       closeModal();
       await fetchEntities(1);
     } catch (error) {
@@ -1216,6 +1238,25 @@ export default function SettingPage() {
     try {
       const currentCollectionRef = collection(db, currentTab.collectionName);
       await deleteDoc(doc(currentCollectionRef, item.id));
+
+      // Audit Log
+      if (user?.uid) {
+        logActivity({
+          ownerId: effectiveUserId || user.uid,
+          userId: user.uid,
+          action: "LOAD_DELETE",
+          category: "Dispatch",
+          title: `Deleted ${currentTab.label} from Dispatch Settings`,
+          description: `Deleted item "${item.companyName || item.name}"`,
+          targetId: item.id,
+          targetName: item.companyName || item.name,
+          metadata: {
+            tab: currentTab.label,
+          },
+          path: "/dispatch-settings",
+        });
+      }
+
       toast.success(`${currentTab.label} deleted successfully.`);
       await fetchEntities(1);
     } catch (error) {

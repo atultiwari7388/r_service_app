@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { HashLoader } from "react-spinners";
 import { format } from "date-fns";
+import { logActivity } from "@/lib/auditLogger";
 import {
   FaFileDownload,
   FaArrowLeft,
@@ -946,6 +947,24 @@ export default function ImportRecordsPage() {
     setSavingProgress("");
 
     if (successCount > 0) {
+      if (user) {
+        logActivity({
+          userId: user.uid,
+          ownerId: effectiveUserId,
+          userName: user.displayName || user.email || "User",
+          userEmail: user.email || "",
+          action: "IMPORT_EXCEL",
+          category: "Records",
+          title: `Imported ${successCount} Service Records from Excel`,
+          description: `Uploaded and processed Excel file with ${successCount} service records`,
+          metadata: {
+            successCount,
+            failureCount: errors.length,
+            totalRows: totalExcelRowsCount,
+          },
+        });
+      }
+
       toast.success(
         `Successfully imported ${successCount} service invoice record(s)!`,
         {

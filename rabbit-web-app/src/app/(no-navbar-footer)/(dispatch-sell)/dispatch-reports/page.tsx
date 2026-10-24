@@ -30,6 +30,7 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
 import { GlobalToastError } from "@/utils/globalErrorToast";
+import { logActivity } from "@/lib/auditLogger";
 
 interface NormalizedLoad {
   id: string;
@@ -1024,6 +1025,24 @@ export default function DispatchReportsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Audit Log
+    if (user?.uid) {
+      logActivity({
+        ownerId: effectiveUserId || user.uid,
+        userId: user.uid,
+        action: "REPORT_EXPORT",
+        category: "Reports",
+        title: `Exported Dispatch Report (${activeTab.toUpperCase()})`,
+        description: `Exported CSV report for tab "${activeTab}" with ${filteredLoads.length} total loads`,
+        metadata: {
+          activeTab,
+          totalLoadsCount: filteredLoads.length,
+          timeframe,
+        },
+        path: "/dispatch-reports",
+      });
+    }
   };
 
   return (

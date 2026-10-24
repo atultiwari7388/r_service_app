@@ -9,7 +9,8 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
+import { logActivity } from "@/lib/auditLogger";
 import toast from "react-hot-toast";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -685,6 +686,30 @@ export default function AddOtherExpenseModal({
       );
 
       await setDoc(docRef, recordPayload, { merge: true });
+
+      // Audit Log
+      const currentUserId = auth.currentUser?.uid || recordPayload.userId;
+      if (currentUserId) {
+        logActivity({
+          ownerId: effectiveUserId,
+          userId: currentUserId,
+          action: editingRecord ? "EXPENSE_UPDATE" : "EXPENSE_CREATE",
+          category: "Expenses",
+          title: editingRecord ? "Updated Other Expense" : "Recorded Other Expense",
+          description: `${recordPayload.type} of $${recordPayload.amount} for ${recordPayload.serviceName}`,
+          targetId: recordPayload.id,
+          targetName: `${recordPayload.serviceName} - $${recordPayload.amount}`,
+          metadata: {
+            amount: recordPayload.amount,
+            type: recordPayload.type,
+            date: recordPayload.date,
+            service: recordPayload.serviceName,
+            company: recordPayload.companyName,
+            vehicle: recordPayload.vehicleNumber,
+          },
+          path: typeof window !== "undefined" ? window.location.pathname : "/other-expenses",
+        });
+      }
 
       toast.success(
         editingRecord

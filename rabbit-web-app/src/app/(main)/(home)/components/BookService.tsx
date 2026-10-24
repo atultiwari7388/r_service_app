@@ -11,6 +11,7 @@ import {
   ProfileValues,
 } from "@/types/types";
 import { db, storage, auth } from "@/lib/firebase";
+import { logActivity } from "@/lib/auditLogger";
 import {
   addDoc,
   collection,
@@ -1403,6 +1404,26 @@ const BookingSection: React.FC = () => {
         }
 
         await setDoc(doc(db, "jobs", orderId), jobData);
+
+        // Audit Log
+        if (user?.uid) {
+          logActivity({
+            ownerId: effectiveUserId || user.uid,
+            userId: user.uid,
+            action: "MECHANIC_SEARCH",
+            category: "Mechanic",
+            title: `Requested Mechanic for ${cleanVehicleNumber}`,
+            description: `Service: ${selectedService} at ${selectedLocation}`,
+            targetId: orderId,
+            targetName: `${cleanVehicleNumber} - ${selectedService}`,
+            metadata: {
+              service: selectedService,
+              vehicle: cleanVehicleNumber,
+              address: selectedLocation,
+            },
+            path: "/find-mechanic",
+          });
+        }
 
         toast.success("Service booked successfully!");
         router.push("/my-jobs");

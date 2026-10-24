@@ -23,6 +23,7 @@ import {
   CreditCard,
   CheckSquare,
   ShieldAlert,
+  History,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
 import { isAllowedAdminEmail } from "@/lib/adminConfig";
@@ -299,6 +300,12 @@ export default function AppSidebar() {
           label: "Manage Team",
           href: "/account/manage-team",
           icon: <Users size={16} />,
+        },
+        {
+          label: "Activity Logs",
+          href: "/account/activity-logs",
+          icon: <History size={16} />,
+          visible: userData?.role === "Owner" || userData?.role === "SubOwner",
         },
         {
           label: "My Companies",

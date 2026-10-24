@@ -79,6 +79,7 @@ import {
 } from "react-icons/fa";
 import ExportDataDialog from "@/components/records/ExportDataDialog";
 import AddOtherExpenseModal from "@/components/records/AddOtherExpenseModal";
+import { logActivity } from "@/lib/auditLogger";
 import { utils, writeFile } from "xlsx";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -1345,6 +1346,36 @@ export default function RecordsPage() {
         );
       }
 
+      // Log activity in audit_logs
+      if (user) {
+        const vehicleNum =
+          vehicleDoc.data()?.vehicleNumber ||
+          vehicleDoc.data()?.number ||
+          selectedVehicle;
+        const readingType = selectedVehicleType === "Truck" ? "Miles" : "Hours";
+
+        logActivity({
+          userId: user.uid,
+          ownerId: ownerId,
+          userName: user.displayName || user.email || "User",
+          userEmail: user.email || "",
+          action: "RECORD_UPDATE",
+          category: "Records",
+          title: `Updated ${readingType} for Vehicle #${vehicleNum}`,
+          description: `Set ${readingType} to ${enteredValue} (Previous: ${currentReading}) for Vehicle #${vehicleNum}`,
+          targetId: selectedVehicle,
+          targetName: `Vehicle #${vehicleNum}`,
+          metadata: {
+            vehicleId: selectedVehicle,
+            vehicleNumber: vehicleNum,
+            vehicleType: selectedVehicleType,
+            previousReading: currentReading,
+            newReading: enteredValue,
+            readingType,
+          },
+        });
+      }
+
       toast.success(
         `${
           selectedVehicleType === "Truck" ? "Miles" : "Hours"
@@ -2371,6 +2402,23 @@ export default function RecordsPage() {
       }
 
       pdf.save("record_details.pdf");
+
+      if (user) {
+        logActivity({
+          userId: user.uid,
+          ownerId: effectiveUserId,
+          userName: user.displayName || user.email || "User",
+          userEmail: user.email || "",
+          action: "RECORD_PRINT",
+          category: "Records",
+          title: "Printed / Exported PDF for Service Records",
+          description: `Generated printable PDF for current records view`,
+          metadata: {
+            page: "records",
+            type: "PDF_PRINT",
+          },
+        });
+      }
     } catch (error) {
       console.error("Error generating PDF:", error);
     } finally {
@@ -2431,6 +2479,25 @@ export default function RecordsPage() {
           record.date || "service"
         }.xlsx`
       );
+      if (user) {
+        logActivity({
+          userId: user.uid,
+          ownerId: effectiveUserId,
+          userName: user.displayName || user.email || "User",
+          userEmail: user.email || "",
+          action: "EXPORT_DATA",
+          category: "Records",
+          title: `Exported Single Record to Excel (${record.vehicleDetails?.vehicleNumber || "Vehicle"})`,
+          description: `Downloaded Excel for vehicle ${record.vehicleDetails?.vehicleNumber} on date ${record.date}`,
+          targetId: record.id,
+          targetName: record.vehicleDetails?.vehicleNumber || "Service Record",
+          metadata: {
+            vehicleNumber: record.vehicleDetails?.vehicleNumber,
+            date: record.date,
+            format: "xlsx",
+          },
+        });
+      }
       toast.success("Record downloaded successfully!");
     } catch (error) {
       console.error("Error downloading record:", error);
@@ -2492,6 +2559,22 @@ export default function RecordsPage() {
         wb,
         `all_service_records_${format(new Date(), "yyyy-MM-dd")}.xlsx`
       );
+      if (user) {
+        logActivity({
+          userId: user.uid,
+          ownerId: effectiveUserId,
+          userName: user.displayName || user.email || "User",
+          userEmail: user.email || "",
+          action: "EXPORT_DATA",
+          category: "Records",
+          title: `Exported All Records to Excel (${rows.length} records)`,
+          description: `Downloaded batch Excel report containing ${rows.length} service records`,
+          metadata: {
+            recordCount: rows.length,
+            format: "xlsx",
+          },
+        });
+      }
       toast.success(
         `Downloaded ${filteredRecords.length} record(s) successfully!`
       );
@@ -2984,6 +3067,29 @@ export default function RecordsPage() {
       }
 
       await batch.commit();
+
+      // Audit Log
+      if (user?.uid) {
+        const vNum = vehicleData.vehicleNumber || selectedVehicleObj?.vehicleNumber || "Vehicle";
+        logActivity({
+          ownerId: ownerId || effectiveUserId,
+          userId: user.uid,
+          action: isEditing ? "RECORD_UPDATE" : "RECORD_CREATE",
+          category: "Records",
+          title: isEditing ? "Updated Service Record" : "Created Service Record",
+          description: `${vNum} - ${workshopName || "Service"} ($${invoiceAmount})`,
+          targetId: recordId,
+          targetName: `${vNum} (${workshopName || "Service"})`,
+          metadata: {
+            vehicleNumber: vNum,
+            workshopName: workshopName,
+            invoiceAmount: invoiceAmount,
+            date: recordData.date,
+          },
+          path: "/records",
+        });
+      }
+
       toast.success(
         isEditing
           ? "Record updated successfully!"

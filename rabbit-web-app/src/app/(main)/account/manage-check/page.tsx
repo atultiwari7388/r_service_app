@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
+import { logActivity } from "@/lib/auditLogger";
 import toast from "react-hot-toast";
 import { GlobalToastError, GlobalToastSuccess } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
@@ -1160,6 +1161,28 @@ function ManageCheckScreenContent() {
 
       const checkDocRef = await addDoc(collection(db, "Checks"), checkData);
 
+      // Audit Log
+      if (user?.uid) {
+        logActivity({
+          ownerId: effectiveUserId,
+          userId: user.uid,
+          action: "CHECK_CREATE",
+          category: "Checks",
+          title: `Created Check #${checkNumber}`,
+          description: `Created ${selectedType} check #${checkNumber} for ${selectedUserName || "Payee"} of amount $${totalAmount}`,
+          targetId: checkDocRef.id,
+          targetName: `Check #${checkNumber} - $${totalAmount}`,
+          metadata: {
+            checkNumber,
+            type: selectedType,
+            amount: totalAmount,
+            payee: selectedUserName || "",
+            companyName: finalCompanyName || "",
+          },
+          path: "/account/manage-check",
+        });
+      }
+
       await updateCheckNumberUsage(checkNumber);
 
       if (selectedType === "Driver") {
@@ -2171,6 +2194,27 @@ function ManageCheckScreenContent() {
 
     printWindow.document.write(html);
     printWindow.document.close();
+
+    if (user) {
+      logActivity({
+        userId: user.uid,
+        ownerId: effectiveUserId,
+        userName: user.displayName || user.email || "User",
+        userEmail: user.email || "",
+        action: "CHECK_PRINT",
+        category: "Checks",
+        title: `Printed Check for ${printCheck.userName || "Payee"} ($${printCheck.totalAmount})`,
+        description: `Triggered print window for check #${printCheck.checkNumber || ""} to ${printCheck.userName}`,
+        targetId: printCheck.id,
+        targetName: String(printCheck.userName || "Check"),
+        metadata: {
+          checkNumber: printCheck.checkNumber,
+          payee: printCheck.userName,
+          amount: printCheck.totalAmount,
+          memo: printCheck.memoNumber,
+        },
+      });
+    }
   };
 
   const fetchUserAddress = async (userId: string) => {

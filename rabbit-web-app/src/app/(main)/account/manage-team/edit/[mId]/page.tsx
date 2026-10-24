@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContexts";
 import toast from "react-hot-toast";
 import HashLoader from "react-spinners/HashLoader";
 import Link from "next/link";
+import { logActivity } from "@/lib/auditLogger";
 
 interface Vehicle {
   // id: string;
@@ -379,6 +380,25 @@ export default function EditTeamMemberPage() {
 
       // Update Firestore document
       await updateDoc(doc(db, "Users", memberId), updateData);
+
+      // Audit Log
+      if (user?.uid) {
+        logActivity({
+          userId: user.uid,
+          action: "TEAM_MEMBER_UPDATE",
+          category: "Team",
+          title: `Updated Team Member (${formData.role})`,
+          description: `Updated profile & access for member ${formData.userName} (${formData.role})`,
+          targetId: memberId,
+          targetName: `${formData.userName} (${formData.role})`,
+          metadata: {
+            memberEmail: formData.email,
+            role: formData.role,
+            expensesPermission: updateData.expensesPermission,
+          },
+          path: `/account/manage-team/edit/${memberId}`,
+        });
+      }
 
       // Update vehicle assignments
       await updateVehicleAssignments();

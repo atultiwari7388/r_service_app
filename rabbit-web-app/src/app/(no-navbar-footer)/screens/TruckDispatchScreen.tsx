@@ -39,6 +39,7 @@ import { db, storage } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
 import { sendLoadCompletionEmail } from "@/utils/sendLoadCompletionEmail";
 import toast from "react-hot-toast";
+import { logActivity } from "@/lib/auditLogger";
 import {
   addDoc,
   collection,
@@ -696,6 +697,26 @@ export default function TruckDispatchScreen({
         updatedAt: serverTimestamp(),
       });
 
+      // Audit Log
+      if (user?.uid) {
+        const targetLoad = loads.find((l) => l.id === activeLoadId);
+        logActivity({
+          ownerId: effectiveUserId || user.uid,
+          userId: user.uid,
+          action: "LOAD_UPDATE",
+          category: "Dispatch",
+          title: `Uploaded ${uploadType.toUpperCase()} for Load #${targetLoad?.loadNumber || activeLoadId}`,
+          description: `Uploaded file ${selectedUploadFile.name} as ${uploadType.toUpperCase()}`,
+          targetId: activeLoadId,
+          targetName: `Load #${targetLoad?.loadNumber || activeLoadId}`,
+          metadata: {
+            fileName: selectedUploadFile.name,
+            uploadType,
+          },
+          path: "/truck-dispatch",
+        });
+      }
+
       await createHistoryEntry(
         activeLoadId,
         uploadType === "bol" ? "upload-bol" : "upload-pod",
@@ -775,6 +796,26 @@ export default function TruckDispatchScreen({
         status: "Completed",
         updatedAt: serverTimestamp(),
       });
+
+      // Audit Log
+      if (user?.uid) {
+        const targetLoad = loads.find((l) => l.id === loadId);
+        logActivity({
+          ownerId: effectiveUserId || user.uid,
+          userId: user.uid,
+          action: "LOAD_STATUS_UPDATE",
+          category: "Dispatch",
+          title: `Marked Load #${targetLoad?.loadNumber || loadId} as Completed`,
+          description: `Load status changed to Completed (${targetLoad?.customer || targetLoad?.driver || "N/A"})`,
+          targetId: loadId,
+          targetName: `Load #${targetLoad?.loadNumber || loadId}`,
+          metadata: {
+            loadNumber: targetLoad?.loadNumber,
+            status: "Completed",
+          },
+          path: "/truck-dispatch",
+        });
+      }
 
       setLoads((prev) =>
         prev.map((item) =>

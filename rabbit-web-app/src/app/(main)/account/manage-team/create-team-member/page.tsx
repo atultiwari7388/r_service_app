@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 import HashLoader from "react-spinners/HashLoader";
 import { FiUploadCloud } from "react-icons/fi";
 import DriverExcelImportModal from "@/components/dispatch/DriverExcelImportModal";
+import { logActivity } from "@/lib/auditLogger";
 
 interface Vehicle {
   id: string;
@@ -248,8 +249,11 @@ export default function CreateTeamMemberPage() {
         .replace(/[^a-z0-9]/g, "");
       const autoVendorEmail =
         formData.memberEmail.trim() ||
-        `vendor_${sanitizedVendorSlug || "partner"}_${Date.now()}@trenoops.internal`;
-      const autoVendorPhone = formData.memberPhoneNumber.trim() || "+10000000000";
+        `vendor_${
+          sanitizedVendorSlug || "partner"
+        }_${Date.now()}@trenoops.internal`;
+      const autoVendorPhone =
+        formData.memberPhoneNumber.trim() || "+10000000000";
       const autoVendorPassword = formData.memberPassword.trim() || "12345678";
 
       // Check if email exists in Users collection (only if user provided an email or for non-vendor)
@@ -287,11 +291,15 @@ export default function CreateTeamMemberPage() {
         return `+1${digits}`;
       };
 
-      const finalEmail = isVendorRole ? autoVendorEmail : formData.memberEmail.trim();
+      const finalEmail = isVendorRole
+        ? autoVendorEmail
+        : formData.memberEmail.trim();
       const finalPhone = isVendorRole
         ? formatPhoneForBackend(autoVendorPhone)
         : formatPhoneForBackend(formData.memberPhoneNumber);
-      const finalPassword = isVendorRole ? autoVendorPassword : formData.memberPassword;
+      const finalPassword = isVendorRole
+        ? autoVendorPassword
+        : formData.memberPassword;
 
       await createTeamMember({
         name: formData.memberName.trim(),
@@ -353,6 +361,26 @@ export default function CreateTeamMemberPage() {
             );
           }
         }
+      }
+
+      // Audit Log
+      if (user?.uid) {
+        logActivity({
+          ownerId:
+            typeof effectiveUserId === "string" ? effectiveUserId : user.uid,
+          userId: user.uid,
+          action: "TEAM_MEMBER_CREATE",
+          category: "Team",
+          title: `Created Team Member (${formData.role})`,
+          description: `Created member ${formData.memberName} with role ${formData.role} and email ${formData.memberEmail}`,
+          targetName: `${formData.memberName} (${formData.role})`,
+          metadata: {
+            memberEmail: formData.memberEmail,
+            role: formData.role,
+            assignedVehiclesCount: formData.assignedVehicles.length,
+          },
+          path: "/account/manage-team/create-team-member",
+        });
       }
 
       toast.success("Team member created successfully");
@@ -419,25 +447,31 @@ export default function CreateTeamMemberPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-auto">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
-              {formData.role === "Vendor" ? "Confirm Vendor Creation" : "Confirm Email Address"}
+              {formData.role === "Vendor"
+                ? "Confirm Vendor Creation"
+                : "Confirm Email Address"}
             </h3>
             <p className="text-sm text-gray-500 mb-6">
               {formData.role === "Vendor" ? (
                 formData.memberEmail.trim() ? (
                   <>
-                    Please verify that <strong>{formData.memberEmail}</strong> is correct for Vendor <strong>{formData.memberName}</strong>.
+                    Please verify that <strong>{formData.memberEmail}</strong>{" "}
+                    is correct for Vendor <strong>{formData.memberName}</strong>
+                    .
                   </>
                 ) : (
                   <>
-                    You are creating Vendor <strong>{formData.memberName}</strong> as a directory partner record.
+                    You are creating Vendor{" "}
+                    <strong>{formData.memberName}</strong> as a directory
+                    partner record.
                   </>
                 )
               ) : (
                 <>
                   Please verify that <strong>{formData.memberEmail}</strong> is
-                  correct. After creating this team member, you won&apos;t be able
-                  to change their email address. An invitation will be sent to this
-                  email for account activation.
+                  correct. After creating this team member, you won&apos;t be
+                  able to change their email address. An invitation will be sent
+                  to this email for account activation.
                 </>
               )}
             </p>
@@ -502,7 +536,9 @@ export default function CreateTeamMemberPage() {
           <div className="space-y-4">
             <input
               type="text"
-              placeholder={formData.role === "Vendor" ? "Vendor Name*" : "Name*"}
+              placeholder={
+                formData.role === "Vendor" ? "Vendor Name*" : "Name*"
+              }
               name="memberName"
               value={formData.memberName}
               onChange={handleInputChange}
@@ -511,7 +547,9 @@ export default function CreateTeamMemberPage() {
             />
             <input
               type="email"
-              placeholder={formData.role === "Vendor" ? "Email (Optional)" : "Email*"}
+              placeholder={
+                formData.role === "Vendor" ? "Email (Optional)" : "Email*"
+              }
               name="memberEmail"
               value={formData.memberEmail}
               onChange={handleInputChange}
@@ -528,7 +566,11 @@ export default function CreateTeamMemberPage() {
             />
             <input
               type="tel"
-              placeholder={formData.role === "Vendor" ? "Phone Number (Optional)" : "Phone Number*"}
+              placeholder={
+                formData.role === "Vendor"
+                  ? "Phone Number (Optional)"
+                  : "Phone Number*"
+              }
               name="memberPhoneNumber"
               value={formData.memberPhoneNumber}
               onChange={handleInputChange}
@@ -549,7 +591,11 @@ export default function CreateTeamMemberPage() {
               <>
                 <input
                   type="text"
-                  placeholder={formData.role === "Vendor" ? "Address (Optional)" : "Address*"}
+                  placeholder={
+                    formData.role === "Vendor"
+                      ? "Address (Optional)"
+                      : "Address*"
+                  }
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
@@ -560,7 +606,9 @@ export default function CreateTeamMemberPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <input
                     type="text"
-                    placeholder={formData.role === "Vendor" ? "City (Optional)" : "City*"}
+                    placeholder={
+                      formData.role === "Vendor" ? "City (Optional)" : "City*"
+                    }
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
@@ -570,7 +618,9 @@ export default function CreateTeamMemberPage() {
 
                   <input
                     type="text"
-                    placeholder={formData.role === "Vendor" ? "State (Optional)" : "State*"}
+                    placeholder={
+                      formData.role === "Vendor" ? "State (Optional)" : "State*"
+                    }
                     name="state"
                     value={formData.state}
                     onChange={handleInputChange}
@@ -582,7 +632,11 @@ export default function CreateTeamMemberPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <input
                     type="text"
-                    placeholder={formData.role === "Vendor" ? "Country (Optional)" : "Country*"}
+                    placeholder={
+                      formData.role === "Vendor"
+                        ? "Country (Optional)"
+                        : "Country*"
+                    }
                     name="country"
                     value={formData.country}
                     onChange={handleInputChange}
@@ -592,7 +646,11 @@ export default function CreateTeamMemberPage() {
 
                   <input
                     type="text"
-                    placeholder={formData.role === "Vendor" ? "Zip Code (Optional)" : "Zip Code*"}
+                    placeholder={
+                      formData.role === "Vendor"
+                        ? "Zip Code (Optional)"
+                        : "Zip Code*"
+                    }
                     name="postal"
                     value={formData.postal}
                     onChange={handleInputChange}
