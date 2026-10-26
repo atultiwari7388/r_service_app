@@ -44,7 +44,10 @@ class _FindMechanicState extends State<FindMechanic> {
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('Users')
-                .doc(widget.currentUId)
+                .doc((widget.controller.role == 'SubOwner' &&
+                        (FirebaseAuth.instance.currentUser?.uid.isNotEmpty ?? false))
+                    ? FirebaseAuth.instance.currentUser!.uid
+                    : widget.currentUId)
                 .collection('Vehicles')
                 .where("active", isEqualTo: true)
                 .snapshots(),

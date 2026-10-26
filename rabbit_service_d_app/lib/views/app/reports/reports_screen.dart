@@ -1086,7 +1086,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     isExpanded: true,
                     value: reController.selectedVehicle,
                     hint: const Text('Select Vehicle'),
-                    items: (reController.vehicles
+                    items: (reController.selectableVehicles
                           ..sort((a, b) => a['vehicleNumber']
                               .toString()
                               .toLowerCase()
@@ -1588,7 +1588,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     isExpanded: true,
                     value: reController.selectedVehicle,
                     hint: const Text('Select Vehicle'),
-                    items: (reController.vehicles
+                    items: (reController.selectableVehicles
                           ..sort((a, b) => a['vehicleNumber']
                               .toString()
                               .toLowerCase()

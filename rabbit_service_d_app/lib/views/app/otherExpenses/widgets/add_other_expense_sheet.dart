@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -166,10 +167,27 @@ class _AddOtherExpenseSheetState extends State<AddOtherExpenseSheet> {
       companies.sort((a, b) => (a['name'] as String).toLowerCase().compareTo((b['name'] as String).toLowerCase()));
       _companiesList = companies;
 
-      // 3. Fetch Vehicles
+      // 3. Fetch Vehicles: if member/SubOwner has assigned vehicles, use their own vehicle subcollection
+      String vehiclesTargetUid = widget.effectiveUserId;
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUid != null && currentUid != widget.effectiveUserId) {
+        try {
+          final assignedSnap = await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(currentUid)
+              .collection('Vehicles')
+              .get();
+          if (assignedSnap.docs.isNotEmpty) {
+            vehiclesTargetUid = currentUid;
+          }
+        } catch (e) {
+          log("Error checking assigned vehicles for member: $e");
+        }
+      }
+
       final vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(widget.effectiveUserId)
+          .doc(vehiclesTargetUid)
           .collection('Vehicles')
           .get();
 

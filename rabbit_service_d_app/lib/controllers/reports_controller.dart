@@ -81,6 +81,11 @@ class ReportsController extends GetxController {
 
   // Data storage
   final List<Map<String, dynamic>> vehicles = [];
+  final List<Map<String, dynamic>> assignedVehicles = [];
+  List<Map<String, dynamic>> get selectableVehicles =>
+      (role == 'SubOwner' && assignedVehicles.isNotEmpty)
+          ? assignedVehicles
+          : vehicles;
   final List<Map<String, dynamic>> services = [];
   final List<Map<String, dynamic>> records = [];
   final List<Map<String, dynamic>> milesToAddInRecords = [];
@@ -88,6 +93,7 @@ class ReportsController extends GetxController {
 
   // Stream subscriptions
   StreamSubscription? vehiclesSubscription;
+  StreamSubscription? assignedVehiclesSubscription;
   StreamSubscription? recordsSubscription;
   StreamSubscription? servicesSubscription;
   StreamSubscription? milesSubscription;
@@ -265,6 +271,10 @@ class ReportsController extends GetxController {
       vehiclesSubscription = null;
     } catch (_) {}
     try {
+      assignedVehiclesSubscription?.cancel();
+      assignedVehiclesSubscription = null;
+    } catch (_) {}
+    try {
       servicesSubscription?.cancel();
       servicesSubscription = null;
     } catch (_) {}
@@ -340,6 +350,30 @@ class ReportsController extends GetxController {
     }, onError: (error) {
       log("Vehicles stream error: $error");
     });
+
+    // Setup assigned vehicles stream for SubOwner/member if different from owner
+    if (currentUId.isNotEmpty && currentUId != effectiveUserId) {
+      assignedVehiclesSubscription = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection("Vehicles")
+          .where("active", isEqualTo: true)
+          .snapshots()
+          .listen((snapshot) {
+        assignedVehicles.clear();
+        if (snapshot.docs.isNotEmpty) {
+          assignedVehicles.addAll(
+              snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
+        }
+        update();
+        debugPrint(
+            'Fetched ${assignedVehicles.length} assigned vehicles for user: $currentUId');
+      }, onError: (error) {
+        log("Assigned Vehicles stream error: $error");
+      });
+    } else {
+      assignedVehicles.clear();
+    }
 
     // Setup services stream - metadata is global
     servicesSubscription = FirebaseFirestore.instance
@@ -2169,12 +2203,13 @@ class ReportsController extends GetxController {
   @override
   void onClose() {
     try {
-      vehiclesSubscription!.cancel();
-      recordsSubscription!.cancel();
-      servicesSubscription!.cancel();
-      milesSubscription!.cancel();
-      packagesSubscription!.cancel();
-      usersSubscription!.cancel();
+      vehiclesSubscription?.cancel();
+      assignedVehiclesSubscription?.cancel();
+      recordsSubscription?.cancel();
+      servicesSubscription?.cancel();
+      milesSubscription?.cancel();
+      packagesSubscription?.cancel();
+      usersSubscription?.cancel();
       workshopSubscription?.cancel();
     } catch (e) {
       log("Error canceling streams in ReportsController onClose: $e");
