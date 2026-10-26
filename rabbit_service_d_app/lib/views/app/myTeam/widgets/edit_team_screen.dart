@@ -427,10 +427,9 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                           ),
                         ],
                       ),
-                    // Vehicle assignment section
+                    // Vehicle assignment section (Visible for SubOwner, Driver, Manager, Accountant)
                     if (selectedRole != null &&
                         selectedRole != "Vendor" &&
-                        selectedRole != "SubOwner" &&
                         selectedRole != "Other Staff") ...[
                       SizedBox(height: 24.h),
                       Text(
@@ -460,7 +459,13 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                                 );
                               }).toList(),
                             ),
+                    ],
 
+                    // Permissions sections (Hidden for SubOwner, since SubOwner gets full access by default)
+                    if (selectedRole != null &&
+                        selectedRole != "Vendor" &&
+                        selectedRole != "SubOwner" &&
+                        selectedRole != "Other Staff") ...[
                       // Record access section
                       SizedBox(height: 24.h),
                       Text(
@@ -845,8 +850,8 @@ class _EditTeamMemberState extends State<EditTeamMember> {
           .doc(widget.memberId)
           .update(updateData);
 
-      // Update vehicle assignments (only for non-Vendor and non-SubOwner roles)
-      if (selectedRole != "Vendor" && selectedRole != "SubOwner") {
+      // Update vehicle assignments (only for non-Vendor roles)
+      if (selectedRole != "Vendor") {
         await _updateVehicleAssignments();
       }
 

@@ -510,9 +510,7 @@ export default function ManageTeam(): JSX.Element {
                       {member.role === "SubOwner" ? "Co-Owner" : member.role}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {member.role === "SubOwner" ? (
-                        <span className="text-gray-400">-</span>
-                      ) : member.vehicles.length > 0 ? (
+                      {member.vehicles.length > 0 ? (
                         <span className="inline-block bg-gray-100 rounded-full px-3 py-1 text-xs">
                           {member.vehicles.length} vehicles
                         </span>
@@ -568,41 +566,40 @@ export default function ManageTeam(): JSX.Element {
                           >
                             <Menu.Items className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                               <div className="py-1">
-                                {member.role === "SubOwner" ? (
+                                {role === "Owner" && (
                                   <Menu.Item>
                                     {({ active }) => (
                                       <Link
-                                        href={`/account/manage-team/member-profile/${member.uid}`}
+                                        href={`/account/manage-team/edit/${member.uid}`}
                                         className={`${
                                           active
                                             ? "bg-gray-100 text-gray-900"
                                             : "text-gray-700"
                                         } flex items-center px-4 py-2 text-sm`}
                                       >
-                                        <FiUser className="mr-3 h-5 w-5 text-gray-400" />
-                                        View Profile
+                                        <FiEdit className="mr-3 h-5 w-5 text-gray-400" />
+                                        Edit
                                       </Link>
                                     )}
                                   </Menu.Item>
-                                ) : (
+                                )}
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <Link
+                                      href={`/account/manage-team/member-profile/${member.uid}`}
+                                      className={`${
+                                        active
+                                          ? "bg-gray-100 text-gray-900"
+                                          : "text-gray-700"
+                                      } flex items-center px-4 py-2 text-sm`}
+                                    >
+                                      <FiUser className="mr-3 h-5 w-5 text-gray-400" />
+                                      View Profile
+                                    </Link>
+                                  )}
+                                </Menu.Item>
+                                {member.role !== "SubOwner" && (
                                   <>
-                                    {role === "Owner" && (
-                                      <Menu.Item>
-                                        {({ active }) => (
-                                          <Link
-                                            href={`/account/manage-team/edit/${member.uid}`}
-                                            className={`${
-                                              active
-                                                ? "bg-gray-100 text-gray-900"
-                                                : "text-gray-700"
-                                            } flex items-center px-4 py-2 text-sm`}
-                                          >
-                                            <FiEdit className="mr-3 h-5 w-5 text-gray-400" />
-                                            Edit
-                                          </Link>
-                                        )}
-                                      </Menu.Item>
-                                    )}
                                     <Menu.Item>
                                       {({ active }) => (
                                         <Link
@@ -618,37 +615,39 @@ export default function ManageTeam(): JSX.Element {
                                         </Link>
                                       )}
                                     </Menu.Item>
-                                    <Menu.Item>
-                                      {({ active }) => (
-                                        <Link
-                                          href={`/account/manage-team/member-vehicles/${member.uid}`}
-                                          className={`${
-                                            active
-                                              ? "bg-gray-100 text-gray-900"
-                                              : "text-gray-700"
-                                          } flex items-center px-4 py-2 text-sm`}
-                                        >
-                                          <FiTruck className="mr-3 h-5 w-5 text-gray-400" />
-                                          View Vehicles
-                                        </Link>
-                                      )}
-                                    </Menu.Item>
-                                    <Menu.Item>
-                                      {({ active }) => (
-                                        <Link
-                                          href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
-                                          className={`${
-                                            active
-                                              ? "bg-gray-100 text-gray-900"
-                                              : "text-gray-700"
-                                          } flex items-center px-4 py-2 text-sm`}
-                                        >
-                                          <FiBriefcase className="mr-3 h-5 w-5 text-gray-400" />
-                                          View Jobs
-                                        </Link>
-                                      )}
-                                    </Menu.Item>
                                   </>
+                                )}
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <Link
+                                      href={`/account/manage-team/member-vehicles/${member.uid}`}
+                                      className={`${
+                                        active
+                                          ? "bg-gray-100 text-gray-900"
+                                          : "text-gray-700"
+                                      } flex items-center px-4 py-2 text-sm`}
+                                    >
+                                      <FiTruck className="mr-3 h-5 w-5 text-gray-400" />
+                                      View Vehicles
+                                    </Link>
+                                  )}
+                                </Menu.Item>
+                                {member.role !== "SubOwner" && (
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <Link
+                                        href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 text-gray-900"
+                                            : "text-gray-700"
+                                        } flex items-center px-4 py-2 text-sm`}
+                                      >
+                                        <FiBriefcase className="mr-3 h-5 w-5 text-gray-400" />
+                                        View Jobs
+                                      </Link>
+                                    )}
+                                  </Menu.Item>
                                 )}
                               </div>
                             </Menu.Items>
@@ -713,16 +712,10 @@ export default function ManageTeam(): JSX.Element {
                     <span className="font-medium">Phone:</span>{" "}
                     {member.phoneNumber}
                   </p>
-                  {/* <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500">
                     <span className="font-medium">Vehicles:</span>{" "}
                     {member.vehicles.length}
-                  </p> */}
-                  {member.role !== "SubOwner" && (
-                    <p className="text-sm text-gray-500">
-                      <span className="font-medium">Vehicles:</span>{" "}
-                      {member.vehicles.length}
-                    </p>
-                  )}
+                  </p>
                 </div>
                 <div className="mt-4 flex justify-between items-center pt-3 border-t border-gray-100">
                   {role === "Owner" ? (
@@ -763,72 +756,69 @@ export default function ManageTeam(): JSX.Element {
                       >
                         <Menu.Items className="absolute right-0 z-20 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                           <div className="py-1">
-                            {member.role === "SubOwner" ? (
+                            {role === "Owner" && (
                               <Menu.Item>
                                 {({ active }) => (
                                   <Link
-                                    href={`/account/manage-team/member-profile/${member.uid}`}
+                                    href={`/account/manage-team/edit/${member.uid}`}
                                     className={`${
                                       active
                                         ? "bg-gray-100 text-gray-900"
                                         : "text-gray-700"
                                     } flex items-center px-4 py-2 text-sm`}
                                   >
-                                    <FiUser className="mr-3 h-4 w-4 text-gray-400" />
-                                    View Profile
+                                    <FiEdit className="mr-3 h-4 w-4 text-gray-400" />
+                                    Edit
                                   </Link>
                                 )}
                               </Menu.Item>
-                            ) : (
-                              <>
-                                {role === "Owner" && (
-                                  <Menu.Item>
-                                    {({ active }) => (
-                                      <Link
-                                        href={`/account/manage-team/edit/${member.uid}`}
-                                        className={`${
-                                          active
-                                            ? "bg-gray-100 text-gray-900"
-                                            : "text-gray-700"
-                                        } flex items-center px-4 py-2 text-sm`}
-                                      >
-                                        <FiEdit className="mr-3 h-4 w-4 text-gray-400" />
-                                        Edit
-                                      </Link>
-                                    )}
-                                  </Menu.Item>
+                            )}
+                            <Menu.Item>
+                              {({ active }) => (
+                                <Link
+                                  href={`/account/manage-team/member-profile/${member.uid}`}
+                                  className={`${
+                                    active
+                                      ? "bg-gray-100 text-gray-900"
+                                      : "text-gray-700"
+                                  } flex items-center px-4 py-2 text-sm`}
+                                >
+                                  <FiUser className="mr-3 h-4 w-4 text-gray-400" />
+                                  View Profile
+                                </Link>
+                              )}
+                            </Menu.Item>
+                            <Menu.Item>
+                              {({ active }) => (
+                                <Link
+                                  href={`/account/manage-team/member-vehicles/${member.uid}`}
+                                  className={`${
+                                    active
+                                      ? "bg-gray-100 text-gray-900"
+                                      : "text-gray-700"
+                                  } flex items-center px-4 py-2 text-sm`}
+                                >
+                                  <FiTruck className="mr-3 h-4 w-4 text-gray-400" />
+                                  View Vehicles
+                                </Link>
+                              )}
+                            </Menu.Item>
+                            {member.role !== "SubOwner" && (
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <Link
+                                    href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
+                                    className={`${
+                                      active
+                                        ? "bg-gray-100 text-gray-900"
+                                        : "text-gray-700"
+                                    } flex items-center px-4 py-2 text-sm`}
+                                  >
+                                    <FiBriefcase className="mr-3 h-4 w-4 text-gray-400" />
+                                    View Jobs
+                                  </Link>
                                 )}
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <Link
-                                      href={`/account/manage-team/member-vehicles/${member.uid}`}
-                                      className={`${
-                                        active
-                                          ? "bg-gray-100 text-gray-900"
-                                          : "text-gray-700"
-                                      } flex items-center px-4 py-2 text-sm`}
-                                    >
-                                      <FiTruck className="mr-3 h-4 w-4 text-gray-400" />
-                                      View Vehicles
-                                    </Link>
-                                  )}
-                                </Menu.Item>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <Link
-                                      href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
-                                      className={`${
-                                        active
-                                          ? "bg-gray-100 text-gray-900"
-                                          : "text-gray-700"
-                                      } flex items-center px-4 py-2 text-sm`}
-                                    >
-                                      <FiBriefcase className="mr-3 h-4 w-4 text-gray-400" />
-                                      View Jobs
-                                    </Link>
-                                  )}
-                                </Menu.Item>
-                              </>
+                              </Menu.Item>
                             )}
                           </div>
                         </Menu.Items>

@@ -349,10 +349,10 @@ class _AddTeamMemberState extends State<AddTeamMember> {
               else
                 Text("Firstly select a role"),
               SizedBox(height: 10.h),
+              // Vehicle assignment section
               if (selectedRole != null &&
                   selectedRole != "Vendor" &&
-                  selectedRole != "Other Staff" &&
-                  selectedRole != "SubOwner") ...[
+                  selectedRole != "Other Staff") ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -420,7 +420,13 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                       ),
 
                 SizedBox(height: 10.h),
+              ],
 
+              // Access and permissions sections - hidden for SubOwner (defaulted on backend)
+              if (selectedRole != null &&
+                  selectedRole != "Vendor" &&
+                  selectedRole != "Other Staff" &&
+                  selectedRole != "SubOwner") ...[
                 //record access
                 Text(
                   "Assign Record Access",

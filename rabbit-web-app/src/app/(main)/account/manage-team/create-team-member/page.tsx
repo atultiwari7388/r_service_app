@@ -301,6 +301,15 @@ export default function CreateTeamMemberPage() {
         ? autoVendorPassword
         : formData.memberPassword;
 
+      const isSubOwner = formData.role === "SubOwner";
+      const finalRecordAccess = isSubOwner
+        ? ["View", "Edit", "Add"]
+        : formData.recordAccess;
+      const finalChequeAccess = isSubOwner ? ["Cheque"] : formData.chequeAccess;
+      const finalExpensesPermission = isSubOwner
+        ? { view: true, edit: true, add: true }
+        : formData.expensesPermission;
+
       await createTeamMember({
         name: formData.memberName.trim(),
         email: finalEmail,
@@ -323,12 +332,12 @@ export default function CreateTeamMemberPage() {
         selectedPayType: formData.payType,
         selectedVehicles: formData.assignedVehicles,
         perMileCharge: formData.perMileCharge,
-        selectedRecordAccess: formData.recordAccess,
-        selectedChequeAccess: formData.chequeAccess,
-        expensesPermission: formData.expensesPermission,
+        selectedRecordAccess: finalRecordAccess,
+        selectedChequeAccess: finalChequeAccess,
+        expensesPermission: finalExpensesPermission,
         licExpiryDate: formData.licExpiryDate?.toISOString(),
-        recordAccess: formData.recordAccess,
-        chequeAccess: formData.chequeAccess,
+        recordAccess: finalRecordAccess,
+        chequeAccess: finalChequeAccess,
         dob: formData.dob,
         lastDrugTest: formData.lastDrugTest,
         dateOfHire: formData.dateOfHire,
@@ -841,8 +850,9 @@ export default function CreateTeamMemberPage() {
                     />
                   )}
 
-                {/* Vehicle Assignment - Show for Driver, Manager, Accountant, Other Staff, but NOT for SubOwner */}
-                {(formData.role === "Driver" ||
+                {/* Vehicle Assignment - Show for Co-Owner (SubOwner), Driver, Manager, Accountant, Other Staff */}
+                {(formData.role === "SubOwner" ||
+                  formData.role === "Driver" ||
                   formData.role === "Manager" ||
                   formData.role === "Accountant" ||
                   formData.role === "Other Staff") && (

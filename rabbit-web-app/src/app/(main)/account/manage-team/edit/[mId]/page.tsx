@@ -68,7 +68,26 @@ interface TeamMember {
   dateOfTermination: Date | Timestamp | null;
 }
 
-const roles = ["Manager", "Driver", "Vendor", "Accountant", "Other Staff"];
+// UI display names
+const roleDisplayNames = [
+  "Co-Owner",
+  "Manager",
+  "Driver",
+  "Vendor",
+  "Accountant",
+  "Other Staff",
+];
+
+// Database storage values
+const roleDatabaseValues = [
+  "SubOwner",
+  "Manager",
+  "Driver",
+  "Vendor",
+  "Accountant",
+  "Other Staff",
+];
+
 const payTypes = ["Per Mile", "Per Trip", "Per Hour", "Per Month", "Monthly"];
 const recordAccessOptions = ["View", "Edit", "Add"];
 const chequeAccessOptions = ["Cheque"];
@@ -80,6 +99,7 @@ export default function EditTeamMemberPage() {
   const { user } = useAuth() || { user: null };
   const currentUserId = user?.uid;
 
+  const [effectiveUserId, setEffectiveUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVehiclesLoading, setIsVehiclesLoading] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -127,13 +147,39 @@ export default function EditTeamMemberPage() {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
 
   useEffect(() => {
+    const fetchCurrentUserData = async () => {
+      if (!currentUserId) return;
+      try {
+        const userDoc = await getDoc(doc(db, "Users", currentUserId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+          } else {
+            setEffectiveUserId(currentUserId);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching current user data:", err);
+      }
+    };
+    fetchCurrentUserData();
+  }, [currentUserId]);
+
+  useEffect(() => {
     if (memberId && currentUserId) {
       fetchMemberData();
       fetchMemberVehicles();
-      fetchVehicles();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberId, currentUserId]);
+
+  useEffect(() => {
+    if (effectiveUserId) {
+      fetchVehicles();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveUserId]);
 
   const fetchMemberData = async () => {
     try {
@@ -227,11 +273,12 @@ export default function EditTeamMemberPage() {
   };
 
   const fetchVehicles = async () => {
-    if (user) {
+    const ownerId = effectiveUserId || user?.uid;
+    if (ownerId) {
       try {
         setIsVehiclesLoading(true);
 
-        const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+        const vehiclesRef = collection(db, "Users", ownerId, "Vehicles");
 
         // ✅ Add query to only fetch active vehicles
         const q = query(vehiclesRef, where("active", "==", true));
@@ -341,8 +388,23 @@ export default function EditTeamMemberPage() {
         return `+1${digits}`;
       };
 
+      const isSubOwner = formData.role === "SubOwner";
+      const finalRecordAccess = isSubOwner
+        ? ["View", "Edit", "Add"]
+        : selectedRecordAccess;
+      const finalChequeAccess = isSubOwner
+        ? ["Cheque"]
+        : selectedChequeAccess;
+      const finalExpensesPermission = isSubOwner
+        ? { view: true, edit: true, add: true }
+        : {
+            view: expensesPermission.view,
+            edit: expensesPermission.edit,
+            add: expensesPermission.add,
+          };
+
       // Prepare update data
-      const updateData: Partial<TeamMember> = {
+      const updateData: Partial<TeamMember> & Record<string, any> = {
         userName: formData.userName,
         email: formData.email,
         email2: formData.email2 || "",
@@ -358,19 +420,21 @@ export default function EditTeamMemberPage() {
         socialSecurityNumber: formData.socialSecurityNumber || "",
         perMileCharge: formData.perMileCharge || "0",
         role: formData.role,
+        isSubOwner: isSubOwner,
+        isManager: formData.role === "Manager",
+        isDriver: formData.role === "Driver",
+        isVendor: formData.role === "Vendor",
+        isAccountant: formData.role === "Accountant",
+        isOtherStaff: formData.role === "Other Staff",
         payType: formData.payType || "",
         selectedPayType: formData.payType || "",
         payMode: formData.payType || "",
         // assignedVehicles: selectedVehicles,
-        isView: selectedRecordAccess.includes("View"),
-        isEdit: selectedRecordAccess.includes("Edit"),
-        isAdd: selectedRecordAccess.includes("Add"),
-        isCheque: selectedChequeAccess.includes("Cheque"),
-        expensesPermission: {
-          view: expensesPermission.view,
-          edit: expensesPermission.edit,
-          add: expensesPermission.add,
-        },
+        isView: finalRecordAccess.includes("View"),
+        isEdit: finalRecordAccess.includes("Edit"),
+        isAdd: finalRecordAccess.includes("Add"),
+        isCheque: finalChequeAccess.includes("Cheque"),
+        expensesPermission: finalExpensesPermission,
         licenseExpiryDate: formData.licenseExpiryDate || null,
         dateOfBirth: formData.dateOfBirth || null,
         lastDrugTestDate: formData.lastDrugTestDate || null,
@@ -414,7 +478,8 @@ export default function EditTeamMemberPage() {
   };
 
   const updateVehicleAssignments = async () => {
-    if (!user) return;
+    const ownerId = effectiveUserId || user?.uid;
+    if (!ownerId) return;
 
     // Get current vehicle IDs from member's vehicles collection
     const currentVehicleIds = memberVehicles.map((v) => v.vehicleId);
@@ -438,7 +503,7 @@ export default function EditTeamMemberPage() {
     for (const vehicleId of toAdd) {
       // Copy the Vehicle document from owner to member
       const vehicleDoc = await getDoc(
-        doc(db, "Users", user.uid, "Vehicles", vehicleId)
+        doc(db, "Users", ownerId, "Vehicles", vehicleId)
       );
 
       if (vehicleDoc.exists()) {
@@ -451,7 +516,7 @@ export default function EditTeamMemberPage() {
 
       // Copy related DataServices
       const dataServicesQuery = query(
-        collection(db, "Users", user.uid, "DataServices"),
+        collection(db, "Users", ownerId, "DataServices"),
         where("vehicleId", "==", vehicleId)
       );
 
@@ -539,11 +604,14 @@ export default function EditTeamMemberPage() {
               className="mt-1 block w-full rounded-md border border-gray-300 p-2"
             >
               <option value="">Select a role</option>
-              {roles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
+              {roleDisplayNames.map((displayName, index) => {
+                const databaseValue = roleDatabaseValues[index];
+                return (
+                  <option key={databaseValue} value={databaseValue}>
+                    {displayName}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -814,31 +882,33 @@ export default function EditTeamMemberPage() {
                   />
                 </div>
 
-                {/* Pay Type Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Pay Type
-                  </label>
-                  <select
-                    name="payType"
-                    value={formData.payType || ""}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-                  >
-                    <option value="">Select pay type</option>
-                    {payTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                    {formData.payType &&
-                      !payTypes.includes(formData.payType) && (
-                        <option value={formData.payType}>
-                          {formData.payType}
+                {/* Pay Type Selection - Show for non-SubOwner roles */}
+                {formData.role !== "SubOwner" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Pay Type
+                    </label>
+                    <select
+                      name="payType"
+                      value={formData.payType || ""}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+                    >
+                      <option value="">Select pay type</option>
+                      {payTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
                         </option>
-                      )}
-                  </select>
-                </div>
+                      ))}
+                      {formData.payType &&
+                        !payTypes.includes(formData.payType) && (
+                          <option value={formData.payType}>
+                            {formData.payType}
+                          </option>
+                        )}
+                    </select>
+                  </div>
+                )}
 
                 {/* Driver Specific Fields */}
                 {formData.role === "Driver" &&
@@ -853,8 +923,9 @@ export default function EditTeamMemberPage() {
                     />
                   )}
 
-                {/* Vehicle Assignment */}
-                {(formData.role === "Driver" ||
+                {/* Vehicle Assignment - Show for Co-Owner (SubOwner), Driver, Manager, Accountant, Other Staff */}
+                {(formData.role === "SubOwner" ||
+                  formData.role === "Driver" ||
                   formData.role === "Manager" ||
                   formData.role === "Accountant" ||
                   formData.role === "Other Staff") && (
@@ -918,56 +989,60 @@ export default function EditTeamMemberPage() {
                   </div>
                 )}
 
-                {/* Access Controls */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Record Access
-                  </label>
-                  <div className="space-y-2 border rounded p-2">
-                    {recordAccessOptions.map((access) => (
-                      <label
-                        key={access}
-                        className="flex items-center space-x-2"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedRecordAccess.includes(access)}
-                          onChange={() =>
-                            handleAccessChange("recordAccess", access)
-                          }
-                        />
-                        <span>{access}</span>
-                      </label>
-                    ))}
+                {/* Access Controls - Show for non-SubOwner roles */}
+                {formData.role !== "SubOwner" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Record Access
+                    </label>
+                    <div className="space-y-2 border rounded p-2">
+                      {recordAccessOptions.map((access) => (
+                        <label
+                          key={access}
+                          className="flex items-center space-x-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedRecordAccess.includes(access)}
+                            onChange={() =>
+                              handleAccessChange("recordAccess", access)
+                            }
+                          />
+                          <span>{access}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Expenses Permission */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Expenses Permission
-                  </label>
-                  <div className="space-y-2 border rounded p-2">
-                    {(["view", "edit", "add"] as const).map((perm) => (
-                      <label
-                        key={perm}
-                        className="flex items-center space-x-2"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={expensesPermission[perm]}
-                          onChange={(e) =>
-                            setExpensesPermission((prev) => ({
-                              ...prev,
-                              [perm]: e.target.checked,
-                            }))
-                          }
-                        />
-                        <span className="capitalize">{perm}</span>
-                      </label>
-                    ))}
+                {/* Expenses Permission - Show for non-SubOwner roles */}
+                {formData.role !== "SubOwner" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Expenses Permission
+                    </label>
+                    <div className="space-y-2 border rounded p-2">
+                      {(["view", "edit", "add"] as const).map((perm) => (
+                        <label
+                          key={perm}
+                          className="flex items-center space-x-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={expensesPermission[perm]}
+                            onChange={(e) =>
+                              setExpensesPermission((prev) => ({
+                                ...prev,
+                                [perm]: e.target.checked,
+                              }))
+                            }
+                          />
+                          <span className="capitalize">{perm}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Cheque Access */}
                 {(formData.role === "Manager" ||
