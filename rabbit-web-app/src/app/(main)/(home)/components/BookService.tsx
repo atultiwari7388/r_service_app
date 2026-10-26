@@ -725,8 +725,11 @@ const BookingSection: React.FC = () => {
 
     const fetchUserVehicles = async (): Promise<VehicleTypes[]> => {
       try {
+        const vehiclesTargetUid =
+          role === "SubOwner" && user?.uid ? user.uid : effectiveUserId;
+
         const vehiclesSnapshot = await getDocs(
-          collection(db, "Users", effectiveUserId, "Vehicles")
+          collection(db, "Users", vehiclesTargetUid, "Vehicles")
         );
         if (!vehiclesSnapshot.empty) {
           return vehiclesSnapshot.docs
@@ -807,7 +810,7 @@ const BookingSection: React.FC = () => {
     };
 
     loadRegisteredUserData();
-  }, [effectiveUserId, userData?.role, userData?.isGuest]);
+  }, [effectiveUserId, userData?.role, userData?.isGuest, role, user?.uid]);
 
   // Handle selection changes
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

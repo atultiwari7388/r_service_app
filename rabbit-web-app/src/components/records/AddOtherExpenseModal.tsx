@@ -313,9 +313,24 @@ export default function AddOtherExpenseModal({
         loadedCompanies.sort((a, b) => a.companyName.localeCompare(b.companyName));
         setCompaniesList(loadedCompanies);
 
-        // Fetch Vehicles
+        // Fetch Vehicles: if logged in user is a SubOwner/TeamMember with assigned vehicles, load their assigned vehicles
+        let vehiclesTargetUid = effectiveUserId;
+        const currentUid = auth.currentUser?.uid;
+        if (currentUid && currentUid !== effectiveUserId) {
+          try {
+            const currentSubSnap = await getDocs(
+              collection(db, "Users", currentUid, "Vehicles")
+            );
+            if (!currentSubSnap.empty) {
+              vehiclesTargetUid = currentUid;
+            }
+          } catch (e) {
+            console.error("Error checking assigned vehicles for member:", e);
+          }
+        }
+
         const vehSnapshot = await getDocs(
-          collection(db, "Users", effectiveUserId, "Vehicles")
+          collection(db, "Users", vehiclesTargetUid, "Vehicles")
         );
         const loadedVehicles: VehicleOption[] = [];
         vehSnapshot.forEach((d) => {

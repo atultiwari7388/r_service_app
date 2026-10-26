@@ -593,6 +593,7 @@ const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
 export default function RecordsPage() {
   const [companies, setCompanies] = useState<CompanyType[]>([]);
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
+  const [assignedVehicles, setAssignedVehicles] = useState<VehicleTypes[]>([]);
   const [services, setServices] = useState<ServiceData[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
   const [highlightedRecordId, setHighlightedRecordId] = useState<string | null>(
@@ -1797,6 +1798,14 @@ export default function RecordsPage() {
     ]
   );
 
+  // Vehicles selectable for adding records / adding miles (filtered for SubOwners / team members)
+  const selectableVehicles = useMemo(() => {
+    if (userRole === "SubOwner" && assignedVehicles.length > 0) {
+      return assignedVehicles;
+    }
+    return vehicles;
+  }, [userRole, assignedVehicles, vehicles]);
+
   const filteredRecords = useMemo(
     () =>
       records
@@ -2137,7 +2146,10 @@ export default function RecordsPage() {
     });
 
     // Fetch vehicles using effectiveUserId
-    const fetchData = async () => {
+    let unsubscribeVehicles: (() => void) | undefined;
+    let unsubscribeAssignedVehicles: (() => void) | undefined;
+
+    const fetchData = () => {
       try {
         const vehiclesRef = collection(
           db,
@@ -2147,7 +2159,7 @@ export default function RecordsPage() {
         );
         const q = query(vehiclesRef, where("active", "==", true));
 
-        const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
+        unsubscribeVehicles = onSnapshot(q, (snapshot) => {
           const vehiclesList = snapshot.docs.map(
             (doc) =>
               ({
@@ -2161,7 +2173,28 @@ export default function RecordsPage() {
           );
         });
 
-        return unsubscribeVehicles;
+        // If user is a SubOwner or Team Member with their own assigned vehicles collection
+        if (user?.uid && user.uid !== effectiveUserId) {
+          const assignedVehiclesRef = collection(
+            db,
+            "Users",
+            user.uid,
+            "Vehicles"
+          );
+          const assignedQuery = query(assignedVehiclesRef, where("active", "==", true));
+          unsubscribeAssignedVehicles = onSnapshot(assignedQuery, (snapshot) => {
+            const list = snapshot.docs.map(
+              (doc) =>
+                ({
+                  id: doc.id,
+                  ...doc.data(),
+                } as VehicleTypes)
+            );
+            setAssignedVehicles(list);
+          });
+        } else {
+          setAssignedVehicles([]);
+        }
       } catch (error) {
         console.error("Error fetching vehicles:", error);
       }
@@ -2233,8 +2266,10 @@ export default function RecordsPage() {
     return () => {
       unsubscribe();
       unsubscribeCompanies();
+      if (unsubscribeVehicles) unsubscribeVehicles();
+      if (unsubscribeAssignedVehicles) unsubscribeAssignedVehicles();
     };
-  }, [effectiveUserId]);
+  }, [effectiveUserId, user?.uid]);
 
   useEffect(() => {
     updateServiceDefaultValues();
@@ -4779,7 +4814,7 @@ export default function RecordsPage() {
                     sx={{ minHeight: "56px" }}
                     label="Select Vehicle"
                   >
-                    {vehicles.map((vehicle) => (
+                    {selectableVehicles.map((vehicle) => (
                       <MenuItem key={vehicle.id} value={vehicle.id}>
                         {vehicle.vehicleNumber} ({vehicle.companyName})
                         {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
@@ -4868,7 +4903,7 @@ export default function RecordsPage() {
                       label="Select Vehicle"
                     >
                       {/* Sort vehicles alphabetically by vehicleNumber before mapping */}
-                      {vehicles
+                      {selectableVehicles
                         .sort((a, b) =>
                           a.vehicleNumber.localeCompare(b.vehicleNumber)
                         )
