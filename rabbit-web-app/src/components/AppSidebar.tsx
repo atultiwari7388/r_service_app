@@ -24,6 +24,7 @@ import {
   CheckSquare,
   ShieldAlert,
   History,
+  Share2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
 import { isAllowedAdminEmail } from "@/lib/adminConfig";
@@ -224,6 +225,12 @@ export default function AppSidebar() {
           label: "Tripwise Vehicle",
           href: "/account/trip-wise-vehicle",
           icon: <Truck size={16} />,
+        },
+        {
+          label: "Fleet Sharing",
+          href: "/fleet-sharing",
+          icon: <Share2 size={16} />,
+          visible: userData?.role === "Owner" || userData?.role === "SubOwner",
         },
       ],
     },
