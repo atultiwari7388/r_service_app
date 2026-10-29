@@ -41,7 +41,8 @@ interface RedirectProps {
 }
 
 export default function MyVehiclesPage() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [masterVehicles, setMasterVehicles] = useState<Vehicle[]>([]);
+  const [assignedVehicles, setAssignedVehicles] = useState<Vehicle[]>([]);
   const [highlightedVehicleId, setHighlightedVehicleId] = useState<
     string | null
   >(null);
@@ -51,6 +52,31 @@ export default function MyVehiclesPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [role, setRole] = useState("");
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
+
+  // Displayed vehicles: for SubOwner, strictly limited to assigned vehicles; for Owner, all vehicles
+  const vehicles = useMemo(() => {
+    if (role === "SubOwner") {
+      const assignedIds = new Set(assignedVehicles.map((v) => v.id));
+      const assignedNumbers = new Set(
+        assignedVehicles
+          .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+          .filter(Boolean)
+      );
+
+      // Match against masterVehicles from the owner collection (live updates, master fields)
+      const matched = masterVehicles.filter(
+        (v) =>
+          assignedIds.has(v.id) ||
+          assignedNumbers.has((v.vehicleNumber || "").toLowerCase().trim())
+      );
+
+      if (matched.length > 0) {
+        return matched;
+      }
+      return assignedVehicles;
+    }
+    return masterVehicles;
+  }, [role, assignedVehicles, masterVehicles]);
 
   // Sort vehicles alphabetically by vehicleNumber
   const sortedVehicles = useMemo(() => {
@@ -96,32 +122,45 @@ export default function MyVehiclesPage() {
       return;
     }
 
+    let unsubscribeVehicles: (() => void) | undefined;
+    let unsubscribeAssignedVehicles: (() => void) | undefined;
+
     // First: Fetch user data to determine role and effectiveUserId
     const userUnsubscribe = onSnapshot(
       doc(db, "Users", user.uid),
-      (doc) => {
-        if (doc.exists()) {
-          const data = doc.data() as UserData;
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as UserData;
           setUserData(data);
-          setRole(data.role || "");
+          const currentRole = data.role || "";
+          setRole(currentRole);
 
           // Determine effectiveUserId based on role
           const calculatedEffectiveUserId =
-            data.role === "SubOwner" && data.createdBy
+            currentRole === "SubOwner" && data.createdBy
               ? data.createdBy
               : user.uid;
 
           setEffectiveUserId(calculatedEffectiveUserId);
 
-          // Second: Now fetch vehicles using the effectiveUserId
-          const vehiclesUnsubscribe = onSnapshot(
-            collection(db, "Users", calculatedEffectiveUserId, "Vehicles"),
+          if (unsubscribeVehicles) unsubscribeVehicles();
+          if (unsubscribeAssignedVehicles) unsubscribeAssignedVehicles();
+
+          // Second: Now fetch master vehicles using the effectiveUserId
+          const vehiclesRef = collection(
+            db,
+            "Users",
+            calculatedEffectiveUserId,
+            "Vehicles"
+          );
+          unsubscribeVehicles = onSnapshot(
+            vehiclesRef,
             (snapshot) => {
               const vehiclesData: Vehicle[] = [];
-              snapshot.forEach((doc) => {
-                vehiclesData.push({ id: doc.id, ...doc.data() } as Vehicle);
+              snapshot.forEach((d) => {
+                vehiclesData.push({ id: d.id, ...d.data() } as Vehicle);
               });
-              setVehicles(vehiclesData);
+              setMasterVehicles(vehiclesData);
               setLoading(false);
             },
             (error) => {
@@ -130,10 +169,30 @@ export default function MyVehiclesPage() {
             }
           );
 
-          // Return cleanup function for vehicles unsubscribe
-          return () => {
-            vehiclesUnsubscribe();
-          };
+          // Third: If user is SubOwner with their own assigned vehicles collection
+          if (
+            currentRole === "SubOwner" &&
+            user.uid !== calculatedEffectiveUserId
+          ) {
+            const assignedRef = collection(db, "Users", user.uid, "Vehicles");
+            unsubscribeAssignedVehicles = onSnapshot(
+              assignedRef,
+              (snapshot) => {
+                const assignedData: Vehicle[] = [];
+                snapshot.forEach((d) => {
+                  assignedData.push({ id: d.id, ...d.data() } as Vehicle);
+                });
+                setAssignedVehicles(assignedData);
+              },
+              (error) => {
+                console.error("Error fetching assigned vehicles: ", error);
+              }
+            );
+          } else {
+            setAssignedVehicles([]);
+          }
+        } else {
+          setLoading(false);
         }
       },
       (error) => {
@@ -142,9 +201,11 @@ export default function MyVehiclesPage() {
       }
     );
 
-    // Return cleanup function for user unsubscribe
+    // Return cleanup function for all listeners
     return () => {
       userUnsubscribe();
+      if (unsubscribeVehicles) unsubscribeVehicles();
+      if (unsubscribeAssignedVehicles) unsubscribeAssignedVehicles();
     };
   }, [user]);
 
@@ -180,6 +241,21 @@ export default function MyVehiclesPage() {
       ownerDataServices.forEach((doc) => {
         batch.update(doc.ref, { active: newValue });
       });
+
+      // Also ensure current user's vehicle doc is updated if user.uid !== effectiveUserId
+      if (user.uid !== effectiveUserId) {
+        const userVehicleRef = doc(
+          db,
+          "Users",
+          user.uid,
+          "Vehicles",
+          vehicleId
+        );
+        const userVehicleSnap = await getDoc(userVehicleRef);
+        if (userVehicleSnap.exists()) {
+          batch.update(userVehicleRef, { active: newValue });
+        }
+      }
 
       // Check if owner has any team members using effectiveUserId
       const teamCheck = await getDocs(
@@ -239,7 +315,10 @@ export default function MyVehiclesPage() {
     } catch (e) {
       console.error("Error updating vehicle status:", e);
       toast.error("Failed to update vehicle status");
-      setVehicles((prev) =>
+      setMasterVehicles((prev) =>
+        prev.map((v) => (v.id === vehicleId ? { ...v, active: !newValue } : v))
+      );
+      setAssignedVehicles((prev) =>
         prev.map((v) => (v.id === vehicleId ? { ...v, active: !newValue } : v))
       );
     }
@@ -373,7 +452,14 @@ export default function MyVehiclesPage() {
                       <Switch
                         checked={vehicle.active || false}
                         onChange={(value) => {
-                          setVehicles((prev) =>
+                          setMasterVehicles((prev) =>
+                            prev.map((v) =>
+                              v.id === vehicle.id
+                                ? { ...v, active: value }
+                                : v
+                            )
+                          );
+                          setAssignedVehicles((prev) =>
                             prev.map((v) =>
                               v.id === vehicle.id
                                 ? { ...v, active: value }
