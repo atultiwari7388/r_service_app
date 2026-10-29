@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Truck,
   Package,
@@ -46,6 +52,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   serverTimestamp,
   setDoc,
@@ -70,7 +77,9 @@ interface LoadData {
     | "Completed"
     | "Missing BOL";
   truck: string;
+  truckId?: string;
   trailer: string;
+  trailerId?: string;
   driver: string;
   driverId?: string;
   pickupLocation: string;
@@ -208,6 +217,10 @@ export default function TruckDispatchScreen({
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
   const [effectiveUserId, setEffectiveUserId] = useState("");
+  const [userRole, setUserRole] = useState<string>("");
+  const [assignedVehicles, setAssignedVehicles] = useState<
+    Array<{ id: string; vehicleNumber?: string; vehicleType?: string }>
+  >([]);
   const [isResolvingUser, setIsResolvingUser] = useState(true);
   const [isFetchingLoads, setIsFetchingLoads] = useState(false);
   const [loads, setLoads] = useState<LoadData[]>([]);
@@ -252,10 +265,13 @@ export default function TruckDispatchScreen({
         userName?: string;
       };
 
+      const role = userData.role || "";
+      setUserRole(role);
+
       let targetUserId = userId;
       let targetName = (userData.companyName || userData.userName || "").trim();
 
-      if (userData.role === "SubOwner" && userData.createdBy) {
+      if (role === "SubOwner" && userData.createdBy) {
         targetUserId = userData.createdBy;
         const ownerDoc = await getDoc(doc(db, "Users", userData.createdBy));
         if (ownerDoc.exists()) {
@@ -277,6 +293,34 @@ export default function TruckDispatchScreen({
       setIsResolvingUser(false);
     }
   };
+
+  // Fetch assigned vehicles for SubOwner
+  useEffect(() => {
+    if (!user?.uid || userRole !== "SubOwner") {
+      setAssignedVehicles([]);
+      return;
+    }
+
+    const unsub = onSnapshot(
+      collection(db, "Users", user.uid, "Vehicles"),
+      (snapshot) => {
+        const list = snapshot.docs
+          .map((d) => ({
+            id: d.id,
+            vehicleNumber: (d.data().vehicleNumber || "").trim(),
+            vehicleType: (d.data().vehicleType || "").trim(),
+            active: d.data().active,
+          }))
+          .filter((v) => (v as any).active !== false);
+        setAssignedVehicles(list);
+      },
+      (err) => {
+        console.error("Error fetching assigned vehicles for truck dispatch:", err);
+      }
+    );
+
+    return () => unsub();
+  }, [user?.uid, userRole]);
 
   const toDateLabel = (value?: string) => {
     if (!value) return "-";
@@ -498,10 +542,12 @@ export default function TruckDispatchScreen({
             (record.truckId && vehicleMap[record.truckId]) ||
             record.truckId ||
             "-",
+          truckId: record.truckId || "",
           trailer:
             (record.trailerId && vehicleMap[record.trailerId]) ||
             record.trailerId ||
             "-",
+          trailerId: record.trailerId || "",
           driver:
             (record.driverId && driverMap[record.driverId]) ||
             record.driverId ||
@@ -546,7 +592,89 @@ export default function TruckDispatchScreen({
     fetchLoads();
   }, [fetchLoads]);
 
-  const allLoads = loads.filter((load) => !load.isDuplicate);
+  // Scoped loads: for SubOwner, strictly limited to assigned vehicles; for Owner, all loads
+  const scopedLoads = useMemo(() => {
+    if (userRole === "SubOwner") {
+      const assignedIds = new Set(assignedVehicles.map((v) => v.id));
+      const assignedNumbers = assignedVehicles
+        .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+        .filter(Boolean);
+
+      return loads.filter((load) => {
+        const matchTruckId = load.truckId && assignedIds.has(load.truckId);
+        const matchTrailerId =
+          load.trailerId && assignedIds.has(load.trailerId);
+
+        const truckLower = (load.truck || "").toLowerCase().trim();
+        const trailerLower = (load.trailer || "").toLowerCase().trim();
+
+        let matchTruckNum = false;
+        let matchTrailerNum = false;
+        for (const num of assignedNumbers) {
+          if (
+            num &&
+            (truckLower === num ||
+              truckLower.startsWith(num + " ") ||
+              truckLower.includes(`(${num})`) ||
+              truckLower.includes(num))
+          ) {
+            matchTruckNum = true;
+            break;
+          }
+          if (
+            num &&
+            (trailerLower === num ||
+              trailerLower.startsWith(num + " ") ||
+              trailerLower.includes(`(${num})`) ||
+              trailerLower.includes(num))
+          ) {
+            matchTrailerNum = true;
+            break;
+          }
+        }
+
+        return (
+          matchTruckId || matchTrailerId || matchTruckNum || matchTrailerNum
+        );
+      });
+    }
+    return loads;
+  }, [userRole, assignedVehicles, loads]);
+
+  // Helper to check if a specific vehicle is assigned to the current SubOwner
+  const isVehicleAssigned = useCallback(
+    (vehId?: string, vehLabel?: string) => {
+      if (userRole !== "SubOwner") return true;
+      if (!vehLabel || vehLabel === "-" || vehLabel === "Unassigned") return false;
+
+      const assignedIds = new Set(assignedVehicles.map((v) => v.id));
+      const assignedNumbers = assignedVehicles
+        .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+        .filter(Boolean);
+
+      if (vehId && assignedIds.has(vehId)) return true;
+
+      const labelLower = vehLabel.toLowerCase().trim();
+      for (const num of assignedNumbers) {
+        if (
+          num &&
+          (labelLower === num ||
+            labelLower.startsWith(num + " ") ||
+            labelLower.includes(`(${num})`) ||
+            labelLower.includes(num))
+        ) {
+          return true;
+        }
+      }
+      return false;
+    },
+    [userRole, assignedVehicles]
+  );
+
+  const allLoads = useMemo(
+    () => scopedLoads.filter((load) => !load.isDuplicate),
+    [scopedLoads]
+  );
   const tabStatusMap: Record<string, string> = {
     booked: "Booked",
     "pre-planned": "Pre-Planned",
@@ -1111,11 +1239,25 @@ export default function TruckDispatchScreen({
                     </td>
                     <td className="py-4 px-4">
                       <div className="space-y-1">
-                        <div className="text-sm text-gray-900">
-                          {load.truck}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-sm text-gray-900 font-medium">
+                            {load.truck}
+                          </span>
+                          {userRole === "SubOwner" && load.truck && load.truck !== "Unassigned" && load.truck !== "-" && !isVehicleAssigned(load.truckId, load.truck) && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200" title="This vehicle is not assigned to you">
+                              Not assigned to you
+                            </span>
+                          )}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {load.trailer}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs text-gray-500">
+                            {load.trailer}
+                          </span>
+                          {userRole === "SubOwner" && load.trailer && load.trailer !== "Unassigned" && load.trailer !== "-" && !isVehicleAssigned(load.trailerId, load.trailer) && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200" title="This vehicle is not assigned to you">
+                              Not assigned to you
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
