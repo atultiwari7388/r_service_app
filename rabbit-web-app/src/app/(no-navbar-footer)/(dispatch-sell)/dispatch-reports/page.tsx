@@ -26,7 +26,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
 import { GlobalToastError } from "@/utils/globalErrorToast";
@@ -118,6 +126,10 @@ type TabType = "trucks" | "drivers" | "companies" | "all_loads";
 export default function DispatchReportsPage() {
   const { user } = useAuth() || { user: null };
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
+  const [assignedVehicles, setAssignedVehicles] = useState<
+    Array<{ id: string; vehicleNumber?: string; vehicleType?: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [loads, setLoads] = useState<NormalizedLoad[]>([]);
   const [userCompanies, setUserCompanies] = useState<string[]>([]);
@@ -142,7 +154,7 @@ export default function DispatchReportsPage() {
   const [sortField, setSortField] = useState<string>("earnings");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Determine effectiveUserId
+  // Determine effectiveUserId and userRole
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -151,7 +163,9 @@ export default function DispatchReportsPage() {
         const userDoc = await getDoc(doc(db, "Users", user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          if (userData.role === "SubOwner" && userData.createdBy) {
+          const role = userData.role || "";
+          setUserRole(role);
+          if (role === "SubOwner" && userData.createdBy) {
             setEffectiveUserId(userData.createdBy);
           } else {
             setEffectiveUserId(user.uid);
@@ -166,6 +180,34 @@ export default function DispatchReportsPage() {
 
     resolveUser();
   }, [user]);
+
+  // Fetch assigned vehicles for SubOwner
+  useEffect(() => {
+    if (!user?.uid || userRole !== "SubOwner") {
+      setAssignedVehicles([]);
+      return;
+    }
+
+    const unsub = onSnapshot(
+      collection(db, "Users", user.uid, "Vehicles"),
+      (snapshot) => {
+        const list = snapshot.docs
+          .map((d) => ({
+            id: d.id,
+            vehicleNumber: (d.data().vehicleNumber || "").trim(),
+            vehicleType: (d.data().vehicleType || "").trim(),
+            active: d.data().active,
+          }))
+          .filter((v) => (v as any).active !== false);
+        setAssignedVehicles(list);
+      },
+      (err) => {
+        console.error("Error fetching assigned vehicles for dispatch reports:", err);
+      }
+    );
+
+    return () => unsub();
+  }, [user?.uid, userRole]);
 
   // Fetch Loads and Driver/Vehicle mappings
   const fetchReportData = useCallback(async () => {
@@ -447,17 +489,98 @@ export default function DispatchReportsPage() {
     fetchReportData();
   }, [fetchReportData]);
 
+  // Scoped loads: for SubOwner, strictly limited to assigned vehicles; for Owner, all loads
+  const scopedLoads = useMemo(() => {
+    if (userRole === "SubOwner") {
+      const assignedIds = new Set(assignedVehicles.map((v) => v.id));
+      const assignedNumbers = assignedVehicles
+        .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+        .filter(Boolean);
+
+      return loads.filter((load) => {
+        const matchTruckId = load.truckId && assignedIds.has(load.truckId);
+        const matchTrailerId =
+          load.trailerId && assignedIds.has(load.trailerId);
+
+        const truckLower = (load.truck || "").toLowerCase().trim();
+        const trailerLower = (load.trailer || "").toLowerCase().trim();
+
+        let matchTruckNum = false;
+        let matchTrailerNum = false;
+        for (const num of assignedNumbers) {
+          if (
+            num &&
+            (truckLower === num ||
+              truckLower.startsWith(num + " ") ||
+              truckLower.includes(`(${num})`) ||
+              truckLower.includes(num))
+          ) {
+            matchTruckNum = true;
+            break;
+          }
+          if (
+            num &&
+            (trailerLower === num ||
+              trailerLower.startsWith(num + " ") ||
+              trailerLower.includes(`(${num})`) ||
+              trailerLower.includes(num))
+          ) {
+            matchTrailerNum = true;
+            break;
+          }
+        }
+
+        return (
+          matchTruckId || matchTrailerId || matchTruckNum || matchTrailerNum
+        );
+      });
+    }
+    return loads;
+  }, [userRole, assignedVehicles, loads]);
+
+  // Helper to check if a specific vehicle is assigned to the current SubOwner
+  const isVehicleAssigned = useCallback(
+    (vehId?: string, vehLabel?: string) => {
+      if (userRole !== "SubOwner") return true;
+      if (!vehLabel || vehLabel === "-" || vehLabel === "Unassigned") return false;
+
+      const assignedIds = new Set(assignedVehicles.map((v) => v.id));
+      const assignedNumbers = assignedVehicles
+        .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+        .filter(Boolean);
+
+      if (vehId && assignedIds.has(vehId)) return true;
+
+      const labelLower = vehLabel.toLowerCase().trim();
+      for (const num of assignedNumbers) {
+        if (
+          num &&
+          (labelLower === num ||
+            labelLower.startsWith(num + " ") ||
+            labelLower.includes(`(${num})`) ||
+            labelLower.includes(num))
+        ) {
+          return true;
+        }
+      }
+      return false;
+    },
+    [userRole, assignedVehicles]
+  );
+
   // Derived unique companies
   const availableCompanies = useMemo(() => {
     const set = new Set<string>();
-    userCompanies.forEach((c) => c && set.add(c.trim()));
-    loads.forEach((l) => {
+    if (userRole !== "SubOwner") {
+      userCompanies.forEach((c) => c && set.add(c.trim()));
+    }
+    scopedLoads.forEach((l) => {
       if (l.companyName && l.companyName !== "Default Company") {
         set.add(l.companyName.trim());
       }
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [userCompanies, loads]);
+  }, [userCompanies, scopedLoads, userRole]);
 
   // Derived available vehicles based on quickCompanyFilter & quickTypeFilter
   const availableVehiclesForQuickFilter = useMemo(() => {
@@ -466,7 +589,7 @@ export default function DispatchReportsPage() {
       { id: string; label: string; type: "Truck" | "Trailer"; company: string }
     >();
 
-    loads.forEach((l) => {
+    scopedLoads.forEach((l) => {
       if (l.truck && l.truck !== "Unassigned" && l.truck !== "-") {
         const id = l.truck;
         if (!map.has(id)) {
@@ -499,18 +622,18 @@ export default function DispatchReportsPage() {
     }
 
     return list.sort((a, b) => a.label.localeCompare(b.label));
-  }, [loads, quickCompanyFilter, quickTypeFilter]);
+  }, [scopedLoads, quickCompanyFilter, quickTypeFilter]);
 
   // Derived available drivers
   const availableDrivers = useMemo(() => {
     const set = new Set<string>();
-    loads.forEach((l) => {
+    scopedLoads.forEach((l) => {
       if (l.driver && l.driver !== "Unassigned" && l.driver !== "-") {
         set.add(l.driver.trim());
       }
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [loads]);
+  }, [scopedLoads]);
 
   // Handle Quick Company filter change with smart vehicle reset
   const handleQuickCompanyFilterChange = (selectedCompany: string) => {
@@ -570,7 +693,7 @@ export default function DispatchReportsPage() {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    return loads.filter((load) => {
+    return scopedLoads.filter((load) => {
       // 1. Timeframe Filter
       if (timeframe !== "all" && load.dateObj) {
         const loadTime = load.dateObj.getTime();
@@ -696,7 +819,7 @@ export default function DispatchReportsPage() {
       return true;
     });
   }, [
-    loads,
+    scopedLoads,
     timeframe,
     startDate,
     endDate,
@@ -1553,38 +1676,52 @@ export default function DispatchReportsPage() {
                                   <Truck size={16} />
                                 </div>
                                 <div className="min-w-0">
-                                  {item.truckNumber.includes(" - ") ? (
-                                    <>
-                                      <span className="font-bold text-gray-900 block truncate max-w-[200px]" title={item.truckNumber}>
-                                        {item.truckNumber.split(" - ")[0]}
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {item.truckNumber.includes(" - ") ? (
+                                      <>
+                                        <span className="font-bold text-gray-900 block truncate max-w-[200px]" title={item.truckNumber}>
+                                          {item.truckNumber.split(" - ")[0]}
+                                        </span>
+                                        <span className="text-[11px] text-gray-400 font-normal block truncate max-w-[180px]" title={item.truckNumber.split(" - ").slice(1).join(" - ")}>
+                                          {item.truckNumber.split(" - ").slice(1).join(" - ")}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="font-bold text-gray-900 block truncate max-w-[220px]" title={item.truckNumber}>
+                                        {item.truckNumber}
                                       </span>
-                                      <span className="text-[11px] text-gray-400 font-normal block truncate max-w-[180px]" title={item.truckNumber.split(" - ").slice(1).join(" - ")}>
-                                        {item.truckNumber.split(" - ").slice(1).join(" - ")}
+                                    )}
+                                    {userRole === "SubOwner" && item.truckNumber && item.truckNumber !== "Unassigned" && item.truckNumber !== "-" && !isVehicleAssigned(undefined, item.truckNumber) && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200" title="This vehicle is not assigned to you">
+                                        Not assigned to you
                                       </span>
-                                    </>
-                                  ) : (
-                                    <span className="font-bold text-gray-900 block truncate max-w-[220px]" title={item.truckNumber}>
-                                      {item.truckNumber}
-                                    </span>
-                                  )}
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-4 sm:px-5 py-3.5 text-gray-700 font-medium whitespace-nowrap">
-                              {item.trailer.includes(" - ") ? (
-                                <div className="min-w-0">
-                                  <span className="font-medium text-gray-800 block truncate max-w-[200px]" title={item.trailer}>
-                                    {item.trailer.split(" - ")[0]}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {item.trailer.includes(" - ") ? (
+                                  <div className="min-w-0">
+                                    <span className="font-medium text-gray-800 block truncate max-w-[200px]" title={item.trailer}>
+                                      {item.trailer.split(" - ")[0]}
+                                    </span>
+                                    <span className="text-[11px] text-gray-400 font-normal block truncate max-w-[180px]" title={item.trailer.split(" - ").slice(1).join(" - ")}>
+                                      {item.trailer.split(" - ").slice(1).join(" - ")}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="block truncate max-w-[220px]" title={item.trailer}>
+                                    {item.trailer}
                                   </span>
-                                  <span className="text-[11px] text-gray-400 font-normal block truncate max-w-[180px]" title={item.trailer.split(" - ").slice(1).join(" - ")}>
-                                    {item.trailer.split(" - ").slice(1).join(" - ")}
+                                )}
+                                {userRole === "SubOwner" && item.trailer && item.trailer !== "Unassigned" && item.trailer !== "-" && !isVehicleAssigned(undefined, item.trailer) && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200" title="This vehicle is not assigned to you">
+                                    Not assigned to you
                                   </span>
-                                </div>
-                              ) : (
-                                <span className="block truncate max-w-[220px]" title={item.trailer}>
-                                  {item.trailer}
-                                </span>
-                              )}
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 sm:px-5 py-3.5 text-gray-600 whitespace-nowrap">
                               {item.companyName}
@@ -1903,11 +2040,25 @@ export default function DispatchReportsPage() {
                               </div>
                             </td>
                             <td className="px-4 sm:px-5 py-3.5 whitespace-nowrap">
-                              <div className="font-semibold text-gray-900 text-xs truncate max-w-[160px]" title={load.truck}>
-                                {load.truck}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-gray-900 text-xs truncate max-w-[160px]" title={load.truck}>
+                                  {load.truck}
+                                </span>
+                                {userRole === "SubOwner" && load.truck && load.truck !== "Unassigned" && load.truck !== "-" && !isVehicleAssigned(load.truckId, load.truck) && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200" title="This vehicle is not assigned to you">
+                                    Not assigned to you
+                                  </span>
+                                )}
                               </div>
-                              <div className="text-[11px] text-gray-500 truncate max-w-[160px]" title={load.trailer}>
-                                Tr: {load.trailer}
+                              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                <span className="text-[11px] text-gray-500 truncate max-w-[160px]" title={load.trailer}>
+                                  Tr: {load.trailer}
+                                </span>
+                                {userRole === "SubOwner" && load.trailer && load.trailer !== "Unassigned" && load.trailer !== "-" && !isVehicleAssigned(load.trailerId, load.trailer) && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200" title="This vehicle is not assigned to you">
+                                    Not assigned to you
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td className="px-4 sm:px-5 py-3.5 whitespace-nowrap">

@@ -23,7 +23,15 @@ import {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
 import { GlobalToastError } from "@/utils/globalErrorToast";
@@ -67,13 +75,17 @@ function ReportDetailsContent() {
 
   const { user } = useAuth() || { user: null };
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
+  const [assignedVehicles, setAssignedVehicles] = useState<
+    Array<{ id: string; vehicleNumber?: string; vehicleType?: string }>
+  >([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loads, setLoads] = useState<NormalizedLoad[]>([]);
   const [searchFilter, setSearchFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortOption, setSortOption] = useState<string>("date_desc");
 
-  // Determine effectiveUserId
+  // Determine effectiveUserId and userRole
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -82,7 +94,9 @@ function ReportDetailsContent() {
         const userDoc = await getDoc(doc(db, "Users", user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          if (userData.role === "SubOwner" && userData.createdBy) {
+          const role = userData.role || "";
+          setUserRole(role);
+          if (role === "SubOwner" && userData.createdBy) {
             setEffectiveUserId(userData.createdBy);
           } else {
             setEffectiveUserId(user.uid);
@@ -97,6 +111,34 @@ function ReportDetailsContent() {
 
     resolveUser();
   }, [user]);
+
+  // Fetch assigned vehicles for SubOwner
+  useEffect(() => {
+    if (!user?.uid || userRole !== "SubOwner") {
+      setAssignedVehicles([]);
+      return;
+    }
+
+    const unsub = onSnapshot(
+      collection(db, "Users", user.uid, "Vehicles"),
+      (snapshot) => {
+        const list = snapshot.docs
+          .map((d) => ({
+            id: d.id,
+            vehicleNumber: (d.data().vehicleNumber || "").trim(),
+            vehicleType: (d.data().vehicleType || "").trim(),
+            active: d.data().active,
+          }))
+          .filter((v) => (v as any).active !== false);
+        setAssignedVehicles(list);
+      },
+      (err) => {
+        console.error("Error fetching assigned vehicles for report details:", err);
+      }
+    );
+
+    return () => unsub();
+  }, [user?.uid, userRole]);
 
   // Fetch Loads & mapping
   const fetchReportDetails = useCallback(async () => {
@@ -324,12 +366,91 @@ function ReportDetailsContent() {
     fetchReportDetails();
   }, [fetchReportDetails]);
 
+  // Scoped loads: for SubOwner, strictly limited to assigned vehicles; for Owner, all loads
+  const scopedLoads = useMemo(() => {
+    if (userRole === "SubOwner") {
+      const assignedIds = new Set(assignedVehicles.map((v) => v.id));
+      const assignedNumbers = assignedVehicles
+        .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+        .filter(Boolean);
+
+      return loads.filter((load) => {
+        const matchTruckId = load.truckId && assignedIds.has(load.truckId);
+        const matchTrailerId =
+          load.trailerId && assignedIds.has(load.trailerId);
+
+        const truckLower = (load.truck || "").toLowerCase().trim();
+        const trailerLower = (load.trailer || "").toLowerCase().trim();
+
+        let matchTruckNum = false;
+        let matchTrailerNum = false;
+        for (const num of assignedNumbers) {
+          if (
+            num &&
+            (truckLower === num ||
+              truckLower.startsWith(num + " ") ||
+              truckLower.includes(`(${num})`) ||
+              truckLower.includes(num))
+          ) {
+            matchTruckNum = true;
+            break;
+          }
+          if (
+            num &&
+            (trailerLower === num ||
+              trailerLower.startsWith(num + " ") ||
+              trailerLower.includes(`(${num})`) ||
+              trailerLower.includes(num))
+          ) {
+            matchTrailerNum = true;
+            break;
+          }
+        }
+
+        return (
+          matchTruckId || matchTrailerId || matchTruckNum || matchTrailerNum
+        );
+      });
+    }
+    return loads;
+  }, [userRole, assignedVehicles, loads]);
+
+  // Helper to check if a specific vehicle is assigned to the current SubOwner
+  const isVehicleAssigned = useCallback(
+    (vehId?: string, vehLabel?: string) => {
+      if (userRole !== "SubOwner") return true;
+      if (!vehLabel || vehLabel === "-" || vehLabel === "Unassigned") return false;
+
+      const assignedIds = new Set(assignedVehicles.map((v) => v.id));
+      const assignedNumbers = assignedVehicles
+        .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+        .filter(Boolean);
+
+      if (vehId && assignedIds.has(vehId)) return true;
+
+      const labelLower = vehLabel.toLowerCase().trim();
+      for (const num of assignedNumbers) {
+        if (
+          num &&
+          (labelLower === num ||
+            labelLower.startsWith(num + " ") ||
+            labelLower.includes(`(${num})`) ||
+            labelLower.includes(num))
+        ) {
+          return true;
+        }
+      }
+      return false;
+    },
+    [userRole, assignedVehicles]
+  );
+
   // Filter loads specifically for this entity
   const entityLoads = useMemo(() => {
-    if (!entityKey) return loads;
+    if (!entityKey) return scopedLoads;
     const target = decodeURIComponent(entityKey).toLowerCase().trim();
 
-    return loads.filter((load) => {
+    return scopedLoads.filter((load) => {
       if (reportType === "truck") {
         const trk = load.truck.toLowerCase().trim();
         const trl = load.trailer.toLowerCase().trim();
@@ -358,7 +479,7 @@ function ReportDetailsContent() {
       }
       return true;
     });
-  }, [loads, entityKey, reportType]);
+  }, [scopedLoads, entityKey, reportType]);
 
   // Filter & Search inside this entity's loads
   const filteredAndSortedLoads = useMemo(() => {
@@ -796,11 +917,23 @@ function ReportDetailsContent() {
                         </div>
                       </td>
                       <td className="px-5 py-4 text-xs">
-                        <div className="font-semibold text-gray-900">
-                          {load.truck}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-gray-900">
+                            {load.truck}
+                          </span>
+                          {userRole === "SubOwner" && load.truck && load.truck !== "Unassigned" && load.truck !== "-" && !isVehicleAssigned(load.truckId, load.truck) && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200" title="This vehicle is not assigned to you">
+                              Not assigned to you
+                            </span>
+                          )}
                         </div>
-                        <div className="text-gray-500 text-[11px]">
-                          Tr: {load.trailer}
+                        <div className="flex items-center gap-1.5 flex-wrap text-gray-500 text-[11px] mt-0.5">
+                          <span>Tr: {load.trailer}</span>
+                          {userRole === "SubOwner" && load.trailer && load.trailer !== "Unassigned" && load.trailer !== "-" && !isVehicleAssigned(load.trailerId, load.trailer) && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200" title="This vehicle is not assigned to you">
+                              Not assigned to you
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-5 py-4 text-xs">
