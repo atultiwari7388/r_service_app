@@ -44,6 +44,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   serverTimestamp,
   setDoc,
@@ -871,6 +872,16 @@ function CreateNewLoadPageContent() {
   const [autoFillDeliveries, setAutoFillDeliveries] = useState(true);
   const [effectiveUserId, setEffectiveUserId] = useState("");
   const [isResolvingUser, setIsResolvingUser] = useState(true);
+  const [userRole, setUserRole] = useState("");
+  const [subOwnerAssignedVehicles, setSubOwnerAssignedVehicles] = useState<
+    Array<{
+      id: string;
+      vehicleNumber: string;
+      vehicleType?: string;
+      companyName?: string;
+      active?: boolean;
+    }>
+  >([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditLoadLoading, setIsEditLoadLoading] = useState(false);
   const [isCalculatingMiles, setIsCalculatingMiles] = useState(false);
@@ -1115,19 +1126,99 @@ function CreateNewLoadPageContent() {
     );
   }, [driverVehiclesById]);
 
-  const assignedTruckOptions: Option[] = allFleetVehicles
-    .filter((vehicle) => (vehicle.vehicleType || "").toLowerCase() === "truck")
-    .map((vehicle) => ({
-      value: vehicle.id,
-      label: `${vehicle.vehicleNumber} (${vehicle.companyName})`,
-    }));
+  // For SubOwner, restrict to their assigned vehicles; for Owner, show all fleet vehicles
+  const availableFleetVehicles: AssignedVehicle[] = useMemo(() => {
+    if (userRole === "SubOwner") {
+      const assignedIds = new Set(subOwnerAssignedVehicles.map((v) => v.id));
+      const assignedNumbers = new Set(
+        subOwnerAssignedVehicles
+          .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+          .filter(Boolean)
+      );
 
-  const assignedTrailerOptions: Option[] = allFleetVehicles
-    .filter((vehicle) => (vehicle.vehicleType || "").toLowerCase() === "trailer")
-    .map((vehicle) => ({
-      value: vehicle.id,
-      label: `${vehicle.vehicleNumber} (${vehicle.companyName})`,
-    }));
+      // Match against allFleetVehicles (master vehicle records from owner)
+      const matched = allFleetVehicles.filter(
+        (v) =>
+          assignedIds.has(v.id) ||
+          assignedNumbers.has((v.vehicleNumber || "").toLowerCase().trim())
+      );
+
+      // Include any vehicles directly in subOwnerAssignedVehicles not found in allFleetVehicles
+      const matchedIds = new Set(matched.map((v) => v.id));
+      const matchedNumbers = new Set(
+        matched.map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+      );
+
+      const extras: AssignedVehicle[] = subOwnerAssignedVehicles
+        .filter(
+          (v) =>
+            !matchedIds.has(v.id) &&
+            !matchedNumbers.has((v.vehicleNumber || "").toLowerCase().trim())
+        )
+        .map((v) => ({
+          id: v.id,
+          companyName: v.companyName || "Unknown Company",
+          vehicleNumber: v.vehicleNumber || "Unknown Vehicle",
+          vehicleType: v.vehicleType || "",
+          myCompany: "",
+          mycomId: "",
+        }));
+
+      return [...matched, ...extras].sort((a, b) =>
+        a.vehicleNumber.localeCompare(b.vehicleNumber)
+      );
+    }
+
+    return allFleetVehicles;
+  }, [allFleetVehicles, userRole, subOwnerAssignedVehicles]);
+
+  const assignedTruckOptions: Option[] = useMemo(() => {
+    const list = availableFleetVehicles
+      .filter((vehicle) => (vehicle.vehicleType || "").toLowerCase() === "truck")
+      .map((vehicle) => ({
+        value: vehicle.id,
+        label:
+          vehicle.companyName && vehicle.companyName !== "Unknown Company"
+            ? `${vehicle.vehicleNumber} (${vehicle.companyName})`
+            : vehicle.vehicleNumber,
+      }));
+
+    if (
+      formData.truckId &&
+      !list.some((opt) => opt.value === formData.truckId)
+    ) {
+      list.unshift({
+        value: formData.truckId,
+        label: `Current Truck (Not assigned to you)`,
+      });
+    }
+
+    return list;
+  }, [availableFleetVehicles, formData.truckId]);
+
+  const assignedTrailerOptions: Option[] = useMemo(() => {
+    const list = availableFleetVehicles
+      .filter((vehicle) => (vehicle.vehicleType || "").toLowerCase() === "trailer")
+      .map((vehicle) => ({
+        value: vehicle.id,
+        label:
+          vehicle.companyName && vehicle.companyName !== "Unknown Company"
+            ? `${vehicle.vehicleNumber} (${vehicle.companyName})`
+            : vehicle.vehicleNumber,
+      }));
+
+    if (
+      formData.trailerId &&
+      !list.some((opt) => opt.value === formData.trailerId)
+    ) {
+      list.unshift({
+        value: formData.trailerId,
+        label: `Current Trailer (Not assigned to you)`,
+      });
+    }
+
+    return list;
+  }, [availableFleetVehicles, formData.trailerId]);
 
   const mapSettingsToOptions = (
     entities: SettingsEntity[],
@@ -1405,10 +1496,13 @@ function CreateNewLoadPageContent() {
         userName?: string;
       };
 
+      const role = userData.role || "";
+      setUserRole(role);
+
       let targetUserId = userId;
       let targetName = (userData.companyName || userData.userName || "").trim();
 
-      if (userData.role === "SubOwner" && userData.createdBy) {
+      if (role === "SubOwner" && userData.createdBy) {
         targetUserId = userData.createdBy;
         const ownerDoc = await getDoc(doc(db, "Users", userData.createdBy));
         if (ownerDoc.exists()) {
@@ -2076,6 +2170,38 @@ function CreateNewLoadPageContent() {
     loadSettingsOptions(effectiveUserId);
     loadDriverAssignments(effectiveUserId);
   }, [effectiveUserId, loadSettingsOptions, loadDriverAssignments]);
+
+  // Listen to SubOwner assigned vehicles if user is SubOwner
+  useEffect(() => {
+    if (!user?.uid || userRole !== "SubOwner") {
+      setSubOwnerAssignedVehicles([]);
+      return;
+    }
+
+    const unsub = onSnapshot(
+      collection(db, "Users", user.uid, "Vehicles"),
+      (snapshot) => {
+        const list = snapshot.docs
+          .map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              vehicleNumber: (data.vehicleNumber || "").trim(),
+              vehicleType: (data.vehicleType || data.type || "").trim(),
+              companyName: (data.companyName || data.myCompany || "").trim(),
+              active: data.active,
+            };
+          })
+          .filter((v) => (v as any).active !== false);
+        setSubOwnerAssignedVehicles(list);
+      },
+      (err) => {
+        console.error("Error fetching SubOwner assigned vehicles:", err);
+      }
+    );
+
+    return () => unsub();
+  }, [user?.uid, userRole]);
 
   // Auto-calculate Totals & Profit
   useEffect(() => {
