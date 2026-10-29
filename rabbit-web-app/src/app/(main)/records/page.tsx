@@ -94,14 +94,22 @@ const formatDateSafe = (dateStr?: string | null): string => {
     if (!trimmed) return "";
 
     if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(trimmed)) {
-      const parts = trimmed.includes("-") ? trimmed.split("-") : trimmed.split("/");
+      const parts = trimmed.includes("-")
+        ? trimmed.split("-")
+        : trimmed.split("/");
       const p0 = Number(parts[0]);
       const p1 = Number(parts[1]);
       const yyyy = parts[2];
       if (p0 > 12) {
-        return `${String(p1).padStart(2, "0")}-${String(p0).padStart(2, "0")}-${yyyy}`;
+        return `${String(p1).padStart(2, "0")}-${String(p0).padStart(
+          2,
+          "0"
+        )}-${yyyy}`;
       }
-      return `${String(p0).padStart(2, "0")}-${String(p1).padStart(2, "0")}-${yyyy}`;
+      return `${String(p0).padStart(2, "0")}-${String(p1).padStart(
+        2,
+        "0"
+      )}-${yyyy}`;
     }
 
     // Try parseISO
@@ -128,7 +136,9 @@ const parseCustomDate = (dateStr?: string | null): Date | null => {
   if (!trimmed) return null;
 
   if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(trimmed)) {
-    const parts = trimmed.includes("-") ? trimmed.split("-") : trimmed.split("/");
+    const parts = trimmed.includes("-")
+      ? trimmed.split("-")
+      : trimmed.split("/");
     const mm = Number(parts[0]);
     const dd = Number(parts[1]);
     const yyyy = Number(parts[2]);
@@ -413,7 +423,10 @@ const formatToMMDDYYYY = (dateVal: any): string => {
     } else if (dateVal?.seconds) {
       d = new Date(dateVal.seconds * 1000);
     } else if (typeof dateVal === "string" || typeof dateVal === "number") {
-      if (typeof dateVal === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())) {
+      if (
+        typeof dateVal === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())
+      ) {
         const [y, m, day] = dateVal.trim().split("-");
         return `${m}/${day}/${y}`;
       }
@@ -438,10 +451,20 @@ const getVehicleLatestDateVal = (vehicle: VehicleTypes): any => {
   const isTruck = vehicle.vehicleType === "Truck";
   let dateVal: any = null;
 
-  if (isTruck && Array.isArray(vehicle.currentMilesArray) && vehicle.currentMilesArray.length > 0) {
-    dateVal = vehicle.currentMilesArray[vehicle.currentMilesArray.length - 1]?.date;
-  } else if (!isTruck && Array.isArray(vehicle.hoursReadingArray) && vehicle.hoursReadingArray.length > 0) {
-    dateVal = vehicle.hoursReadingArray[vehicle.hoursReadingArray.length - 1]?.date;
+  if (
+    isTruck &&
+    Array.isArray(vehicle.currentMilesArray) &&
+    vehicle.currentMilesArray.length > 0
+  ) {
+    dateVal =
+      vehicle.currentMilesArray[vehicle.currentMilesArray.length - 1]?.date;
+  } else if (
+    !isTruck &&
+    Array.isArray(vehicle.hoursReadingArray) &&
+    vehicle.hoursReadingArray.length > 0
+  ) {
+    dateVal =
+      vehicle.hoursReadingArray[vehicle.hoursReadingArray.length - 1]?.date;
   }
 
   if (!dateVal) {
@@ -462,7 +485,10 @@ const getVehicleLatestTimestamp = (vehicle: VehicleTypes): number => {
       return dateVal.seconds * 1000;
     }
     if (typeof dateVal === "string" || typeof dateVal === "number") {
-      if (typeof dateVal === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())) {
+      if (
+        typeof dateVal === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(dateVal.trim())
+      ) {
         const [y, m, day] = dateVal.trim().split("-").map(Number);
         return new Date(y, m - 1, day).getTime();
       }
@@ -757,11 +783,11 @@ export default function RecordsPage() {
   const [isOtherExpenseModalOpen, setIsOtherExpenseModalOpen] = useState(false);
 
   const expensesEffectiveUserId =
-    ((userData?.role === "SubOwner" || (userData as any)?.isTeamMember) &&
-      userData?.createdBy &&
-      userData.createdBy.trim().length > 0)
+    (userData?.role === "SubOwner" || (userData as any)?.isTeamMember) &&
+    userData?.createdBy &&
+    userData.createdBy.trim().length > 0
       ? userData.createdBy.trim()
-      : (effectiveUserId || user?.uid || "");
+      : effectiveUserId || user?.uid || "";
 
   const canViewOtherExpenses =
     role === "Owner" ||
@@ -1480,9 +1506,7 @@ export default function RecordsPage() {
     });
   };
 
-  const handleRecordFilesChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleRecordFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
       const newItems = filesArray.map((file) => {
@@ -1557,12 +1581,13 @@ export default function RecordsPage() {
             docItem.file.name.toLowerCase().endsWith(".pdf");
           const storageRef = ref(
             storage,
-            `service-records/${effectiveUserId}/${Date.now()}_${docItem.file.name}`
+            `service-records/${effectiveUserId}/${Date.now()}_${
+              docItem.file.name
+            }`
           );
           const uploadTask = uploadBytesResumable(storageRef, docItem.file, {
             contentType:
-              docItem.file.type ||
-              (isPdf ? "application/pdf" : "image/jpeg"),
+              docItem.file.type || (isPdf ? "application/pdf" : "image/jpeg"),
           });
 
           const downloadURL = await new Promise<string>((resolve, reject) => {
@@ -1622,32 +1647,66 @@ export default function RecordsPage() {
     ])
   ).sort((a, b) => a.localeCompare(b));
 
+  // Vehicles for display & selection for current user role
+  const displayVehicles = useMemo(() => {
+    if (userRole === "SubOwner") {
+      const assignedIds = new Set(assignedVehicles.map((v) => v.id));
+      const assignedNumbers = new Set(
+        assignedVehicles
+          .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+          .filter(Boolean)
+      );
+
+      // Prefer matching against master vehicles (which contain up-to-date miles/hours arrays and master fields)
+      const matched = vehicles.filter(
+        (v) =>
+          assignedIds.has(v.id) ||
+          assignedNumbers.has((v.vehicleNumber || "").toLowerCase().trim())
+      );
+
+      if (matched.length > 0) {
+        return matched;
+      }
+      return assignedVehicles;
+    }
+    return vehicles;
+  }, [userRole, assignedVehicles, vehicles]);
+
   // Derived unique company list for quick filter
   const availableCompanies = useMemo(() => {
     const map = new Map<string, string>();
-    companies.forEach((c) => {
-      if (c.companyName?.trim()) {
-        map.set(c.companyName.trim().toLowerCase(), c.companyName.trim());
-      }
-    });
-    vehicles.forEach((v) => {
-      const cName = (v.companyName || v.myCompany || "").trim();
-      if (cName) {
-        map.set(cName.toLowerCase(), cName);
-      }
-    });
-    records.forEach((r) => {
-      const cName = (r?.vehicleDetails?.companyName || "").trim();
-      if (cName) {
-        map.set(cName.toLowerCase(), cName);
-      }
-    });
+    if (userRole === "SubOwner") {
+      displayVehicles.forEach((v) => {
+        const cName = (v.companyName || v.myCompany || "").trim();
+        if (cName) {
+          map.set(cName.toLowerCase(), cName);
+        }
+      });
+    } else {
+      companies.forEach((c) => {
+        if (c.companyName?.trim()) {
+          map.set(c.companyName.trim().toLowerCase(), c.companyName.trim());
+        }
+      });
+      vehicles.forEach((v) => {
+        const cName = (v.companyName || v.myCompany || "").trim();
+        if (cName) {
+          map.set(cName.toLowerCase(), cName);
+        }
+      });
+      records.forEach((r) => {
+        const cName = (r?.vehicleDetails?.companyName || "").trim();
+        if (cName) {
+          map.set(cName.toLowerCase(), cName);
+        }
+      });
+    }
     return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
-  }, [companies, vehicles, records]);
+  }, [userRole, displayVehicles, companies, vehicles, records]);
 
   // Derived available vehicles based on quickCompanyFilter & quickTypeFilter
   const availableVehiclesForQuickFilter = useMemo(() => {
-    let list = vehicles;
+    let list = displayVehicles;
 
     if (quickTypeFilter === "truck") {
       list = list.filter((v) => v.vehicleType === "Truck");
@@ -1667,13 +1726,15 @@ export default function RecordsPage() {
     );
 
     return list.filter((v) => {
-      const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
+      const vCompName = (v.companyName || v.myCompany || "")
+        .toLowerCase()
+        .trim();
       if (vCompName && vCompName === targetCompanyLower) return true;
       if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
         return true;
       return false;
     });
-  }, [vehicles, quickCompanyFilter, quickTypeFilter, companies]);
+  }, [displayVehicles, quickCompanyFilter, quickTypeFilter, companies]);
 
   // Handle Quick Company filter change with smart vehicle reset
   const handleQuickCompanyFilterChange = (selectedCompany: string) => {
@@ -1685,11 +1746,13 @@ export default function RecordsPage() {
           c.companyName?.trim().toLowerCase() === targetCompanyLower ||
           c.id === selectedCompany
       );
-      const vehicleExistsInCompany = vehicles.some((v) => {
+      const vehicleExistsInCompany = displayVehicles.some((v) => {
         const isThisVehicle =
           v.vehicleNumber === quickVehicleFilter || v.id === quickVehicleFilter;
         if (!isThisVehicle) return false;
-        const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
+        const vCompName = (v.companyName || v.myCompany || "")
+          .toLowerCase()
+          .trim();
         if (vCompName && vCompName === targetCompanyLower) return true;
         if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
           return true;
@@ -1708,7 +1771,7 @@ export default function RecordsPage() {
   ) => {
     setQuickTypeFilter(selectedType);
     if (selectedType !== "all" && quickVehicleFilter !== "all") {
-      const selectedVeh = vehicles.find(
+      const selectedVeh = displayVehicles.find(
         (v) =>
           v.vehicleNumber === quickVehicleFilter || v.id === quickVehicleFilter
       );
@@ -1727,69 +1790,74 @@ export default function RecordsPage() {
 
   const filteredVehicles = useMemo(
     () =>
-      vehicles.filter((v) => {
-        // Only include vehicles where miles or hours entry is added
-        const isTruck = v.vehicleType === "Truck";
-        const hasMilesOrHours = isTruck
-          ? (Array.isArray(v.currentMilesArray) && v.currentMilesArray.length > 0) ||
-            (v.currentMiles !== undefined &&
-              v.currentMiles !== null &&
-              String(v.currentMiles).trim() !== "" &&
-              String(v.currentMiles).trim() !== "0")
-          : (Array.isArray(v.hoursReadingArray) && v.hoursReadingArray.length > 0) ||
-            (v.hoursReading !== undefined &&
-              v.hoursReading !== null &&
-              String(v.hoursReading).trim() !== "" &&
-              String(v.hoursReading).trim() !== "0");
+      displayVehicles
+        .filter((v) => {
+          // Only include vehicles where miles or hours entry is added
+          const isTruck = v.vehicleType === "Truck";
+          const hasMilesOrHours = isTruck
+            ? (Array.isArray(v.currentMilesArray) &&
+                v.currentMilesArray.length > 0) ||
+              (v.currentMiles !== undefined &&
+                v.currentMiles !== null &&
+                String(v.currentMiles).trim() !== "" &&
+                String(v.currentMiles).trim() !== "0")
+            : (Array.isArray(v.hoursReadingArray) &&
+                v.hoursReadingArray.length > 0) ||
+              (v.hoursReading !== undefined &&
+                v.hoursReading !== null &&
+                String(v.hoursReading).trim() !== "" &&
+                String(v.hoursReading).trim() !== "0");
 
-        if (!hasMilesOrHours) return false;
+          if (!hasMilesOrHours) return false;
 
-        if (quickTypeFilter === "truck" && v.vehicleType !== "Truck")
-          return false;
-        if (quickTypeFilter === "trailer" && v.vehicleType !== "Trailer")
-          return false;
-
-        // Quick Company filter
-        if (quickCompanyFilter !== "all") {
-          const target = quickCompanyFilter.toLowerCase().trim();
-          const matchedCompany = companies.find(
-            (c) =>
-              c.companyName?.trim().toLowerCase() === target ||
-              c.id === quickCompanyFilter
-          );
-          const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
-          const matchesComp =
-            vCompName === target ||
-            (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id);
-          if (!matchesComp) return false;
-        }
-
-        // Quick Vehicle filter
-        if (quickVehicleFilter !== "all") {
-          const target = quickVehicleFilter.toLowerCase().trim();
-          if (
-            (v.vehicleNumber || "").toLowerCase().trim() !== target &&
-            v.id !== quickVehicleFilter
-          ) {
+          if (quickTypeFilter === "truck" && v.vehicleType !== "Truck")
             return false;
-          }
-        }
+          if (quickTypeFilter === "trailer" && v.vehicleType !== "Trailer")
+            return false;
 
-        if (quickSearchText.trim()) {
-          const q = quickSearchText.trim().toLowerCase();
-          const matchNum = (v.vehicleNumber || "").toLowerCase().includes(q);
-          const matchComp = (v.companyName || "").toLowerCase().includes(q);
-          if (!matchNum && !matchComp) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        const timeA = getVehicleLatestTimestamp(a);
-        const timeB = getVehicleLatestTimestamp(b);
-        return timeB - timeA;
-      }),
+          // Quick Company filter
+          if (quickCompanyFilter !== "all") {
+            const target = quickCompanyFilter.toLowerCase().trim();
+            const matchedCompany = companies.find(
+              (c) =>
+                c.companyName?.trim().toLowerCase() === target ||
+                c.id === quickCompanyFilter
+            );
+            const vCompName = (v.companyName || v.myCompany || "")
+              .toLowerCase()
+              .trim();
+            const matchesComp =
+              vCompName === target ||
+              (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id);
+            if (!matchesComp) return false;
+          }
+
+          // Quick Vehicle filter
+          if (quickVehicleFilter !== "all") {
+            const target = quickVehicleFilter.toLowerCase().trim();
+            if (
+              (v.vehicleNumber || "").toLowerCase().trim() !== target &&
+              v.id !== quickVehicleFilter
+            ) {
+              return false;
+            }
+          }
+
+          if (quickSearchText.trim()) {
+            const q = quickSearchText.trim().toLowerCase();
+            const matchNum = (v.vehicleNumber || "").toLowerCase().includes(q);
+            const matchComp = (v.companyName || "").toLowerCase().includes(q);
+            if (!matchNum && !matchComp) return false;
+          }
+          return true;
+        })
+        .sort((a, b) => {
+          const timeA = getVehicleLatestTimestamp(a);
+          const timeB = getVehicleLatestTimestamp(b);
+          return timeB - timeA;
+        }),
     [
-      vehicles,
+      displayVehicles,
       quickTypeFilter,
       quickCompanyFilter,
       quickVehicleFilter,
@@ -1799,16 +1867,35 @@ export default function RecordsPage() {
   );
 
   // Vehicles selectable for adding records / adding miles (filtered for SubOwners / team members)
-  const selectableVehicles = useMemo(() => {
-    if (userRole === "SubOwner" && assignedVehicles.length > 0) {
-      return assignedVehicles;
+  const selectableVehicles = displayVehicles;
+
+  // Records scoped to current user (for SubOwner: restricted to assigned vehicles; for Owner: all records)
+  const scopedRecords = useMemo(() => {
+    if (userRole === "SubOwner") {
+      const assignedIds = new Set(displayVehicles.map((v) => v.id));
+      const assignedNumbers = new Set(
+        displayVehicles
+          .map((v) => (v.vehicleNumber || "").toLowerCase().trim())
+          .filter(Boolean)
+      );
+      return records.filter((r) => {
+        if (!r) return false;
+        const recVehId = r.vehicleId;
+        const recVehNum = (r.vehicleDetails?.vehicleNumber || "")
+          .toLowerCase()
+          .trim();
+        return (
+          (recVehId && assignedIds.has(recVehId)) ||
+          (recVehNum && assignedNumbers.has(recVehNum))
+        );
+      });
     }
-    return vehicles;
-  }, [userRole, assignedVehicles, vehicles]);
+    return records;
+  }, [userRole, displayVehicles, records]);
 
   const filteredRecords = useMemo(
     () =>
-      records
+      scopedRecords
         .filter((record) => {
           if (!record) return false;
           const recordDate = record.date ? new Date(record.date) : null;
@@ -1891,9 +1978,9 @@ export default function RecordsPage() {
           // Quick Company Filter
           if (quickCompanyFilter !== "all") {
             const target = quickCompanyFilter.toLowerCase().trim();
-            const recComp = (
-              record.vehicleDetails?.companyName || ""
-            ).toLowerCase().trim();
+            const recComp = (record.vehicleDetails?.companyName || "")
+              .toLowerCase()
+              .trim();
             const matchedVeh = vehicles.find(
               (v) =>
                 v.id === record.vehicleId ||
@@ -1904,7 +1991,9 @@ export default function RecordsPage() {
               matchedVeh?.companyName ||
               matchedVeh?.myCompany ||
               ""
-            ).toLowerCase().trim();
+            )
+              .toLowerCase()
+              .trim();
             if (recComp !== target && vehComp !== target) {
               return false;
             }
@@ -1913,9 +2002,9 @@ export default function RecordsPage() {
           // Quick Vehicle Filter
           if (quickVehicleFilter !== "all") {
             const target = quickVehicleFilter.toLowerCase().trim();
-            const recVehNum = (
-              record.vehicleDetails?.vehicleNumber || ""
-            ).toLowerCase().trim();
+            const recVehNum = (record.vehicleDetails?.vehicleNumber || "")
+              .toLowerCase()
+              .trim();
             const recVehId = record.vehicleId;
             if (recVehNum !== target && recVehId !== quickVehicleFilter) {
               return false;
@@ -2024,7 +2113,7 @@ export default function RecordsPage() {
           );
         }),
     [
-      records,
+      scopedRecords,
       filterVehicle,
       filterService,
       filterOtherService,
@@ -2040,7 +2129,7 @@ export default function RecordsPage() {
       quickTypeFilter,
       quickSearchText,
       quickSortOption,
-      vehicles,
+      displayVehicles,
       companies,
     ]
   );
@@ -2181,17 +2270,21 @@ export default function RecordsPage() {
             user.uid,
             "Vehicles"
           );
-          const assignedQuery = query(assignedVehiclesRef, where("active", "==", true));
-          unsubscribeAssignedVehicles = onSnapshot(assignedQuery, (snapshot) => {
-            const list = snapshot.docs.map(
-              (doc) =>
-                ({
-                  id: doc.id,
-                  ...doc.data(),
-                } as VehicleTypes)
-            );
-            setAssignedVehicles(list);
-          });
+          unsubscribeAssignedVehicles = onSnapshot(
+            assignedVehiclesRef,
+            (snapshot) => {
+              const list = snapshot.docs
+                .map(
+                  (doc) =>
+                    ({
+                      id: doc.id,
+                      ...doc.data(),
+                    } as VehicleTypes)
+                )
+                .filter((v) => (v as any).active !== false);
+              setAssignedVehicles(list);
+            }
+          );
         } else {
           setAssignedVehicles([]);
         }
@@ -2522,7 +2615,9 @@ export default function RecordsPage() {
           userEmail: user.email || "",
           action: "EXPORT_DATA",
           category: "Records",
-          title: `Exported Single Record to Excel (${record.vehicleDetails?.vehicleNumber || "Vehicle"})`,
+          title: `Exported Single Record to Excel (${
+            record.vehicleDetails?.vehicleNumber || "Vehicle"
+          })`,
           description: `Downloaded Excel for vehicle ${record.vehicleDetails?.vehicleNumber} on date ${record.date}`,
           targetId: record.id,
           targetName: record.vehicleDetails?.vehicleNumber || "Service Record",
@@ -3105,14 +3200,21 @@ export default function RecordsPage() {
 
       // Audit Log
       if (user?.uid) {
-        const vNum = vehicleData.vehicleNumber || selectedVehicleObj?.vehicleNumber || "Vehicle";
+        const vNum =
+          vehicleData.vehicleNumber ||
+          selectedVehicleObj?.vehicleNumber ||
+          "Vehicle";
         logActivity({
           ownerId: ownerId || effectiveUserId,
           userId: user.uid,
           action: isEditing ? "RECORD_UPDATE" : "RECORD_CREATE",
           category: "Records",
-          title: isEditing ? "Updated Service Record" : "Created Service Record",
-          description: `${vNum} - ${workshopName || "Service"} ($${invoiceAmount})`,
+          title: isEditing
+            ? "Updated Service Record"
+            : "Created Service Record",
+          description: `${vNum} - ${
+            workshopName || "Service"
+          } ($${invoiceAmount})`,
           targetId: recordId,
           targetName: `${vNum} (${workshopName || "Service"})`,
           metadata: {
@@ -3298,7 +3400,9 @@ export default function RecordsPage() {
             imageUrl: record.imageUrl,
             customText:
               record.documentName ||
-              (record.invoice ? `Invoice #${record.invoice}` : "Service Document"),
+              (record.invoice
+                ? `Invoice #${record.invoice}`
+                : "Service Document"),
             fileType:
               record.fileType ||
               (record.imageUrl.toLowerCase().includes(".pdf")
@@ -3473,7 +3577,9 @@ export default function RecordsPage() {
             imageUrl: record.imageUrl,
             customText:
               record.documentName ||
-              (record.invoice ? `Invoice #${record.invoice}` : "Service Document"),
+              (record.invoice
+                ? `Invoice #${record.invoice}`
+                : "Service Document"),
             fileType:
               record.fileType ||
               (record.imageUrl.toLowerCase().includes(".pdf")
@@ -3811,13 +3917,11 @@ export default function RecordsPage() {
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700">
                   Partial (${record.paidAmount || 0})
                 </span>
-              ) : (
-                /* Unpaid badge commented out as requested */
-                /* <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
+              ) : /* Unpaid badge commented out as requested */
+              /* <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
                   Unpaid
                 </span> */
-                null
-              )}
+              null}
               {record.paymentStatus !== "Paid" && (
                 <Link
                   href={`/account/pay-invoice?recordId=${record.id}`}
@@ -3865,7 +3969,7 @@ export default function RecordsPage() {
                 .filter((s) => s && (s.serviceName || (s as any).sName))
                 .sort((a, b) =>
                   (a.serviceName || (a as any).sName || "").localeCompare(
-                     b.serviceName || (b as any).sName || ""
+                    b.serviceName || (b as any).sName || ""
                   )
                 )
                 .map((service) => formatServiceForTable(service))
@@ -4296,7 +4400,7 @@ export default function RecordsPage() {
                   </p>
                   {/* Fixed height scrollable container */}
                   <div className="max-h-[220px] overflow-y-auto border border-gray-200 bg-white rounded-lg p-2 space-y-1">
-                    {vehicles
+                    {displayVehicles
                       .filter((v) =>
                         selectedVehicleTypeFilter === "truck"
                           ? v.vehicleType === "Truck"
@@ -4663,7 +4767,7 @@ export default function RecordsPage() {
                   }
                   label="Vehicle"
                 >
-                  {vehicles.map((vehicle) => (
+                  {displayVehicles.map((vehicle) => (
                     <MenuItem key={vehicle.id} value={vehicle.vehicleNumber}>
                       {vehicle.vehicleNumber} ({vehicle.companyName})
                       {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
@@ -5396,12 +5500,14 @@ export default function RecordsPage() {
                         Upload Service Documents / Invoices
                       </label>
                       <p className="text-xs text-gray-500">
-                        Attach multiple invoices, parts receipts, work orders, or inspection reports (Images &amp; PDFs supported).
+                        Attach multiple invoices, parts receipts, work orders,
+                        or inspection reports (Images &amp; PDFs supported).
                       </p>
                     </div>
                     {recordDocuments.length > 0 && (
                       <span className="text-xs font-semibold bg-rose-50 text-[#F96176] px-2.5 py-0.5 rounded-full border border-rose-200">
-                        {recordDocuments.length} document{recordDocuments.length > 1 ? "s" : ""} attached
+                        {recordDocuments.length} document
+                        {recordDocuments.length > 1 ? "s" : ""} attached
                       </span>
                     )}
                   </div>
@@ -5436,10 +5542,16 @@ export default function RecordsPage() {
                           const isPdf =
                             docItem.fileType === "pdf" ||
                             (docItem.file &&
-                              (docItem.file.type.toLowerCase().includes("pdf") ||
-                                docItem.file.name.toLowerCase().endsWith(".pdf"))) ||
+                              (docItem.file.type
+                                .toLowerCase()
+                                .includes("pdf") ||
+                                docItem.file.name
+                                  .toLowerCase()
+                                  .endsWith(".pdf"))) ||
                             (docItem.imageUrl &&
-                              (docItem.imageUrl.toLowerCase().includes(".pdf") ||
+                              (docItem.imageUrl
+                                .toLowerCase()
+                                .includes(".pdf") ||
                                 docItem.imageUrl
                                   .toLowerCase()
                                   .includes("application%2fpdf")));
@@ -5704,8 +5816,8 @@ export default function RecordsPage() {
       <ExportDataDialog
         open={showExportModal}
         onClose={() => setShowExportModal(false)}
-        records={records}
-        vehicles={vehicles}
+        records={scopedRecords}
+        vehicles={displayVehicles}
         services={services}
       />
 
