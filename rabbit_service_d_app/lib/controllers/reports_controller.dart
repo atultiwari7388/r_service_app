@@ -82,10 +82,51 @@ class ReportsController extends GetxController {
   // Data storage
   final List<Map<String, dynamic>> vehicles = [];
   final List<Map<String, dynamic>> assignedVehicles = [];
-  List<Map<String, dynamic>> get selectableVehicles =>
-      (role == 'SubOwner' && assignedVehicles.isNotEmpty)
-          ? assignedVehicles
-          : vehicles;
+
+  List<Map<String, dynamic>> get displayVehicles {
+    if (role == 'SubOwner') {
+      final assignedIds = assignedVehicles
+          .map((v) => v['id']?.toString())
+          .whereType<String>()
+          .toSet();
+      final assignedNumbers = assignedVehicles
+          .map((v) =>
+              (v['vehicleNumber'] ?? '').toString().toLowerCase().trim())
+          .where((s) => s.isNotEmpty)
+          .toSet();
+
+      final matched = vehicles.where((v) {
+        final id = v['id']?.toString() ?? '';
+        final num =
+            (v['vehicleNumber'] ?? '').toString().toLowerCase().trim();
+        return assignedIds.contains(id) || assignedNumbers.contains(num);
+      }).toList();
+
+      final matchedIds =
+          matched.map((v) => v['id']?.toString()).whereType<String>().toSet();
+      final matchedNumbers = matched
+          .map((v) =>
+              (v['vehicleNumber'] ?? '').toString().toLowerCase().trim())
+          .where((s) => s.isNotEmpty)
+          .toSet();
+
+      final extras = assignedVehicles.where((v) {
+        final id = v['id']?.toString() ?? '';
+        final num =
+            (v['vehicleNumber'] ?? '').toString().toLowerCase().trim();
+        return !matchedIds.contains(id) && !matchedNumbers.contains(num);
+      }).toList();
+
+      return [...matched, ...extras]..sort((a, b) {
+          final numA = (a['vehicleNumber'] ?? '').toString().toLowerCase();
+          final numB = (b['vehicleNumber'] ?? '').toString().toLowerCase();
+          return numA.compareTo(numB);
+        });
+    }
+    return vehicles;
+  }
+
+  List<Map<String, dynamic>> get selectableVehicles => displayVehicles;
   final List<Map<String, dynamic>> services = [];
   final List<Map<String, dynamic>> records = [];
   final List<Map<String, dynamic>> milesToAddInRecords = [];
@@ -538,7 +579,35 @@ class ReportsController extends GetxController {
   }
 
   List<Map<String, dynamic>> getFilteredRecords() {
+    final assignedIds = (role == 'SubOwner')
+        ? assignedVehicles
+            .map((v) => v['id']?.toString())
+            .whereType<String>()
+            .toSet()
+        : const <String>{};
+    final assignedNumbers = (role == 'SubOwner')
+        ? assignedVehicles
+            .map((v) =>
+                (v['vehicleNumber'] ?? '').toString().toLowerCase().trim())
+            .where((s) => s.isNotEmpty)
+            .toSet()
+        : const <String>{};
+
     return records.where((record) {
+      // Role-based filter for SubOwner: strictly limit to assigned vehicles
+      if (role == 'SubOwner') {
+        final recVehId = record['vehicleId']?.toString() ?? '';
+        final recVehNum = (record['vehicleDetails']?['vehicleNumber'] ??
+                record['vehicleNumber'] ??
+                '')
+            .toString()
+            .toLowerCase()
+            .trim();
+        final isAssigned = (recVehId.isNotEmpty && assignedIds.contains(recVehId)) ||
+            (recVehNum.isNotEmpty && assignedNumbers.contains(recVehNum));
+        if (!isAssigned) return false;
+      }
+
       // Vehicle filter
       final vehicleMatch =
           selectedVehicle == null || record['vehicleId'] == selectedVehicle;

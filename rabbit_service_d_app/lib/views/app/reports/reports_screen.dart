@@ -991,12 +991,38 @@ class _ReportsScreenState extends State<ReportsScreen>
                                               ],
                                             ),
                                           )
-                                        : ListView.builder(
-                                            itemCount:
-                                                reController.vehicles.length,
-                                            itemBuilder: (context, index) {
-                                              final vehicle =
-                                                  reController.vehicles[index];
+                                        : reController.displayVehicles.isEmpty
+                                            ? Center(
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(30.0),
+                                                  child: Column(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(
+                                                          Icons
+                                                              .directions_car_outlined,
+                                                          size: 60,
+                                                          color: Colors.grey),
+                                                      const SizedBox(height: 12),
+                                                      Text(
+                                                        'No vehicles found',
+                                                        style: appStyleUniverse(
+                                                            16,
+                                                            kDarkGray,
+                                                            FontWeight.w500),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              )
+                                            : ListView.builder(
+                                                itemCount: reController
+                                                    .displayVehicles.length,
+                                                itemBuilder: (context, index) {
+                                                  final vehicle = reController
+                                                      .displayVehicles[index];
                                               return GestureDetector(
                                                 onTap: () => Get.to(() =>
                                                     MilesDetailsScreen(
@@ -2439,7 +2465,8 @@ class _ReportsScreenState extends State<ReportsScreen>
               DropdownButtonFormField<String>(
                 isExpanded: true,
                 hint: const Text('Select Vehicle'),
-                items: (reController.vehicles
+                items: (List<Map<String, dynamic>>.from(
+                        reController.displayVehicles)
                       ..sort((a, b) => a['vehicleNumber']
                           .toString()
                           .toLowerCase()

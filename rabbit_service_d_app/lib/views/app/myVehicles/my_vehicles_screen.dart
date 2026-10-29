@@ -26,12 +26,15 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
       Get.find<DashboardController>();
 
   final List<Map<String, dynamic>> _vehicles = [];
+  final List<Map<String, dynamic>> _masterVehicles = [];
+  final List<Map<String, dynamic>> _assignedVehicles = [];
   final List<Map<String, dynamic>> _activeVehicles = [];
   final List<Map<String, dynamic>> _inactiveVehicles = [];
   final List<Map<String, dynamic>> _filteredActive = [];
   final List<Map<String, dynamic>> _filteredInactive = [];
 
-  late StreamSubscription vehiclesSubscription;
+  StreamSubscription? vehiclesSubscription;
+  StreamSubscription? _assignedVehiclesSubscription;
   late TabController _tabController;
   late String role = "";
   bool isLoading = false;
@@ -89,60 +92,125 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
   }
 
   void initializeStreams() {
+    vehiclesSubscription?.cancel();
+    _assignedVehiclesSubscription?.cancel();
+
+    // 1. Listen to master vehicles from owner
     vehiclesSubscription = FirebaseFirestore.instance
         .collection('Users')
-        .doc(_effectiveUserId) // Use effective user ID
+        .doc(_effectiveUserId)
         .collection("Vehicles")
         .snapshots()
         .listen((snapshot) {
-      if (snapshot.docs.isEmpty) {
-        debugPrint('No vehicles found for user $_effectiveUserId');
-        setState(() {
-          _vehicles.clear();
-          _activeVehicles.clear();
-          _inactiveVehicles.clear();
-          _filteredActive.clear();
-          _filteredInactive.clear();
-        });
-        return;
-      }
-
       final updatedVehicles = snapshot.docs
           .map((doc) => {
                 ...doc.data(),
                 'id': doc.id,
-                'ownerUserId':
-                    _effectiveUserId, // Track which user owns this vehicle
+                'ownerUserId': _effectiveUserId,
               })
           .toList();
 
-      // Sort alphabetically
-      updatedVehicles.sort((a, b) {
-        final numA = (a['vehicleNumber'] ?? '').toString().toLowerCase();
-        final numB = (b['vehicleNumber'] ?? '').toString().toLowerCase();
-        return numA.compareTo(numB);
-      });
+      _masterVehicles
+        ..clear()
+        ..addAll(updatedVehicles);
 
-      final activeList =
-          updatedVehicles.where((v) => v['active'] == true).toList();
-      final inactiveList =
-          updatedVehicles.where((v) => v['active'] == false).toList();
-
-      setState(() {
-        _vehicles
-          ..clear()
-          ..addAll(updatedVehicles);
-        _activeVehicles
-          ..clear()
-          ..addAll(activeList);
-        _inactiveVehicles
-          ..clear()
-          ..addAll(inactiveList);
-
-        _filterVehicles(_searchController.text);
-      });
+      _recomputeScopedVehicles();
     }, onError: (error) {
       debugPrint('Error listening to vehicles: $error');
+    });
+
+    // 2. If SubOwner, also listen to their assigned vehicles
+    if (role == 'SubOwner' && currentUId != _effectiveUserId) {
+      _assignedVehiclesSubscription = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection("Vehicles")
+          .where("active", isEqualTo: true)
+          .snapshots()
+          .listen((snapshot) {
+        final assigned = snapshot.docs
+            .map((doc) => {
+                  ...doc.data(),
+                  'id': doc.id,
+                })
+            .toList();
+
+        _assignedVehicles
+          ..clear()
+          ..addAll(assigned);
+
+        _recomputeScopedVehicles();
+      }, onError: (error) {
+        debugPrint('Error listening to assigned vehicles: $error');
+      });
+    }
+  }
+
+  void _recomputeScopedVehicles() {
+    List<Map<String, dynamic>> displayList;
+
+    if (role == 'SubOwner') {
+      final assignedIds = _assignedVehicles
+          .map((v) => v['id']?.toString())
+          .whereType<String>()
+          .toSet();
+      final assignedNumbers = _assignedVehicles
+          .map((v) =>
+              (v['vehicleNumber'] ?? '').toString().toLowerCase().trim())
+          .where((s) => s.isNotEmpty)
+          .toSet();
+
+      // Match against masterVehicles from the owner collection (live updates, master fields)
+      final matched = _masterVehicles.where((v) {
+        final id = v['id']?.toString() ?? '';
+        final num =
+            (v['vehicleNumber'] ?? '').toString().toLowerCase().trim();
+        return assignedIds.contains(id) || assignedNumbers.contains(num);
+      }).toList();
+
+      final matchedIds =
+          matched.map((v) => v['id']?.toString()).whereType<String>().toSet();
+      final matchedNumbers = matched
+          .map((v) =>
+              (v['vehicleNumber'] ?? '').toString().toLowerCase().trim())
+          .where((s) => s.isNotEmpty)
+          .toSet();
+
+      final extras = _assignedVehicles.where((v) {
+        final id = v['id']?.toString() ?? '';
+        final num =
+            (v['vehicleNumber'] ?? '').toString().toLowerCase().trim();
+        return !matchedIds.contains(id) && !matchedNumbers.contains(num);
+      }).toList();
+
+      displayList = [...matched, ...extras];
+    } else {
+      displayList = List<Map<String, dynamic>>.from(_masterVehicles);
+    }
+
+    displayList.sort((a, b) {
+      final numA = (a['vehicleNumber'] ?? '').toString().toLowerCase();
+      final numB = (b['vehicleNumber'] ?? '').toString().toLowerCase();
+      return numA.compareTo(numB);
+    });
+
+    final activeList =
+        displayList.where((v) => v['active'] == true).toList();
+    final inactiveList =
+        displayList.where((v) => v['active'] == false).toList();
+
+    setState(() {
+      _vehicles
+        ..clear()
+        ..addAll(displayList);
+      _activeVehicles
+        ..clear()
+        ..addAll(activeList);
+      _inactiveVehicles
+        ..clear()
+        ..addAll(inactiveList);
+
+      _filterVehicles(_searchController.text);
     });
   }
 
@@ -229,7 +297,8 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
 
   @override
   void dispose() {
-    vehiclesSubscription.cancel();
+    vehiclesSubscription?.cancel();
+    _assignedVehiclesSubscription?.cancel();
     _searchController.dispose();
     _tabController.dispose();
     super.dispose();
@@ -245,15 +314,6 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
               "No vehicles found",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            if (role == 'SubOwner')
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  "Vehicles are managed by the owner",
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                  textAlign: TextAlign.center,
-                ),
-              ),
           ],
         ),
       );
@@ -266,7 +326,6 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
         final vehicleName = vehicle['companyName'] ?? 'Unknown Vehicle';
         final vehicleNumber = vehicle['vehicleNumber'] ?? 'Unknown Number';
         final vehicleImage = vehicle['image'] ?? 'assets/myvehicles.png';
-        final isOwnedByCurrentUser = vehicle['ownerUserId'] == currentUId;
 
         return Card(
           margin: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
@@ -281,33 +340,19 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
                 fit: BoxFit.contain,
               ),
             ),
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            title: Row(
               children: [
-                Row(
-                  children: [
-                    Text(vehicleNumber,
-                        style: TextStyle(
-                            fontSize: 17,
-                            color: const Color.fromARGB(255, 12, 12, 12),
-                            fontWeight: FontWeight.normal)),
-                    SizedBox(width: 5),
-                    Text("($vehicleName)",
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.normal)),
-                  ],
-                ),
-                if (role == 'SubOwner' && !isOwnedByCurrentUser)
-                  Text(
-                    "Owner's Vehicle",
+                Text(vehicleNumber,
                     style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.blue,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
+                        fontSize: 17,
+                        color: const Color.fromARGB(255, 12, 12, 12),
+                        fontWeight: FontWeight.normal)),
+                SizedBox(width: 5),
+                Text("($vehicleName)",
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.normal)),
               ],
             ),
             trailing: Icon(Icons.arrow_forward_ios, color: kPrimary),
@@ -329,7 +374,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          role == 'SubOwner' ? "Owner's Vehicles" : "My Vehicles",
+          "My Vehicles",
           style: appStyle(20, kWhite, FontWeight.normal),
         ),
         backgroundColor: kPrimary,
@@ -351,27 +396,6 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
           ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                if (role == 'SubOwner')
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(12),
-                    color: Colors.blue[50],
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.blue, size: 16),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            "Viewing vehicles from your owner",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
