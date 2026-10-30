@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
   collection,
@@ -178,6 +178,12 @@ export default function OtherExpensesPage() {
       companyName?: string;
     }[]
   >([]);
+  const [assignedVehicleIds, setAssignedVehicleIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [assignedVehicleNumbers, setAssignedVehicleNumbers] = useState<
+    Set<string>
+  >(new Set());
   const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
@@ -302,10 +308,16 @@ export default function OtherExpensesPage() {
     );
 
     // Fetch vehicles for filtering and search
+    const isRestrictedRole = userRole === "SubOwner" || isTeamMember;
+    const vehiclesTargetUid =
+      isRestrictedRole && user?.uid ? user.uid : effectiveUserId;
+
+    if (!vehiclesTargetUid) return;
+
     const vehiclesRef = collection(
       db,
       "Users",
-      effectiveUserId,
+      vehiclesTargetUid,
       "Vehicles"
     );
 
@@ -320,10 +332,15 @@ export default function OtherExpensesPage() {
           myCompany?: string;
           companyName?: string;
         }[] = [];
+        const ids = new Set<string>();
+        const nums = new Set<string>();
+
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           if (data.active !== false) {
-            const vNum = data.vehicleNumber || data.name || docSnap.id;
+            const vNum = (data.vehicleNumber || data.name || docSnap.id || "")
+              .toString()
+              .trim();
             if (vNum) {
               loaded.push({
                 id: docSnap.id,
@@ -333,11 +350,17 @@ export default function OtherExpensesPage() {
                 myCompany: data.myCompany || "",
                 companyName: data.companyName || data.company || "",
               });
+              nums.add(vNum.toLowerCase());
+              const clean = vNum.toLowerCase().replace(/[^a-z0-9]/g, "");
+              if (clean) nums.add(clean);
             }
+            ids.add(docSnap.id);
           }
         });
         loaded.sort((a, b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
         setVehicles(loaded);
+        setAssignedVehicleIds(ids);
+        setAssignedVehicleNumbers(nums);
       },
       (error) => {
         console.error("Error fetching vehicles:", error);
@@ -348,7 +371,7 @@ export default function OtherExpensesPage() {
       unsubscribeCompanies();
       unsubscribeVehicles();
     };
-  }, [effectiveUserId]);
+  }, [effectiveUserId, userRole, isTeamMember, user?.uid]);
 
   // Determine Default Company Name
   const defaultCompanyName = useMemo(() => {
@@ -487,21 +510,55 @@ export default function OtherExpensesPage() {
   // Derived available companies for filter (from fetched companies + any companyName recorded in records)
   const availableCompanies = useMemo(() => {
     const map = new Map<string, string>();
-    companies.forEach((c) => {
-      if (c.companyName?.trim()) {
-        map.set(c.companyName.trim().toLowerCase(), c.companyName.trim());
-      }
-    });
-    records.forEach((r) => {
-      if (r.companyName?.trim()) {
-        const key = r.companyName.trim().toLowerCase();
-        if (!map.has(key)) {
-          map.set(key, r.companyName.trim());
+    if (userRole === "SubOwner" || isTeamMember) {
+      vehicles.forEach((v) => {
+        const comp = (v.companyName || v.myCompany || "").trim();
+        if (comp) {
+          map.set(comp.toLowerCase(), comp);
         }
-      }
-    });
+      });
+      records.forEach((r) => {
+        const vId = (r.vehicleId || "").trim();
+        const vNum = (r.vehicleNumber || "").trim().toLowerCase();
+        const cleanNum = vNum.replace(/[^a-z0-9]/g, "");
+        const isAssigned =
+          (vId && assignedVehicleIds.has(vId)) ||
+          (vNum && assignedVehicleNumbers.has(vNum)) ||
+          (cleanNum && assignedVehicleNumbers.has(cleanNum)) ||
+          (vId && assignedVehicleNumbers.has(vId.toLowerCase()));
+
+        if (isAssigned && r.companyName?.trim()) {
+          const key = r.companyName.trim().toLowerCase();
+          if (!map.has(key)) {
+            map.set(key, r.companyName.trim());
+          }
+        }
+      });
+    } else {
+      companies.forEach((c) => {
+        if (c.companyName?.trim()) {
+          map.set(c.companyName.trim().toLowerCase(), c.companyName.trim());
+        }
+      });
+      records.forEach((r) => {
+        if (r.companyName?.trim()) {
+          const key = r.companyName.trim().toLowerCase();
+          if (!map.has(key)) {
+            map.set(key, r.companyName.trim());
+          }
+        }
+      });
+    }
     return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
-  }, [companies, records]);
+  }, [
+    companies,
+    records,
+    vehicles,
+    userRole,
+    isTeamMember,
+    assignedVehicleIds,
+    assignedVehicleNumbers,
+  ]);
 
   // Map of vehicle ID / vehicle number to vehicleType ("Truck" / "Trailer")
   const vehicleTypeMap = useMemo(() => {
@@ -515,19 +572,22 @@ export default function OtherExpensesPage() {
   }, [vehicles]);
 
   // Helper to determine vehicle type of any given record
-  const getRecordVehicleType = (rec: OtherExpenseRecord): string => {
-    if (rec.vehicleType?.trim()) return rec.vehicleType.trim();
-    if (rec.vehicleId && vehicleTypeMap.has(rec.vehicleId.toLowerCase())) {
-      return vehicleTypeMap.get(rec.vehicleId.toLowerCase())!;
-    }
-    if (
-      rec.vehicleNumber &&
-      vehicleTypeMap.has(rec.vehicleNumber.toLowerCase().trim())
-    ) {
-      return vehicleTypeMap.get(rec.vehicleNumber.toLowerCase().trim())!;
-    }
-    return rec.vehicleNumber || rec.vehicleId ? "Truck" : "";
-  };
+  const getRecordVehicleType = useCallback(
+    (rec: OtherExpenseRecord): string => {
+      if (rec.vehicleType?.trim()) return rec.vehicleType.trim();
+      if (rec.vehicleId && vehicleTypeMap.has(rec.vehicleId.toLowerCase())) {
+        return vehicleTypeMap.get(rec.vehicleId.toLowerCase())!;
+      }
+      if (
+        rec.vehicleNumber &&
+        vehicleTypeMap.has(rec.vehicleNumber.toLowerCase().trim())
+      ) {
+        return vehicleTypeMap.get(rec.vehicleNumber.toLowerCase().trim())!;
+      }
+      return rec.vehicleNumber || rec.vehicleId ? "Truck" : "";
+    },
+    [vehicleTypeMap]
+  );
 
   // Vehicles available for filter based on selected company and selected vehicle type
   const availableVehiclesForFilter = useMemo(() => {
@@ -615,6 +675,23 @@ export default function OtherExpensesPage() {
   // Filtered records
   const filteredRecords = useMemo(() => {
     return records.filter((rec) => {
+      // 0. Assigned Vehicles filter for SubOwner / TeamMember
+      if (userRole === "SubOwner" || isTeamMember) {
+        const vId = (rec.vehicleId || "").trim();
+        const vNum = (rec.vehicleNumber || "").trim().toLowerCase();
+        const cleanNum = vNum.replace(/[^a-z0-9]/g, "");
+
+        const isAssigned =
+          (vId && assignedVehicleIds.has(vId)) ||
+          (vNum && assignedVehicleNumbers.has(vNum)) ||
+          (cleanNum && assignedVehicleNumbers.has(cleanNum)) ||
+          (vId && assignedVehicleNumbers.has(vId.toLowerCase()));
+
+        if (!isAssigned) {
+          return false;
+        }
+      }
+
       if (typeFilter !== "All" && rec.type !== typeFilter) {
         return false;
       }
@@ -696,6 +773,10 @@ export default function OtherExpensesPage() {
     });
   }, [
     records,
+    userRole,
+    isTeamMember,
+    assignedVehicleIds,
+    assignedVehicleNumbers,
     typeFilter,
     companyFilter,
     vehicleTypeFilter,
@@ -704,6 +785,7 @@ export default function OtherExpensesPage() {
     startDate,
     endDate,
     vehicleTypeMap,
+    getRecordVehicleType,
   ]);
 
   // Summary calculations
