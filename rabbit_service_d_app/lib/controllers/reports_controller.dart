@@ -57,7 +57,7 @@ class ReportsController extends GetxController {
   bool showInvoiceSearch = false;
 
   //for records access
-  bool? isView;
+  bool? isView = true;
   bool? isEdit;
   bool? isAdd;
   bool? isDelete;
@@ -264,8 +264,8 @@ class ReportsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _initializeEffectiveUserId();
     initializeStreams();
+    _initializeEffectiveUserId();
     if (isAnonymous == true || isProfileComplete == false) {
       showAddRecords = true;
     }
@@ -284,29 +284,42 @@ class ReportsController extends GetxController {
       if (currentUserDoc.exists) {
         final userData = currentUserDoc.data() as Map<String, dynamic>;
         final userRole = userData['role']?.toString() ?? '';
+        role = userRole;
 
-        // Only SubOwner uses the createdBy user ID, others use their own ID
-        if (userRole == 'SubOwner' && userData['createdBy'] != null) {
-          _effectiveUserId = userData['createdBy'];
-          log('SubOwner detected: Using owner ID $_effectiveUserId');
+        isView = (userRole == 'Owner' || userRole == 'SubOwner')
+            ? true
+            : (userData['isView'] ?? true);
+        isEdit = (userRole == 'Owner' || userRole == 'SubOwner')
+            ? true
+            : (userData['isEdit'] ?? false);
+        isAdd = (userRole == 'Owner' || userRole == 'SubOwner')
+            ? true
+            : (userData['isAdd'] ?? false);
+        isDelete = (userRole == 'Owner' || userRole == 'SubOwner')
+            ? true
+            : (userData['isDelete'] ?? false);
+
+        final String? createdBy = userData['createdBy']?.toString();
+        final String targetOwnerId =
+            (userRole == 'SubOwner' && createdBy != null && createdBy.isNotEmpty)
+                ? createdBy
+                : currentUId;
+
+        final bool ownerChanged = (_effectiveUserId != targetOwnerId);
+        _effectiveUserId = targetOwnerId;
+
+        if (ownerChanged || vehiclesSubscription == null) {
+          _setupDataStreams(targetOwnerId);
         } else {
-          _effectiveUserId = currentUId;
-          log('User role $userRole: Using own ID $_effectiveUserId');
+          update();
         }
-
-        update();
       }
     } catch (e) {
       debugPrint('Error initializing effective user ID: $e');
-      _effectiveUserId = currentUId;
     }
   }
 
-  void cancelStreams() {
-    try {
-      usersSubscription?.cancel();
-      usersSubscription = null;
-    } catch (_) {}
+  void _cancelDataStreams() {
     try {
       vehiclesSubscription?.cancel();
       vehiclesSubscription = null;
@@ -314,10 +327,6 @@ class ReportsController extends GetxController {
     try {
       assignedVehiclesSubscription?.cancel();
       assignedVehiclesSubscription = null;
-    } catch (_) {}
-    try {
-      servicesSubscription?.cancel();
-      servicesSubscription = null;
     } catch (_) {}
     try {
       recordsSubscription?.cancel();
@@ -331,10 +340,22 @@ class ReportsController extends GetxController {
       milesSubscription?.cancel();
       milesSubscription = null;
     } catch (_) {}
+  }
+
+  void cancelStreams() {
+    try {
+      usersSubscription?.cancel();
+      usersSubscription = null;
+    } catch (_) {}
+    try {
+      servicesSubscription?.cancel();
+      servicesSubscription = null;
+    } catch (_) {}
     try {
       packagesSubscription?.cancel();
       packagesSubscription = null;
     } catch (_) {}
+    _cancelDataStreams();
   }
 
   void initializeStreams() {
@@ -342,80 +363,62 @@ class ReportsController extends GetxController {
 
     if (currentUId.isEmpty) return;
 
-    // Setup users stream - always use currentUId for user document (permissions and role)
+    // 1. Setup global metadata streams
+    _setupMetadataStreams();
+
+    // 2. Setup live users stream - always use currentUId for user document (permissions and role)
     usersSubscription = FirebaseFirestore.instance
         .collection('Users')
-        .doc(currentUId) // FIXED: Use currentUId, not effectiveUserId
+        .doc(currentUId)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.exists) {
         final userData = snapshot.data();
         if (userData != null) {
-          isView = userData['isView'];
-          isEdit = userData['isEdit'];
-          isAdd = userData['isAdd'];
-          isDelete = userData['isDelete'];
-          role = userData['role'];
+          role = userData['role']?.toString() ?? '';
           isAnonymous = userData['isAnonymous'] ?? true;
           isProfileComplete = userData['isProfileComplete'] ?? false;
-          update();
+
+          isView = (role == 'Owner' || role == 'SubOwner')
+              ? true
+              : (userData['isView'] ?? true);
+          isEdit = (role == 'Owner' || role == 'SubOwner')
+              ? true
+              : (userData['isEdit'] ?? false);
+          isAdd = (role == 'Owner' || role == 'SubOwner')
+              ? true
+              : (userData['isAdd'] ?? false);
+          isDelete = (role == 'Owner' || role == 'SubOwner')
+              ? true
+              : (userData['isDelete'] ?? false);
+
+          final String? createdBy = userData['createdBy']?.toString();
+          final String targetOwnerId =
+              (role == 'SubOwner' && createdBy != null && createdBy.isNotEmpty)
+                  ? createdBy
+                  : currentUId;
+
+          final bool ownerChanged = (_effectiveUserId != targetOwnerId);
+          _effectiveUserId = targetOwnerId;
+
+          if (ownerChanged || vehiclesSubscription == null) {
+            _setupDataStreams(targetOwnerId);
+          } else {
+            update();
+          }
         }
       }
     }, onError: (error) {
       log("Users stream error: $error");
     });
 
-    if (effectiveUserId.isEmpty) return;
-
-    // Setup vehicle stream - use effectiveUserId for vehicles
-    vehiclesSubscription = FirebaseFirestore.instance
-        .collection('Users')
-        .doc(effectiveUserId) // Use effectiveUserId for data
-        .collection("Vehicles")
-        .where("active", isEqualTo: true)
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.docs.isEmpty) {
-        debugPrint('No vehicles found for effective user: $effectiveUserId');
-        vehicles.clear();
-        update();
-        return;
-      }
-
-      vehicles.clear();
-      vehicles
-          .addAll(snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
-      update();
-      debugPrint(
-          'Fetched ${vehicles.length} vehicles for effective user: $effectiveUserId');
-    }, onError: (error) {
-      log("Vehicles stream error: $error");
-    });
-
-    // Setup assigned vehicles stream for SubOwner/member if different from owner
-    if (currentUId.isNotEmpty && currentUId != effectiveUserId) {
-      assignedVehiclesSubscription = FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUId)
-          .collection("Vehicles")
-          .where("active", isEqualTo: true)
-          .snapshots()
-          .listen((snapshot) {
-        assignedVehicles.clear();
-        if (snapshot.docs.isNotEmpty) {
-          assignedVehicles.addAll(
-              snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
-        }
-        update();
-        debugPrint(
-            'Fetched ${assignedVehicles.length} assigned vehicles for user: $currentUId');
-      }, onError: (error) {
-        log("Assigned Vehicles stream error: $error");
-      });
-    } else {
-      assignedVehicles.clear();
+    // 3. Fast-path: if _effectiveUserId is already known, initialize data streams immediately
+    if (_effectiveUserId != null && _effectiveUserId!.isNotEmpty) {
+      _setupDataStreams(_effectiveUserId!);
     }
+  }
 
+  void _setupMetadataStreams() {
     // Setup services stream - metadata is global
     servicesSubscription = FirebaseFirestore.instance
         .collection('metadata')
@@ -449,86 +452,6 @@ class ReportsController extends GetxController {
       log("Services stream error: $error");
     });
 
-    // Setup records stream - use effectiveUserId for records
-    recordsSubscription = FirebaseFirestore.instance
-        .collection('Users')
-        .doc(effectiveUserId) // Use effectiveUserId for data
-        .collection('DataServices')
-        .where('active', isEqualTo: true)
-        .snapshots()
-        .listen((snapshot) {
-      records.clear();
-      records.addAll(snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          ...data,
-          'id': doc.id,
-          'vehicle': data['vehicleDetails'] != null
-              ? data['vehicleDetails']['companyName']
-              : ''
-        };
-      }));
-
-      records.sort((a, b) {
-        DateTime? dateA = parseDateSafe(a['date']);
-        DateTime? dateB = parseDateSafe(b['date']);
-        if (dateA != null && dateB != null && !dateA.isAtSameMomentAs(dateB)) {
-          return dateB.compareTo(dateA); // Newest date first
-        }
-        DateTime? createdA = parseDateSafe(a['createdAt']);
-        DateTime? createdB = parseDateSafe(b['createdAt']);
-        if (createdA != null && createdB != null) {
-          return createdB.compareTo(createdA); // Newest created first
-        }
-        return 0;
-      });
-
-      // Update showAddRecords based on whether we have any records
-      showAddRecords = snapshot.docs.isEmpty;
-      update();
-      debugPrint(
-          'Fetched ${records.length} records for effective user: $effectiveUserId');
-    }, onError: (error) {
-      log("Records stream error: $error");
-    });
-
-    // Setup workshop names stream
-    workshopSubscription = FirebaseFirestore.instance
-        .collection('Users')
-        .doc(effectiveUserId)
-        .collection('recordWorkshopName')
-        .snapshots()
-        .listen((snapshot) {
-      workshopList.clear();
-      for (var doc in snapshot.docs) {
-        final name = (doc.data()['workshopName'] ?? '').toString().trim();
-        if (name.isNotEmpty && !workshopList.contains(name)) {
-          workshopList.add(name);
-        }
-      }
-      workshopList.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-      update();
-    }, onError: (error) {
-      log("Workshop stream error: $error");
-    });
-
-    // Setup miles stream - use effectiveUserId
-    milesSubscription = FirebaseFirestore.instance
-        .collection('Users')
-        .doc(effectiveUserId) // Use effectiveUserId for data
-        .collection('DataServices')
-        .snapshots()
-        .listen((snapshot) {
-      milesToAddInRecords.clear();
-      milesToAddInRecords.addAll(snapshot.docs.map((doc) => {
-            ...doc.data(),
-            'id': doc.id,
-          }));
-      update();
-    }, onError: (error) {
-      log("Miles stream error: $error");
-    });
-
     // Listen to the servicePackages stream - metadata is global
     packagesSubscription = FirebaseFirestore.instance
         .collection('metadata')
@@ -553,6 +476,135 @@ class ReportsController extends GetxController {
       }
     }, onError: (error) {
       log("Packages stream error: $error");
+    });
+  }
+
+  void _setupDataStreams(String targetOwnerId) {
+    _cancelDataStreams();
+
+    if (targetOwnerId.isEmpty) return;
+
+    // 1. Setup vehicle stream - use targetOwnerId for vehicles
+    vehiclesSubscription = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(targetOwnerId)
+        .collection("Vehicles")
+        .where("active", isEqualTo: true)
+        .snapshots()
+        .listen((snapshot) {
+      vehicles.clear();
+      if (snapshot.docs.isNotEmpty) {
+        vehicles.addAll(
+            snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
+      }
+      update();
+      debugPrint(
+          'Fetched ${vehicles.length} vehicles for effective user: $targetOwnerId');
+    }, onError: (error) {
+      log("Vehicles stream error: $error");
+    });
+
+    // 2. Setup assigned vehicles stream for SubOwner if different from owner
+    if (currentUId.isNotEmpty && currentUId != targetOwnerId) {
+      assignedVehiclesSubscription = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection("Vehicles")
+          .where("active", isEqualTo: true)
+          .snapshots()
+          .listen((snapshot) {
+        assignedVehicles.clear();
+        if (snapshot.docs.isNotEmpty) {
+          assignedVehicles.addAll(
+              snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
+        }
+        update();
+        debugPrint(
+            'Fetched ${assignedVehicles.length} assigned vehicles for user: $currentUId');
+      }, onError: (error) {
+        log("Assigned Vehicles stream error: $error");
+      });
+    } else {
+      assignedVehicles.clear();
+    }
+
+    // 3. Setup records stream - use targetOwnerId for records
+    recordsSubscription = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(targetOwnerId)
+        .collection('DataServices')
+        .where('active', isEqualTo: true)
+        .snapshots()
+        .listen((snapshot) {
+      records.clear();
+      records.addAll(snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          ...data,
+          'id': doc.id,
+          'vehicle': data['vehicleDetails'] != null
+              ? data['vehicleDetails']['companyName']
+              : ''
+        };
+      }));
+
+      records.sort((a, b) {
+        DateTime? dateA = parseDateSafe(a['date']);
+        DateTime? dateB = parseDateSafe(b['date']);
+        if (dateA != null && dateB != null && !dateA.isAtSameMomentAs(dateB)) {
+          return dateB.compareTo(dateA);
+        }
+        DateTime? createdA = parseDateSafe(a['createdAt']);
+        DateTime? createdB = parseDateSafe(b['createdAt']);
+        if (createdA != null && createdB != null) {
+          return createdB.compareTo(createdA);
+        }
+        return 0;
+      });
+
+      showAddRecords = snapshot.docs.isEmpty;
+      update();
+      debugPrint(
+          'Fetched ${records.length} records for effective user: $targetOwnerId');
+    }, onError: (error) {
+      log("Records stream error: $error");
+    });
+
+    // 4. Setup workshop names stream
+    workshopSubscription = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(targetOwnerId)
+        .collection('recordWorkshopName')
+        .snapshots()
+        .listen((snapshot) {
+      workshopList.clear();
+      for (var doc in snapshot.docs) {
+        final name = (doc.data()['workshopName'] ?? '').toString().trim();
+        if (name.isNotEmpty && !workshopList.contains(name)) {
+          workshopList.add(name);
+        }
+      }
+      workshopList.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      update();
+    }, onError: (error) {
+      log("Workshop stream error: $error");
+    });
+
+    // 5. Setup miles stream - use targetOwnerId
+    milesSubscription = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(targetOwnerId)
+        .collection('DataServices')
+        .snapshots()
+        .listen((snapshot) {
+      milesToAddInRecords.clear();
+      milesToAddInRecords.addAll(snapshot.docs.map((doc) => {
+            ...doc.data(),
+            'id': doc.id,
+          }));
+      update();
+    }, onError: (error) {
+      log("Miles stream error: $error");
     });
   }
 

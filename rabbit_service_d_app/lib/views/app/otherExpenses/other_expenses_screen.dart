@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -35,6 +36,10 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
   Map<String, dynamic> _expensesPermission = {};
   bool _isLoadingUser = true;
 
+  StreamSubscription<QuerySnapshot>? _assignedVehiclesSubscription;
+  final Set<String> _assignedVehicleNumbers = {};
+  final Set<String> _assignedVehicleIds = {};
+
   bool get _canAdd =>
       (_userRole == 'Owner' || _userRole == 'SubOwner') ||
       (_isTeamMember && _expensesPermission['add'] == true);
@@ -59,8 +64,75 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
 
   @override
   void dispose() {
+    _assignedVehiclesSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  String _cleanVehicleNum(String val) =>
+      val.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+  void _listenToAssignedVehicles(String uid) {
+    _assignedVehiclesSubscription?.cancel();
+    _assignedVehiclesSubscription = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Vehicles')
+        .snapshots()
+        .listen(
+      (snapshot) {
+        _assignedVehicleNumbers.clear();
+        _assignedVehicleIds.clear();
+        for (var doc in snapshot.docs) {
+          _assignedVehicleIds.add(doc.id.trim());
+          final data = doc.data();
+          final vNum = (data['vehicleNumber'] ??
+                  data['vehicle_number'] ??
+                  data['number'] ??
+                  doc.id)
+              .toString()
+              .trim();
+          if (vNum.isNotEmpty) {
+            _assignedVehicleNumbers.add(vNum.toLowerCase());
+            final clean = _cleanVehicleNum(vNum);
+            if (clean.isNotEmpty) {
+              _assignedVehicleNumbers.add(clean);
+            }
+          }
+        }
+        if (mounted) {
+          setState(() {});
+        }
+      },
+      onError: (e) {
+        log("Error listening to assigned vehicles: $e");
+      },
+    );
+  }
+
+  bool _isVehicleAssigned(OtherExpenseModel exp) {
+    if (_userRole == 'Owner') {
+      return true;
+    }
+
+    final vId = exp.vehicleId.trim();
+    final vNum = exp.vehicleNumber.trim().toLowerCase();
+    final cleanNum = _cleanVehicleNum(exp.vehicleNumber);
+
+    if (vId.isNotEmpty && _assignedVehicleIds.contains(vId)) {
+      return true;
+    }
+    if (vNum.isNotEmpty && _assignedVehicleNumbers.contains(vNum)) {
+      return true;
+    }
+    if (cleanNum.isNotEmpty && _assignedVehicleNumbers.contains(cleanNum)) {
+      return true;
+    }
+    if (vId.isNotEmpty && _assignedVehicleNumbers.contains(vId.toLowerCase())) {
+      return true;
+    }
+
+    return false;
   }
 
   Future<void> _resolveEffectiveUserId() async {
@@ -91,11 +163,46 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
       } else {
         _effectiveUserId = user.uid;
       }
+
+      // Pre-fetch and listen to assigned vehicles if SubOwner or team member
+      if (_userRole != 'Owner') {
+        try {
+          final initialSnap = await _firestore
+              .collection('Users')
+              .doc(user.uid)
+              .collection('Vehicles')
+              .get();
+          _assignedVehicleNumbers.clear();
+          _assignedVehicleIds.clear();
+          for (var doc in initialSnap.docs) {
+            _assignedVehicleIds.add(doc.id.trim());
+            final data = doc.data();
+            final vNum = (data['vehicleNumber'] ??
+                    data['vehicle_number'] ??
+                    data['number'] ??
+                    doc.id)
+                .toString()
+                .trim();
+            if (vNum.isNotEmpty) {
+              _assignedVehicleNumbers.add(vNum.toLowerCase());
+              final clean = _cleanVehicleNum(vNum);
+              if (clean.isNotEmpty) {
+                _assignedVehicleNumbers.add(clean);
+              }
+            }
+          }
+        } catch (e) {
+          log("Error pre-fetching assigned vehicles: $e");
+        }
+        _listenToAssignedVehicles(user.uid);
+      }
     } catch (e) {
       log("Error resolving effective user ID: $e");
       _effectiveUserId = user.uid;
     } finally {
-      setState(() => _isLoadingUser = false);
+      if (mounted) {
+        setState(() => _isLoadingUser = false);
+      }
     }
   }
 
@@ -629,7 +736,10 @@ class _OtherExpensesScreenState extends State<OtherExpensesScreen> {
             for (var doc in snapshot.data!.docs) {
               final data = doc.data() as Map<String, dynamic>;
               if (data['active'] != false) {
-                allExpenses.add(OtherExpenseModel.fromMap(data, doc.id));
+                final model = OtherExpenseModel.fromMap(data, doc.id);
+                if (_isVehicleAssigned(model)) {
+                  allExpenses.add(model);
+                }
               }
             }
           }

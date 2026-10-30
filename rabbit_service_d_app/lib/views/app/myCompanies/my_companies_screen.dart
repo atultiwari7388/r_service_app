@@ -905,8 +905,11 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
   @override
   Widget build(BuildContext context) {
     final effectiveRole = _currentUserRole ?? widget.role;
-    final isAllow = effectiveRole == "Owner" || effectiveRole == "SubOwner";
+    final isOwner = effectiveRole == "Owner";
     final isStaff = effectiveRole == "Manager" || effectiveRole == "Accountant";
+    final isSubOwner = effectiveRole == "SubOwner";
+    final isAssignedView = isStaff || isSubOwner;
+    final isAllow = isOwner;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -932,7 +935,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
               ]
             : [],
       ),
-      body: isStaff
+      body: isAssignedView
           ? _buildStaffCompaniesView()
           : _buildOwnerCompaniesView(isAllow),
       floatingActionButton: isAllow
@@ -1106,7 +1109,12 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
           final rawComId = (vData['mycomId'] ?? '').toString().trim();
           final fallbackCompany =
               (vData['companyName'] ?? '').toString().trim();
-          final vehicleNum = (vData['vehicleNumber'] ?? '').toString().trim();
+          final vehicleNum = (vData['vehicleNumber'] ??
+                  vData['vehicle_number'] ??
+                  vData['number'] ??
+                  vDoc.id)
+              .toString()
+              .trim();
 
           final resolvedCompName = rawMyCompany.isNotEmpty
               ? rawMyCompany
@@ -1114,7 +1122,9 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                   ? fallbackCompany
                   : 'Assigned Company');
 
-          final groupKey = resolvedCompName.toLowerCase();
+          final groupKey = rawComId.isNotEmpty
+              ? rawComId.toLowerCase()
+              : resolvedCompName.toLowerCase();
 
           if (!companyGroups.containsKey(groupKey)) {
             companyGroups[groupKey] = {
@@ -1122,6 +1132,16 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
               'companyId': rawComId,
               'vehicles': <String>[],
             };
+          } else {
+            if (rawComId.isNotEmpty &&
+                (companyGroups[groupKey]!['companyId'] == null ||
+                    companyGroups[groupKey]!['companyId'].toString().isEmpty)) {
+              companyGroups[groupKey]!['companyId'] = rawComId;
+            }
+            if (resolvedCompName != 'Assigned Company' &&
+                companyGroups[groupKey]!['companyName'] == 'Assigned Company') {
+              companyGroups[groupKey]!['companyName'] = resolvedCompName;
+            }
           }
 
           if (vehicleNum.isNotEmpty) {
@@ -1169,8 +1189,9 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                   final oName =
                       (oData['companyName'] ?? oData['name'] ?? '').toString();
                   if ((compId.isNotEmpty && oDoc.id == compId) ||
-                      oName.trim().toLowerCase() ==
-                          compName.trim().toLowerCase()) {
+                      (oName.isNotEmpty &&
+                          oName.trim().toLowerCase() ==
+                              compName.trim().toLowerCase())) {
                     enrichedData = Map<String, dynamic>.from(oData);
                     enrichedData['companyName'] =
                         oName.isNotEmpty ? oName : compName;
@@ -1179,9 +1200,9 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                 }
 
                 return _buildCompanyCard(
-                  docId: compId.isNotEmpty ? compId : 'staff_$index',
+                  docId: compId.isNotEmpty ? compId : 'assigned_$index',
                   data: enrichedData,
-                  isAllow: false, // Read-only for staff
+                  isAllow: false, // Read-only for staff & subowner
                   assignedVehicles: assignedVehicles,
                 );
               },

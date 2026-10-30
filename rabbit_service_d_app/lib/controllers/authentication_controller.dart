@@ -11,6 +11,7 @@ import 'package:regal_service_d_app/views/app/adminContact/admin_contact_screen.
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/auth/registration_screen.dart';
 import 'package:regal_service_d_app/entry_screen.dart';
+import 'package:regal_service_d_app/controllers/reports_controller.dart';
 import '../utils/show_toast_msg.dart';
 
 class AuthController extends GetxController {
@@ -430,6 +431,12 @@ class AuthController extends GetxController {
           isUserSign = false;
           update();
           if (userDoc['active'] == true && userDoc['status'] == "active") {
+            if (Get.isRegistered<ReportsController>()) {
+              try {
+                Get.find<ReportsController>().cancelStreams();
+              } catch (_) {}
+              Get.delete<ReportsController>(force: true);
+            }
             //navigate to mobile view
             Get.offAll(() => EntryScreen());
             showToastMessage("Success", "Login Successful", Colors.green);
