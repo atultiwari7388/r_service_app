@@ -389,9 +389,11 @@ export default function MyCompaniesPage() {
     );
 
     // Listen to vehicles
-    // If Manager or Accountant, fetch from Users/{user.uid}/Vehicles to get their assigned vehicles
-    const isStaff = userRole === "Manager" || userRole === "Accountant";
-    const vehiclesTargetUid = isStaff ? user?.uid : effectiveUserId;
+    // If Manager, Accountant, or SubOwner, fetch from Users/{user.uid}/Vehicles to get their assigned vehicles
+    const isAssignedView = ["manager", "accountant", "subowner", "coowner", "co-owner"].includes(
+      userRole?.toLowerCase() || ""
+    );
+    const vehiclesTargetUid = isAssignedView ? user?.uid : effectiveUserId;
 
     if (!vehiclesTargetUid) return;
 
@@ -415,7 +417,7 @@ export default function MyCompaniesPage() {
           counts[lower] = (counts[lower] || 0) + 1;
         }
 
-        if (isStaff && vehicleNum) {
+        if (isAssignedView && vehicleNum) {
           const key = comId || (resolvedName ? resolvedName.toLowerCase() : "unassigned");
           if (!staffVehicles[key]) {
             staffVehicles[key] = [];
@@ -438,7 +440,7 @@ export default function MyCompaniesPage() {
       });
 
       setVehicleCountByCompanyId(counts);
-      if (isStaff) {
+      if (isAssignedView) {
         setStaffVehiclesByCompany(staffVehicles);
       }
     });
@@ -450,12 +452,14 @@ export default function MyCompaniesPage() {
   }, [effectiveUserId, userRole, user?.uid]);
 
   // Sort companies: Default first, then A to Z
-  // If staff (Manager / Accountant), filter only companies that have assigned vehicles
+  // If staff or SubOwner, filter only companies that have assigned vehicles
   const sortedCompanies = useMemo(() => {
-    const isStaff = userRole === "Manager" || userRole === "Accountant";
+    const isAssignedView = ["manager", "accountant", "subowner", "coowner", "co-owner"].includes(
+      userRole?.toLowerCase() || ""
+    );
     let list = [...companies];
 
-    if (isStaff) {
+    if (isAssignedView) {
       list = list.filter((comp) => {
         const byId = staffVehiclesByCompany[comp.id];
         const byName = staffVehiclesByCompany[comp.companyName.trim().toLowerCase()];
@@ -535,6 +539,11 @@ export default function MyCompaniesPage() {
     e.preventDefault();
     if (!effectiveUserId) {
       toast.error("User not authenticated");
+      return;
+    }
+
+    if (userRole !== "Owner") {
+      toast.error("Only the account owner can add or edit companies.");
       return;
     }
 
@@ -655,6 +664,11 @@ export default function MyCompaniesPage() {
   const handleSetAsDefault = async (company: CompanyType) => {
     if (!effectiveUserId) return;
 
+    if (userRole !== "Owner") {
+      toast.error("Only the account owner can set the default company.");
+      return;
+    }
+
     try {
       const companiesRef = collection(db, "Users", effectiveUserId, "myCompanies");
       const existingSnapshot = await getDocs(companiesRef);
@@ -698,6 +712,11 @@ export default function MyCompaniesPage() {
   const handleToggleStatus = async (company: CompanyType) => {
     if (!effectiveUserId) return;
 
+    if (userRole !== "Owner") {
+      toast.error("Only the account owner can change company status.");
+      return;
+    }
+
     try {
       const newStatus = !company.isActive;
       await updateDoc(
@@ -735,6 +754,11 @@ export default function MyCompaniesPage() {
     );
   }
 
+  const isAssignedView = ["manager", "accountant", "subowner", "coowner", "co-owner"].includes(
+    userRole?.toLowerCase() || ""
+  );
+  const isOwner = userRole === "Owner";
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[calc(100vh-80px)]">
       {/* Header Banner */}
@@ -742,18 +766,16 @@ export default function MyCompaniesPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
             <FaBuilding className="text-[#F96176]" />
-            {userRole === "Manager" || userRole === "Accountant"
-              ? "Assigned Companies"
-              : "My Companies"}
+            {isAssignedView ? "Assigned Companies" : "My Companies"}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            {userRole === "Manager" || userRole === "Accountant"
+            {isAssignedView
               ? "View companies associated with your assigned vehicles"
               : "Manage your company profiles, active status, DOT/MC credentials and dispatch entities"}
           </p>
         </div>
 
-        {userRole !== "Manager" && userRole !== "Accountant" && (
+        {isOwner && (
           <button
             onClick={handleOpenAddModal}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[#F96176] text-white text-sm font-semibold shadow hover:bg-[#e05065] transition-colors self-start sm:self-auto"
@@ -764,13 +786,7 @@ export default function MyCompaniesPage() {
         )}
       </div>
 
-      {userRole === "SubOwner" && (
-        <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
-          Managing companies for Owner&apos;s account.
-        </div>
-      )}
-
-      {(userRole === "Manager" || userRole === "Accountant") && (
+      {isAssignedView && (
         <div className="mb-6 p-3 bg-rose-50 border border-rose-200 rounded-lg text-[#F96176] text-sm flex items-center gap-2">
           <FaTruck className="shrink-0" />
           <span>Showing companies for vehicles currently assigned to your account.</span>
@@ -781,23 +797,19 @@ export default function MyCompaniesPage() {
       {sortedCompanies.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center max-w-md mx-auto shadow-sm">
           <div className="w-16 h-16 bg-red-50 text-[#F96176] rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-            {userRole === "Manager" || userRole === "Accountant" ? (
-              <FaTruck />
-            ) : (
-              <FaBuilding />
-            )}
+            {isAssignedView ? <FaTruck /> : <FaBuilding />}
           </div>
           <h3 className="text-lg font-bold text-gray-900 mb-1">
-            {userRole === "Manager" || userRole === "Accountant"
+            {isAssignedView
               ? "No Assigned Vehicles or Companies"
               : "No Companies Found"}
           </h3>
           <p className="text-sm text-gray-500 mb-6">
-            {userRole === "Manager" || userRole === "Accountant"
+            {isAssignedView
               ? "There are currently no vehicles assigned to your account. Companies associated with your assigned vehicles will appear here."
               : "Add your primary or subsidiary logistics companies to assign them to vehicles and service records."}
           </p>
-          {userRole !== "Manager" && userRole !== "Accountant" && (
+          {isOwner && (
             <button
               onClick={handleOpenAddModal}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#F96176] text-white text-sm font-semibold hover:bg-[#e05065] transition-colors"
@@ -823,9 +835,7 @@ export default function MyCompaniesPage() {
               vehicleCountByCompanyId[company.companyName.trim().toLowerCase()] ??
               0;
 
-            const isStaff =
-              userRole === "Manager" || userRole === "Accountant";
-            const assignedVehicles = isStaff
+            const assignedVehicles = isAssignedView
               ? staffVehiclesByCompany[company.id] ||
                 staffVehiclesByCompany[company.companyName.trim().toLowerCase()] ||
                 []
@@ -835,7 +845,7 @@ export default function MyCompaniesPage() {
               <div
                 key={company.id}
                 className={`bg-white rounded-xl border ${
-                  company.isDefault && !isStaff
+                  company.isDefault && isOwner
                     ? "border-[#F96176] ring-1 ring-[#F96176]/30 shadow-md"
                     : "border-gray-200 shadow-sm hover:shadow-md"
                 } p-5 transition-all relative flex flex-col justify-between`}
@@ -846,7 +856,7 @@ export default function MyCompaniesPage() {
                     <div className="flex items-center gap-3">
                       <div
                         className={`p-3 rounded-xl ${
-                          company.isDefault && !isStaff
+                          company.isDefault && isOwner
                             ? "bg-[#F96176]/10 text-[#F96176]"
                             : "bg-gray-100 text-gray-700"
                         }`}
@@ -869,8 +879,8 @@ export default function MyCompaniesPage() {
                             {company.isActive ? "Active" : "Closed"}
                           </span>
 
-                          {/* Default Badge (Owner/Subowner only) */}
-                          {company.isDefault && !isStaff && (
+                          {/* Default Badge (Owner only) */}
+                          {company.isDefault && isOwner && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#F96176]/10 text-[#F96176] border border-[#F96176]/30">
                               Default
                             </span>
@@ -879,8 +889,8 @@ export default function MyCompaniesPage() {
                       </div>
                     </div>
 
-                    {/* Action Dropdown Menu (Hidden for Manager & Accountant) */}
-                    {!isStaff && (
+                    {/* Action Dropdown Menu (Only for Owner) */}
+                    {isOwner && (
                       <div className="relative">
                         <button
                           onClick={(e) => {
@@ -998,8 +1008,8 @@ export default function MyCompaniesPage() {
 
                 {/* Footer Section */}
                 <div>
-                  {/* Assigned Vehicles (Manager / Accountant) */}
-                  {isStaff && assignedVehicles.length > 0 && (
+                  {/* Assigned Vehicles (Manager / Accountant / SubOwner) */}
+                  {isAssignedView && assignedVehicles.length > 0 && (
                     <div className="pt-3 mt-3 border-t border-gray-100">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-2">
                         <FaTruck className="text-[#F96176]" />
@@ -1026,23 +1036,23 @@ export default function MyCompaniesPage() {
                     </div>
                   )}
 
-                  {/* View Assigned Vehicles Button (Only for Owner / SubOwner) */}
-                  {!isStaff && (
-                    <div className="pt-3 mt-3 border-t border-gray-100">
-                      <Link
-                        href={`/my-companies/vehicles/${company.id}`}
-                        className="w-full inline-flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-gray-50 hover:bg-[#F96176]/10 border border-gray-200 hover:border-[#F96176]/30 text-xs font-semibold text-gray-700 hover:text-[#F96176] transition-all group"
-                      >
-                        <span className="flex items-center gap-2">
-                          <FaTruck className="text-[#F96176] text-sm group-hover:scale-110 transition-transform" />
-                          View Assigned Vehicles
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white group-hover:bg-[#F96176] text-gray-700 group-hover:text-white border border-gray-200 group-hover:border-[#F96176] transition-colors">
-                          {vehicleCount} {vehicleCount === 1 ? "Vehicle" : "Vehicles"}
-                        </span>
-                      </Link>
-                    </div>
-                  )}
+                  {/* View Assigned Vehicles Button */}
+                  <div className="pt-3 mt-3 border-t border-gray-100">
+                    <Link
+                      href={`/my-companies/vehicles/${company.id}`}
+                      className="w-full inline-flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-gray-50 hover:bg-[#F96176]/10 border border-gray-200 hover:border-[#F96176]/30 text-xs font-semibold text-gray-700 hover:text-[#F96176] transition-all group"
+                    >
+                      <span className="flex items-center gap-2">
+                        <FaTruck className="text-[#F96176] text-sm group-hover:scale-110 transition-transform" />
+                        View Assigned Vehicles
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white group-hover:bg-[#F96176] text-gray-700 group-hover:text-white border border-gray-200 group-hover:border-[#F96176] transition-colors">
+                        {isAssignedView
+                          ? `${assignedVehicles.length} ${assignedVehicles.length === 1 ? "Vehicle" : "Vehicles"}`
+                          : `${vehicleCount} ${vehicleCount === 1 ? "Vehicle" : "Vehicles"}`}
+                      </span>
+                    </Link>
+                  </div>
                 </div>
               </div>
             );

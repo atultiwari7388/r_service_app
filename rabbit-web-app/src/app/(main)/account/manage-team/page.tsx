@@ -101,18 +101,16 @@ export default function ManageTeam(): JSX.Element {
         setRole(userRole);
         setOwnerId(createdBy);
 
-        // Determine effectiveUserId based on role
-        // let effectiveOwnerId = authUser.uid;
-        if (userRole === "SubOwner" && createdBy) {
-          // effectiveOwnerId = createdBy;
+        const isSubOwner = ["subowner", "coowner", "co-owner"].includes(userRole.toLowerCase());
+        const isStaff = userRole === "Manager" || userRole === "Accountant";
+
+        if ((isSubOwner || isStaff) && createdBy) {
           setEffectiveUserId(createdBy);
-          console.log("SubOwner detected, using effectiveUserId:", createdBy);
+          console.log("SubOwner/Staff detected, using effectiveUserId:", createdBy);
         } else {
           setEffectiveUserId(authUser.uid);
-          console.log("Regular user, using own uid:", authUser.uid);
+          console.log("Owner or regular user, using own uid:", authUser.uid);
         }
-
-        setLoading(false);
       } catch (error) {
         console.error("Error fetching user data:", error);
         setErrorMessage("Error loading user data");
@@ -125,63 +123,82 @@ export default function ManageTeam(): JSX.Element {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!effectiveUserId) return;
+      if (!authUser?.uid || !effectiveUserId || !role) return;
 
       try {
         setLoading(true);
         setErrorMessage("");
 
-        // 1. First fetch user details
-        const userSnapshot = await getDoc(doc(db, "Users", effectiveUserId));
-        if (!userSnapshot.exists()) {
-          setErrorMessage("User not found");
-          setLoading(false);
-          return;
+        const isSubOwner = ["subowner", "coowner", "co-owner"].includes(role.toLowerCase());
+        const isStaff = role === "Manager" || role === "Accountant";
+        const isAssignedFilterRole = isSubOwner || isStaff;
+
+        // 1. Fetch current logged-in user's assigned vehicle keys (IDs and numbers)
+        const myAssignedVehicleKeys = new Set<string>();
+
+        if (isAssignedFilterRole) {
+          const myVehiclesSnap = await getDocs(
+            collection(db, "Users", authUser.uid, "Vehicles")
+          );
+          myVehiclesSnap.docs.forEach((d) => {
+            const dId = d.id.trim().toLowerCase();
+            if (dId) myAssignedVehicleKeys.add(dId);
+
+            const vData = d.data();
+            const num = (vData.vehicleNumber || vData.vehicle_number || "").toString().trim().toLowerCase();
+            if (num) myAssignedVehicleKeys.add(num);
+
+            const vId = (vData.id || vData.vehicleId || "").toString().trim().toLowerCase();
+            if (vId) myAssignedVehicleKeys.add(vId);
+          });
+
+          // Also check direct arrays on the logged-in user's doc
+          const currentUserDocSnap = await getDoc(doc(db, "Users", authUser.uid));
+          if (currentUserDocSnap.exists()) {
+            const curData = currentUserDocSnap.data() || {};
+            const directList = [
+              ...(Array.isArray(curData.assignVehicle) ? curData.assignVehicle : []),
+              ...(Array.isArray(curData.selectedVehicles) ? curData.selectedVehicles : []),
+              ...(Array.isArray(curData.assignedVehicles) ? curData.assignedVehicles : []),
+            ];
+            directList.forEach((v) => {
+              const s = (v || "").toString().trim().toLowerCase();
+              if (s) myAssignedVehicleKeys.add(s);
+            });
+          }
+
+          setCurrentUserVehicleIds(Array.from(myAssignedVehicleKeys));
+        } else {
+          // Master Owner: fetch own vehicles
+          const ownerVehiclesSnap = await getDocs(
+            collection(db, "Users", effectiveUserId, "Vehicles")
+          );
+          const ownerVehicleIds = ownerVehiclesSnap.docs.map((doc) => doc.id);
+          setCurrentUserVehicleIds(ownerVehicleIds);
         }
 
-        const userData = userSnapshot.data();
-        const userRole = userData.role || "";
-        const createdBy = userData.createdBy || "";
-
-        setCurrentUserId(effectiveUserId);
-        setRole(userRole);
-        setOwnerId(createdBy);
-        console.log("user id is ", currentUserId);
-        console.log("Owner id is ", ownerId);
-
-        // 2. Fetch current user's vehicles
-        const vehiclesSnapshot = await getDocs(
-          collection(db, "Users", effectiveUserId, "Vehicles")
-        );
-        const vehicleIds = vehiclesSnapshot.docs.map((doc) => doc.id);
-
-        setCurrentUserVehicleIds(vehicleIds);
-        console.log("Current user vehicle IDs:", currentUserVehicleIds); // For debugging
-
-        // 3. Now fetch team members with proper vehicle checks
-        let effectiveOwnerId = effectiveUserId;
-        const membersWithVehicles: TeamMember[] = [];
-
-        if (userRole !== "Owner" && createdBy) {
-          effectiveOwnerId = createdBy;
-        }
-
+        // 2. Fetch team members under effective owner
         const teamSnapshot = await getDocs(
           query(
             collection(db, "Users"),
-            where("createdBy", "==", effectiveOwnerId)
+            where("createdBy", "==", effectiveUserId)
           )
         );
+
+        const membersWithVehicles: TeamMember[] = [];
 
         for (const member of teamSnapshot.docs) {
           const memberData = member.data();
           const memberId = member.id;
           const memberRole = memberData.role || "";
 
-          if (memberId === effectiveUserId) continue;
+          // Skip the current logged-in user
+          if (memberId === authUser.uid) continue;
 
-          if (userRole !== "Owner" && memberRole !== "Driver") continue;
+          // Skip Owner
+          if (memberRole === "Owner") continue;
 
+          // Fetch member's vehicles
           const vehicleSnapshot = await getDocs(
             collection(db, "Users", memberId, "Vehicles")
           );
@@ -191,12 +208,26 @@ export default function ManageTeam(): JSX.Element {
             vehicleNumber: doc.data().vehicleNumber || "No Number",
           }));
 
-          // For non-owners, check vehicle sharing
-          if (userRole !== "Owner") {
-            const hasSharedVehicle = memberVehicles.some((vehicle) =>
-              vehicleIds.includes(vehicle.id)
-            );
-            if (!hasSharedVehicle) continue;
+          // For SubOwner or Staff, only show members who share assigned vehicles
+          if (isAssignedFilterRole) {
+            const memberDirectVehicles = [
+              ...(Array.isArray(memberData.assignVehicle) ? memberData.assignVehicle : []),
+              ...(Array.isArray(memberData.selectedVehicles) ? memberData.selectedVehicles : []),
+              ...(Array.isArray(memberData.assignedVehicles) ? memberData.assignedVehicles : []),
+            ].map((v) => (v || "").toString().trim().toLowerCase());
+
+            const sharesVehicle =
+              memberVehicles.some((v) => {
+                const vId = (v.id || "").trim().toLowerCase();
+                const vNum = (v.vehicleNumber || "").trim().toLowerCase();
+                return (
+                  (vId && myAssignedVehicleKeys.has(vId)) ||
+                  (vNum && myAssignedVehicleKeys.has(vNum))
+                );
+              }) ||
+              memberDirectVehicles.some((v) => v && myAssignedVehicleKeys.has(v));
+
+            if (!sharesVehicle) continue;
           }
 
           membersWithVehicles.push({
@@ -229,13 +260,13 @@ export default function ManageTeam(): JSX.Element {
         setLoading(false);
       } catch (error) {
         console.error("Error loading data:", error);
-        // setErrorMessage(`Error loading data: ${error}`);
+        setErrorMessage("Error loading team members");
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [effectiveUserId, refreshKey]);
+  }, [authUser?.uid, effectiveUserId, role, refreshKey]);
 
   const filterMembers = () => {
     const query = searchQuery.toLowerCase();
@@ -598,25 +629,21 @@ export default function ManageTeam(): JSX.Element {
                                     </Link>
                                   )}
                                 </Menu.Item>
-                                {member.role !== "SubOwner" && (
-                                  <>
-                                    <Menu.Item>
-                                      {({ active }) => (
-                                        <Link
-                                          href={`/account/manage-team/member-trips/${member.uid}?ownerId=${member.createdBy}&perMileCharge=${member.perMileCharge}`}
-                                          className={`${
-                                            active
-                                              ? "bg-gray-100 text-gray-900"
-                                              : "text-gray-700"
-                                          } flex items-center px-4 py-2 text-sm`}
-                                        >
-                                          <FiCalendar className="mr-3 h-5 w-5 text-gray-400" />
-                                          View Trips
-                                        </Link>
-                                      )}
-                                    </Menu.Item>
-                                  </>
-                                )}
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <Link
+                                      href={`/account/manage-team/member-trips/${member.uid}?ownerId=${member.createdBy}&perMileCharge=${member.perMileCharge}`}
+                                      className={`${
+                                        active
+                                          ? "bg-gray-100 text-gray-900"
+                                          : "text-gray-700"
+                                      } flex items-center px-4 py-2 text-sm`}
+                                    >
+                                      <FiCalendar className="mr-3 h-5 w-5 text-gray-400" />
+                                      View Trips
+                                    </Link>
+                                  )}
+                                </Menu.Item>
                                 <Menu.Item>
                                   {({ active }) => (
                                     <Link
@@ -632,23 +659,21 @@ export default function ManageTeam(): JSX.Element {
                                     </Link>
                                   )}
                                 </Menu.Item>
-                                {member.role !== "SubOwner" && (
-                                  <Menu.Item>
-                                    {({ active }) => (
-                                      <Link
-                                        href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
-                                        className={`${
-                                          active
-                                            ? "bg-gray-100 text-gray-900"
-                                            : "text-gray-700"
-                                        } flex items-center px-4 py-2 text-sm`}
-                                      >
-                                        <FiBriefcase className="mr-3 h-5 w-5 text-gray-400" />
-                                        View Jobs
-                                      </Link>
-                                    )}
-                                  </Menu.Item>
-                                )}
+                                <Menu.Item>
+                                  {({ active }) => (
+                                    <Link
+                                      href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
+                                      className={`${
+                                        active
+                                          ? "bg-gray-100 text-gray-900"
+                                          : "text-gray-700"
+                                      } flex items-center px-4 py-2 text-sm`}
+                                    >
+                                      <FiBriefcase className="mr-3 h-5 w-5 text-gray-400" />
+                                      View Jobs
+                                    </Link>
+                                  )}
+                                </Menu.Item>
                               </div>
                             </Menu.Items>
                           </Transition>
@@ -791,6 +816,21 @@ export default function ManageTeam(): JSX.Element {
                             <Menu.Item>
                               {({ active }) => (
                                 <Link
+                                  href={`/account/manage-team/member-trips/${member.uid}?ownerId=${member.createdBy}&perMileCharge=${member.perMileCharge}`}
+                                  className={`${
+                                    active
+                                      ? "bg-gray-100 text-gray-900"
+                                      : "text-gray-700"
+                                  } flex items-center px-4 py-2 text-sm`}
+                                >
+                                  <FiCalendar className="mr-3 h-4 w-4 text-gray-400" />
+                                  View Trips
+                                </Link>
+                              )}
+                            </Menu.Item>
+                            <Menu.Item>
+                              {({ active }) => (
+                                <Link
                                   href={`/account/manage-team/member-vehicles/${member.uid}`}
                                   className={`${
                                     active
@@ -803,23 +843,21 @@ export default function ManageTeam(): JSX.Element {
                                 </Link>
                               )}
                             </Menu.Item>
-                            {member.role !== "SubOwner" && (
-                              <Menu.Item>
-                                {({ active }) => (
-                                  <Link
-                                    href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
-                                    className={`${
-                                      active
-                                        ? "bg-gray-100 text-gray-900"
-                                        : "text-gray-700"
-                                    } flex items-center px-4 py-2 text-sm`}
-                                  >
-                                    <FiBriefcase className="mr-3 h-4 w-4 text-gray-400" />
-                                    View Jobs
-                                  </Link>
-                                )}
-                              </Menu.Item>
-                            )}
+                            <Menu.Item>
+                              {({ active }) => (
+                                <Link
+                                  href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
+                                  className={`${
+                                    active
+                                      ? "bg-gray-100 text-gray-900"
+                                      : "text-gray-700"
+                                  } flex items-center px-4 py-2 text-sm`}
+                                >
+                                  <FiBriefcase className="mr-3 h-4 w-4 text-gray-400" />
+                                  View Jobs
+                                </Link>
+                              )}
+                            </Menu.Item>
                           </div>
                         </Menu.Items>
                       </Transition>

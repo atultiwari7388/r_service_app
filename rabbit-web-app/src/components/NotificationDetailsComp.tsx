@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
   FaCar,
@@ -15,6 +15,15 @@ import {
   FaMapMarkerAlt,
   FaRoute,
   FaCommentDots,
+  FaHandshake,
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaClock,
+  FaTimesCircle,
+  FaShieldAlt,
+  FaExternalLinkAlt,
+  FaCheck,
+  FaTimes,
 } from "react-icons/fa";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContexts";
@@ -30,8 +39,10 @@ interface Service {
 }
 
 interface NotificationData {
+  title?: string;
   message?: string;
   vehicleId?: string;
+  shareId?: string;
   currentMiles?: number;
   hoursReading?: number;
   notifications?: Service[];
@@ -52,6 +63,41 @@ interface VehicleData {
   vehicleNumber: string;
   companyName: string;
   vehicleType: string;
+}
+
+interface FleetShareDetails {
+  id: string;
+  shareCode?: string;
+  type?: "direct_offer" | "borrow_request";
+  status?: "pending" | "active" | "rejected" | "cancelled" | "completed";
+  lenderId?: string;
+  lenderEmail?: string;
+  lenderName?: string;
+  lenderCompanyName?: string;
+  borrowerId?: string;
+  borrowerEmail?: string;
+  borrowerName?: string;
+  borrowerCompanyName?: string;
+  requestedCounts?: {
+    trucks: number;
+    trailers: number;
+  };
+  vehicles?: Array<{
+    vehicleId: string;
+    vehicleNumber: string;
+    vehicleType: string;
+    companyName: string;
+    vin?: string;
+    currentMilesAtShare: number;
+    returnedMiles?: number;
+  }>;
+  description?: string;
+  leaseTerms?: string;
+  startDate?: string;
+  expectedEndDate?: string;
+  actualEndDate?: string;
+  returnNotes?: string;
+  createdAt?: any;
 }
 
 const formatDDMMYYYYtoMMDDYYYY = (value: string | number) => {
@@ -78,16 +124,66 @@ export default function NotificationDetailsComponent({
 }) {
   const [notification, setNotification] = useState<NotificationData | null>(null);
   const [vehicleData, setVehicleData] = useState<VehicleData | null>(null);
+  const [fleetShareData, setFleetShareData] = useState<FleetShareDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { user } = useAuth() || { user: null };
   const [effectiveUserId, setEffectiveUserId] = useState("");
   const [userRole, setUserRole] = useState("");
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const isDispatchLoad =
     (notification?.type || notification?.category || "")
       .toString()
       .toLowerCase() === "dispatch_load";
+
+  const isFleetSharing =
+    (notification?.type || notification?.category || "")
+      .toString()
+      .toLowerCase()
+      .includes("fleet_sharing") ||
+    !!notification?.shareId;
+
+  // Accept / Decline handlers for Fleet Sharing
+  const handleAcceptShare = async () => {
+    if (!fleetShareData) return;
+    setIsActionLoading(true);
+    try {
+      await updateDoc(doc(db, "fleet_shares", fleetShareData.id), {
+        status: "active",
+        borrowerId: effectiveUserId,
+        borrowerName: user?.displayName || "Partner Owner",
+        lastUpdatedById: user?.uid || effectiveUserId,
+        updatedAt: new Date(),
+      });
+      setFleetShareData((prev) => (prev ? { ...prev, status: "active" } : null));
+      toast.success("Fleet share accepted! Agreement is now Active.");
+    } catch (err: any) {
+      console.error("Error accepting share:", err);
+      toast.error("Failed to accept: " + err.message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleDeclineShare = async () => {
+    if (!fleetShareData) return;
+    setIsActionLoading(true);
+    try {
+      await updateDoc(doc(db, "fleet_shares", fleetShareData.id), {
+        status: "rejected",
+        lastUpdatedById: user?.uid || effectiveUserId,
+        updatedAt: new Date(),
+      });
+      setFleetShareData((prev) => (prev ? { ...prev, status: "rejected" } : null));
+      toast.success("Fleet share request declined.");
+    } catch (err: any) {
+      console.error("Error declining share:", err);
+      toast.error("Failed to decline: " + err.message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
 
   // Share handler
   const handleShare = async () => {
@@ -95,7 +191,53 @@ export default function NotificationDetailsComponent({
 
     let shareText = "";
 
-    if (isDispatchLoad) {
+    if (isFleetSharing) {
+      const shareType =
+        fleetShareData?.type === "borrow_request"
+          ? "Equipment Borrow Request"
+          : "Direct Fleet Sharing Offer";
+      const statusStr = (fleetShareData?.status || "pending").toUpperCase();
+      const codeStr =
+        fleetShareData?.shareCode || notification.shareId || "Agreement";
+
+      let vehiclesText = "";
+      if (fleetShareData?.vehicles && fleetShareData.vehicles.length > 0) {
+        vehiclesText =
+          `• Equipment (${fleetShareData.vehicles.length} Units):\n` +
+          fleetShareData.vehicles
+            .map(
+              (v) =>
+                `  - ${v.vehicleNumber} (${v.vehicleType}) - ${v.companyName}`
+            )
+            .join("\n");
+      } else if (fleetShareData?.requestedCounts) {
+        vehiclesText = `• Requested: ${fleetShareData.requestedCounts.trucks || 0} Trucks, ${fleetShareData.requestedCounts.trailers || 0} Trailers`;
+      }
+
+      shareText = `🤝 Fleet Sharing Details | Trenoops 🚛
+
+📋 Agreement Information:
+• Code: ${codeStr}
+• Type: ${shareType}
+• Status: ${statusStr}
+
+👥 Parties:
+• Lender (Owner): ${fleetShareData?.lenderCompanyName || fleetShareData?.lenderName || "-"} (${fleetShareData?.lenderEmail || "-"})
+• Borrower (Partner): ${fleetShareData?.borrowerCompanyName || fleetShareData?.borrowerName || "-"} (${fleetShareData?.borrowerEmail || "-"})
+
+🚛 Equipment:
+${vehiclesText || "• No specific units assigned yet"}
+
+📅 Timeline & Purpose:
+• Period: ${fleetShareData?.startDate || "-"} -> ${fleetShareData?.expectedEndDate || "Open"}
+${fleetShareData?.description ? `• Purpose: ${fleetShareData.description}\n` : ""}${notification.message ? `• Note: ${notification.message}\n` : ""}
+🔒 Note: Borrower can log records/expenses; master vehicle miles cannot be modified.
+----------------------------------------
+Trenoops Fleet & Service Management
+• Website: https://www.trenoops.com/
+• Android App: https://play.google.com/store/apps/details?id=com.trenoops.app
+• iOS App: https://apps.apple.com/in/app/trenoops/id6765658994`;
+    } else if (isDispatchLoad) {
       shareText = `📦 Dispatch Load Details | Trenoops 🚛
 
 • Load Number: ${notification.loadNumber || "-"}
@@ -150,7 +292,9 @@ Trenoops
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: isDispatchLoad
+          title: isFleetSharing
+            ? `Fleet Sharing - ${fleetShareData?.shareCode || "Agreement"}`
+            : isDispatchLoad
             ? `Dispatch Load - ${notification.loadNumber || "Load"}`
             : `Service Reminder - ${vehicleData?.vehicleNumber || "Vehicle"}`,
           text: shareText,
@@ -173,14 +317,111 @@ Trenoops
   const handlePrint = () => {
     if (!notification) return;
 
-    const pageTitle = isDispatchLoad
-      ? "Dispatch Load Details"
-      : "Service Reminder Details";
+    let pageTitle = "Service Reminder Details";
+    if (isFleetSharing) {
+      pageTitle = "Fleet Sharing Agreement Details";
+    } else if (isDispatchLoad) {
+      pageTitle = "Dispatch Load Details";
+    }
+
     const dateFormatted = formatCurrentDateMMDDYYYY();
 
     let contentRowsHtml = "";
 
-    if (isDispatchLoad) {
+    if (isFleetSharing) {
+      const code = fleetShareData?.shareCode || notification.shareId || "-";
+      const typeLabel =
+        fleetShareData?.type === "borrow_request"
+          ? "Equipment Borrow Request"
+          : "Direct Fleet Sharing Offer";
+      const statusLabel = (fleetShareData?.status || "pending").toUpperCase();
+      const lender = `${fleetShareData?.lenderCompanyName || fleetShareData?.lenderName || "-"} (${fleetShareData?.lenderEmail || "-"})`;
+      const borrower = `${fleetShareData?.borrowerCompanyName || fleetShareData?.borrowerName || "-"} (${fleetShareData?.borrowerEmail || "-"})`;
+
+      let equipmentHtml = "";
+      if (fleetShareData?.vehicles && fleetShareData.vehicles.length > 0) {
+        equipmentHtml = `
+          <div class="services-container">
+            ${fleetShareData.vehicles
+              .map(
+                (v) => `
+              <div class="service-item">
+                <span class="service-name">${v.vehicleNumber} (${v.vehicleType} - ${v.companyName})</span>
+                <span class="service-badge">${(v.currentMilesAtShare || 0).toLocaleString()} mi</span>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `;
+      } else if (fleetShareData?.requestedCounts) {
+        equipmentHtml = `
+          <div class="service-item">
+            <span class="service-name">Requested Equipment Units</span>
+            <span class="service-badge">${fleetShareData.requestedCounts.trucks || 0} Trucks, ${fleetShareData.requestedCounts.trailers || 0} Trailers</span>
+          </div>
+        `;
+      } else {
+        equipmentHtml = `<div class="empty-state">No equipment units attached.</div>`;
+      }
+
+      contentRowsHtml = `
+        <div class="info-row">
+          <span class="info-label">Agreement Code:</span>
+          <span class="info-value font-mono">${code}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="info-row">
+          <span class="info-label">Agreement Type:</span>
+          <span class="info-value">${typeLabel}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="info-row">
+          <span class="info-label">Status:</span>
+          <span class="info-value">${statusLabel}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="info-row">
+          <span class="info-label">Lender (Owner):</span>
+          <span class="info-value">${lender}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="info-row">
+          <span class="info-label">Borrower (Partner):</span>
+          <span class="info-value">${borrower}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="info-row">
+          <span class="info-label">Duration Period:</span>
+          <span class="info-value">${fleetShareData?.startDate || "-"} &rarr; ${fleetShareData?.expectedEndDate || "Open"}</span>
+        </div>
+        ${
+          fleetShareData?.description
+            ? `
+            <div class="divider"></div>
+            <div class="info-row">
+              <span class="info-label">Operational Need:</span>
+              <span class="info-value">${fleetShareData.description}</span>
+            </div>
+          `
+            : ""
+        }
+        ${
+          notification.message
+            ? `
+            <div class="divider"></div>
+            <div class="info-row">
+              <span class="info-label">Notification Message:</span>
+              <span class="info-value">${notification.message}</span>
+            </div>
+          `
+            : ""
+        }
+        <div class="divider"></div>
+        <div class="section-title">Equipment Allocation:</div>
+        ${equipmentHtml}
+      `;
+    } else if (isDispatchLoad) {
       contentRowsHtml = `
         <div class="info-row">
           <span class="info-label">Load Number:</span>
@@ -473,7 +714,7 @@ Trenoops
     fetchUserData();
   }, [user?.uid]);
 
-  // Fetch notification and vehicle data
+  // Fetch notification, vehicle data, and fleet share data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -495,6 +736,7 @@ Trenoops
         const notData = notSnapshot.data() as NotificationData;
         setNotification(notData);
 
+        // Fetch vehicle data if service notification
         if (notData.vehicleId) {
           const vehicleRef = doc(
             db,
@@ -507,6 +749,22 @@ Trenoops
 
           if (vehicleSnapshot.exists()) {
             setVehicleData(vehicleSnapshot.data() as VehicleData);
+          }
+        }
+
+        // Fetch fleet share details if fleet sharing notification
+        if (notData.shareId) {
+          try {
+            const shareRef = doc(db, "fleet_shares", notData.shareId);
+            const shareSnap = await getDoc(shareRef);
+            if (shareSnap.exists()) {
+              setFleetShareData({
+                id: shareSnap.id,
+                ...shareSnap.data(),
+              } as FleetShareDetails);
+            }
+          } catch (shareErr) {
+            console.error("Error fetching fleet share doc:", shareErr);
           }
         }
       } catch (err) {
@@ -598,7 +856,11 @@ Trenoops
           {/* Top Bar with Title, Print Button, Share Button and Back Button */}
           <div className="mb-6 flex flex-wrap justify-between items-center gap-3 no-print">
             <h1 className="text-2xl font-bold text-gray-800">
-              {isDispatchLoad ? "Dispatch Load Details" : "Service Reminder"}
+              {isFleetSharing
+                ? notification.title || "Fleet Sharing Details"
+                : isDispatchLoad
+                ? "Dispatch Load Details"
+                : "Service Reminder"}
             </h1>
             <div className="flex items-center gap-2 sm:gap-3">
               {/* PRINT BUTTON */}
@@ -635,7 +897,264 @@ Trenoops
 
           {/* MAIN NOTIFICATION CONTENT */}
           <div className="space-y-6">
-            {isDispatchLoad ? (
+            {isFleetSharing ? (
+              /* Fleet Sharing View */
+              <div className="space-y-6">
+                {/* Header status bar */}
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg shadow-2xs">
+                      <FaHandshake />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-black text-gray-900 font-mono">
+                          {fleetShareData?.shareCode || notification.shareId || "Agreement"}
+                        </span>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700">
+                          {fleetShareData?.type === "borrow_request"
+                            ? "Borrow Request"
+                            : "Direct Sharing Offer"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Inter-Fleet Equipment Sharing Network
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    {fleetShareData?.status === "active" && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <FaCheckCircle className="text-xs text-emerald-600" />
+                        Active Sharing
+                      </span>
+                    )}
+                    {(!fleetShareData?.status || fleetShareData?.status === "pending") && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                        <FaClock className="text-xs text-amber-600" />
+                        Pending Approval
+                      </span>
+                    )}
+                    {fleetShareData?.status === "completed" && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200">
+                        Completed / Returned
+                      </span>
+                    )}
+                    {fleetShareData?.status === "rejected" && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                        <FaTimesCircle className="text-xs text-rose-600" />
+                        Declined
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notification message banner */}
+                {notification.message && (
+                  <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900 flex items-start gap-2.5">
+                    <FaCommentDots className="text-base text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-semibold">Notification: </strong>
+                      <span>{notification.message}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Parties Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Lender */}
+                  <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-rose-600 mb-2 flex items-center gap-1.5">
+                      <FaBuilding />
+                      <span>Lender Owner</span>
+                    </div>
+                    <div className="text-sm font-bold text-gray-900">
+                      {fleetShareData?.lenderCompanyName || fleetShareData?.lenderName || "Owner"}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-0.5">
+                      {fleetShareData?.lenderName}
+                    </div>
+                    <div className="text-xs text-gray-500 font-mono mt-1">
+                      {fleetShareData?.lenderEmail || "—"}
+                    </div>
+                  </div>
+
+                  {/* Borrower */}
+                  <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-2xs">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 mb-2 flex items-center gap-1.5">
+                      <FaBuilding />
+                      <span>Borrower Partner</span>
+                    </div>
+                    <div className="text-sm font-bold text-gray-900">
+                      {fleetShareData?.borrowerCompanyName || fleetShareData?.borrowerName || "Partner"}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-0.5">
+                      {fleetShareData?.borrowerName}
+                    </div>
+                    <div className="text-xs text-gray-500 font-mono mt-1">
+                      {fleetShareData?.borrowerEmail || "—"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Equipment Section */}
+                <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-2xs space-y-3">
+                  <div className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-2">
+                    <FaTruck className="text-gray-500" />
+                    <span>Equipment Details</span>
+                  </div>
+
+                  {fleetShareData?.vehicles && fleetShareData.vehicles.length > 0 ? (
+                    <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+                      {fleetShareData.vehicles.map((v) => (
+                        <div
+                          key={v.vehicleId}
+                          className="p-3 bg-gray-50/60 hover:bg-gray-50 flex items-center justify-between text-xs transition"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 flex items-center justify-center font-bold">
+                              <FaTruck className="text-xs" />
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900 font-mono">
+                                {v.vehicleNumber}
+                              </div>
+                              <div className="text-[11px] text-gray-500">
+                                {v.vehicleType} &bull; {v.companyName}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono font-semibold text-gray-700">
+                              {(v.currentMilesAtShare || 0).toLocaleString()} mi
+                            </span>
+                            <div className="text-[10px] text-gray-400">At Share Dispatch</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : fleetShareData?.requestedCounts ? (
+                    <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-xs">
+                      <div className="font-bold text-amber-900 mb-1">
+                        Requested Equipment Units:
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="px-3 py-1 bg-white border border-amber-200 rounded-lg font-bold text-amber-800">
+                          🚛 {fleetShareData.requestedCounts.trucks || 0} Trucks
+                        </span>
+                        <span className="px-3 py-1 bg-white border border-amber-200 rounded-lg font-bold text-amber-800">
+                          📦 {fleetShareData.requestedCounts.trailers || 0} Trailers
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500">
+                      No equipment units assigned yet.
+                    </p>
+                  )}
+
+                  {/* Mileage Protection Notice */}
+                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900 flex items-start gap-2">
+                    <FaShieldAlt className="text-sm text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong>Master Mileage Protection:</strong> Second owner can add maintenance and expense records, but cannot modify master vehicle odometer miles.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Terms and Dates */}
+                <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-2xs space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500 flex items-center gap-1.5">
+                      <FaCalendarAlt className="text-gray-400" />
+                      <span>Duration Period:</span>
+                    </span>
+                    <span className="font-bold text-gray-800 font-mono">
+                      {fleetShareData?.startDate || "—"} &rarr; {fleetShareData?.expectedEndDate || "Open"}
+                    </span>
+                  </div>
+
+                  {fleetShareData?.description && (
+                    <div className="py-1 border-b border-gray-100">
+                      <span className="text-gray-500 font-semibold block mb-0.5">
+                        Purpose / Operational Description:
+                      </span>
+                      <p className="text-gray-800 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                        {fleetShareData.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {fleetShareData?.leaseTerms && (
+                    <div className="py-1 border-b border-gray-100">
+                      <span className="text-gray-500 font-semibold block mb-0.5">
+                        Agreement Terms:
+                      </span>
+                      <p className="text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                        {fleetShareData.leaseTerms}
+                      </p>
+                    </div>
+                  )}
+
+                  {fleetShareData?.returnNotes && (
+                    <div className="py-1">
+                      <span className="text-gray-500 font-semibold block mb-0.5">
+                        Return Notes:
+                      </span>
+                      <p className="text-emerald-800 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
+                        {fleetShareData.returnNotes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Interactive Actions */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-200 no-print">
+                  <Link
+                    href="/fleet-sharing"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-lg transition"
+                  >
+                    <span>Open Fleet Sharing Hub</span>
+                    <FaExternalLinkAlt className="text-[10px]" />
+                  </Link>
+
+                  {fleetShareData?.status === "pending" && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDeclineShare}
+                        disabled={isActionLoading}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-lg transition disabled:opacity-50 cursor-pointer"
+                      >
+                        <FaTimes className="text-xs" />
+                        <span>Decline</span>
+                      </button>
+
+                      {fleetShareData.type === "borrow_request" ? (
+                        <Link
+                          href={`/fleet-sharing?fulfill=${fleetShareData.id}`}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition"
+                        >
+                          <FaCheck className="text-xs" />
+                          <span>Accept & Assign Vehicles</span>
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleAcceptShare}
+                          disabled={isActionLoading}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition disabled:opacity-50 cursor-pointer"
+                        >
+                          <FaCheck className="text-xs" />
+                          <span>Accept Offer</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : isDispatchLoad ? (
               /* Dispatch Load View */
               <div className="space-y-4">
                 <InfoRow

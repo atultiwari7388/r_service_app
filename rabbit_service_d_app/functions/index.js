@@ -109,10 +109,10 @@ exports.sendContactEmail = functions.https.onCall(async (data, context) => {
   const { name, email, phone, message, recipientEmail } = data;
 
   const mailOptions = {
-    from: `"Rabbit Mechanic Contact" <${process.env.EMAIL_USER}>`, // Use consistent sender
+    from: `"Trenoops Contact" <${process.env.EMAIL_USER}>`, // Use consistent sender
     replyTo: email, // Allow replying to contact submitter
     to: recipientEmail,
-    subject: "New Contact Form Submission - Rabbit Mechanic",
+    subject: "New Contact Form Submission - Trenoops",
     html: `
       <h2>New Contact Form Submission</h2>
       <p><strong>Name:</strong> ${name}</p>
@@ -1867,3 +1867,14 @@ exports.cleanupDriverTelemetryOnLoadComplete = functions.firestore
       return null;
     }
   });
+
+// ==========================================
+// Fleet Sharing Triggers
+// ==========================================
+const {
+  onFleetShareCreated,
+  onFleetShareStatusChanged,
+} = require("./fleetSharing");
+
+exports.onFleetShareCreated = onFleetShareCreated;
+exports.onFleetShareStatusChanged = onFleetShareStatusChanged;

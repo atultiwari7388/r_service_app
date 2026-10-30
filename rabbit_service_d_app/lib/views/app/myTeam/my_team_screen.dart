@@ -39,6 +39,7 @@ class _MyTeamScreenState extends State<MyTeamScreen>
   bool isProfileComplete = false;
   String? ownerId;
   List<String> _currentUserVehicleIds = [];
+  List<String> _currentUserVehicleNumbers = [];
 
   List<String> _selectedRoles = ['All'];
   List<String> _availableRoles = [
@@ -122,9 +123,65 @@ class _MyTeamScreenState extends State<MyTeamScreen>
           .collection('Vehicles')
           .get();
 
+      final ids = <String>[];
+      final nums = <String>[];
+
+      for (var doc in vehiclesSnapshot.docs) {
+        final dId = doc.id.trim().toLowerCase();
+        if (dId.isNotEmpty && !ids.contains(dId)) {
+          ids.add(dId);
+        }
+
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null) {
+          final vNum = (data['vehicleNumber'] ??
+                  data['vehicle_number'] ??
+                  data['number'] ??
+                  '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          if (vNum.isNotEmpty && !nums.contains(vNum)) {
+            nums.add(vNum);
+          }
+          final vId = (data['id'] ?? data['vehicleId'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          if (vId.isNotEmpty && !ids.contains(vId)) {
+            ids.add(vId);
+          }
+        }
+      }
+
+      // Also check current user document for direct vehicle arrays
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .get();
+      if (userDoc.exists) {
+        final uData = userDoc.data() as Map<String, dynamic>?;
+        if (uData != null) {
+          final directLists = [
+            if (uData['assignVehicle'] is List)
+              ...(uData['assignVehicle'] as List),
+            if (uData['selectedVehicles'] is List)
+              ...(uData['selectedVehicles'] as List),
+            if (uData['assignedVehicles'] is List)
+              ...(uData['assignedVehicles'] as List),
+          ];
+          for (var item in directLists) {
+            final str = item.toString().trim().toLowerCase();
+            if (str.isNotEmpty && !ids.contains(str) && !nums.contains(str)) {
+              ids.add(str);
+            }
+          }
+        }
+      }
+
       setState(() {
-        _currentUserVehicleIds =
-            vehiclesSnapshot.docs.map((doc) => doc.id).toList();
+        _currentUserVehicleIds = ids;
+        _currentUserVehicleNumbers = nums;
       });
     } catch (e) {
       print('Error fetching current user vehicles: $e');
@@ -385,10 +442,39 @@ class _MyTeamScreenState extends State<MyTeamScreen>
           };
         }).toList();
 
-        // For Managers and Accountants, check if driver shares any vehicles
-        if (role == "Manager" || role == "Accountant") {
-          bool sharesVehicle = vehicles
-              .any((vehicle) => _currentUserVehicleIds.contains(vehicle['id']));
+        final bool isSubOwner = role.trim().toLowerCase() == 'subowner' ||
+            role.trim().toLowerCase() == 'coowner';
+        final bool isStaff = role == "Manager" || role == "Accountant";
+
+        // For SubOwners, Managers, and Accountants: check if member shares any vehicles
+        if (isSubOwner || isStaff) {
+          bool sharesVehicle = vehicles.any((vehicle) {
+            final vId = (vehicle['id'] ?? '').toString().trim().toLowerCase();
+            final vNum = (vehicle['vehicleNumber'] ?? '').toString().trim().toLowerCase();
+            return (vId.isNotEmpty &&
+                    (_currentUserVehicleIds.contains(vId) ||
+                        _currentUserVehicleNumbers.contains(vId))) ||
+                (vNum.isNotEmpty &&
+                    (_currentUserVehicleIds.contains(vNum) ||
+                        _currentUserVehicleNumbers.contains(vNum)));
+          });
+
+          // Also check direct vehicle arrays on member doc
+          if (!sharesVehicle) {
+            final memberData = member.data() as Map<String, dynamic>? ?? {};
+            final directVehicles = [
+              if (memberData['assignVehicle'] is List)
+                ...(memberData['assignVehicle'] as List),
+              if (memberData['selectedVehicles'] is List)
+                ...(memberData['selectedVehicles'] as List),
+              if (memberData['assignedVehicles'] is List)
+                ...(memberData['assignedVehicles'] as List),
+            ].map((e) => e.toString().trim().toLowerCase()).toList();
+
+            sharesVehicle = directVehicles.any((v) =>
+                _currentUserVehicleIds.contains(v) ||
+                _currentUserVehicleNumbers.contains(v));
+          }
 
           if (!sharesVehicle) continue;
         }
@@ -818,7 +904,7 @@ class _MyTeamScreenState extends State<MyTeamScreen>
                                     memberName: name,
                                     memberId: memberId,
                                     ownerId: ownerId,
-                                    perMileCharge: num.parse(perMileCharge),
+                                    perMileCharge: num.tryParse(perMileCharge?.toString() ?? '0') ?? 0,
                                     role: role,
                                     teamRole: memberRole,
                                     effectiveUserId: role == 'SubOwner'
@@ -846,21 +932,6 @@ class _MyTeamScreenState extends State<MyTeamScreen>
                             }
                           },
                           itemBuilder: (BuildContext context) {
-                            if (memberRole == "SubOwner" ||
-                                memberRole == "Co-Owner") {
-                              return [
-                                PopupMenuItem(
-                                  value: 'view_profile',
-                                  child: ListTile(
-                                    leading:
-                                        Icon(Icons.person, color: kPrimary),
-                                    title: Text('View Profile'),
-                                  ),
-                                ),
-                              ];
-                            }
-
-                            // For other team member roles, show all options
                             return [
                               if (memberRole == "Driver")
                                 PopupMenuItem(

@@ -18,7 +18,12 @@ import { useAuth } from "@/contexts/AuthContexts";
 interface Notification {
   id: string;
   message: string;
-  vehicleId: string;
+  vehicleId?: string;
+  shareId?: string;
+  title?: string;
+  type?: string;
+  category?: string;
+  loadNumber?: string | number;
   date: Date;
   isRead: boolean;
   // [key: string]: any;
@@ -233,6 +238,7 @@ const NotificationCard = ({
 
   useEffect(() => {
     const fetchVehicleDetails = async () => {
+      if (!notification.vehicleId) return;
       try {
         const vehicleDoc = doc(
           db,
@@ -256,36 +262,107 @@ const NotificationCard = ({
     }
   }, [notification.vehicleId, userId]); // userId is now effectiveUserId
 
+  const isFleetSharing =
+    (notification.type || notification.category || "")
+      .toString()
+      .toLowerCase()
+      .includes("fleet_sharing") ||
+    !!notification.shareId;
+
+  const isDispatch =
+    (notification.type || notification.category || "")
+      .toString()
+      .toLowerCase() === "dispatch_load";
+
+  const cardTitle =
+    notification.title ||
+    (isFleetSharing
+      ? "Fleet Equipment Request"
+      : isDispatch
+      ? `Dispatch Load #${notification.loadNumber || ""}`
+      : "Service Reminder");
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mb-4 border border-gray-100">
       <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-        <div className="bg-blue-500 rounded-full p-2 shrink-0">
-          <svg
-            className="w-5 h-5 sm:w-6 sm:h-6 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-            />
-          </svg>
+        <div
+          className={`${
+            isFleetSharing
+              ? "bg-[#F96176]"
+              : isDispatch
+              ? "bg-indigo-600"
+              : "bg-blue-500"
+          } rounded-full p-2 shrink-0 text-white flex items-center justify-center`}
+        >
+          {isFleetSharing ? (
+            <svg
+              className="w-5 h-5 sm:w-6 sm:h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+              />
+            </svg>
+          ) : isDispatch ? (
+            <svg
+              className="w-5 h-5 sm:w-6 sm:h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="w-5 h-5 sm:w-6 sm:h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              />
+            </svg>
+          )}
         </div>
 
         <div className="flex-1 w-full min-w-0">
           <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
-            <h3 className="font-semibold text-gray-800">Service Reminder</h3>
-            <div className="bg-blue-50 px-3 py-1 rounded-full text-xs sm:text-sm text-blue-800">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-800">{cardTitle}</h3>
+              {isFleetSharing && (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                  Fleet Sharing
+                </span>
+              )}
+            </div>
+            <div className="bg-gray-100 px-3 py-1 rounded-full text-xs sm:text-sm text-gray-700">
               {format(notification.date, "d MMM")}
               <span className="ml-1">{format(notification.date, "yyyy")}</span>
             </div>
           </div>
 
-          {vehicleDetails && (
-            <p className="text-gray-600 text-sm mb-2">
+          {vehicleDetails && !isFleetSharing && (
+            <p className="text-gray-600 text-sm mb-2 font-medium">
               {vehicleDetails.vehicleNumber} ({vehicleDetails.companyName})
             </p>
           )}
@@ -295,13 +372,17 @@ const NotificationCard = ({
           <div className="flex flex-wrap justify-end gap-2 sm:gap-3">
             <button
               onClick={() => onMarkAsRead(notification.id)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm font-medium transition cursor-pointer"
             >
               Disappear
             </button>
             <Link
               href={`/account/notifications/${notification.id}`}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm"
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 text-white rounded-md text-sm font-medium transition ${
+                isFleetSharing
+                  ? "bg-[#F96176] hover:bg-[#e05064]"
+                  : "bg-blue-500 hover:bg-blue-600"
+              }`}
             >
               View Details
             </Link>
