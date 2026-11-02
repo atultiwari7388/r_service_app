@@ -2029,13 +2029,10 @@ class ReportsController extends GetxController {
     invoiceAmountController.text = (record['invoiceAmount'] ?? '').toString();
     descriptionController.text = (record['description'] ?? '').toString();
 
-    if (record['date'] != null) {
-      selectedDate = parseDateSafe(record['date']);
-      dateController.text = formatDateSafe(record['date']);
-    } else {
-      selectedDate = null;
-      dateController.clear();
-    }
+    // Set current date instead of stored record date when duplicating
+    final now = DateTime.now();
+    selectedDate = now;
+    dateController.text = DateFormat('MM-dd-yyyy').format(now);
 
     showAddRecords = true;
     update();

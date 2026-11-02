@@ -3631,7 +3631,9 @@ export default function RecordsPage() {
       // Set other fields
       setMiles((record.miles || 0).toString());
       setHours((record.hours || 0).toString());
-      setDate(formatDateSafe(record.date));
+      // Set current date instead of stored record date when duplicating
+      const todayFormatted = format(new Date(), "MM-dd-yyyy");
+      setDate(todayFormatted);
       setWorkshopName(record.workshopName || "");
       setInvoice(record.invoice || "");
       setInvoiceAmount(record.invoiceAmount || "");
