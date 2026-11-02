@@ -855,6 +855,38 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                             isStatusUpdating = false;
                           });
                         }
+
+                        // Also sync with fleet owner / creator history if different from userId
+                        try {
+                          final jobDocSnap = await FirebaseFirestore.instance.collection('jobs').doc(jobId).get();
+                          final jobDataMap = jobDocSnap.data() as Map<String, dynamic>?;
+                          final ownerId = jobDataMap?['ownerId']?.toString();
+                          final createdBy = jobDataMap?['createdBy']?.toString();
+                          final creatorId = jobDataMap?['creatorId']?.toString();
+                          final otherIds = {ownerId, createdBy, creatorId}
+                            ..removeWhere((id) => id == null || id.isEmpty || id == userId);
+                          for (final otherId in otherIds) {
+                            final otherHistoryRef = FirebaseFirestore.instance
+                                .collection('Users')
+                                .doc(otherId)
+                                .collection('history')
+                                .doc(jobId);
+                            final otherSnap = await otherHistoryRef.get();
+                            if (otherSnap.exists) {
+                              await otherHistoryRef.update({
+                                "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
+                              });
+                            } else if (jobDataMap != null) {
+                              await otherHistoryRef.set({
+                                ...jobDataMap,
+                                "mechanicsOffer": [mechanicOffer],
+                              });
+                            }
+                          }
+                        } catch (syncErr) {
+                          print("Error syncing secondary history: $syncErr");
+                        }
+
                         Get.snackbar("Success", "Request Sent Successfully.");
                       } catch (e) {
                         setState(() {
@@ -1020,6 +1052,38 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                             isStatusUpdating = false;
                           });
                         }
+
+                        // Also sync with fleet owner / creator history if different from userId
+                        try {
+                          final jobDocSnap = await FirebaseFirestore.instance.collection('jobs').doc(jobId).get();
+                          final jobDataMap = jobDocSnap.data() as Map<String, dynamic>?;
+                          final ownerId = jobDataMap?['ownerId']?.toString();
+                          final createdBy = jobDataMap?['createdBy']?.toString();
+                          final creatorId = jobDataMap?['creatorId']?.toString();
+                          final otherIds = {ownerId, createdBy, creatorId}
+                            ..removeWhere((id) => id == null || id.isEmpty || id == userId);
+                          for (final otherId in otherIds) {
+                            final otherHistoryRef = FirebaseFirestore.instance
+                                .collection('Users')
+                                .doc(otherId)
+                                .collection('history')
+                                .doc(jobId);
+                            final otherSnap = await otherHistoryRef.get();
+                            if (otherSnap.exists) {
+                              await otherHistoryRef.update({
+                                "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
+                              });
+                            } else if (jobDataMap != null) {
+                              await otherHistoryRef.set({
+                                ...jobDataMap,
+                                "mechanicsOffer": [mechanicOffer],
+                              });
+                            }
+                          }
+                        } catch (syncErr) {
+                          print("Error syncing secondary history: $syncErr");
+                        }
+
                         Get.snackbar("Success", "Request Sent Successfully.");
                       } catch (e) {
                         setState(() {
@@ -1173,6 +1237,37 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                         setState(() {
                           isStatusUpdating = false;
                         });
+                      }
+
+                      // Also sync with fleet owner / creator history if different from userId
+                      try {
+                        final jobDocSnap = await FirebaseFirestore.instance.collection('jobs').doc(jobId).get();
+                        final jobDataMap = jobDocSnap.data() as Map<String, dynamic>?;
+                        final ownerId = jobDataMap?['ownerId']?.toString();
+                        final createdBy = jobDataMap?['createdBy']?.toString();
+                        final creatorId = jobDataMap?['creatorId']?.toString();
+                        final otherIds = {ownerId, createdBy, creatorId}
+                          ..removeWhere((id) => id == null || id.isEmpty || id == userId);
+                        for (final otherId in otherIds) {
+                          final otherHistoryRef = FirebaseFirestore.instance
+                              .collection('Users')
+                              .doc(otherId)
+                              .collection('history')
+                              .doc(jobId);
+                          final otherSnap = await otherHistoryRef.get();
+                          if (otherSnap.exists) {
+                            await otherHistoryRef.update({
+                              "mechanicsOffer": FieldValue.arrayUnion([jobData]),
+                            });
+                          } else if (jobDataMap != null) {
+                            await otherHistoryRef.set({
+                              ...jobDataMap,
+                              "mechanicsOffer": [jobData],
+                            });
+                          }
+                        }
+                      } catch (syncErr) {
+                        print("Error syncing secondary history: $syncErr");
                       }
 
                       Get.snackbar("Success", "Request Sent Successfully.");

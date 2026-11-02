@@ -691,7 +691,10 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
       // Sync with secondary history document (e.g. driver or owner history)
       final ownerId = jobData?['ownerId']?.toString();
       final creatorId = jobData?['userId']?.toString();
-      final otherIds = {ownerId, creatorId}..removeWhere((id) => id == null || id.isEmpty || id == widget.userId);
+      final createdBy = jobData?['createdBy']?.toString();
+      final actualCreator = jobData?['creatorId']?.toString();
+      final otherIds = {ownerId, creatorId, createdBy, actualCreator}
+        ..removeWhere((id) => id == null || id.isEmpty || id == widget.userId);
       for (final otherId in otherIds) {
         final otherHistoryRef = FirebaseFirestore.instance
             .collection('Users')
@@ -796,7 +799,10 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
       // Sync with secondary history document
       final ownerId = jobData?['ownerId']?.toString();
       final creatorId = jobData?['userId']?.toString();
-      final otherIds = {ownerId, creatorId}..removeWhere((id) => id == null || id.isEmpty || id == widget.userId);
+      final createdBy = jobData?['createdBy']?.toString();
+      final actualCreator = jobData?['creatorId']?.toString();
+      final otherIds = {ownerId, creatorId, createdBy, actualCreator}
+        ..removeWhere((id) => id == null || id.isEmpty || id == widget.userId);
       for (final otherId in otherIds) {
         final otherHistoryRef = FirebaseFirestore.instance
             .collection('Users')

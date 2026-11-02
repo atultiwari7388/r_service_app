@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -21,22 +23,142 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
   User? get currentUser => FirebaseAuth.instance.currentUser;
   String get currentUId => currentUser?.uid ?? '';
 
   final DashboardController _dashboardController =
       Get.find<DashboardController>();
 
-  // Get effective user ID based on role
-  String get _effectiveUserId {
-    return _dashboardController.role == 'SubOwner'
-        ? _dashboardController.ownerId
-        : currentUId;
-  }
+  // Common fleet owner ID (anchor for jobs across all team members)
+  String get effectiveOwnerId => _dashboardController.effectiveOwnerId;
+  String get _effectiveUserId => effectiveOwnerId;
+
+  StreamSubscription<QuerySnapshot>? _assignedVehiclesSub;
+  final Set<String> _assignedVehicleNumbers = {};
+  final Set<String> _assignedVehicleIds = {};
 
   String _selectedSortOption = "Sort";
   int? _selectedCardIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAndListenAssignedVehicles();
+  }
+
+  @override
+  void dispose() {
+    _assignedVehiclesSub?.cancel();
+    super.dispose();
+  }
+
+  void _loadAndListenAssignedVehicles() {
+    if (currentUser == null) return;
+
+    // 1. Check direct user document for assigned vehicles
+    FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .get()
+        .then((doc) {
+      if (doc.exists && doc.data() != null) {
+        final uData = doc.data()!;
+        final directLists = [
+          if (uData['assignVehicle'] is List)
+            ...(uData['assignVehicle'] as List),
+          if (uData['selectedVehicles'] is List)
+            ...(uData['selectedVehicles'] as List),
+          if (uData['assignedVehicles'] is List)
+            ...(uData['assignedVehicles'] as List),
+        ];
+        for (var item in directLists) {
+          final str = item.toString().trim().toLowerCase();
+          if (str.isNotEmpty) {
+            _assignedVehicleIds.add(str);
+            _assignedVehicleNumbers.add(str);
+          }
+        }
+        if (mounted) setState(() {});
+      }
+    }).catchError((e) {
+      log("Error fetching user doc assigned vehicles in history: $e");
+    });
+
+    // 2. Listen to Users/{currentUId}/Vehicles subcollection
+    _assignedVehiclesSub?.cancel();
+    _assignedVehiclesSub = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .collection('Vehicles')
+        .snapshots()
+        .listen((snap) {
+      for (var doc in snap.docs) {
+        _assignedVehicleIds.add(doc.id.trim().toLowerCase());
+        final data = doc.data();
+        final vNum = (data['vehicleNumber'] ??
+                data['vehicle_number'] ??
+                data['number'] ??
+                doc.id)
+            .toString()
+            .trim();
+        if (vNum.isNotEmpty) {
+          _assignedVehicleNumbers.add(vNum.toLowerCase());
+          final clean = _cleanVehicleNum(vNum);
+          if (clean.isNotEmpty) {
+            _assignedVehicleNumbers.add(clean);
+          }
+        }
+      }
+      if (mounted) setState(() {});
+    }, onError: (e) {
+      log("Error listening to assigned vehicles in history: $e");
+    });
+  }
+
+  String _cleanVehicleNum(String input) {
+    if (input.contains('(')) {
+      return input.split('(').first.trim().toLowerCase();
+    }
+    return input.trim().toLowerCase();
+  }
+
+  bool _isJobVisibleToUser(Map<String, dynamic> job) {
+    // 1. Fleet Owner sees all jobs
+    if (_dashboardController.role == 'Owner') {
+      return true;
+    }
+
+    // 2. Creator of this job always sees it
+    final creatorId =
+        (job['userId'] ?? job['creatorId'] ?? '').toString().trim();
+    if (creatorId.isNotEmpty && creatorId == currentUId) {
+      return true;
+    }
+
+    // 3. If no specific vehicles assigned (e.g. SubOwner with full access), show all
+    if (_assignedVehicleNumbers.isEmpty && _assignedVehicleIds.isEmpty) {
+      return true;
+    }
+
+    final vNum = (job['vehicleNumber'] ?? '').toString().trim().toLowerCase();
+    final cleanNum = _cleanVehicleNum(vNum);
+    final vId = (job['vehicleId'] ?? '').toString().trim().toLowerCase();
+
+    // 4. Check matching vehicle ID or vehicle number
+    if (vId.isNotEmpty && _assignedVehicleIds.contains(vId)) {
+      return true;
+    }
+    if (vNum.isNotEmpty &&
+        (_assignedVehicleNumbers.contains(vNum) ||
+            _assignedVehicleIds.contains(vNum))) {
+      return true;
+    }
+    if (cleanNum.isNotEmpty && _assignedVehicleNumbers.contains(cleanNum)) {
+      return true;
+    }
+
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +262,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   return const CircularProgressIndicator();
                 }
 
-                final data = snapshot.data!.docs;
+                final allDocs = snapshot.data!.docs;
+
+                // Filter jobs: Owner sees all; Team members see only jobs matching their assigned vehicles (or jobs they created)
+                final data = allDocs.where((doc) {
+                  final job = doc.data() as Map<String, dynamic>;
+                  return _isJobVisibleToUser(job);
+                }).toList();
 
                 return data.isEmpty
                     ? Center(child: Text("No History found!"))
@@ -196,7 +324,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('Users')
-            .doc(_effectiveUserId)
+            .doc(currentUId)
             .collection('UserNotifications')
             .where('isRead', isEqualTo: false)
             .snapshots(),
@@ -212,7 +340,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       style: appStyle(12, kWhite, FontWeight.normal)),
                   child: GestureDetector(
                     onTap: () => Get.to(() => CloudNotificationMessageCenter(
-                        currentUId: _effectiveUserId)),
+                        currentUId: currentUId)),
                     child: CircleAvatar(
                         backgroundColor: kPrimary,
                         radius: 17.r,
@@ -226,7 +354,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       style: appStyle(12, kWhite, FontWeight.normal)),
                   child: GestureDetector(
                     onTap: () => Get.to(() => CloudNotificationMessageCenter(
-                        currentUId: _effectiveUserId)),
+                        currentUId: currentUId)),
                     child: CircleAvatar(
                         backgroundColor: kPrimary,
                         radius: 17.r,

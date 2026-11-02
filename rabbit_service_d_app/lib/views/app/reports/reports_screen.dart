@@ -994,18 +994,20 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         : reController.displayVehicles.isEmpty
                                             ? Center(
                                                 child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(30.0),
+                                                  padding: const EdgeInsets.all(
+                                                      30.0),
                                                   child: Column(
                                                     mainAxisAlignment:
-                                                        MainAxisAlignment.center,
+                                                        MainAxisAlignment
+                                                            .center,
                                                     children: [
                                                       Icon(
                                                           Icons
                                                               .directions_car_outlined,
                                                           size: 60,
                                                           color: Colors.grey),
-                                                      const SizedBox(height: 12),
+                                                      const SizedBox(
+                                                          height: 12),
                                                       Text(
                                                         'No vehicles found',
                                                         style: appStyleUniverse(
@@ -1023,52 +1025,55 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                 itemBuilder: (context, index) {
                                                   final vehicle = reController
                                                       .displayVehicles[index];
-                                              return GestureDetector(
-                                                onTap: () => Get.to(() =>
-                                                    MilesDetailsScreen(
-                                                        milesRecord: vehicle)),
-                                                child: Card(
-                                                  margin: EdgeInsets.symmetric(
-                                                      vertical: 8.h),
-                                                  child: ListTile(
-                                                    title: Text(
-                                                      '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                                      style: appStyleUniverse(
-                                                          16,
-                                                          kDark,
-                                                          FontWeight.w500),
-                                                    ),
-                                                    subtitle: vehicle[
-                                                                'vehicleType'] ==
-                                                            "Truck"
-                                                        ? Text(
-                                                            'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
-                                                            style:
-                                                                appStyleUniverse(
+                                                  return GestureDetector(
+                                                    onTap: () => Get.to(() =>
+                                                        MilesDetailsScreen(
+                                                            milesRecord:
+                                                                vehicle)),
+                                                    child: Card(
+                                                      margin:
+                                                          EdgeInsets.symmetric(
+                                                              vertical: 8.h),
+                                                      child: ListTile(
+                                                        title: Text(
+                                                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                                          style:
+                                                              appStyleUniverse(
+                                                                  16,
+                                                                  kDark,
+                                                                  FontWeight
+                                                                      .w500),
+                                                        ),
+                                                        subtitle: vehicle[
+                                                                    'vehicleType'] ==
+                                                                "Truck"
+                                                            ? Text(
+                                                                'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
+                                                                style: appStyleUniverse(
                                                                     14,
                                                                     kDarkGray,
                                                                     FontWeight
                                                                         .normal))
-                                                        : Text(
-                                                            'Hours Reading: ${vehicle['hoursReading'] ?? '0'}',
-                                                            style:
-                                                                appStyleUniverse(
+                                                            : Text(
+                                                                'Hours Reading: ${vehicle['hoursReading'] ?? '0'}',
+                                                                style: appStyleUniverse(
                                                                     14,
                                                                     kDarkGray,
                                                                     FontWeight
                                                                         .normal),
-                                                          ),
-                                                    trailing: Icon(
-                                                        Icons
-                                                            .directions_car_outlined,
-                                                        color: kPrimary),
-                                                  ),
-                                                ).animate().fadeIn(
-                                                    duration: 400.ms,
-                                                    delay: (index * 100).ms),
-                                              );
-                                            },
-                                          ),
+                                                              ),
+                                                        trailing: Icon(
+                                                            Icons
+                                                                .directions_car_outlined,
+                                                            color: kPrimary),
+                                                      ),
+                                                    ).animate().fadeIn(
+                                                        duration: 400.ms,
+                                                        delay:
+                                                            (index * 100).ms),
+                                                  );
+                                                },
+                                              ),
                                   ],
                                 ),
                               ),

@@ -20,14 +20,40 @@ class CloudNotificationMessageCenter extends StatelessWidget {
         'dispatch_load';
   }
 
-  Future<Map<String, dynamic>> getVehicleDetails(String vehicleId) async {
-    DocumentSnapshot vehicleDoc = await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(currentUId)
-        .collection('Vehicles')
-        .doc(vehicleId)
-        .get();
-    return vehicleDoc.data() as Map<String, dynamic>;
+  bool isFleetSharingNotification(Map<String, dynamic> notification) {
+    final type = (notification['type'] ?? notification['category'] ?? '')
+        .toString()
+        .toLowerCase();
+    return type.contains('fleet_sharing') ||
+        type.contains('fleet_share') ||
+        type.contains('fleetsharing') ||
+        notification['shareId'] != null;
+  }
+
+  DateTime? parseNotificationDate(dynamic dateVal) {
+    if (dateVal is Timestamp) return dateVal.toDate();
+    if (dateVal is DateTime) return dateVal;
+    if (dateVal is String) return DateTime.tryParse(dateVal);
+    if (dateVal is int) return DateTime.fromMillisecondsSinceEpoch(dateVal);
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> getVehicleDetails(String? vehicleId) async {
+    if (vehicleId == null || vehicleId.trim().isEmpty) return null;
+    try {
+      DocumentSnapshot vehicleDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('Vehicles')
+          .doc(vehicleId)
+          .get();
+      if (!vehicleDoc.exists || vehicleDoc.data() == null) {
+        return null;
+      }
+      return vehicleDoc.data() as Map<String, dynamic>;
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<void> markAsRead(String notificationId) async {
@@ -59,7 +85,16 @@ class CloudNotificationMessageCenter extends StatelessWidget {
             return Center(child: CircularProgressIndicator());
           }
 
-          var notifications = snapshot.data!.docs;
+          var rawDocs = snapshot.data!.docs;
+
+          // Filter out fleet sharing notifications (since fleet sharing is web-only for now)
+          // and any malformed documents
+          var notifications = rawDocs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>?;
+            if (data == null) return false;
+            if (isFleetSharingNotification(data)) return false;
+            return true;
+          }).toList();
 
           if (notifications.isEmpty) {
             return Center(
@@ -73,9 +108,10 @@ class CloudNotificationMessageCenter extends StatelessWidget {
           // Group notifications by date while maintaining descending order
           Map<String, List<QueryDocumentSnapshot>> groupedNotifications = {};
           for (var doc in notifications) {
-            String date = DateFormat('yyyy-MM-dd').format(
-              (doc['date'] as Timestamp).toDate(),
-            );
+            final data = doc.data() as Map<String, dynamic>;
+            final parsedDate =
+                parseNotificationDate(data['date']) ?? DateTime.now();
+            String date = DateFormat('yyyy-MM-dd').format(parsedDate);
             if (!groupedNotifications.containsKey(date)) {
               groupedNotifications[date] = [];
             }
@@ -94,9 +130,10 @@ class CloudNotificationMessageCenter extends StatelessWidget {
               List<QueryDocumentSnapshot> dateNotifications =
                   groupedNotifications[dateKey]!;
 
-              String dayMonth = DateFormat('d MMMM')
-                  .format(DateTime.parse(dateKey)); // e.g., "9 January"
-              String year = DateFormat('yyyy').format(DateTime.parse(dateKey));
+              DateTime parsedKeyDate =
+                  DateTime.tryParse(dateKey) ?? DateTime.now();
+              String dayMonth = DateFormat('d MMMM').format(parsedKeyDate);
+              String year = DateFormat('yyyy').format(parsedKeyDate);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,37 +168,83 @@ class CloudNotificationMessageCenter extends StatelessWidget {
                       );
                     }
 
-                    return FutureBuilder<Map<String, dynamic>>(
-                      future: getVehicleDetails(notification['vehicleId']),
-                      builder: (context, vehicleSnapshot) {
-                        if (!vehicleSnapshot.hasData) {
-                          return SizedBox.shrink();
-                        }
+                    // For vehicle notifications with a valid vehicleId
+                    final vehicleId =
+                        (notification['vehicleId'] ?? '').toString().trim();
+                    if (vehicleId.isNotEmpty) {
+                      return FutureBuilder<Map<String, dynamic>?>(
+                        future: getVehicleDetails(vehicleId),
+                        builder: (context, vehicleSnapshot) {
+                          if (vehicleSnapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const SizedBox.shrink();
+                          }
 
-                        var vehicleData = vehicleSnapshot.data!;
+                          var vehicleData = vehicleSnapshot.data ?? {};
+                          final vehicleNum = (vehicleData['vehicleNumber'] ??
+                                  notification['vehicleNumber'] ??
+                                  '')
+                              .toString();
+                          final compName = (vehicleData['companyName'] ??
+                                  notification['companyName'] ??
+                                  '')
+                              .toString();
+                          final subjectPrimary = vehicleNum.isNotEmpty
+                              ? (compName.isNotEmpty
+                                  ? '$vehicleNum ($compName)'
+                                  : vehicleNum)
+                              : (notification['vehicleName'] ??
+                                      'Vehicle Service')
+                                  .toString();
 
-                        return Padding(
-                          padding: const EdgeInsets.all(5.0),
-                          child: NotificationCard(
-                            dayMonth: dayMonth,
-                            year: year,
-                            title: "Service Reminder",
-                            message: notification['message'],
-                            subjectPrimary:
-                                '${vehicleData['vehicleNumber']} (${vehicleData['companyName']})',
-                            subjectSecondary: '',
-                            onView: () async {
-                              Get.to(() => NotificationDetailsScreen(
-                                    notification: notification,
-                                    vehicleData: vehicleData,
-                                  ));
-                            },
-                            onReadVehicle: () async {
-                              await markAsRead(doc.id);
-                            },
-                          ),
-                        );
-                      },
+                          return Padding(
+                            padding: const EdgeInsets.all(5.0),
+                            child: NotificationCard(
+                              dayMonth: dayMonth,
+                              year: year,
+                              title:
+                                  (notification['title'] ?? "Service Reminder")
+                                      .toString(),
+                              message:
+                                  (notification['message'] ?? '').toString(),
+                              subjectPrimary: subjectPrimary,
+                              subjectSecondary: '',
+                              onView: () async {
+                                Get.to(() => NotificationDetailsScreen(
+                                      notification: notification,
+                                      vehicleData: vehicleData,
+                                    ));
+                              },
+                              onReadVehicle: () async {
+                                await markAsRead(doc.id);
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    }
+
+                    // Generic fallback notification (no vehicleId)
+                    return Padding(
+                      padding: const EdgeInsets.all(5.0),
+                      child: NotificationCard(
+                        dayMonth: dayMonth,
+                        year: year,
+                        title: (notification['title'] ?? "Notification")
+                            .toString(),
+                        message: (notification['message'] ?? '').toString(),
+                        subjectPrimary: (notification['subtitle'] ??
+                                notification['subject'] ??
+                                '')
+                            .toString(),
+                        subjectSecondary: '',
+                        onView: () async {
+                          await markAsRead(doc.id);
+                        },
+                        onReadVehicle: () async {
+                          await markAsRead(doc.id);
+                        },
+                      ),
                     );
                   }).toList(),
                   // SizedBox(height: 16),
@@ -248,11 +331,13 @@ class NotificationCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4.0),
-                  Text(
-                    subjectPrimary,
-                    style: appStyle(14, kDark, FontWeight.normal),
-                  ),
+                  if (subjectPrimary.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4.0),
+                    Text(
+                      subjectPrimary,
+                      style: appStyle(14, kDark, FontWeight.normal),
+                    ),
+                  ],
                   if (subjectSecondary.trim().isNotEmpty) ...[
                     const SizedBox(height: 4.0),
                     Text(

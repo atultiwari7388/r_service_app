@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -27,11 +29,132 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
   final DashboardController _dashboardController =
       Get.find<DashboardController>();
 
-  // Get effective user ID based on role
-  String get _effectiveUserId {
-    return _dashboardController.role == 'SubOwner'
-        ? _dashboardController.ownerId
-        : currentUId;
+  // Common fleet owner ID (anchor for jobs across all team members)
+  String get effectiveOwnerId => _dashboardController.effectiveOwnerId;
+  String get _effectiveUserId => effectiveOwnerId;
+
+  StreamSubscription<QuerySnapshot>? _assignedVehiclesSub;
+  final Set<String> _assignedVehicleNumbers = {};
+  final Set<String> _assignedVehicleIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAndListenAssignedVehicles();
+  }
+
+  @override
+  void dispose() {
+    _assignedVehiclesSub?.cancel();
+    super.dispose();
+  }
+
+  void _loadAndListenAssignedVehicles() {
+    if (currentUser == null) return;
+
+    // 1. Check direct user document for assigned vehicles
+    FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .get()
+        .then((doc) {
+      if (doc.exists && doc.data() != null) {
+        final uData = doc.data()!;
+        final directLists = [
+          if (uData['assignVehicle'] is List)
+            ...(uData['assignVehicle'] as List),
+          if (uData['selectedVehicles'] is List)
+            ...(uData['selectedVehicles'] as List),
+          if (uData['assignedVehicles'] is List)
+            ...(uData['assignedVehicles'] as List),
+        ];
+        for (var item in directLists) {
+          final str = item.toString().trim().toLowerCase();
+          if (str.isNotEmpty) {
+            _assignedVehicleIds.add(str);
+            _assignedVehicleNumbers.add(str);
+          }
+        }
+        if (mounted) setState(() {});
+      }
+    }).catchError((e) {
+      log("Error fetching user doc assigned vehicles: $e");
+    });
+
+    // 2. Listen to Users/{currentUId}/Vehicles subcollection
+    _assignedVehiclesSub?.cancel();
+    _assignedVehiclesSub = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .collection('Vehicles')
+        .snapshots()
+        .listen((snap) {
+      for (var doc in snap.docs) {
+        _assignedVehicleIds.add(doc.id.trim().toLowerCase());
+        final data = doc.data();
+        final vNum = (data['vehicleNumber'] ??
+                data['vehicle_number'] ??
+                data['number'] ??
+                doc.id)
+            .toString()
+            .trim();
+        if (vNum.isNotEmpty) {
+          _assignedVehicleNumbers.add(vNum.toLowerCase());
+          final clean = _cleanVehicleNum(vNum);
+          if (clean.isNotEmpty) {
+            _assignedVehicleNumbers.add(clean);
+          }
+        }
+      }
+      if (mounted) setState(() {});
+    }, onError: (e) {
+      log("Error listening to assigned vehicles: $e");
+    });
+  }
+
+  String _cleanVehicleNum(String input) {
+    if (input.contains('(')) {
+      return input.split('(').first.trim().toLowerCase();
+    }
+    return input.trim().toLowerCase();
+  }
+
+  bool _isJobVisibleToUser(Map<String, dynamic> job) {
+    // 1. Fleet Owner sees all jobs
+    if (_dashboardController.role == 'Owner') {
+      return true;
+    }
+
+    // 2. Creator of this job always sees it
+    final creatorId =
+        (job['userId'] ?? job['creatorId'] ?? '').toString().trim();
+    if (creatorId.isNotEmpty && creatorId == currentUId) {
+      return true;
+    }
+
+    // 3. If no specific vehicles assigned (e.g. SubOwner with full access), show all
+    if (_assignedVehicleNumbers.isEmpty && _assignedVehicleIds.isEmpty) {
+      return true;
+    }
+
+    final vNum = (job['vehicleNumber'] ?? '').toString().trim().toLowerCase();
+    final cleanNum = _cleanVehicleNum(vNum);
+    final vId = (job['vehicleId'] ?? '').toString().trim().toLowerCase();
+
+    // 4. Check matching vehicle ID or vehicle number
+    if (vId.isNotEmpty && _assignedVehicleIds.contains(vId)) {
+      return true;
+    }
+    if (vNum.isNotEmpty &&
+        (_assignedVehicleNumbers.contains(vNum) ||
+            _assignedVehicleIds.contains(vNum))) {
+      return true;
+    }
+    if (cleanNum.isNotEmpty && _assignedVehicleNumbers.contains(cleanNum)) {
+      return true;
+    }
+
+    return false;
   }
 
   @override
@@ -52,7 +175,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('Users')
-                      .doc(_effectiveUserId)
+                      .doc(currentUId)
                       .collection('UserNotifications')
                       .where('isRead', isEqualTo: false)
                       .snapshots(),
@@ -69,7 +192,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                             child: GestureDetector(
                               onTap: () => Get.to(() =>
                                   CloudNotificationMessageCenter(
-                                      currentUId: _effectiveUserId)),
+                                      currentUId: currentUId)),
                               child: CircleAvatar(
                                   backgroundColor: kPrimary,
                                   radius: 17.r,
@@ -84,7 +207,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                             child: GestureDetector(
                               onTap: () => Get.to(() =>
                                   CloudNotificationMessageCenter(
-                                      currentUId: _effectiveUserId)),
+                                      currentUId: currentUId)),
                               child: CircleAvatar(
                                   backgroundColor: kPrimary,
                                   radius: 17.r,
@@ -105,7 +228,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                     child: StreamBuilder<DocumentSnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('Users')
-                          .doc(_effectiveUserId)
+                          .doc(currentUId)
                           .snapshots(),
                       builder: (BuildContext context,
                           AsyncSnapshot<DocumentSnapshot> snapshot) {
@@ -182,7 +305,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
             StreamBuilder(
               stream: FirebaseFirestore.instance
                   .collection('Users')
-                  .doc(_effectiveUserId)
+                  .doc(effectiveOwnerId)
                   .collection("history")
                   .where("status", whereIn: [0, 1, 2, 3, 4])
                   .orderBy("orderDate", descending: true)
@@ -197,7 +320,13 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                   return const CircularProgressIndicator();
                 }
 
-                final data = snapshot.data!.docs;
+                final allDocs = snapshot.data!.docs;
+
+                // Filter jobs: Owner sees all; Team members see only jobs matching their assigned vehicles (or jobs they created)
+                final data = allDocs.where((doc) {
+                  final job = doc.data() as Map<String, dynamic>;
+                  return _isJobVisibleToUser(job);
+                }).toList();
 
                 return data.isEmpty
                     ? Center(child: Text("No Jobs Created"))
@@ -208,77 +337,130 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                         itemBuilder: (context, index) {
                           final job =
                               data[index].data() as Map<String, dynamic>;
-                          final vehicleNumber = job['vehicleNumber'] ?? "N/A";
+                          final orderId = job['orderId']?.toString() ?? "";
 
-                          DateTime orderDateTime;
-                          if (job['orderDate'] is Timestamp) {
-                            orderDateTime = (job['orderDate'] as Timestamp)
-                                .toDate()
-                                .toLocal();
-                          } else {
-                            orderDateTime = DateTime.now();
-                          }
-                          final mechanicsOffer =
-                              job["mechanicsOffer"] as List<dynamic>? ?? [];
-                          final List<dynamic> images = job['images'] ?? [];
+                          // Bind each job to its live document in root `jobs` collection
+                          // so mechanic offers and status changes show in real-time immediately
+                          return StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('jobs')
+                                .doc(orderId)
+                                .snapshots(),
+                            builder: (context, jobDocSnap) {
+                              final liveJob = jobDocSnap.hasData &&
+                                      jobDocSnap.data?.data() != null
+                                  ? (jobDocSnap.data!.data()
+                                      as Map<String, dynamic>)
+                                  : job;
 
-                          return MyJobsCard(
-                            companyNameAndVehicleName: "${vehicleNumber}",
-                            address: job["userDeliveryAddress"].toString(),
-                            serviceName: job["selectedService"].toString(),
-                            jobId: job["orderId"].toString(),
-                            imagePath: job["userPhoto"].toString().isEmpty
-                                ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
-                                : job["userPhoto"].toString(),
-                            dateTime: orderDateTime,
-                            onButtonTap: () {
-                              Get.to(() => RequestsScreen(
-                                    serviceName:
-                                        job["selectedService"].toString(),
-                                    id: job["orderId"].toString(),
-                                    companyAndVehicleName:
-                                        "${job["companyName"]} (${vehicleNumber})",
-                                    currentUId: _effectiveUserId,
-                                  ));
-                            },
-                            onCancelBtnTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    title: Text(
-                                        "Are you sure to cancel this job?"),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                        },
-                                        child: Text("No"),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          _showReasonDialog(job['orderId']);
-                                        },
-                                        child: Text("Yes"),
-                                      ),
-                                    ],
+                              final vehicleNumber = liveJob['vehicleNumber'] ??
+                                  job['vehicleNumber'] ??
+                                  "N/A";
+
+                              DateTime orderDateTime;
+                              final dateVal =
+                                  liveJob['orderDate'] ?? job['orderDate'];
+                              if (dateVal is Timestamp) {
+                                orderDateTime = dateVal.toDate().toLocal();
+                              } else {
+                                orderDateTime = DateTime.now();
+                              }
+
+                              final mechanicsOffer = (liveJob["mechanicsOffer"]
+                                      as List<dynamic>?) ??
+                                  (job["mechanicsOffer"] as List<dynamic>?) ??
+                                  [];
+                              final List<dynamic> images =
+                                  liveJob['images'] ?? job['images'] ?? [];
+                              final currentStatus =
+                                  (liveJob["status"] as num?)?.toInt() ??
+                                      (job["status"] as num?)?.toInt() ??
+                                      0;
+                              final nearByDistance =
+                                  liveJob["nearByDistance"] ??
+                                      job["nearByDistance"] ??
+                                      25;
+
+                              return MyJobsCard(
+                                companyNameAndVehicleName: "${vehicleNumber}",
+                                address: (liveJob["userDeliveryAddress"] ??
+                                        job["userDeliveryAddress"] ??
+                                        "")
+                                    .toString(),
+                                serviceName: (liveJob["selectedService"] ??
+                                        job["selectedService"] ??
+                                        "")
+                                    .toString(),
+                                jobId: orderId,
+                                imagePath: (liveJob["userPhoto"] ??
+                                            job["userPhoto"] ??
+                                            "")
+                                        .toString()
+                                        .isEmpty
+                                    ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                    : (liveJob["userPhoto"] ?? job["userPhoto"])
+                                        .toString(),
+                                dateTime: orderDateTime,
+                                onButtonTap: () {
+                                  Get.to(() => RequestsScreen(
+                                        serviceName: (liveJob[
+                                                    "selectedService"] ??
+                                                job["selectedService"] ??
+                                                "")
+                                            .toString(),
+                                        id: orderId,
+                                        companyAndVehicleName:
+                                            "${liveJob["companyName"] ?? job["companyName"]} (${vehicleNumber})",
+                                        currentUId: effectiveOwnerId,
+                                      ));
+                                },
+                                onCancelBtnTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) {
+                                      return AlertDialog(
+                                        title: Text(
+                                            "Are you sure to cancel this job?"),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                            },
+                                            child: Text("No"),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                              _showReasonDialog(orderId);
+                                            },
+                                            child: Text("Yes"),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   );
                                 },
+                                currentStatus: currentStatus,
+                                nearByDistance: nearByDistance,
+                                onDistanceChanged: (newDistance) {
+                                  _updateNearbyDistance(
+                                      newDistance, nearByDistance, orderId);
+                                },
+                                userLat:
+                                    liveJob["userLat"] ?? job["userLat"] ?? 0,
+                                userLong:
+                                    liveJob["userLong"] ?? job["userLong"] ?? 0,
+                                mechanicOffers: mechanicsOffer,
+                                description: (liveJob["description"] ??
+                                        job["description"] ??
+                                        "")
+                                    .toString(),
+                                images: images,
+                                isImage: liveJob["isImageSelected"] ??
+                                    job["isImageSelected"] ??
+                                    false,
                               );
                             },
-                            currentStatus: job["status"],
-                            nearByDistance: job["nearByDistance"],
-                            onDistanceChanged: (newDistance) {
-                              _updateNearbyDistance(newDistance,
-                                  job["nearByDistance"], job['orderId']);
-                            },
-                            userLat: job["userLat"],
-                            userLong: job["userLong"],
-                            mechanicOffers: mechanicsOffer,
-                            description: job["description"].toString(),
-                            images: images,
-                            isImage: job["isImageSelected"] ?? false,
                           );
                         },
                       );

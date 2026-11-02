@@ -156,9 +156,17 @@ class DashboardController extends GetxController {
     }
   }
 
+  // Common fleet owner ID (anchor for jobs, vehicles, and fleet data across all team members)
+  String get effectiveOwnerId {
+    if (ownerId.trim().isNotEmpty) {
+      return ownerId.trim();
+    }
+    return currentUId;
+  }
+
   // Helper method to get the correct user ID based on role
   String get _effectiveUserId {
-    return role == 'SubOwner' ? ownerId : currentUId;
+    return effectiveOwnerId;
   }
 
   Future<void> _loadAllData() async {
@@ -255,12 +263,23 @@ class DashboardController extends GetxController {
 
   Future<void> fetchByDefaultUserVehicle() async {
     try {
+      // First check current user's assigned vehicles
       QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(_effectiveUserId) // Use effective user ID
+          .doc(currentUId)
           .collection('Vehicles')
           .where('isSet', isEqualTo: true)
           .get();
+
+      // If none found and current user is not the fleet owner, fall back to owner's vehicles
+      if (vehiclesSnapshot.docs.isEmpty && currentUId != effectiveOwnerId) {
+        vehiclesSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(effectiveOwnerId)
+            .collection('Vehicles')
+            .where('isSet', isEqualTo: true)
+            .get();
+      }
 
       if (vehiclesSnapshot.docs.isNotEmpty) {
         // Fetch first matching vehicle
@@ -311,13 +330,25 @@ class DashboardController extends GetxController {
 
   Future<void> fetchUserVehicles() async {
     try {
+      // First check if current user has assigned vehicles in Users/{currentUId}/Vehicles
       QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(_effectiveUserId) // Use effective user ID
+          .doc(currentUId)
           .collection('Vehicles')
           .where("active", isEqualTo: true)
           .orderBy('vehicleNumber')
           .get();
+
+      // If assigned subcollection has no vehicles (e.g. SubOwner with full fleet access), fall back to fleet owner's vehicles
+      if (vehiclesSnapshot.docs.isEmpty && currentUId != effectiveOwnerId) {
+        vehiclesSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(effectiveOwnerId)
+            .collection('Vehicles')
+            .where("active", isEqualTo: true)
+            .orderBy('vehicleNumber')
+            .get();
+      }
 
       if (vehiclesSnapshot.docs.isNotEmpty) {
         List<String> vehicleNames = vehiclesSnapshot.docs.map((doc) {
@@ -878,7 +909,9 @@ class DashboardController extends GetxController {
         'userLong': userLongitude,
         'orderDate': DateTime.now(),
         "role": role.toString(),
-        "ownerId": ownerId.toString(), // Use ownerId for tracking ownership
+        "ownerId": effectiveOwnerId, // Use effectiveOwnerId for tracking ownership across all team members
+        "createdBy": effectiveOwnerId, // Common fleet anchor ID
+        "creatorId": actualUserId,     // Who actually placed the order
         "payMode": "",
         "status": 0,
         "rating": "4.3",
@@ -891,16 +924,16 @@ class DashboardController extends GetxController {
         'mechanicsOffer': [],
       };
 
-      // Save order details to fleet owner's history subcollection
+      // Save order details to fleet owner's history subcollection (primary fleet source)
       await FirebaseFirestore.instance
           .collection("Users")
-          .doc(_effectiveUserId)
+          .doc(effectiveOwnerId)
           .collection("history")
           .doc(orderId.toString())
           .set(data);
 
-      // If creator is a team member/driver (actualUserId != _effectiveUserId), also save under driver's history
-      if (actualUserId.isNotEmpty && actualUserId != _effectiveUserId) {
+      // If creator is a team member/driver (actualUserId != effectiveOwnerId), also save under creator's history
+      if (actualUserId.isNotEmpty && actualUserId != effectiveOwnerId) {
         await FirebaseFirestore.instance
             .collection("Users")
             .doc(actualUserId)

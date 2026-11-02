@@ -516,9 +516,9 @@ class _MyJobsCardState extends State<MyJobsCard> {
                         buildButton(kPrimary, "Cancel", widget.onCancelBtnTap),
                       SizedBox(width: 10.w),
                       if (widget.currentStatus == 0) SizedBox(width: 10.w),
-                      widget.mechanicOffers.isEmpty
-                          ? SizedBox()
-                          : buildButton(kSecondary, "View", widget.onButtonTap),
+                      (widget.mechanicOffers.isNotEmpty || widget.currentStatus >= 1)
+                          ? buildButton(kSecondary, "View", widget.onButtonTap)
+                          : SizedBox(),
                     ],
                   ),
               ],

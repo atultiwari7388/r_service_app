@@ -486,12 +486,24 @@ export function useMechanicDashboard() {
 
     try {
       const jobDocRef = doc(db, "jobs", jobId);
+      const jobSnap = await getDoc(jobDocRef);
+      const jobData = jobSnap.exists() ? jobSnap.data() : null;
+
       await updateDoc(jobDocRef, {
         mechanicsOffer: arrayUnion(offer),
       });
 
-      if (userId) {
-        const historyRef = doc(db, "Users", userId, "history", jobId);
+      // Target all related user histories (creator, fleet owner, user)
+      const targetUids = new Set<string>();
+      if (userId) targetUids.add(userId);
+      if (jobData?.userId) targetUids.add(jobData.userId);
+      if (jobData?.ownerId) targetUids.add(jobData.ownerId);
+      if (jobData?.createdBy) targetUids.add(jobData.createdBy);
+      if (jobData?.creatorId) targetUids.add(jobData.creatorId);
+
+      for (const targetUid of targetUids) {
+        if (!targetUid) continue;
+        const historyRef = doc(db, "Users", targetUid, "history", jobId);
         const historySnap = await getDoc(historyRef);
         if (historySnap.exists()) {
           await updateDoc(historyRef, {
@@ -499,6 +511,7 @@ export function useMechanicDashboard() {
           });
         } else {
           await setDoc(historyRef, {
+            ...(jobData || {}),
             mechanicsOffer: [offer],
             orderId: jobId,
             status: 0,
@@ -540,8 +553,17 @@ export function useMechanicDashboard() {
         });
       }
 
-      if (userId) {
-        const historyRef = doc(db, "Users", userId, "history", jobId);
+      const targetUids = new Set<string>();
+      if (userId) targetUids.add(userId);
+      const data = jobSnap.exists() ? jobSnap.data() : null;
+      if (data?.userId) targetUids.add(data.userId);
+      if (data?.ownerId) targetUids.add(data.ownerId);
+      if (data?.createdBy) targetUids.add(data.createdBy);
+      if (data?.creatorId) targetUids.add(data.creatorId);
+
+      for (const targetUid of targetUids) {
+        if (!targetUid) continue;
+        const historyRef = doc(db, "Users", targetUid, "history", jobId);
         const histSnap = await getDoc(historyRef);
         if (histSnap.exists()) {
           const hData = histSnap.data();
@@ -594,8 +616,17 @@ export function useMechanicDashboard() {
         });
       }
 
-      if (userId) {
-        const historyRef = doc(db, "Users", userId, "history", jobId);
+      const cancelTargetUids = new Set<string>();
+      if (userId) cancelTargetUids.add(userId);
+      const cancelJobData = jobSnap.exists() ? jobSnap.data() : null;
+      if (cancelJobData?.userId) cancelTargetUids.add(cancelJobData.userId);
+      if (cancelJobData?.ownerId) cancelTargetUids.add(cancelJobData.ownerId);
+      if (cancelJobData?.createdBy) cancelTargetUids.add(cancelJobData.createdBy);
+      if (cancelJobData?.creatorId) cancelTargetUids.add(cancelJobData.creatorId);
+
+      for (const targetUid of cancelTargetUids) {
+        if (!targetUid) continue;
+        const historyRef = doc(db, "Users", targetUid, "history", jobId);
         const histSnap = await getDoc(historyRef);
         if (histSnap.exists()) {
           const offers = (histSnap.data().mechanicsOffer ||

@@ -31,9 +31,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         if (controller.isLoading) {
           return Center(child: CircularProgressIndicator());
         } else {
-          // Use the effectiveUserId from the controller
-          String effectiveUserId =
-              controller.role == 'SubOwner' ? controller.ownerId : currentUId;
+          // Use the effectiveOwnerId from the controller
+          String effectiveUserId = controller.effectiveOwnerId;
           return Scaffold(
             appBar: AppBar(
               backgroundColor: kWhite,
@@ -157,9 +156,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                     FindMechanic(
                         controller: controller,
                         setTab: widget.setTab,
-                        currentUId: controller.role == 'SubOwner'
-                            ? controller.ownerId
-                            : currentUId),
+                        currentUId: controller.effectiveOwnerId),
                     SizedBox(height: 12.h),
                     // Quick Search Section
                     Align(

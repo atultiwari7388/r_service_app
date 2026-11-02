@@ -118,13 +118,13 @@ class NotificationDetailsScreen extends StatelessWidget {
                     ] else ...[
                       buildInfoRow(
                         Icons.directions_car_outlined,
-                        '${vehicleData['vehicleNumber']} (${vehicleData['companyName']})',
+                        '${vehicleData['vehicleNumber'] ?? notification['vehicleNumber'] ?? '-'} (${vehicleData['companyName'] ?? notification['companyName'] ?? '-'})',
                       ),
                       Divider(height: 24.h),
                       notification['currentMiles'] == null
                           ? buildInfoRow(
                               Icons.gas_meter,
-                              "${notification['hoursReading']} (current Hours)",
+                              "${notification['hoursReading'] ?? '-'} (current Hours)",
                             )
                           : buildInfoRow(
                               Icons.gas_meter,
