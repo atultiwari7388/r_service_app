@@ -136,13 +136,24 @@ class PlaceDetails {
 }
 
 class GooglePlacesService {
+  // In-memory caches to save API requests and reduce costs
+  static final Map<String, List<PlacePrediction>> _predictionCache = {};
+  static final Map<String, PlaceDetails> _detailsCache = {};
+
   static Future<List<PlacePrediction>> getPredictions(String input,
       {String? sessionToken}) async {
-    if (input.trim().isEmpty) return [];
+    final query = input.trim();
+    // Don't make API calls for queries shorter than 3 characters
+    if (query.length < 3) return [];
+
+    final cacheKey = query.toLowerCase();
+    if (_predictionCache.containsKey(cacheKey)) {
+      return _predictionCache[cacheKey]!;
+    }
 
     try {
       String url =
-          'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${Uri.encodeComponent(input)}&key=$googleApiKey';
+          'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${Uri.encodeComponent(query)}&components=country:us|country:ca|country:gb|country:au|country:mx&key=$googleApiKey';
       if (sessionToken != null && sessionToken.isNotEmpty) {
         url += '&sessiontoken=$sessionToken';
       }
@@ -152,9 +163,11 @@ class GooglePlacesService {
         final data = json.decode(response.body);
         if (data['status'] == 'OK' && data['predictions'] != null) {
           final List predictions = data['predictions'];
-          return predictions
+          final results = predictions
               .map((p) => PlacePrediction.fromJson(p as Map<String, dynamic>))
               .toList();
+          _predictionCache[cacheKey] = results;
+          return results;
         } else {
           log("Google Places Autocomplete Status: ${data['status']} - ${data['error_message'] ?? ''}");
         }
@@ -167,11 +180,16 @@ class GooglePlacesService {
 
   static Future<PlaceDetails?> getPlaceDetails(String placeId,
       {String? sessionToken}) async {
-    if (placeId.trim().isEmpty) return null;
+    final id = placeId.trim();
+    if (id.isEmpty) return null;
+
+    if (_detailsCache.containsKey(id)) {
+      return _detailsCache[id];
+    }
 
     try {
       String url =
-          'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&fields=address_components,formatted_address,name,geometry&key=$googleApiKey';
+          'https://maps.googleapis.com/maps/api/place/details/json?place_id=$id&fields=address_components,formatted_address,name,geometry&key=$googleApiKey';
       if (sessionToken != null && sessionToken.isNotEmpty) {
         url += '&sessiontoken=$sessionToken';
       }
@@ -180,7 +198,9 @@ class GooglePlacesService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'OK' && data['result'] != null) {
-          return PlaceDetails.fromJson(data);
+          final details = PlaceDetails.fromJson(data);
+          _detailsCache[id] = details;
+          return details;
         } else {
           log("Google Places Details Status: ${data['status']} - ${data['error_message'] ?? ''}");
         }

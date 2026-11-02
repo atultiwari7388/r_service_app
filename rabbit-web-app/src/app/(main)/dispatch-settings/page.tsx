@@ -1739,7 +1739,15 @@ export default function SettingPage() {
                   }}
                 >
                   <Autocomplete
+                    fields={["formatted_address", "geometry"]}
+                    options={{
+                      fields: ["formatted_address", "geometry"],
+                      componentRestrictions: {
+                        country: ["us", "ca", "gb", "au", "mx"],
+                      },
+                    }}
                     onLoad={(autocomplete) => {
+                      autocomplete.setFields(["formatted_address", "geometry"]);
                       autocompleteRef.current = autocomplete;
                     }}
                     onPlaceChanged={onPlaceChanged}

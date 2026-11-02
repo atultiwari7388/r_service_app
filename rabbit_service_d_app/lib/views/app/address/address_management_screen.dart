@@ -343,7 +343,15 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   }
 }
 
+final Map<String, String> _reverseGeocodeCache = {};
+
 Future<String> getAddressFromLatLng(double lat, double lng) async {
+  // Round to 5 decimal places (~1.1 meter accuracy) for cache hits
+  final cacheKey = '${lat.toStringAsFixed(5)},${lng.toStringAsFixed(5)}';
+  if (_reverseGeocodeCache.containsKey(cacheKey)) {
+    return _reverseGeocodeCache[cacheKey]!;
+  }
+
   String apiKey = googleApiKey;
   final String url =
       'https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lng&key=$apiKey';
@@ -351,8 +359,10 @@ Future<String> getAddressFromLatLng(double lat, double lng) async {
   final response = await http.get(Uri.parse(url));
   if (response.statusCode == 200) {
     final data = json.decode(response.body);
-    if (data['results'].isNotEmpty) {
-      return data['results'][0]['formatted_address'];
+    if (data['results'] != null && data['results'].isNotEmpty) {
+      final formatted = data['results'][0]['formatted_address']?.toString() ?? 'Address not found';
+      _reverseGeocodeCache[cacheKey] = formatted;
+      return formatted;
     }
   }
   return 'Address not found';

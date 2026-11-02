@@ -38,6 +38,9 @@ import {
 
 const GOOGLE_LIBRARIES: "places"[] = ["places"];
 
+// In-memory cache to avoid duplicate Geocoding API calls across the session
+const signUpGeocodeCache = new Map<string, google.maps.GeocoderResult[]>();
+
 interface AddressAutocompleteInputProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -69,7 +72,8 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
     requestOptions: {
       componentRestrictions: { country: ["us", "ca", "gb", "au", "mx"] },
     },
-    debounce: 300,
+    debounce: 650,
+    cache: 86400,
     defaultValue: value,
   });
 
@@ -93,9 +97,16 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
     onChange(e);
-    setPlacesValue(e.target.value);
-    setShowDropdown(true);
+    if (val.trim().length < 3) {
+      setPlacesValue(val, false);
+      clearSuggestions();
+      setShowDropdown(false);
+    } else {
+      setPlacesValue(val, true);
+      setShowDropdown(true);
+    }
   };
 
   const handleSelect = async (description: string) => {
@@ -104,7 +115,13 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
     setPlacesValue(description, false);
 
     try {
-      const results = await getGeocode({ address: description });
+      let results = signUpGeocodeCache.get(description);
+      if (!results) {
+        results = await getGeocode({ address: description });
+        if (results && results.length > 0) {
+          signUpGeocodeCache.set(description, results);
+        }
+      }
       if (results && results[0]) {
         const components = results[0].address_components;
         let streetNumber = "";

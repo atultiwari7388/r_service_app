@@ -689,6 +689,9 @@ const AddLocation = () => {
   );
 };
 
+// In-memory cache for location geocoding
+const addLocationGeocodeCache = new Map<string, google.maps.LatLngLiteral>();
+
 const SearchBox = ({
   mapRef,
   setSelectedLocation,
@@ -710,7 +713,7 @@ const SearchBox = ({
     requestOptions: {
       types: ["geocode", "establishment"],
     },
-    debounce: 300,
+    debounce: 650,
     cache: 24 * 60 * 60,
   });
 
@@ -719,13 +722,18 @@ const SearchBox = ({
     clearSuggestions();
 
     try {
-      const results = await getGeocode({ address });
-      const { lat, lng } = await getLatLng(results[0]);
-      setMarkerPosition({ lat, lng });
+      let coords = addLocationGeocodeCache.get(address);
+      if (!coords) {
+        const results = await getGeocode({ address });
+        const { lat, lng } = await getLatLng(results[0]);
+        coords = { lat, lng };
+        addLocationGeocodeCache.set(address, coords);
+      }
+      setMarkerPosition(coords);
       setSelectedLocation(address);
 
       if (mapRef.current) {
-        mapRef.current.panTo({ lat, lng });
+        mapRef.current.panTo(coords);
         mapRef.current.setZoom(15);
       }
     } catch (error) {
@@ -739,13 +747,18 @@ const SearchBox = ({
     if (!value) return;
 
     try {
-      const results = await getGeocode({ address: value });
-      const { lat, lng } = await getLatLng(results[0]);
-      setMarkerPosition({ lat, lng });
+      let coords = addLocationGeocodeCache.get(value);
+      if (!coords) {
+        const results = await getGeocode({ address: value });
+        const { lat, lng } = await getLatLng(results[0]);
+        coords = { lat, lng };
+        addLocationGeocodeCache.set(value, coords);
+      }
+      setMarkerPosition(coords);
       setSelectedLocation(value);
 
       if (mapRef.current) {
-        mapRef.current.panTo({ lat, lng });
+        mapRef.current.panTo(coords);
         mapRef.current.setZoom(15);
       }
 
@@ -760,7 +773,15 @@ const SearchBox = ({
     <form onSubmit={handleSearchSubmit} className="relative mb-6">
       <input
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val.trim().length < 3) {
+            setValue(val, false);
+            clearSuggestions();
+          } else {
+            setValue(val, true);
+          }
+        }}
         disabled={!ready}
         placeholder="Search for a location..."
         className="w-full px-12 py-3 border-2 border-gray-200 rounded-lg focus:border-[#F96176] focus:outline-none transition-colors"

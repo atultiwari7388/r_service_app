@@ -64,7 +64,8 @@ class _GooglePlaceSearchBottomSheetState
 
   void _onSearchChanged(String query) {
     _debounceTimer?.cancel();
-    if (query.trim().isEmpty) {
+    final trimmed = query.trim();
+    if (trimmed.length < 3) {
       setState(() {
         _predictions = [];
         _isLoading = false;
@@ -76,9 +77,9 @@ class _GooglePlaceSearchBottomSheetState
       _isLoading = true;
     });
 
-    _debounceTimer = Timer(const Duration(milliseconds: 350), () async {
+    _debounceTimer = Timer(const Duration(milliseconds: 650), () async {
       final results = await GooglePlacesService.getPredictions(
-        query.trim(),
+        trimmed,
         sessionToken: _sessionToken,
       );
       if (mounted) {

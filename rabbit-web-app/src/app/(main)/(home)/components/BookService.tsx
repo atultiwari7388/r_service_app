@@ -261,6 +261,12 @@ const COUNTRY_CODES = [
   { code: "+61", label: "+61 (AU)" },
 ];
 
+// In-memory cache for place geocoding in booking form
+const bookServiceGeocodeCache = new Map<
+  string,
+  { formatted: string; lat: number; lng: number }
+>();
+
 interface GuestLocationSearchInputProps {
   value: string;
   onChange: (address: string) => void;
@@ -294,7 +300,8 @@ const GuestLocationSearchInput: React.FC<GuestLocationSearchInputProps> = ({
     requestOptions: {
       componentRestrictions: { country: ["us", "ca", "gb", "au", "mx"] },
     },
-    debounce: 300,
+    debounce: 650,
+    cache: 86400,
     defaultValue: value,
     initOnMount: isGoogleLoaded,
   });
@@ -321,8 +328,14 @@ const GuestLocationSearchInput: React.FC<GuestLocationSearchInputProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVal = e.target.value;
     onChange(newVal);
-    setPlacesValue(newVal);
-    setShowDropdown(true);
+    if (newVal.trim().length < 3) {
+      setPlacesValue(newVal, false);
+      clearSuggestions();
+      setShowDropdown(false);
+    } else {
+      setPlacesValue(newVal, true);
+      setShowDropdown(true);
+    }
   };
 
   const handleSelectSuggestion = async (description: string) => {
@@ -331,12 +344,19 @@ const GuestLocationSearchInput: React.FC<GuestLocationSearchInputProps> = ({
     setPlacesValue(description, false);
     onChange(description);
 
+    const cached = bookServiceGeocodeCache.get(description);
+    if (cached) {
+      onSelectPlace(cached.formatted, cached.lat, cached.lng);
+      return;
+    }
+
     try {
       // Basic geocoding only — NO Atmosphere Data SKU requested or billed
       const results = await getGeocode({ address: description });
       if (results && results[0]) {
         const { lat, lng } = await getLatLng(results[0]);
         const formatted = results[0].formatted_address || description;
+        bookServiceGeocodeCache.set(description, { formatted, lat, lng });
         onSelectPlace(formatted, lat, lng);
       } else {
         onSelectPlace(description, null, null);
