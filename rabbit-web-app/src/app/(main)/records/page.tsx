@@ -78,7 +78,9 @@ import {
   FaEye,
 } from "react-icons/fa";
 import ExportDataDialog from "@/components/records/ExportDataDialog";
-import AddOtherExpenseModal from "@/components/records/AddOtherExpenseModal";
+import AddOtherExpenseModal, {
+  OtherExpenseRecord,
+} from "@/components/records/AddOtherExpenseModal";
 import { logActivity } from "@/lib/auditLogger";
 import { utils, writeFile } from "xlsx";
 import html2canvas from "html2canvas";
@@ -772,32 +774,38 @@ export default function RecordsPage() {
   >(new Set());
   const [showVehicleFilter, setShowVehicleFilter] = useState(false);
   const [otherExpensesRecords, setOtherExpensesRecords] = useState<
-    Array<{
-      id: string;
-      amount: number;
-      type: "Credit" | "Debit";
-      date: string;
-      active?: boolean;
-    }>
+    OtherExpenseRecord[]
   >([]);
   const [isOtherExpenseModalOpen, setIsOtherExpenseModalOpen] = useState(false);
 
+  const isSubOwnerUser =
+    userData?.role === "SubOwner" ||
+    userRole === "SubOwner" ||
+    role === "SubOwner" ||
+    userData?.role?.toLowerCase() === "subowner" ||
+    userRole?.toLowerCase() === "subowner" ||
+    role?.toLowerCase() === "subowner" ||
+    userData?.role?.toLowerCase() === "coowner" ||
+    userRole?.toLowerCase() === "coowner" ||
+    role?.toLowerCase() === "coowner" ||
+    (userData as any)?.isTeamMember === true;
+
   const expensesEffectiveUserId =
-    (userData?.role === "SubOwner" || (userData as any)?.isTeamMember) &&
-    userData?.createdBy &&
-    userData.createdBy.trim().length > 0
+    isSubOwnerUser && userData?.createdBy && userData.createdBy.trim().length > 0
       ? userData.createdBy.trim()
       : effectiveUserId || user?.uid || "";
 
   const canViewOtherExpenses =
     role === "Owner" ||
-    role === "SubOwner" ||
+    userRole === "Owner" ||
+    isSubOwnerUser ||
     ((userData as any)?.isTeamMember === true &&
       (userData as any)?.expensesPermission?.view === true);
 
   const canAddOtherExpenses =
     role === "Owner" ||
-    role === "SubOwner" ||
+    userRole === "Owner" ||
+    isSubOwnerUser ||
     ((userData as any)?.isTeamMember === true &&
       (userData as any)?.expensesPermission?.add === true);
 
@@ -1648,8 +1656,17 @@ export default function RecordsPage() {
   ).sort((a, b) => a.localeCompare(b));
 
   // Vehicles for display & selection for current user role
+  const isSubOwner =
+    userRole === "SubOwner" ||
+    role === "SubOwner" ||
+    userRole?.toLowerCase() === "subowner" ||
+    role?.toLowerCase() === "subowner" ||
+    userRole?.toLowerCase() === "coowner" ||
+    role?.toLowerCase() === "coowner" ||
+    (userData as any)?.isTeamMember === true;
+
   const displayVehicles = useMemo(() => {
-    if (userRole === "SubOwner") {
+    if (isSubOwner) {
       const assignedIds = new Set(assignedVehicles.map((v) => v.id));
       const assignedNumbers = new Set(
         assignedVehicles
@@ -1670,7 +1687,60 @@ export default function RecordsPage() {
       return assignedVehicles;
     }
     return vehicles;
-  }, [userRole, assignedVehicles, vehicles]);
+  }, [isSubOwner, assignedVehicles, vehicles]);
+
+  const { assignedVehicleIds, assignedVehicleNumbers } = useMemo(() => {
+    const ids = new Set<string>();
+    const nums = new Set<string>();
+
+    const vehiclesSource = [
+      ...assignedVehicles,
+      ...(isSubOwner ? displayVehicles : []),
+    ];
+
+    vehiclesSource.forEach((v) => {
+      if (v.id) {
+        ids.add(v.id.trim());
+        ids.add(v.id.toLowerCase().trim());
+      }
+      const num = (v.vehicleNumber || (v as any).name || v.id || "")
+        .toString()
+        .trim();
+      if (num) {
+        const lower = num.toLowerCase();
+        nums.add(lower);
+        const clean = lower.replace(/[^a-z0-9]/g, "");
+        if (clean) nums.add(clean);
+      }
+    });
+
+    if (userData) {
+      const directList = [
+        ...(Array.isArray((userData as any).assignVehicle)
+          ? (userData as any).assignVehicle
+          : []),
+        ...(Array.isArray((userData as any).selectedVehicles)
+          ? (userData as any).selectedVehicles
+          : []),
+        ...(Array.isArray((userData as any).assignedVehicles)
+          ? (userData as any).assignedVehicles
+          : []),
+      ];
+      directList.forEach((item) => {
+        const str = (item || "").toString().trim();
+        if (str) {
+          ids.add(str);
+          ids.add(str.toLowerCase());
+          const lower = str.toLowerCase();
+          nums.add(lower);
+          const clean = lower.replace(/[^a-z0-9]/g, "");
+          if (clean) nums.add(clean);
+        }
+      });
+    }
+
+    return { assignedVehicleIds: ids, assignedVehicleNumbers: nums };
+  }, [assignedVehicles, displayVehicles, isSubOwner, userData]);
 
   // Derived unique company list for quick filter
   const availableCompanies = useMemo(() => {
@@ -2412,22 +2482,34 @@ export default function RecordsPage() {
     const unsubscribe = onSnapshot(
       expensesRef,
       (snapshot) => {
-        const loaded: Array<{
-          id: string;
-          amount: number;
-          type: "Credit" | "Debit";
-          date: string;
-          active?: boolean;
-        }> = [];
+        const loaded: OtherExpenseRecord[] = [];
         snapshot.forEach((d) => {
           const data = d.data();
           if (data.active !== false) {
             loaded.push({
               id: d.id,
+              userId: data.userId || expensesEffectiveUserId,
+              serviceId: data.serviceId || "",
+              serviceName: data.serviceName || "Other Expense",
+              isCustomService: !!data.isCustomService,
+              companyId: data.companyId || "",
+              companyName: data.companyName || "",
+              vehicleId: (data.vehicleId || "").toString().trim(),
+              vehicleNumber: (data.vehicleNumber || "").toString().trim(),
+              vehicleType: (data.vehicleType || "").toString().trim(),
+              teamMemberId: data.teamMemberId || "",
+              teamMemberName: data.teamMemberName || "",
+              teamMemberRole: data.teamMemberRole || "",
+              teamMemberEmail: data.teamMemberEmail || "",
+              teamMemberPhone: data.teamMemberPhone || "",
+              date: data.date || "",
               amount: Number(data.amount) || 0,
               type: data.type === "Credit" ? "Credit" : "Debit",
-              date: data.date || "",
+              description: data.description || "",
+              createdAt: data.createdAt || "",
+              updatedAt: data.updatedAt || "",
               active: data.active !== false,
+              addedFrom: data.addedFrom || "Web",
             });
           }
         });
@@ -3753,30 +3835,109 @@ export default function RecordsPage() {
     let credit = 0;
     let debit = 0;
 
-    const startDateStr = summaryStartDate
-      ? formatDateToYYYYMMDD(summaryStartDate)
-      : null;
-    const endDateStr = summaryEndDate
-      ? formatDateToYYYYMMDD(summaryEndDate)
-      : null;
+    // Vehicle lookup for resolving vehicleType if not directly on exp
+    const vehicleTypeMap = new Map<string, string>();
+    displayVehicles.forEach((v) => {
+      const vType = v.vehicleType || "Truck";
+      if (v.id) vehicleTypeMap.set(v.id.toLowerCase(), vType);
+      const vNum = (v.vehicleNumber || "").toString().trim().toLowerCase();
+      if (vNum) vehicleTypeMap.set(vNum, vType);
+      const clean = vNum.replace(/[^a-z0-9]/g, "");
+      if (clean) vehicleTypeMap.set(clean, vType);
+    });
 
     otherExpensesRecords.forEach((exp) => {
-      const expDate = exp.date;
-      const isWithinDateRange =
-        (!startDateStr || expDate >= startDateStr) &&
-        (!endDateStr || expDate <= endDateStr);
+      const vId = (exp.vehicleId || "").trim();
+      const vNum = (exp.vehicleNumber || "").trim().toLowerCase();
+      const cleanNum = vNum.replace(/[^a-z0-9]/g, "");
 
-      if (isWithinDateRange) {
-        if (exp.type === "Credit") {
-          credit += Number(exp.amount) || 0;
-        } else {
-          debit += Number(exp.amount) || 0;
+      // 1. Assigned Vehicles Filter for SubOwner / TeamMember
+      if (isSubOwner) {
+        const isAssigned =
+          (vId &&
+            (assignedVehicleIds.has(vId) ||
+              assignedVehicleNumbers.has(vId.toLowerCase()))) ||
+          (vNum && assignedVehicleNumbers.has(vNum)) ||
+          (cleanNum && assignedVehicleNumbers.has(cleanNum));
+
+        if (!isAssigned) {
+          return;
         }
+      }
+
+      // 2. Date Range Filter
+      if (summaryStartDate || summaryEndDate) {
+        const expD = parseCustomDate(exp.date);
+        if (!expD) return;
+
+        if (summaryStartDate) {
+          const s = new Date(summaryStartDate);
+          s.setHours(0, 0, 0, 0);
+          if (expD < s) return;
+        }
+
+        if (summaryEndDate) {
+          const e = new Date(summaryEndDate);
+          e.setHours(23, 59, 59, 999);
+          if (expD > e) return;
+        }
+      }
+
+      // 3. Vehicle Type Filter (All / Truck / Trailer)
+      if (selectedVehicleTypeFilter !== "all") {
+        const rawType =
+          exp.vehicleType ||
+          (vId && vehicleTypeMap.get(vId.toLowerCase())) ||
+          (vNum && vehicleTypeMap.get(vNum)) ||
+          "";
+        const isTruck = rawType.toLowerCase() === "truck";
+        const isTrailer = rawType.toLowerCase() === "trailer";
+
+        if (selectedVehicleTypeFilter === "truck" && !isTruck) {
+          return;
+        }
+        if (selectedVehicleTypeFilter === "trailer" && !isTrailer) {
+          return;
+        }
+      }
+
+      // 4. Specific Vehicle Selection Filter
+      if (selectedVehiclesForFilter.size > 0) {
+        const matchesSpecificVehicle =
+          (vId && selectedVehiclesForFilter.has(vId)) ||
+          (vNum &&
+            Array.from(selectedVehiclesForFilter).some((selId) => {
+              const selVeh = displayVehicles.find((v) => v.id === selId);
+              return (
+                selVeh &&
+                (selVeh.vehicleNumber || "").toLowerCase().trim() === vNum
+              );
+            }));
+
+        if (!matchesSpecificVehicle) {
+          return;
+        }
+      }
+
+      if (exp.type === "Credit") {
+        credit += Number(exp.amount) || 0;
+      } else {
+        debit += Number(exp.amount) || 0;
       }
     });
 
     return credit - debit;
-  }, [otherExpensesRecords, summaryStartDate, summaryEndDate]);
+  }, [
+    otherExpensesRecords,
+    summaryStartDate,
+    summaryEndDate,
+    isSubOwner,
+    assignedVehicleIds,
+    assignedVehicleNumbers,
+    displayVehicles,
+    selectedVehicleTypeFilter,
+    selectedVehiclesForFilter,
+  ]);
 
   const resetForm = () => {
     setSelectedVehicle("");
