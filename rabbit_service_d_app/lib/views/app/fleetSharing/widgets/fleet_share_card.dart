@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import '../models/fleet_share_model.dart';
+import '../services/fleet_sharing_team_sync.dart';
 import 'fleet_share_details_sheet.dart';
 import 'fulfill_request_dialog.dart';
 import 'return_equipment_dialog.dart';
@@ -39,29 +40,32 @@ class FleetShareCard extends StatelessWidget {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Update lender's vehicles with assigned status
-      for (final v in share.vehicles) {
-        if (v.vehicleId.isNotEmpty && share.lenderId.isNotEmpty) {
-          final vRef = FirebaseFirestore.instance
-              .collection('Users')
-              .doc(share.lenderId)
-              .collection('Vehicles')
-              .doc(v.vehicleId);
-          batch.update(vRef, {
-            'isAssignedToOther': true,
-            'sharingPending': false,
-            'sharedWith': {
-              'borrowerId': effectiveUserId,
-              'borrowerEmail': currentEmail,
-              'borrowerName': share.borrowerName,
-              'borrowerCompanyName': share.borrowerCompanyName,
-              'shareId': share.id,
-              'shareCode': share.shareCode,
-              'assignedAt': FieldValue.serverTimestamp(),
-            },
-          });
-        }
-      }
+      // Update lender's vehicles with assigned status and sync across team
+      final Map<String, dynamic> statusData = {
+        'isAssignedToOther': true,
+        'sharingPending': false,
+        'sharedWith': {
+          'borrowerId': effectiveUserId,
+          'borrowerEmail': currentEmail,
+          'borrowerName': share.borrowerName,
+          'borrowerCompanyName': share.borrowerCompanyName,
+          'shareId': share.id,
+          'shareCode': share.shareCode,
+          'assignedAt': FieldValue.serverTimestamp(),
+        },
+      };
+
+      final lenderVehicleIds = share.vehicles
+          .map((v) => v.vehicleId)
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      await FleetSharingTeamSync.syncMultipleVehiclesAcrossTeam(
+        ownerUid: share.lenderId,
+        vehicleIds: lenderVehicleIds,
+        statusData: statusData,
+        existingBatch: batch,
+      );
 
       await batch.commit();
 
@@ -113,19 +117,18 @@ class FleetShareCard extends StatelessWidget {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Clear pending state on lender's vehicles
-      for (final v in share.vehicles) {
-        if (v.vehicleId.isNotEmpty && share.lenderId.isNotEmpty) {
-          final vRef = FirebaseFirestore.instance
-              .collection('Users')
-              .doc(share.lenderId)
-              .collection('Vehicles')
-              .doc(v.vehicleId);
-          batch.update(vRef, {
-            'sharingPending': false,
-          });
-        }
-      }
+      // Clear pending state on lender's vehicles and sync across team
+      final lenderVehicleIds = share.vehicles
+          .map((v) => v.vehicleId)
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      await FleetSharingTeamSync.syncMultipleVehiclesAcrossTeam(
+        ownerUid: share.lenderId,
+        vehicleIds: lenderVehicleIds,
+        statusData: {'sharingPending': false},
+        existingBatch: batch,
+      );
 
       await batch.commit();
 

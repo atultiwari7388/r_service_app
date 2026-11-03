@@ -194,6 +194,7 @@ interface FormData {
 interface Option {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 interface SettingsEntity {
@@ -359,6 +360,14 @@ interface AssignedVehicle {
   vehicleType: string;
   myCompany?: string;
   mycomId?: string;
+  isAssignedToOther?: boolean;
+  sharingPending?: boolean;
+  sharedWith?: {
+    borrowerId?: string;
+    borrowerName?: string;
+    borrowerCompanyName?: string;
+    borrowerEmail?: string;
+  };
 }
 
 interface SectionHeaderProps {
@@ -461,7 +470,12 @@ const SelectGroup: React.FC<SelectGroupProps> = ({
       >
         <option value="">Select...</option>
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
+          <option
+            key={opt.value}
+            value={opt.value}
+            disabled={opt.disabled}
+            className={opt.disabled ? "text-gray-400 bg-gray-100" : ""}
+          >
             {opt.label}
           </option>
         ))}
@@ -880,6 +894,14 @@ function CreateNewLoadPageContent() {
       vehicleType?: string;
       companyName?: string;
       active?: boolean;
+      isAssignedToOther?: boolean;
+      sharingPending?: boolean;
+      sharedWith?: {
+        borrowerId?: string;
+        borrowerName?: string;
+        borrowerCompanyName?: string;
+        borrowerEmail?: string;
+      };
     }>
   >([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -1175,13 +1197,22 @@ function CreateNewLoadPageContent() {
   const assignedTruckOptions: Option[] = useMemo(() => {
     const list = availableFleetVehicles
       .filter((vehicle) => (vehicle.vehicleType || "").toLowerCase() === "truck")
-      .map((vehicle) => ({
-        value: vehicle.id,
-        label:
+      .map((vehicle) => {
+        const isAssigned = !!vehicle.isAssignedToOther;
+        const borrower =
+          vehicle.sharedWith?.borrowerCompanyName ||
+          vehicle.sharedWith?.borrowerName ||
+          "Other";
+        const baseName =
           vehicle.companyName && vehicle.companyName !== "Unknown Company"
             ? `${vehicle.vehicleNumber} (${vehicle.companyName})`
-            : vehicle.vehicleNumber,
-      }));
+            : vehicle.vehicleNumber;
+        return {
+          value: vehicle.id,
+          label: isAssigned ? `${baseName} [Lent to ${borrower}]` : baseName,
+          disabled: isAssigned,
+        };
+      });
 
     if (
       formData.truckId &&
@@ -1190,6 +1221,7 @@ function CreateNewLoadPageContent() {
       list.unshift({
         value: formData.truckId,
         label: `Current Truck (Not assigned to you)`,
+        disabled: false,
       });
     }
 
@@ -1199,13 +1231,22 @@ function CreateNewLoadPageContent() {
   const assignedTrailerOptions: Option[] = useMemo(() => {
     const list = availableFleetVehicles
       .filter((vehicle) => (vehicle.vehicleType || "").toLowerCase() === "trailer")
-      .map((vehicle) => ({
-        value: vehicle.id,
-        label:
+      .map((vehicle) => {
+        const isAssigned = !!vehicle.isAssignedToOther;
+        const borrower =
+          vehicle.sharedWith?.borrowerCompanyName ||
+          vehicle.sharedWith?.borrowerName ||
+          "Other";
+        const baseName =
           vehicle.companyName && vehicle.companyName !== "Unknown Company"
             ? `${vehicle.vehicleNumber} (${vehicle.companyName})`
-            : vehicle.vehicleNumber,
-      }));
+            : vehicle.vehicleNumber;
+        return {
+          value: vehicle.id,
+          label: isAssigned ? `${baseName} [Lent to ${borrower}]` : baseName,
+          disabled: isAssigned,
+        };
+      });
 
     if (
       formData.trailerId &&
@@ -1214,6 +1255,7 @@ function CreateNewLoadPageContent() {
       list.unshift({
         value: formData.trailerId,
         label: `Current Trailer (Not assigned to you)`,
+        disabled: false,
       });
     }
 
@@ -1424,6 +1466,14 @@ function CreateNewLoadPageContent() {
               type?: string;
               myCompany?: string;
               mycomId?: string;
+              isAssignedToOther?: boolean;
+              sharingPending?: boolean;
+              sharedWith?: {
+                borrowerId?: string;
+                borrowerName?: string;
+                borrowerCompanyName?: string;
+                borrowerEmail?: string;
+              };
             };
 
             return {
@@ -1433,6 +1483,9 @@ function CreateNewLoadPageContent() {
               vehicleType: vehicleData.vehicleType || vehicleData.type || "",
               myCompany: vehicleData.myCompany || "",
               mycomId: vehicleData.mycomId || "",
+              isAssignedToOther: !!vehicleData.isAssignedToOther,
+              sharingPending: !!vehicleData.sharingPending,
+              sharedWith: vehicleData.sharedWith,
             };
           });
 
@@ -1453,6 +1506,14 @@ function CreateNewLoadPageContent() {
             type?: string;
             myCompany?: string;
             mycomId?: string;
+            isAssignedToOther?: boolean;
+            sharingPending?: boolean;
+            sharedWith?: {
+              borrowerId?: string;
+              borrowerName?: string;
+              borrowerCompanyName?: string;
+              borrowerEmail?: string;
+            };
           };
 
           return {
@@ -1462,6 +1523,9 @@ function CreateNewLoadPageContent() {
             vehicleType: vehicleData.vehicleType || vehicleData.type || "",
             myCompany: vehicleData.myCompany || "",
             mycomId: vehicleData.mycomId || "",
+            isAssignedToOther: !!vehicleData.isAssignedToOther,
+            sharingPending: !!vehicleData.sharingPending,
+            sharedWith: vehicleData.sharedWith,
           };
         });
         vehiclesByDriver["__owner__"] = ownerVehicles;
@@ -1725,6 +1789,36 @@ function CreateNewLoadPageContent() {
     setIsSaving(true);
 
     try {
+      if (formData.truckId) {
+        const truck = availableFleetVehicles.find((v) => v.id === formData.truckId);
+        if (truck?.isAssignedToOther) {
+          const borrower =
+            truck.sharedWith?.borrowerCompanyName ||
+            truck.sharedWith?.borrowerName ||
+            "another owner";
+          toast.error(
+            `Truck ${truck.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be assigned.`
+          );
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      if (formData.trailerId) {
+        const trailer = availableFleetVehicles.find((v) => v.id === formData.trailerId);
+        if (trailer?.isAssignedToOther) {
+          const borrower =
+            trailer.sharedWith?.borrowerCompanyName ||
+            trailer.sharedWith?.borrowerName ||
+            "another owner";
+          toast.error(
+            `Trailer ${trailer.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be assigned.`
+          );
+          setIsSaving(false);
+          return;
+        }
+      }
+
       const statusToSave = editingLoadId
         ? formData.status || "Draft"
         : overrideStatus || formData.status || "Draft";
@@ -1853,6 +1947,22 @@ function CreateNewLoadPageContent() {
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
+
+    if (name === "truckId" || name === "trailerId") {
+      if (value) {
+        const selectedUnit = availableFleetVehicles.find((v) => v.id === value);
+        if (selectedUnit?.isAssignedToOther) {
+          const borrower =
+            selectedUnit.sharedWith?.borrowerCompanyName ||
+            selectedUnit.sharedWith?.borrowerName ||
+            "another owner";
+          toast.error(
+            `Vehicle ${selectedUnit.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be assigned to this load.`
+          );
+          return;
+        }
+      }
+    }
 
     if (type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;
@@ -2190,6 +2300,9 @@ function CreateNewLoadPageContent() {
               vehicleType: (data.vehicleType || data.type || "").trim(),
               companyName: (data.companyName || data.myCompany || "").trim(),
               active: data.active,
+              isAssignedToOther: !!data.isAssignedToOther,
+              sharingPending: !!data.sharingPending,
+              sharedWith: data.sharedWith || undefined,
             };
           })
           .filter((v) => (v as any).active !== false);

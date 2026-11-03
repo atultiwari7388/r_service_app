@@ -76,6 +76,14 @@ export interface VehicleOption {
   myCompany?: string;
   companyName?: string;
   active?: boolean;
+  isAssignedToOther?: boolean;
+  sharingPending?: boolean;
+  sharedWith?: {
+    borrowerId?: string;
+    borrowerName?: string;
+    borrowerCompanyName?: string;
+    borrowerEmail?: string;
+  };
 }
 
 export interface TeamMemberOption {
@@ -344,6 +352,9 @@ export default function AddOtherExpenseModal({
               myCompany: data.myCompany || "",
               companyName: data.companyName || "",
               active: data.active !== false,
+              isAssignedToOther: !!data.isAssignedToOther,
+              sharingPending: !!data.sharingPending,
+              sharedWith: data.sharedWith || undefined,
             });
           }
         });
@@ -580,8 +591,20 @@ export default function AddOtherExpenseModal({
 
   // Handle vehicle change
   const handleVehicleChange = (vId: string) => {
-    setSelectedVehicleId(vId);
     const matched = vehiclesList.find((v) => v.id === vId);
+    if (matched?.isAssignedToOther) {
+      const borrower =
+        matched.sharedWith?.borrowerCompanyName ||
+        matched.sharedWith?.borrowerName ||
+        "another owner";
+      toast.error(
+        `Vehicle ${matched.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be selected.`
+      );
+      setSelectedVehicleId("");
+      setSelectedVehicleNumber("");
+      return;
+    }
+    setSelectedVehicleId(vId);
     setSelectedVehicleNumber(matched ? matched.vehicleNumber : "");
   };
 
@@ -658,6 +681,18 @@ export default function AddOtherExpenseModal({
           v.id === selectedVehicleId ||
           (selectedVehicleNumber && v.vehicleNumber === selectedVehicleNumber)
       );
+
+      if (matchedVeh?.isAssignedToOther) {
+        const borrower =
+          matchedVeh.sharedWith?.borrowerCompanyName ||
+          matchedVeh.sharedWith?.borrowerName ||
+          "another owner";
+        toast.error(
+          `Vehicle ${matchedVeh.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be used.`
+        );
+        setIsSaving(false);
+        return;
+      }
       const determinedVehicleType =
         matchedVeh?.vehicleType ||
         (selectedVehicleId || selectedVehicleNumber ? "Truck" : "");
@@ -894,10 +929,21 @@ export default function AddOtherExpenseModal({
                 {availableVehicles.map((veh) => {
                   const isTrailer =
                     (veh.vehicleType || "").toLowerCase() === "trailer";
+                  const isAssigned = !!veh.isAssignedToOther;
+                  const borrower =
+                    veh.sharedWith?.borrowerCompanyName ||
+                    veh.sharedWith?.borrowerName ||
+                    "Other";
                   return (
-                    <option key={veh.id} value={veh.id}>
+                    <option
+                      key={veh.id}
+                      value={veh.id}
+                      disabled={isAssigned}
+                      className={isAssigned ? "text-gray-400 bg-gray-100" : ""}
+                    >
                       {isTrailer ? "🚚 " : "🚛 "}
                       {veh.vehicleNumber} ({veh.vehicleType || "Truck"})
+                      {isAssigned ? ` [Lent to ${borrower}]` : ""}
                     </option>
                   );
                 })}

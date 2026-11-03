@@ -137,6 +137,15 @@ export interface VehicleTypes {
   hoursReadingArray?: { date: any; hours?: string | number; reading?: string | number; value?: string }[];
   myCompany?: string;
   mycomId?: string;
+  updatedAt?: string;
+  isAssignedToOther?: boolean;
+  sharingPending?: boolean;
+  sharedWith?: {
+    borrowerId?: string;
+    borrowerName?: string;
+    borrowerCompanyName?: string;
+    borrowerEmail?: string;
+  };
 }
 
 /** Mechanics Offer and User History Interface */

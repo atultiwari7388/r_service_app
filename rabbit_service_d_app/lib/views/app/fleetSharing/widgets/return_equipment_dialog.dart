@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import '../models/fleet_share_model.dart';
+import '../services/fleet_sharing_team_sync.dart';
 
 class ReturnEquipmentDialog extends StatefulWidget {
   final FleetShareDoc share;
@@ -57,21 +58,24 @@ class _ReturnEquipmentDialogState extends State<ReturnEquipmentDialog> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Reset lender's vehicles back to normal fleet status
-      for (final v in widget.share.vehicles) {
-        if (v.vehicleId.isNotEmpty && widget.share.lenderId.isNotEmpty) {
-          final vRef = FirebaseFirestore.instance
-              .collection('Users')
-              .doc(widget.share.lenderId)
-              .collection('Vehicles')
-              .doc(v.vehicleId);
-          batch.update(vRef, {
-            'isAssignedToOther': false,
-            'sharingPending': false,
-            'sharedWith': FieldValue.delete(),
-          });
-        }
-      }
+      // Reset lender's vehicles back to normal fleet status and sync across team
+      final Map<String, dynamic> resetData = {
+        'isAssignedToOther': false,
+        'sharingPending': false,
+        'sharedWith': FieldValue.delete(),
+      };
+
+      final lenderVehicleIds = widget.share.vehicles
+          .map((v) => v.vehicleId)
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      await FleetSharingTeamSync.syncMultipleVehiclesAcrossTeam(
+        ownerUid: widget.share.lenderId,
+        vehicleIds: lenderVehicleIds,
+        statusData: resetData,
+        existingBatch: batch,
+      );
 
       await batch.commit();
 

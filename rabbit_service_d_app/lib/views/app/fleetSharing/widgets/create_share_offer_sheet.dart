@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import '../models/fleet_share_model.dart';
+import '../services/fleet_sharing_team_sync.dart';
 
 class CreateShareOfferSheet extends StatefulWidget {
   final String effectiveUserId;
@@ -397,18 +398,17 @@ class _CreateShareOfferSheetState extends State<CreateShareOfferSheet> {
           FirebaseFirestore.instance.collection('fleet_shares').doc();
       batch.set(shareDocRef, docData);
 
-      for (final v in selectedList) {
-        final vId = v['id']?.toString() ?? '';
-        if (vId.isEmpty) continue;
-        final vehicleRef = FirebaseFirestore.instance
-            .collection('Users')
-            .doc(widget.effectiveUserId)
-            .collection('Vehicles')
-            .doc(vId);
-        batch.update(vehicleRef, {
-          'sharingPending': true,
-        });
-      }
+      final vIds = selectedList
+          .map((v) => v['id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      await FleetSharingTeamSync.syncMultipleVehiclesAcrossTeam(
+        ownerUid: widget.effectiveUserId,
+        vehicleIds: vIds,
+        statusData: {'sharingPending': true},
+        existingBatch: batch,
+      );
 
       await batch.commit();
 

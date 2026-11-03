@@ -29,6 +29,14 @@ interface Vehicle {
   vehicleType: string;
   myCompany?: string;
   mycomId?: string;
+  isAssignedToOther?: boolean;
+  sharingPending?: boolean;
+  sharedWith?: {
+    borrowerId?: string;
+    borrowerName?: string;
+    borrowerCompanyName?: string;
+    borrowerEmail?: string;
+  };
 }
 
 interface UserData {
@@ -432,8 +440,23 @@ export default function MyVehiclesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {vehicle.vehicleNumber || "Unknown Vehicle"}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">
+                        {vehicle.vehicleNumber || "Unknown Vehicle"}
+                      </span>
+                      {vehicle.isAssignedToOther && (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300"
+                          title="This vehicle is lent out under Fleet Sharing"
+                        >
+                          Lent Out
+                          {vehicle.sharedWith?.borrowerCompanyName
+                            ? ` • ${vehicle.sharedWith.borrowerCompanyName}`
+                            : vehicle.sharedWith?.borrowerName
+                            ? ` • ${vehicle.sharedWith.borrowerName}`
+                            : ""}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -451,7 +474,14 @@ export default function MyVehiclesPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Switch
                         checked={vehicle.active || false}
+                        disabled={vehicle.isAssignedToOther}
                         onChange={(value) => {
+                          if (vehicle.isAssignedToOther) {
+                            toast.error(
+                              "This vehicle is currently assigned to another fleet under Fleet Sharing and cannot be modified."
+                            );
+                            return;
+                          }
                           setMasterVehicles((prev) =>
                             prev.map((v) =>
                               v.id === vehicle.id
@@ -470,6 +500,10 @@ export default function MyVehiclesPage() {
                         }}
                         className={`${
                           vehicle.active ? "bg-[#F96176]" : "bg-gray-200"
+                        } ${
+                          vehicle.isAssignedToOther
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
                         }
                           relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F96176]`}
                       >
@@ -497,22 +531,33 @@ export default function MyVehiclesPage() {
                     >
                       View
                     </Link>
-                    {(role === "Owner" || role === "SubOwner") && (
-                      <Link
-                        href={`/account/my-vehicles/edit/${vehicle.id}`}
-                        onClick={() => {
-                          if (typeof window !== "undefined") {
-                            sessionStorage.setItem(
-                              "lastViewedVehicleId",
-                              vehicle.id
-                            );
-                          }
-                        }}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        Edit
-                      </Link>
-                    )}
+                    {(role === "Owner" || role === "SubOwner") &&
+                      (vehicle.isAssignedToOther ? (
+                        <span
+                          className="text-gray-400 font-medium cursor-not-allowed inline-flex items-center gap-1.5"
+                          title="Lent out under Fleet Sharing - editing disabled"
+                        >
+                          <span className="line-through">Edit</span>
+                          <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 font-bold">
+                            Locked
+                          </span>
+                        </span>
+                      ) : (
+                        <Link
+                          href={`/account/my-vehicles/edit/${vehicle.id}`}
+                          onClick={() => {
+                            if (typeof window !== "undefined") {
+                              sessionStorage.setItem(
+                                "lastViewedVehicleId",
+                                vehicle.id
+                              );
+                            }
+                          }}
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Edit
+                        </Link>
+                      ))}
                   </td>
                 </tr>
               ))}

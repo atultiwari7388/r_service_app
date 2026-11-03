@@ -268,12 +268,13 @@ export default function DispatchReportsPage() {
               if (myComp) companiesSet.add(myComp);
               if (cName) companiesSet.add(cName);
 
+              const lentOutTag = vData.isAssignedToOther ? " [Lent Out]" : "";
               if (vNum && cName) {
                 vehicleMap[vDoc.id] = `${vNum} (${cName})${
                   myComp ? ` - ${myComp}` : ""
-                }`;
+                }${lentOutTag}`;
               } else if (vNum) {
-                vehicleMap[vDoc.id] = vNum;
+                vehicleMap[vDoc.id] = `${vNum}${lentOutTag}`;
               }
             });
           } catch (_) {}
@@ -293,12 +294,13 @@ export default function DispatchReportsPage() {
           if (myComp) companiesSet.add(myComp);
           if (cName) companiesSet.add(cName);
 
+          const lentOutTag = vData.isAssignedToOther ? " [Lent Out]" : "";
           if (vNum && cName) {
             vehicleMap[vDoc.id] = `${vNum} (${cName})${
               myComp ? ` - ${myComp}` : ""
-            }`;
+            }${lentOutTag}`;
           } else if (vNum) {
-            vehicleMap[vDoc.id] = vNum;
+            vehicleMap[vDoc.id] = `${vNum}${lentOutTag}`;
           }
         });
       } catch (_) {}

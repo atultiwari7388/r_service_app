@@ -1049,6 +1049,16 @@ export default function RecordsPage() {
       selectedVehicleData?.vehicleType || ""
     ).toLowerCase();
     const vehicleData = vehicles.find((v) => v.id === value) || null;
+    if (vehicleData?.isAssignedToOther) {
+      const borrower =
+        vehicleData.sharedWith?.borrowerCompanyName ||
+        vehicleData.sharedWith?.borrowerName ||
+        "another owner";
+      toast.error(
+        `Vehicle ${vehicleData.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be used.`
+      );
+      return;
+    }
     const newVehicleType = (vehicleData?.vehicleType || "").toLowerCase();
 
     setSelectedVehicle(value);
@@ -1226,6 +1236,18 @@ export default function RecordsPage() {
     const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
     if (!vehicleData) {
       toast.error("Vehicle data not found.");
+      return;
+    }
+
+    if (vehicleData.isAssignedToOther) {
+      const borrower =
+        vehicleData.sharedWith?.borrowerCompanyName ||
+        vehicleData.sharedWith?.borrowerName ||
+        "another owner";
+      toast.error(
+        `Vehicle ${vehicleData.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot log miles/hours.`
+      );
+      setIsMilesSaving(false);
       return;
     }
 
@@ -1445,6 +1467,18 @@ export default function RecordsPage() {
 
       if (vehicleDoc.exists()) {
         const vehicleData = vehicleDoc.data() as VehicleTypes;
+        if (vehicleData.isAssignedToOther) {
+          const borrower =
+            vehicleData.sharedWith?.borrowerCompanyName ||
+            vehicleData.sharedWith?.borrowerName ||
+            "another owner";
+          toast.error(
+            `Vehicle ${vehicleData.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot log miles/hours.`
+          );
+          setSelectedVehicle("");
+          setSelectedVehicleData(null);
+          return;
+        }
         setSelectedVehicleData(vehicleData);
         setSelectedVehicleType(vehicleData.vehicleType);
         if (vehicleData.vehicleType) {
@@ -2851,6 +2885,17 @@ export default function RecordsPage() {
         return;
       }
 
+      if (selectedVehicleData?.isAssignedToOther) {
+        const borrower =
+          selectedVehicleData.sharedWith?.borrowerCompanyName ||
+          selectedVehicleData.sharedWith?.borrowerName ||
+          "another owner";
+        toast.error(
+          `Vehicle ${selectedVehicleData.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be modified.`
+        );
+        return;
+      }
+
       // Check for duplicate invoice number if provided
       const trimmedInvoice = invoice.trim();
       if (trimmedInvoice && !bypassDuplicateCheck) {
@@ -3349,6 +3394,16 @@ export default function RecordsPage() {
         (record.vehicleDetails
           ? (record.vehicleDetails as unknown as VehicleTypes)
           : null);
+      if (matchingVeh?.isAssignedToOther) {
+        const borrower =
+          matchingVeh.sharedWith?.borrowerCompanyName ||
+          matchingVeh.sharedWith?.borrowerName ||
+          "another owner";
+        toast.error(
+          `Vehicle ${matchingVeh.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and its records cannot be edited.`
+        );
+        return;
+      }
       setSelectedVehicleData(matchingVeh);
 
       const targetVehType = (
@@ -3525,6 +3580,16 @@ export default function RecordsPage() {
         (record.vehicleDetails
           ? (record.vehicleDetails as unknown as VehicleTypes)
           : null);
+      if (matchingVeh?.isAssignedToOther) {
+        const borrower =
+          matchingVeh.sharedWith?.borrowerCompanyName ||
+          matchingVeh.sharedWith?.borrowerName ||
+          "another owner";
+        toast.error(
+          `Vehicle ${matchingVeh.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and its records cannot be duplicated.`
+        );
+        return;
+      }
       setSelectedVehicleData(matchingVeh);
 
       const targetVehType = (
@@ -5081,29 +5146,50 @@ export default function RecordsPage() {
                     sx={{ minHeight: "56px" }}
                     label="Select Vehicle"
                   >
-                    {selectableVehicles.map((vehicle) => (
-                      <MenuItem key={vehicle.id} value={vehicle.id}>
-                        {vehicle.vehicleNumber} ({vehicle.companyName})
-                        {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
-                      </MenuItem>
-                    ))}
+                    {selectableVehicles.map((vehicle) => {
+                      const isAssigned = !!vehicle.isAssignedToOther;
+                      const borrower =
+                        vehicle.sharedWith?.borrowerCompanyName ||
+                        vehicle.sharedWith?.borrowerName ||
+                        "Other";
+                      return (
+                        <MenuItem
+                          key={vehicle.id}
+                          value={vehicle.id}
+                          disabled={isAssigned}
+                          className={isAssigned ? "opacity-50" : ""}
+                        >
+                          {vehicle.vehicleNumber} ({vehicle.companyName})
+                          {isAssigned ? ` [Lent to ${borrower}]` : ""}
+                        </MenuItem>
+                      );
+                    })}
                   </Select>
                 </FormControl>
               </div>
 
               {selectedVehicleType && (
-                <TextField
-                  fullWidth
-                  label={
-                    selectedVehicleType === "Truck"
-                      ? "Miles/Hours"
-                      : "Hours/Miles"
-                  }
-                  type="number"
-                  value={todayMiles}
-                  onChange={(e: any) => setTodayMiles(e.target.value)}
-                  className="mb-4 rounded-lg"
-                />
+                <>
+                  <TextField
+                    fullWidth
+                    label={
+                      selectedVehicleType === "Truck"
+                        ? "Miles/Hours"
+                        : "Hours/Miles"
+                    }
+                    type="number"
+                    value={todayMiles}
+                    onChange={(e: any) => setTodayMiles(e.target.value)}
+                    className="mb-1 rounded-lg"
+                  />
+                  {selectedVehicleData && (
+                    <p className="text-xs text-gray-500 mb-4 pl-1">
+                      {selectedVehicleData.updatedAt
+                        ? `Last updated: ${selectedVehicleData.updatedAt}`
+                        : "No previous update recorded"}
+                    </p>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -5171,15 +5257,28 @@ export default function RecordsPage() {
                     >
                       {/* Sort vehicles alphabetically by vehicleNumber before mapping */}
                       {selectableVehicles
+                        .slice()
                         .sort((a, b) =>
                           a.vehicleNumber.localeCompare(b.vehicleNumber)
                         )
-                        .map((vehicle) => (
-                          <MenuItem key={vehicle.id} value={vehicle.id}>
-                            {vehicle.vehicleNumber} ({vehicle.companyName})
-                            {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
-                          </MenuItem>
-                        ))}
+                        .map((vehicle) => {
+                          const isAssigned = !!vehicle.isAssignedToOther;
+                          const borrower =
+                            vehicle.sharedWith?.borrowerCompanyName ||
+                            vehicle.sharedWith?.borrowerName ||
+                            "Other";
+                          return (
+                            <MenuItem
+                              key={vehicle.id}
+                              value={vehicle.id}
+                              disabled={isAssigned}
+                              className={isAssigned ? "opacity-50" : ""}
+                            >
+                              {vehicle.vehicleNumber} ({vehicle.companyName})
+                              {isAssigned ? ` [Lent to ${borrower}]` : ""}
+                            </MenuItem>
+                          );
+                        })}
                     </Select>
 
                     {/* Circular + Add Button */}

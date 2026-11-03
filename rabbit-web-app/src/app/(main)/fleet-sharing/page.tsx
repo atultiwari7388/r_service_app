@@ -15,6 +15,8 @@ import {
   where,
   onSnapshot,
   serverTimestamp,
+  writeBatch,
+  deleteField,
 } from "firebase/firestore";
 import {
   FiTruck,
@@ -104,6 +106,12 @@ export interface LocalFleetVehicle {
   active: boolean;
   isAssignedToOther?: boolean;
   sharingPending?: boolean;
+  sharedWith?: {
+    borrowerId?: string;
+    borrowerName?: string;
+    borrowerCompanyName?: string;
+    borrowerEmail?: string;
+  };
 }
 
 export interface ShareHistoryEvent {
@@ -237,6 +245,7 @@ export default function FleetSharingPage() {
               active: true,
               isAssignedToOther: !!data.isAssignedToOther,
               sharingPending: !!data.sharingPending,
+              sharedWith: data.sharedWith || undefined,
             });
           }
         });
@@ -608,6 +617,47 @@ export default function FleetSharingPage() {
     };
   };
 
+  // Synchronize Fleet Sharing vehicle status across owner and all team members
+  const syncVehicleSharingStatusAcrossTeam = async (
+    ownerUid: string,
+    vehicleIds: string[],
+    updates: Record<string, any>
+  ) => {
+    if (!ownerUid || vehicleIds.length === 0) return;
+
+    try {
+      // Find all team members under this owner
+      const teamMembersSnap = await getDocs(
+        query(
+          collection(db, "Users"),
+          where("createdBy", "==", ownerUid),
+          where("isTeamMember", "==", true)
+        )
+      );
+      const userIds = [ownerUid, ...teamMembersSnap.docs.map((d) => d.id)];
+
+      const batch = writeBatch(db);
+      let opCount = 0;
+
+      for (const vId of vehicleIds) {
+        for (const uId of userIds) {
+          const vRef = doc(db, "Users", uId, "Vehicles", vId);
+          const snap = await getDoc(vRef);
+          if (snap.exists()) {
+            batch.update(vRef, updates);
+            opCount++;
+          }
+        }
+      }
+
+      if (opCount > 0) {
+        await batch.commit();
+      }
+    } catch (err) {
+      console.error("Error syncing vehicle sharing status across team:", err);
+    }
+  };
+
   // 1. Submit Direct Offer (Lend vehicles)
   const handleCreateOffer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -692,13 +742,21 @@ export default function FleetSharingPage() {
 
       const docRef = await addDoc(collection(db, "fleet_shares"), shareDocData);
 
-      // Instantly mark vehicles as sharingPending locally
+      // Instantly mark vehicles as sharingPending locally & sync across owner and team members
       setMyVehicles((prev) =>
         prev.map((v) =>
           offerSelectedVehicleIds.includes(v.id)
             ? { ...v, sharingPending: true }
             : v
         )
+      );
+
+      await syncVehicleSharingStatusAcrossTeam(
+        effectiveUserId,
+        offerSelectedVehicleIds,
+        {
+          sharingPending: true,
+        }
       );
 
       toast.success(
@@ -828,6 +886,25 @@ export default function FleetSharingPage() {
         lastUpdatedById: user?.uid || effectiveUserId,
         updatedAt: serverTimestamp(),
       });
+
+      // Synchronize lender's vehicles to isAssignedToOther: true across lender & team members
+      const vehIds =
+        share.vehicles?.map((v) => v.vehicleId).filter(Boolean) || [];
+      if (vehIds.length > 0 && share.lenderId) {
+        await syncVehicleSharingStatusAcrossTeam(share.lenderId, vehIds, {
+          isAssignedToOther: true,
+          sharingPending: false,
+          sharedWith: {
+            borrowerId: effectiveUserId,
+            borrowerName:
+              userProfile?.userName || userProfile?.name || "Partner",
+            borrowerEmail: user?.email || "",
+            borrowerCompanyName:
+              userProfile?.companyName || "Partner Logistics",
+          },
+        });
+      }
+
       toast.success(
         "Fleet share accepted! Vehicles are now available for service records."
       );
@@ -845,6 +922,16 @@ export default function FleetSharingPage() {
         lastUpdatedById: user?.uid || effectiveUserId,
         updatedAt: serverTimestamp(),
       });
+
+      // If direct offer was declined, reset sharingPending on lender's vehicles across their team
+      const vehIds =
+        share.vehicles?.map((v) => v.vehicleId).filter(Boolean) || [];
+      if (vehIds.length > 0 && share.lenderId) {
+        await syncVehicleSharingStatusAcrossTeam(share.lenderId, vehIds, {
+          sharingPending: false,
+        });
+      }
+
       toast.success("Share offer declined.");
     } catch (err: any) {
       console.error("Error rejecting share:", err);
@@ -894,6 +981,22 @@ export default function FleetSharingPage() {
         updatedAt: serverTimestamp(),
       });
 
+      // Synchronize assigned vehicles status across owner and team members
+      await syncVehicleSharingStatusAcrossTeam(
+        effectiveUserId,
+        fulfillSelectedVehicleIds,
+        {
+          isAssignedToOther: true,
+          sharingPending: false,
+          sharedWith: {
+            borrowerId: shareToFulfill.borrowerId || "",
+            borrowerName: shareToFulfill.borrowerName || "",
+            borrowerEmail: shareToFulfill.borrowerEmail || "",
+            borrowerCompanyName: shareToFulfill.borrowerCompanyName || "",
+          },
+        }
+      );
+
       // Mark vehicles locally as assigned
       setMyVehicles((prev) =>
         prev.map((v) =>
@@ -941,6 +1044,17 @@ export default function FleetSharingPage() {
         completedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      // Restore equipment back to normal fleet operations across owner and all team members
+      const vehIds =
+        shareToReturn.vehicles?.map((v) => v.vehicleId).filter(Boolean) || [];
+      if (vehIds.length > 0 && shareToReturn.lenderId) {
+        await syncVehicleSharingStatusAcrossTeam(shareToReturn.lenderId, vehIds, {
+          isAssignedToOther: false,
+          sharingPending: false,
+          sharedWith: deleteField(),
+        });
+      }
 
       toast.success(
         "Vehicles successfully returned! Returned to normal status in fleet."

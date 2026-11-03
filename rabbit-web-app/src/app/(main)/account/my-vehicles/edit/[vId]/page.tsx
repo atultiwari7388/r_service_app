@@ -81,6 +81,14 @@ interface VehicleData {
   lastServiceHours?: number;
   myCompany?: string;
   mycomId?: string;
+  isAssignedToOther?: boolean;
+  sharingPending?: boolean;
+  sharedWith?: {
+    borrowerId?: string;
+    borrowerName?: string;
+    borrowerCompanyName?: string;
+    borrowerEmail?: string;
+  };
 }
 
 interface MyCompanyItem {
@@ -488,6 +496,13 @@ export default function EditVehicleScreen() {
   const updateVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (originalVehicleData?.isAssignedToOther) {
+      toast.error(
+        "This vehicle is currently assigned to another fleet under Fleet Sharing and cannot be edited."
+      );
+      return;
+    }
+
     if (!validateForm() || !effectiveUserId || !vehicleId) return;
 
     try {
@@ -648,6 +663,17 @@ export default function EditVehicleScreen() {
       </h1>
 
       <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+        {originalVehicleData?.isAssignedToOther && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs leading-relaxed">
+            <strong>🔒 Locked under Fleet Sharing:</strong> This vehicle is currently assigned to{" "}
+            <strong>
+              {originalVehicleData.sharedWith?.borrowerCompanyName ||
+                originalVehicleData.sharedWith?.borrowerName ||
+                "another fleet"}
+            </strong>
+            . While operating under partner custody, master vehicle specifications and settings cannot be edited.
+          </div>
+        )}
         <form className="space-y-6" onSubmit={updateVehicle}>
           {/* Vehicle Type Selection */}
           <div>

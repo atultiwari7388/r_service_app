@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import '../models/fleet_share_model.dart';
+import '../services/fleet_sharing_team_sync.dart';
 
 class FulfillRequestDialog extends StatefulWidget {
   final FleetShareDoc share;
@@ -186,32 +187,31 @@ class _FulfillRequestDialogState extends State<FulfillRequestDialog> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Update lender's vehicles: isAssignedToOther: true & sharedWith metadata
+      // Update lender's vehicles and sync across all team members
       final targetLenderUid = widget.effectiveUserId.isNotEmpty
           ? widget.effectiveUserId
           : currentUid;
 
-      for (final v in selectedList) {
-        final vehicleRef = FirebaseFirestore.instance
-            .collection('Users')
-            .doc(targetLenderUid)
-            .collection('Vehicles')
-            .doc(v.id);
+      final Map<String, dynamic> statusData = {
+        'isAssignedToOther': true,
+        'sharingPending': false,
+        'sharedWith': {
+          'borrowerId': widget.share.borrowerId,
+          'borrowerEmail': widget.share.borrowerEmail,
+          'borrowerName': widget.share.borrowerName,
+          'borrowerCompanyName': widget.share.borrowerCompanyName,
+          'shareId': widget.share.id,
+          'shareCode': widget.share.shareCode,
+          'assignedAt': FieldValue.serverTimestamp(),
+        },
+      };
 
-        batch.update(vehicleRef, {
-          'isAssignedToOther': true,
-          'sharingPending': false,
-          'sharedWith': {
-            'borrowerId': widget.share.borrowerId,
-            'borrowerEmail': widget.share.borrowerEmail,
-            'borrowerName': widget.share.borrowerName,
-            'borrowerCompanyName': widget.share.borrowerCompanyName,
-            'shareId': widget.share.id,
-            'shareCode': widget.share.shareCode,
-            'assignedAt': FieldValue.serverTimestamp(),
-          },
-        });
-      }
+      await FleetSharingTeamSync.syncMultipleVehiclesAcrossTeam(
+        ownerUid: targetLenderUid,
+        vehicleIds: selectedList.map((v) => v.id).toList(),
+        statusData: statusData,
+        existingBatch: batch,
+      );
 
       await batch.commit();
 
