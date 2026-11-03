@@ -33,12 +33,20 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ScrollController _scrollController = ScrollController();
   bool _isSavingMiles = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -81,6 +89,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         reController.refreshPage(mounted, context);
                       },
                       child: SingleChildScrollView(
+                        controller: _scrollController,
                         keyboardDismissBehavior:
                             ScrollViewKeyboardDismissBehavior.onDrag,
                         child: Padding(
@@ -200,6 +209,41 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             !reController.showAddMiles;
                                         reController.showSearchFilter = false;
                                         reController.showAddRecords = false;
+
+                                        if (reController.showAddMiles &&
+                                            reController.selectedVehicleData !=
+                                                null) {
+                                          final vType = (reController
+                                                          .selectedVehicleData![
+                                                      'vehicleType'] ??
+                                                  '')
+                                              .toString();
+                                          if (vType == 'Truck') {
+                                            final cMiles = reController
+                                                .selectedVehicleData![
+                                                    'currentMiles']
+                                                ?.toString()
+                                                .trim();
+                                            reController.todayMilesController
+                                                .text = (cMiles != null &&
+                                                    cMiles.isNotEmpty &&
+                                                    cMiles != '0')
+                                                ? cMiles
+                                                : '25000';
+                                          } else if (vType == 'Trailer') {
+                                            final cHours = reController
+                                                .selectedVehicleData![
+                                                    'hoursReading']
+                                                ?.toString()
+                                                .trim();
+                                            reController.hoursController.text =
+                                                (cHours != null &&
+                                                        cHours.isNotEmpty &&
+                                                        cHours != '0')
+                                                    ? cHours
+                                                    : '2500';
+                                          }
+                                        }
                                       });
                                     } else {
                                       showToastMessage(
@@ -766,6 +810,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                                                 onPressed: () {
                                                                                                   Navigator.pop(context);
                                                                                                   reController.handleDuplicateRecord(record);
+                                                                                                  if (_scrollController.hasClients) {
+                                                                                                    _scrollController.animateTo(
+                                                                                                      0,
+                                                                                                      duration: const Duration(milliseconds: 350),
+                                                                                                      curve: Curves.easeOut,
+                                                                                                    );
+                                                                                                  }
                                                                                                 },
                                                                                                 child: Text(
                                                                                                   "Yes",
@@ -800,8 +851,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                                   child: Row(
                                                                                     mainAxisSize: MainAxisSize.min,
                                                                                     children: [
-                                                                                      // const Icon(Icons.copy, color: kWhite, size: 14),
-                                                                                      // SizedBox(width: 4.w),
+                                                                                      const Icon(Icons.copy, color: kWhite, size: 13),
+                                                                                      SizedBox(width: 4.w),
                                                                                       Text("Clone", style: appStyle(12, kWhite, FontWeight.w500)),
                                                                                     ],
                                                                                   ),
@@ -1025,6 +1076,19 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                 itemBuilder: (context, index) {
                                                   final vehicle = reController
                                                       .displayVehicles[index];
+                                                  final isTruck =
+                                                      (vehicle['vehicleType'] ??
+                                                                  '')
+                                                              .toString()
+                                                              .toLowerCase() ==
+                                                          "truck";
+                                                  final lastDate = reController
+                                                      .getVehicleLastReadingDate(
+                                                          vehicle);
+                                                  final dateSuffix = lastDate !=
+                                                          null
+                                                      ? ' • Logged: $lastDate'
+                                                      : '';
                                                   return GestureDetector(
                                                     onTap: () => Get.to(() =>
                                                         MilesDetailsScreen(
@@ -1044,24 +1108,17 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                   FontWeight
                                                                       .w500),
                                                         ),
-                                                        subtitle: vehicle[
-                                                                    'vehicleType'] ==
-                                                                "Truck"
-                                                            ? Text(
-                                                                'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
-                                                                style: appStyleUniverse(
-                                                                    14,
-                                                                    kDarkGray,
-                                                                    FontWeight
-                                                                        .normal))
-                                                            : Text(
-                                                                'Hours Reading: ${vehicle['hoursReading'] ?? '0'}',
-                                                                style: appStyleUniverse(
-                                                                    14,
-                                                                    kDarkGray,
-                                                                    FontWeight
-                                                                        .normal),
-                                                              ),
+                                                        subtitle: Text(
+                                                          isTruck
+                                                              ? 'Current Miles: ${vehicle['currentMiles'] ?? '0'}$dateSuffix'
+                                                              : 'Hours Reading: ${vehicle['hoursReading'] ?? '0'}$dateSuffix',
+                                                          style:
+                                                              appStyleUniverse(
+                                                                  13,
+                                                                  kDarkGray,
+                                                                  FontWeight
+                                                                      .normal),
+                                                        ),
                                                         trailing: Icon(
                                                             Icons
                                                                 .directions_car_outlined,
@@ -1192,6 +1249,51 @@ class _ReportsScreenState extends State<ReportsScreen>
                 ),
             ],
 
+            if (reController.selectedVehicle != null &&
+                reController.selectedVehicleData != null) ...[
+              Builder(builder: (context) {
+                final isTruck =
+                    reController.selectedVehicleData?['vehicleType'] == 'Truck';
+                final rawReading = isTruck
+                    ? (reController.selectedVehicleData?['currentMiles'] ??
+                        reController.selectedVehicleData?['miles'])
+                    : (reController.selectedVehicleData?['hoursReading'] ??
+                        reController.selectedVehicleData?['hours']);
+                final readingStr = (rawReading ?? '').toString().trim();
+                final lastDate = reController.getVehicleLastReadingDate(
+                    reController.selectedVehicleData);
+
+                if (readingStr.isEmpty || readingStr == '0') {
+                  return const SizedBox.shrink();
+                }
+
+                return Container(
+                  margin: EdgeInsets.only(top: 8.h, bottom: 4.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                  decoration: BoxDecoration(
+                    color: kSecondary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: kSecondary.withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.history, size: 18.sp, color: kSecondary),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          lastDate != null
+                              ? "Previous reading: $readingStr ${isTruck ? 'miles' : 'hours'} (Logged on: $lastDate)"
+                              : "Previous reading: $readingStr ${isTruck ? 'miles' : 'hours'}",
+                          style: appStyle(12, kDark, FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+
             SizedBox(height: 16.h),
             //Save Miles Button
 
@@ -1214,7 +1316,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                               : reController.hoursController;
                           final value = controller.text.trim();
 
-                          if (reController.selectedVehicleData?['isAssignedToOther'] == true) {
+                          if (reController
+                                  .selectedVehicleData?['isAssignedToOther'] ==
+                              true) {
                             showToastMessage(
                               "Vehicle Lent Out",
                               "This vehicle is currently assigned to another fleet under Fleet Sharing and miles cannot be logged.",
@@ -1954,7 +2058,8 @@ class _ReportsScreenState extends State<ReportsScreen>
 
             SizedBox(height: 10.h),
 
-            if (reController.selectedVehicleData?['vehicleType'] == "Truck")
+            if (reController.selectedVehicleData?['vehicleType'] ==
+                "Truck") ...[
               SizedBox(
                 height: 40.h,
                 child: TextField(
@@ -1966,6 +2071,44 @@ class _ReportsScreenState extends State<ReportsScreen>
                   keyboardType: TextInputType.number,
                 ),
               ),
+              Builder(builder: (context) {
+                final rawReading =
+                    reController.selectedVehicleData?['currentMiles'] ??
+                        reController.selectedVehicleData?['miles'];
+                final readingStr = (rawReading ?? '').toString().trim();
+                final lastDate = reController.getVehicleLastReadingDate(
+                    reController.selectedVehicleData);
+
+                if (readingStr.isEmpty || readingStr == '0') {
+                  return const SizedBox.shrink();
+                }
+
+                return Container(
+                  margin: EdgeInsets.only(top: 6.h, bottom: 4.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: kSecondary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(6.r),
+                    border: Border.all(color: kSecondary.withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.history, size: 15.sp, color: kSecondary),
+                      SizedBox(width: 6.w),
+                      Expanded(
+                        child: Text(
+                          lastDate != null
+                              ? "Previous reading: $readingStr miles (Logged on: $lastDate)"
+                              : "Previous reading: $readingStr miles",
+                          style: appStyle(11, kDark, FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
 
             if (reController.selectedVehicleData?['vehicleType'] ==
                 "Trailer") ...[
@@ -1980,6 +2123,43 @@ class _ReportsScreenState extends State<ReportsScreen>
                   keyboardType: TextInputType.number,
                 ),
               ),
+              Builder(builder: (context) {
+                final rawReading =
+                    reController.selectedVehicleData?['hoursReading'] ??
+                        reController.selectedVehicleData?['hours'];
+                final readingStr = (rawReading ?? '').toString().trim();
+                final lastDate = reController.getVehicleLastReadingDate(
+                    reController.selectedVehicleData);
+
+                if (readingStr.isEmpty || readingStr == '0') {
+                  return const SizedBox.shrink();
+                }
+
+                return Container(
+                  margin: EdgeInsets.only(top: 6.h, bottom: 4.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: kSecondary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(6.r),
+                    border: Border.all(color: kSecondary.withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.history, size: 15.sp, color: kSecondary),
+                      SizedBox(width: 6.w),
+                      Expanded(
+                        child: Text(
+                          lastDate != null
+                              ? "Previous reading: $readingStr hours (Logged on: $lastDate)"
+                              : "Previous reading: $readingStr hours",
+                          style: appStyle(11, kDark, FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
               SizedBox(height: 10.h),
             ],
             SizedBox(height: 10.h),

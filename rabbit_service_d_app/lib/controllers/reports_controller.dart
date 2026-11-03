@@ -244,6 +244,55 @@ class ReportsController extends GetxController {
     return str;
   }
 
+  /// Extracts the date when the latest reading (miles for Truck, hours for Trailer) was logged.
+  String? getVehicleLastReadingDate(Map<String, dynamic>? vehicle) {
+    if (vehicle == null) return null;
+    final isTruck =
+        (vehicle['vehicleType'] ?? '').toString().toLowerCase() == 'truck';
+    dynamic dateVal;
+
+    if (isTruck &&
+        vehicle['currentMilesArray'] is List &&
+        (vehicle['currentMilesArray'] as List).isNotEmpty) {
+      final list = vehicle['currentMilesArray'] as List;
+      for (int i = list.length - 1; i >= 0; i--) {
+        final item = list[i];
+        if (item is Map &&
+            (item['date'] != null ||
+                item['createdAt'] != null ||
+                item['dateTime'] != null)) {
+          dateVal = item['date'] ?? item['createdAt'] ?? item['dateTime'];
+          break;
+        }
+      }
+    } else if (!isTruck &&
+        vehicle['hoursReadingArray'] is List &&
+        (vehicle['hoursReadingArray'] as List).isNotEmpty) {
+      final list = vehicle['hoursReadingArray'] as List;
+      for (int i = list.length - 1; i >= 0; i--) {
+        final item = list[i];
+        if (item is Map &&
+            (item['date'] != null ||
+                item['createdAt'] != null ||
+                item['dateTime'] != null)) {
+          dateVal = item['date'] ?? item['createdAt'] ?? item['dateTime'];
+          break;
+        }
+      }
+    }
+
+    if (dateVal == null) {
+      dateVal = vehicle['currentMilesDate'] ??
+          vehicle['milesUpdatedAt'] ??
+          vehicle['updatedAt'] ??
+          vehicle['createdAt'];
+    }
+
+    if (dateVal == null) return null;
+    final formatted = formatDateSafe(dateVal);
+    return formatted.isNotEmpty ? formatted : null;
+  }
+
   // Search and filter variables
   String filterVehicle = '';
   String filterService = '';
@@ -878,8 +927,10 @@ class ReportsController extends GetxController {
         final currentMiles = selectedVehicleData!['currentMiles']?.toString().trim();
         if (currentMiles != null && currentMiles.isNotEmpty && currentMiles != '0') {
           milesController.text = currentMiles;
+          todayMilesController.text = currentMiles;
         } else {
           milesController.text = '25000';
+          todayMilesController.text = '25000';
         }
       } else if (selectedVehicleType == 'Trailer') {
         final hoursReading = selectedVehicleData!['hoursReading']?.toString().trim();
@@ -1812,6 +1863,23 @@ class ReportsController extends GetxController {
     selectedVehicleType =
         (selectedVehicleData?['vehicleType'] ?? 'Truck').toString();
 
+    // Check if vehicle is lent out
+    if (selectedVehicleData?['isAssignedToOther'] == true) {
+      final sharedWith =
+          selectedVehicleData?['sharedWith'] as Map<String, dynamic>?;
+      final borrower = (sharedWith?['borrowerCompanyName'] ??
+              sharedWith?['borrowerName'] ??
+              'another fleet')
+          .toString()
+          .trim();
+      showToastMessage(
+        "Vehicle Lent Out",
+        "This vehicle is currently assigned to $borrower under Fleet Sharing and cannot be edited.",
+        kRed,
+      );
+      return;
+    }
+
     final targetVehType =
         (selectedVehicleData?['vehicleType'] ?? '').toString().toLowerCase();
 
@@ -1945,6 +2013,23 @@ class ReportsController extends GetxController {
     selectedVehicleType =
         (selectedVehicleData?['vehicleType'] ?? 'Truck').toString();
 
+    // Check if vehicle is lent out
+    if (selectedVehicleData?['isAssignedToOther'] == true) {
+      final sharedWith =
+          selectedVehicleData?['sharedWith'] as Map<String, dynamic>?;
+      final borrower = (sharedWith?['borrowerCompanyName'] ??
+              sharedWith?['borrowerName'] ??
+              'another fleet')
+          .toString()
+          .trim();
+      showToastMessage(
+        "Vehicle Lent Out",
+        "This vehicle is currently assigned to $borrower under Fleet Sharing and cannot be duplicated.",
+        kRed,
+      );
+      return;
+    }
+
     final targetVehType =
         (selectedVehicleData?['vehicleType'] ?? '').toString().toLowerCase();
 
@@ -2046,23 +2131,45 @@ class ReportsController extends GetxController {
       isPdfFile = false;
     }
 
-    milesController.text = (record['miles'] ?? '').toString();
-    hoursController.text = (record['hours'] ?? '').toString();
+    final recMiles = (record['miles'] ?? '').toString().trim();
+    if (recMiles.isNotEmpty && recMiles != '0') {
+      milesController.text = recMiles;
+      todayMilesController.text = recMiles;
+    } else {
+      final vMiles =
+          (selectedVehicleData?['currentMiles'] ?? '').toString().trim();
+      final defaultM = (vMiles.isNotEmpty && vMiles != '0') ? vMiles : '25000';
+      milesController.text = defaultM;
+      todayMilesController.text = defaultM;
+    }
+
+    final recHours = (record['hours'] ?? '').toString().trim();
+    if (recHours.isNotEmpty && recHours != '0') {
+      hoursController.text = recHours;
+    } else {
+      final vHours =
+          (selectedVehicleData?['hoursReading'] ?? '').toString().trim();
+      hoursController.text =
+          (vHours.isNotEmpty && vHours != '0') ? vHours : '2500';
+    }
+
     workshopController.text = (record['workshopName'] ?? '').toString();
     invoiceController.text = (record['invoice'] ?? '').toString();
     invoiceAmountController.text = (record['invoiceAmount'] ?? '').toString();
     descriptionController.text = (record['description'] ?? '').toString();
 
-    // Set current date instead of stored record date when duplicating
+    // Set current date instead of stored record date when duplicating (format MM-dd-yyyy)
     final now = DateTime.now();
     selectedDate = now;
     dateController.text = DateFormat('MM-dd-yyyy').format(now);
 
     showAddRecords = true;
+    showAddMiles = false;
+    showSearchFilter = false;
     update();
     showToastMessage(
         "Success",
-        "Record duplicated! Modify details and save as new record.",
+        "Record duplicated! Today's date set. Modify details and save as new record.",
         kSecondary);
   }
 

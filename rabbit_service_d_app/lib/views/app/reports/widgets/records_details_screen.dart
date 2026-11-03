@@ -8,6 +8,8 @@ import 'package:pdf/pdf.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
+import 'package:get/get.dart';
+import '../../../../controllers/reports_controller.dart';
 import '../../../../utils/app_styles.dart';
 import '../../../../utils/constants.dart';
 import 'package:photo_view/photo_view.dart';
@@ -238,6 +240,17 @@ class RecordsDetailsScreen extends StatelessWidget {
         title: Text('Record Details',
             style: appStyleUniverse(25, kDark, FontWeight.normal)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.copy_outlined),
+            tooltip: 'Duplicate Record',
+            onPressed: () {
+              if (Get.isRegistered<ReportsController>()) {
+                final reController = Get.find<ReportsController>();
+                Navigator.of(context).pop();
+                reController.handleDuplicateRecord(record);
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.share_outlined),
             onPressed: () {
