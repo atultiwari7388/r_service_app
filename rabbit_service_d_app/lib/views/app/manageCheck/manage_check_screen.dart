@@ -48,6 +48,16 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   String? _ownerId;
 
   // Add Check Dialog variables
+  static const List<String> _checkTypes = [
+    'Owner',
+    'Co-Owner',
+    'Carrier',
+    'Driver',
+    'Manager',
+    'Accountant',
+    'Vendor',
+    'Other Staff',
+  ];
   String? _selectedType;
   String? _selectedUserId;
   String? _selectedUserName;
@@ -56,6 +66,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   final List<Map<String, dynamic>> _serviceDetails = [];
   final TextEditingController _memoNumberController = TextEditingController();
   final TextEditingController _checkNumberController = TextEditingController();
+  final TextEditingController _carrierNameController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   double _totalAmount = 0.0;
   bool isAnonymous = true;
@@ -1004,6 +1015,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       _selectedType = check['type'];
       _selectedUserId = check['userId'];
       _selectedUserName = check['userName'];
+      if (_selectedType == 'Carrier') {
+        _carrierNameController.text = check['userName'] ?? '';
+      } else {
+        _carrierNameController.clear();
+      }
       _serviceDetails.clear();
       _serviceDetails.addAll(initialDetails);
       _attachedInvoices = initialAttachedInvoices;
@@ -1078,16 +1094,10 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       decoration: InputDecoration(
                         labelText: 'Select Type',
                         labelStyle: appStyle(14, kDark, FontWeight.normal),
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                       ),
                       value: _selectedType,
-                      items: <String>[
-                        'Manager',
-                        'Accountant',
-                        'Driver',
-                        'Vendor',
-                        'Other Staff'
-                      ]
+                      items: _checkTypes
                           .map<DropdownMenuItem<String>>(
                               (String type) => DropdownMenuItem<String>(
                                     value: type,
@@ -1099,18 +1109,57 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                           _selectedType = value;
                           _selectedUserId = null;
                           _selectedUserName = null;
+                          _carrierNameController.clear();
                         });
                       },
                       validator: (value) => value == null ? 'Required' : null,
                     ),
                     SizedBox(height: 16),
-                    if (_selectedType != null)
+                    if (_selectedType == 'Carrier')
+                      TextFormField(
+                        controller: _carrierNameController,
+                        decoration: InputDecoration(
+                          labelText: 'Carrier Name',
+                          hintText: 'Enter carrier name',
+                          labelStyle: appStyle(14, kDark, FontWeight.normal),
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.local_shipping_outlined),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            final trimmed = value.trim();
+                            _selectedUserName =
+                                trimmed.isEmpty ? null : trimmed;
+                            _selectedUserId = trimmed.isEmpty
+                                ? null
+                                : 'carrier_${trimmed.toLowerCase().replaceAll(' ', '_')}';
+                          });
+                        },
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                                ? 'Please enter carrier name'
+                                : null,
+                      )
+                    else if (_selectedType != null)
                       Builder(
                         builder: (context) {
-                          final typeMembers = _allMembers
-                              .where((member) =>
-                                  member['role']?.toString() == _selectedType)
-                              .toList();
+                          final typeMembers = _allMembers.where((member) {
+                            final role =
+                                member['role']?.toString().trim() ?? '';
+                            if (_selectedType == 'Co-Owner') {
+                              final normalized = role
+                                  .toLowerCase()
+                                  .replaceAll('-', '')
+                                  .replaceAll(' ', '');
+                              return normalized == 'coowner' ||
+                                  normalized == 'subowner';
+                            }
+                            if (_selectedType == 'Owner') {
+                              return role.toLowerCase() == 'owner';
+                            }
+                            return role.toLowerCase() ==
+                                _selectedType!.toLowerCase();
+                          }).toList();
                           final validSelectedId = typeMembers.any((m) =>
                                   m['memberId']?.toString() == _selectedUserId)
                               ? _selectedUserId
@@ -1376,6 +1425,20 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
   Future<void> _updateCheck(StateSetter dialogSetState) async {
     if (_isSavingCheck) return;
+
+    if (_selectedType == 'Carrier') {
+      final carrierName = _carrierNameController.text.trim();
+      if (carrierName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter carrier name')),
+        );
+        return;
+      }
+      _selectedUserName = carrierName;
+      _selectedUserId =
+          'carrier_${carrierName.toLowerCase().replaceAll(' ', '_')}';
+    }
+
     if (_editingCheckId == null ||
         _selectedUserId == null ||
         _serviceDetails.isEmpty) {
@@ -1950,13 +2013,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                         style: appStyle(12, kDark, FontWeight.normal),
                       ),
                     ),
-                    ...[
-                      'Manager',
-                      'Accountant',
-                      'Driver',
-                      'Vendor',
-                      'Other Staff'
-                    ].map((type) => DropdownMenuItem<String>(
+                    ..._checkTypes.map((type) => DropdownMenuItem<String>(
                           value: type,
                           child: Text(
                             type,
@@ -2223,6 +2280,33 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         }),
       );
 
+      // Include the Owner in members list so Owner can be selected for checks
+      try {
+        DocumentSnapshot ownerDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(_effectiveUserId)
+            .get();
+        if (ownerDoc.exists) {
+          final oData = ownerDoc.data() as Map<String, dynamic>;
+          final ownerName =
+              (oData['userName'] ?? oData['name'] ?? 'Owner').toString();
+          if (!membersWithVehicles
+              .any((m) => m['memberId'] == _effectiveUserId)) {
+            membersWithVehicles.add(<String, dynamic>{
+              'name': ownerName,
+              'email': (oData['email'] ?? '').toString(),
+              'isActive': true,
+              'memberId': _effectiveUserId,
+              'ownerId': _effectiveUserId,
+              'vehicles': <Map<String, dynamic>>[],
+              'role': 'Owner',
+            });
+          }
+        }
+      } catch (e) {
+        print('Error fetching owner in fetchTeamMembersWithVehicles: $e');
+      }
+
       setState(() {
         _allMembers = membersWithVehicles;
         if (widget.initialPayee != null && widget.initialUserId != null) {
@@ -2252,6 +2336,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       _selectedType = widget.initialType ?? 'Vendor';
       _selectedUserId = widget.initialUserId;
       _selectedUserName = widget.initialPayee;
+      if (_selectedType == 'Carrier') {
+        _carrierNameController.text = widget.initialPayee!;
+      } else {
+        _carrierNameController.clear();
+      }
       _serviceDetails.clear();
       if (widget.initialServiceDetails != null) {
         _serviceDetails.addAll(
@@ -2264,6 +2353,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       _selectedType = null;
       _selectedUserId = null;
       _selectedUserName = null;
+      _carrierNameController.clear();
       _serviceDetails.clear();
       _memoNumberController.clear();
       _selectedDate = DateTime.now();
@@ -2363,16 +2453,10 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       decoration: InputDecoration(
                         labelText: 'Select Type',
                         labelStyle: appStyle(14, kDark, FontWeight.normal),
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                       ),
                       value: _selectedType,
-                      items: <String>[
-                        'Manager',
-                        'Accountant',
-                        'Driver',
-                        'Vendor',
-                        'Other Staff'
-                      ]
+                      items: _checkTypes
                           .map<DropdownMenuItem<String>>(
                               (String type) => DropdownMenuItem<String>(
                                     value: type,
@@ -2384,18 +2468,57 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                           _selectedType = value;
                           _selectedUserId = null;
                           _selectedUserName = null;
+                          _carrierNameController.clear();
                         });
                       },
                       validator: (value) => value == null ? 'Required' : null,
                     ),
                     SizedBox(height: 16),
-                    if (_selectedType != null)
+                    if (_selectedType == 'Carrier')
+                      TextFormField(
+                        controller: _carrierNameController,
+                        decoration: InputDecoration(
+                          labelText: 'Carrier Name',
+                          hintText: 'Enter carrier name',
+                          labelStyle: appStyle(14, kDark, FontWeight.normal),
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.local_shipping_outlined),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            final trimmed = value.trim();
+                            _selectedUserName =
+                                trimmed.isEmpty ? null : trimmed;
+                            _selectedUserId = trimmed.isEmpty
+                                ? null
+                                : 'carrier_${trimmed.toLowerCase().replaceAll(' ', '_')}';
+                          });
+                        },
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                                ? 'Please enter carrier name'
+                                : null,
+                      )
+                    else if (_selectedType != null)
                       Builder(
                         builder: (context) {
-                          final typeMembers = _allMembers
-                              .where((member) =>
-                                  member['role']?.toString() == _selectedType)
-                              .toList();
+                          final typeMembers = _allMembers.where((member) {
+                            final role =
+                                member['role']?.toString().trim() ?? '';
+                            if (_selectedType == 'Co-Owner') {
+                              final normalized = role
+                                  .toLowerCase()
+                                  .replaceAll('-', '')
+                                  .replaceAll(' ', '');
+                              return normalized == 'coowner' ||
+                                  normalized == 'subowner';
+                            }
+                            if (_selectedType == 'Owner') {
+                              return role.toLowerCase() == 'owner';
+                            }
+                            return role.toLowerCase() ==
+                                _selectedType!.toLowerCase();
+                          }).toList();
                           final validSelectedId = typeMembers.any((m) =>
                                   m['memberId']?.toString() == _selectedUserId)
                               ? _selectedUserId
@@ -2693,6 +2816,20 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
   Future<void> _saveCheck(StateSetter dialogSetState) async {
     if (_isSavingCheck) return;
+
+    if (_selectedType == 'Carrier') {
+      final carrierName = _carrierNameController.text.trim();
+      if (carrierName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter carrier name')),
+        );
+        return;
+      }
+      _selectedUserName = carrierName;
+      _selectedUserId =
+          'carrier_${carrierName.toLowerCase().replaceAll(' ', '_')}';
+    }
+
     if (_selectedUserId == null || _serviceDetails.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please fill all required fields')),
@@ -3058,5 +3195,13 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _memoNumberController.dispose();
+    _checkNumberController.dispose();
+    _carrierNameController.dispose();
+    super.dispose();
   }
 }

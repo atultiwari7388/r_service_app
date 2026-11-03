@@ -1124,18 +1124,32 @@ class _ReportsScreenState extends State<ReportsScreen>
                               .compareTo(
                                   b['vehicleNumber'].toString().toLowerCase())))
                         .map((vehicle) {
-                      // final String myCompany =
-                      //     (vehicle['myCompany'] ?? '').toString().trim();
-                      // final String displayText = myCompany.isNotEmpty
-                      //     ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
-                      //     : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
-                      final String displayText =
-                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+                      final bool isAssigned =
+                          vehicle['isAssignedToOther'] == true;
+                      final sharedWith =
+                          vehicle['sharedWith'] as Map<String, dynamic>?;
+                      final borrower = (sharedWith?['borrowerCompanyName'] ??
+                              sharedWith?['borrowerName'] ??
+                              '')
+                          .toString()
+                          .trim();
+                      final assignedTag = borrower.isNotEmpty
+                          ? ' [Lent to $borrower]'
+                          : ' [Lent Out]';
+                      final String displayText = isAssigned
+                          ? '${vehicle['vehicleNumber']} (${vehicle['companyName']})$assignedTag'
+                          : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+
                       return DropdownMenuItem<String>(
                         value: vehicle['id'],
+                        enabled: !isAssigned,
                         child: Text(
                           displayText,
-                          style: appStyleUniverse(13, kDark, FontWeight.normal),
+                          style: appStyleUniverse(
+                            13,
+                            isAssigned ? kGray : kDark,
+                            isAssigned ? FontWeight.w300 : FontWeight.normal,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1199,6 +1213,15 @@ class _ReportsScreenState extends State<ReportsScreen>
                               ? reController.todayMilesController
                               : reController.hoursController;
                           final value = controller.text.trim();
+
+                          if (reController.selectedVehicleData?['isAssignedToOther'] == true) {
+                            showToastMessage(
+                              "Vehicle Lent Out",
+                              "This vehicle is currently assigned to another fleet under Fleet Sharing and miles cannot be logged.",
+                              kRed,
+                            );
+                            return;
+                          }
 
                           if (reController.selectedVehicle == null ||
                               value.isEmpty) {
@@ -1626,18 +1649,32 @@ class _ReportsScreenState extends State<ReportsScreen>
                               .compareTo(
                                   b['vehicleNumber'].toString().toLowerCase())))
                         .map((vehicle) {
-                      // final String myCompany =
-                      //     (vehicle['myCompany'] ?? '').toString().trim();
-                      // final String displayText = myCompany.isNotEmpty
-                      //     ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
-                      //     : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
-                      final String displayText =
-                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+                      final bool isAssigned =
+                          vehicle['isAssignedToOther'] == true;
+                      final sharedWith =
+                          vehicle['sharedWith'] as Map<String, dynamic>?;
+                      final borrower = (sharedWith?['borrowerCompanyName'] ??
+                              sharedWith?['borrowerName'] ??
+                              '')
+                          .toString()
+                          .trim();
+                      final assignedTag = borrower.isNotEmpty
+                          ? ' [Lent to $borrower]'
+                          : ' [Lent Out]';
+                      final String displayText = isAssigned
+                          ? '${vehicle['vehicleNumber']} (${vehicle['companyName']})$assignedTag'
+                          : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+
                       return DropdownMenuItem<String>(
                         value: vehicle['id'],
+                        enabled: !isAssigned,
                         child: Text(
                           displayText,
-                          style: appStyleUniverse(14, kDark, FontWeight.normal),
+                          style: appStyleUniverse(
+                            14,
+                            isAssigned ? kGray : kDark,
+                            isAssigned ? FontWeight.w300 : FontWeight.normal,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

@@ -155,31 +155,29 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
           .whereType<String>()
           .toSet();
       final assignedNumbers = _assignedVehicles
-          .map((v) =>
-              (v['vehicleNumber'] ?? '').toString().toLowerCase().trim())
+          .map(
+              (v) => (v['vehicleNumber'] ?? '').toString().toLowerCase().trim())
           .where((s) => s.isNotEmpty)
           .toSet();
 
       // Match against masterVehicles from the owner collection (live updates, master fields)
       final matched = _masterVehicles.where((v) {
         final id = v['id']?.toString() ?? '';
-        final num =
-            (v['vehicleNumber'] ?? '').toString().toLowerCase().trim();
+        final num = (v['vehicleNumber'] ?? '').toString().toLowerCase().trim();
         return assignedIds.contains(id) || assignedNumbers.contains(num);
       }).toList();
 
       final matchedIds =
           matched.map((v) => v['id']?.toString()).whereType<String>().toSet();
       final matchedNumbers = matched
-          .map((v) =>
-              (v['vehicleNumber'] ?? '').toString().toLowerCase().trim())
+          .map(
+              (v) => (v['vehicleNumber'] ?? '').toString().toLowerCase().trim())
           .where((s) => s.isNotEmpty)
           .toSet();
 
       final extras = _assignedVehicles.where((v) {
         final id = v['id']?.toString() ?? '';
-        final num =
-            (v['vehicleNumber'] ?? '').toString().toLowerCase().trim();
+        final num = (v['vehicleNumber'] ?? '').toString().toLowerCase().trim();
         return !matchedIds.contains(id) && !matchedNumbers.contains(num);
       }).toList();
 
@@ -194,8 +192,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
       return numA.compareTo(numB);
     });
 
-    final activeList =
-        displayList.where((v) => v['active'] == true).toList();
+    final activeList = displayList.where((v) => v['active'] == true).toList();
     final inactiveList =
         displayList.where((v) => v['active'] == false).toList();
 
@@ -326,12 +323,26 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
         final vehicleName = vehicle['companyName'] ?? 'Unknown Vehicle';
         final vehicleNumber = vehicle['vehicleNumber'] ?? 'Unknown Number';
         final vehicleImage = vehicle['image'] ?? 'assets/myvehicles.png';
+        final bool isAssigned = vehicle['isAssignedToOther'] == true;
+        final sharedWith = vehicle['sharedWith'] as Map<String, dynamic>?;
+        final borrower = (sharedWith?['borrowerCompanyName'] ??
+                sharedWith?['borrowerName'] ??
+                '')
+            .toString()
+            .trim();
 
         return Card(
-          margin: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-          elevation: 1,
+          margin: EdgeInsets.symmetric(vertical: 8.h, horizontal: 15.w),
+          elevation: isAssigned ? 2 : 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+            side: isAssigned
+                ? BorderSide(color: Colors.amber.shade600, width: 1.2)
+                : BorderSide.none,
+          ),
           child: ListTile(
-            contentPadding: EdgeInsets.all(15),
+            contentPadding:
+                EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
             leading: ClipOval(
               child: Image.asset(
                 vehicleImage,
@@ -344,7 +355,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
               children: [
                 Text(vehicleNumber,
                     style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 12,
                         color: const Color.fromARGB(255, 12, 12, 12),
                         fontWeight: FontWeight.normal)),
                 SizedBox(width: 5),
@@ -355,7 +366,51 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
                         fontWeight: FontWeight.normal)),
               ],
             ),
-            trailing: Icon(Icons.arrow_forward_ios, color: kPrimary),
+            subtitle: isAssigned
+                ? Padding(
+                    padding: EdgeInsets.only(top: 4.h),
+                    child: Row(
+                      children: [
+                        Icon(Icons.lock_clock_outlined,
+                            size: 13.sp, color: Colors.amber.shade900),
+                        SizedBox(width: 4.w),
+                        Expanded(
+                          child: Text(
+                            borrower.isNotEmpty
+                                ? "Lent Out to $borrower"
+                                : "Lent Out (Fleet Sharing)",
+                            style: appStyle(
+                                11, Colors.amber.shade900, FontWeight.w500),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isAssigned)
+                  Container(
+                    margin: EdgeInsets.only(right: 6.w),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                    child: Text(
+                      "LENT OUT",
+                      style:
+                          appStyle(9, Colors.amber.shade900, FontWeight.bold),
+                    ),
+                  ),
+                Icon(Icons.arrow_forward_ios,
+                    size: 16.sp,
+                    color: isAssigned ? Colors.amber.shade900 : kPrimary),
+              ],
+            ),
             onTap: () {
               Get.to(() => MyVehiclesDetailsScreen(
                     vehicleData: vehicle,

@@ -805,6 +805,30 @@ class ReportsController extends GetxController {
   }
 
   void handleVehicleChange(String? newVehicleId) {
+    if (newVehicleId != null) {
+      final vData = vehicles.firstWhere(
+        (vehicle) => vehicle['id'] == newVehicleId,
+        orElse: () => <String, dynamic>{},
+      );
+      if (vData['isAssignedToOther'] == true) {
+        final sharedWith = vData['sharedWith'] as Map<String, dynamic>?;
+        final borrower = (sharedWith?['borrowerCompanyName'] ??
+                sharedWith?['borrowerName'] ??
+                'another fleet')
+            .toString()
+            .trim();
+        showToastMessage(
+          "Vehicle Lent Out",
+          "This vehicle is currently assigned to $borrower under Fleet Sharing and cannot be modified.",
+          kRed,
+        );
+        selectedVehicle = null;
+        selectedVehicleData = null;
+        update();
+        return;
+      }
+    }
+
     final String previousVehicleType =
         (selectedVehicleData?['vehicleType'] ?? selectedVehicleType)
             .toString()
@@ -2098,6 +2122,15 @@ class ReportsController extends GetxController {
   bool _validateMandatoryFields() {
     if (selectedVehicle == null) {
       showToastMessage("Error", "Please select a vehicle", kRed);
+      return false;
+    }
+
+    if (selectedVehicleData?['isAssignedToOther'] == true) {
+      showToastMessage(
+        "Vehicle Lent Out",
+        "This vehicle is currently assigned to another fleet under Fleet Sharing and cannot have records added.",
+        kRed,
+      );
       return false;
     }
 

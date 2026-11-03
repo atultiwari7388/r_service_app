@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/notification_detail_screen.dart';
+import 'package:regal_service_d_app/views/app/fleetSharing/fleet_sharing_screen.dart';
 import 'package:regal_service_d_app/views/app/truckDispatch/truck_disptach_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -87,12 +88,10 @@ class CloudNotificationMessageCenter extends StatelessWidget {
 
           var rawDocs = snapshot.data!.docs;
 
-          // Filter out fleet sharing notifications (since fleet sharing is web-only for now)
-          // and any malformed documents
+          // Filter out malformed documents
           var notifications = rawDocs.where((doc) {
             final data = doc.data() as Map<String, dynamic>?;
             if (data == null) return false;
-            if (isFleetSharingNotification(data)) return false;
             return true;
           }).toList();
 
@@ -160,6 +159,31 @@ class CloudNotificationMessageCenter extends StatelessWidget {
                               .join(' -> '),
                           onView: () async {
                             Get.to(() => const TruckDispatchDashboard());
+                          },
+                          onReadVehicle: () async {
+                            await markAsRead(doc.id);
+                          },
+                        ),
+                      );
+                    }
+
+                    if (isFleetSharingNotification(notification)) {
+                      return Padding(
+                        padding: const EdgeInsets.all(5.0),
+                        child: NotificationCard(
+                          dayMonth: dayMonth,
+                          year: year,
+                          title: (notification['title'] ?? 'Fleet Sharing')
+                              .toString(),
+                          message: (notification['message'] ?? '').toString(),
+                          subjectPrimary: (notification['subtitle'] ??
+                                  notification['subject'] ??
+                                  'Fleet Sharing Update')
+                              .toString(),
+                          subjectSecondary: '',
+                          onView: () async {
+                            await markAsRead(doc.id);
+                            Get.to(() => const FleetSharingScreen());
                           },
                           onReadVehicle: () async {
                             await markAsRead(doc.id);
@@ -303,25 +327,31 @@ class NotificationCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        title,
-                        style: appStyle(15, kDark, FontWeight.bold),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: appStyle(15, kDark, FontWeight.bold),
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
-                        padding: EdgeInsets.all(5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 4),
                         decoration: BoxDecoration(
                             color: kPrimary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12.r)),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               dayMonth,
                               style: appStyle(10, kDark, FontWeight.normal),
                             ),
-                            SizedBox(width: 5),
+                            const SizedBox(width: 5),
                             Text(
                               year,
                               style: appStyle(10, kDark, FontWeight.w400),

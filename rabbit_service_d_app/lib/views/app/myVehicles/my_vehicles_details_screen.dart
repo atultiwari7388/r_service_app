@@ -364,6 +364,16 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   value: isActive,
                   activeColor: kSecondary,
                   onChanged: (value) async {
+                    if (widget.vehicleData['isAssignedToOther'] == true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: kRed,
+                          content: Text(
+                              "Cannot change active status while vehicle is lent out to another fleet."),
+                        ),
+                      );
+                      return;
+                    }
                     setState(() {
                       isActive = value;
                     });
@@ -538,12 +548,65 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 final dot = vehicleData['dot']?.toString() ?? '';
                 final iccms = vehicleData['iccms']?.toString() ?? '';
 
+                final bool isAssigned =
+                    vehicleData['isAssignedToOther'] == true;
+                final sharedWith =
+                    vehicleData['sharedWith'] as Map<String, dynamic>?;
+                final borrower = (sharedWith?['borrowerCompanyName'] ??
+                        sharedWith?['borrowerName'] ??
+                        '')
+                    .toString()
+                    .trim();
+                final shareCode =
+                    (sharedWith?['shareCode'] ?? '').toString().trim();
+
                 return SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (isAssigned) ...[
+                          Container(
+                            margin: EdgeInsets.only(bottom: 16.h),
+                            padding: EdgeInsets.all(12.w),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(10.r),
+                              border: Border.all(
+                                  color: Colors.amber.shade600, width: 1.2),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.lock_clock_outlined,
+                                    color: Colors.amber.shade900, size: 22.sp),
+                                SizedBox(width: 10.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Lent Out / Assigned to Partner",
+                                        style: appStyle(13,
+                                            Colors.amber.shade900,
+                                            FontWeight.bold),
+                                      ),
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        "This vehicle is currently assigned to ${borrower.isNotEmpty ? borrower : 'another fleet'}${shareCode.isNotEmpty ? ' ($shareCode)' : ''} under Fleet Sharing. Operational modifications (logging miles, service records, and expenses) are locked until recalled/returned.",
+                                        style: appStyle(11,
+                                            Colors.amber.shade900,
+                                            FontWeight.normal),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         // Display vehicle details
                         Card(
                           elevation: 1,

@@ -201,6 +201,8 @@ class _AddOtherExpenseSheetState extends State<AddOtherExpenseSheet> {
             'type': (data['vehicleType'] ?? '').toString().trim(),
             'mycomId': (data['mycomId'] ?? '').toString().trim(),
             'myCompany': (data['myCompany'] ?? data['companyName'] ?? '').toString().trim(),
+            'isAssignedToOther': data['isAssignedToOther'] == true,
+            'sharedWith': data['sharedWith'],
           });
         }
       }
@@ -284,6 +286,14 @@ class _AddOtherExpenseSheetState extends State<AddOtherExpenseSheet> {
     if (parsedAmount == null || parsedAmount <= 0) {
       showToastMessage("Error", "Please enter a valid amount greater than 0", Colors.red);
       return;
+    }
+
+    if (_selectedVehicleId != null) {
+      final vMatch = _allVehiclesList.firstWhereOrNull((v) => v['id'] == _selectedVehicleId);
+      if (vMatch != null && vMatch['isAssignedToOther'] == true) {
+        showToastMessage("Vehicle Lent Out", "This vehicle is currently assigned to another fleet and expenses cannot be logged.", Colors.red);
+        return;
+      }
     }
 
     final isCustom = _selectedService?.toLowerCase() == "other";
@@ -840,11 +850,24 @@ class _AddOtherExpenseSheetState extends State<AddOtherExpenseSheet> {
                                               child: Text("-- None --", style: appStyle(12, kGray, FontWeight.normal)),
                                             ),
                                             ..._filteredVehiclesList.map((v) {
+                                              final bool isAssigned = v['isAssignedToOther'] == true;
+                                              final sharedWith = v['sharedWith'] as Map<String, dynamic>?;
+                                              final borrower = (sharedWith?['borrowerCompanyName'] ??
+                                                      sharedWith?['borrowerName'] ??
+                                                      '')
+                                                  .toString()
+                                                  .trim();
+                                              final tag = borrower.isNotEmpty ? ' [Lent to $borrower]' : ' [Lent Out]';
                                               return DropdownMenuItem<String>(
                                                 value: v['id'] as String,
+                                                enabled: !isAssigned,
                                                 child: Text(
-                                                  v['number'] as String,
-                                                  style: appStyle(12, kDark, FontWeight.w500),
+                                                  isAssigned ? "${v['number']}$tag" : (v['number'] as String),
+                                                  style: appStyle(
+                                                    12,
+                                                    isAssigned ? kGray : kDark,
+                                                    isAssigned ? FontWeight.w300 : FontWeight.w500,
+                                                  ),
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               );

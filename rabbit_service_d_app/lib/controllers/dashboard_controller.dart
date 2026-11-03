@@ -282,36 +282,46 @@ class DashboardController extends GetxController {
       }
 
       if (vehiclesSnapshot.docs.isNotEmpty) {
-        // Fetch first matching vehicle
-        final vehicleData =
-            vehiclesSnapshot.docs.first.data() as Map<String, dynamic>;
+        // Find first matching vehicle that is NOT assigned to other
+        QueryDocumentSnapshot? activeDoc;
+        for (final doc in vehiclesSnapshot.docs) {
+          final d = doc.data() as Map<String, dynamic>;
+          if (d['isAssignedToOther'] != true) {
+            activeDoc = doc;
+            break;
+          }
+        }
 
-        String vehicleNumber =
-            vehicleData['vehicleNumber'] ?? 'Select your Vehicle';
-        String companyName = vehicleData['companyName'] ?? 'Company Name';
-        String myCompany = (vehicleData['myCompany'] ?? '').toString().trim();
+        if (activeDoc != null) {
+          final vehicleData = activeDoc.data() as Map<String, dynamic>;
 
-        // Format as "BZDPT6650G (MACK)"
-        // String formattedVehicle = myCompany.isNotEmpty
-        //     ? "$vehicleNumber ($companyName) ($myCompany)"
-        //     : "$vehicleNumber ($companyName)";
-        String formattedVehicle = "$vehicleNumber ($companyName)";
+          String vehicleNumber =
+              vehicleData['vehicleNumber'] ?? 'Select your Vehicle';
+          String companyName = vehicleData['companyName'] ?? 'Company Name';
+          String formattedVehicle = "$vehicleNumber ($companyName)";
 
-        // Assign formatted data
-        selectedVehicleId = vehiclesSnapshot.docs.first.id;
-        selectedCompanyAndVehcileName = formattedVehicle;
-        selectedCompanyAndVehcileNameController.text = formattedVehicle;
-        companyNameController.text = companyName;
-        selectedVehicleMyCompany =
-            (vehicleData['myCompany'] ?? '').toString().trim();
-        selectedVehicleMyComId =
-            (vehicleData['mycomId'] ?? '').toString().trim();
+          // Assign formatted data
+          selectedVehicleId = activeDoc.id;
+          selectedCompanyAndVehcileName = formattedVehicle;
+          selectedCompanyAndVehcileNameController.text = formattedVehicle;
+          companyNameController.text = companyName;
+          selectedVehicleMyCompany =
+              (vehicleData['myCompany'] ?? '').toString().trim();
+          selectedVehicleMyComId =
+              (vehicleData['mycomId'] ?? '').toString().trim();
 
-        isVehicleSelected = true; // Vehicle selected
-        checkIfAllSelected();
+          isVehicleSelected = true; // Vehicle selected
+          checkIfAllSelected();
 
-        print("new function called $selectedCompanyAndVehcileNameController");
-        update();
+          print("new function called $selectedCompanyAndVehcileNameController");
+          update();
+        } else {
+          selectedCompanyAndVehcileName = 'Select your Vehicle';
+          selectedCompanyAndVehcileNameController.text = 'Select your Vehicle';
+          selectedVehicleId = null;
+          isVehicleSelected = false;
+          update();
+        }
       } else {
         // No vehicles found, set default label
         selectedCompanyAndVehcileName = 'Select your Vehicle';
@@ -466,14 +476,75 @@ class DashboardController extends GetxController {
                               final vehicle = listToUse[index];
                               final String displayName =
                                   vehicle['displayName'] ?? '';
+                              final bool isAssigned =
+                                  vehicle['isAssignedToOther'] == true;
+                              final sharedWith =
+                                  vehicle['sharedWith'] as Map<String, dynamic>?;
+                              final borrower = (sharedWith?['borrowerCompanyName'] ??
+                                      sharedWith?['borrowerName'] ??
+                                      '')
+                                  .toString()
+                                  .trim();
+                              final assignedTag = borrower.isNotEmpty
+                                  ? ' [Lent to $borrower]'
+                                  : ' [Lent Out]';
+
                               return ListTile(
-                                title: Text(
-                                  displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: appStyle(14, kDark, FontWeight.w500),
+                                enabled: !isAssigned,
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        isAssigned
+                                            ? "$displayName$assignedTag"
+                                            : displayName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: appStyle(
+                                          14,
+                                          isAssigned ? kGray : kDark,
+                                          isAssigned
+                                              ? FontWeight.w300
+                                              : FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    if (isAssigned) ...[
+                                      SizedBox(width: 6.w),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 6.w, vertical: 2.h),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.shade50,
+                                          borderRadius:
+                                              BorderRadius.circular(4.r),
+                                          border: Border.all(
+                                              color: Colors.amber.shade600,
+                                              width: 0.8),
+                                        ),
+                                        child: Text(
+                                          "Lent Out",
+                                          style: appStyle(
+                                              10,
+                                              Colors.amber.shade900,
+                                              FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
-                                onTap: () async {
+                                onTap: isAssigned
+                                    ? () {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            backgroundColor: kRed,
+                                            content: Text(
+                                                "Cannot dispatch or find mechanic for lent out vehicle ($displayName)."),
+                                          ),
+                                        );
+                                      }
+                                    : () async {
                                   // 1. Show immediate small loading indicator
                                   showDialog(
                                     context: context,

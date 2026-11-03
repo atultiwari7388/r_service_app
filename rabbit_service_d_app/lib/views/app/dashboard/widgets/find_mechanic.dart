@@ -77,6 +77,8 @@ class _FindMechanicState extends State<FindMechanic> {
                   'myCompany': myComp,
                   'mycomId': myCId,
                   'displayName': displayName,
+                  'isAssignedToOther': data['isAssignedToOther'] == true,
+                  'sharedWith': data['sharedWith'],
                 };
               }).toList();
 
