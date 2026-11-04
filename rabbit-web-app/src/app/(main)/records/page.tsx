@@ -76,6 +76,7 @@ import {
   FaExclamationTriangle,
   FaLock,
   FaEye,
+  FaHistory,
 } from "react-icons/fa";
 import ExportDataDialog from "@/components/records/ExportDataDialog";
 import AddOtherExpenseModal, {
@@ -156,6 +157,61 @@ const parseCustomDate = (dateStr?: string | null): Date | null => {
 
   const d = new Date(trimmed);
   return isNaN(d.getTime()) ? null : d;
+};
+
+const getVehicleLastReadingDate = (
+  vehicle: VehicleTypes | null | undefined
+): string | null => {
+  if (!vehicle) return null;
+  const isTruck = (vehicle.vehicleType || "").toLowerCase() === "truck";
+  let dateVal: any = null;
+
+  if (
+    isTruck &&
+    Array.isArray(vehicle.currentMilesArray) &&
+    vehicle.currentMilesArray.length > 0
+  ) {
+    for (let i = vehicle.currentMilesArray.length - 1; i >= 0; i--) {
+      const item: any = vehicle.currentMilesArray[i];
+      if (item && (item.date || item.createdAt || item.dateTime)) {
+        dateVal = item.date || item.createdAt || item.dateTime;
+        break;
+      }
+    }
+  } else if (
+    !isTruck &&
+    Array.isArray(vehicle.hoursReadingArray) &&
+    vehicle.hoursReadingArray.length > 0
+  ) {
+    for (let i = vehicle.hoursReadingArray.length - 1; i >= 0; i--) {
+      const item: any = vehicle.hoursReadingArray[i];
+      if (item && (item.date || item.createdAt || item.dateTime)) {
+        dateVal = item.date || item.createdAt || item.dateTime;
+        break;
+      }
+    }
+  }
+
+  if (!dateVal) {
+    dateVal =
+      (vehicle as any).currentMilesDate ||
+      (vehicle as any).milesUpdatedAt ||
+      vehicle.updatedAt ||
+      vehicle.createdAt;
+  }
+
+  if (!dateVal) return null;
+
+  if (dateVal && typeof dateVal.toDate === "function") {
+    try {
+      return format(dateVal.toDate(), "MM-dd-yyyy");
+    } catch {
+      // fallback
+    }
+  }
+
+  const formatted = formatDateSafe(String(dateVal));
+  return formatted && formatted.trim() !== "" ? formatted : null;
 };
 
 interface Vehicle {
@@ -3693,9 +3749,24 @@ export default function RecordsPage() {
       });
       setSelectedSubServices(subServices);
 
-      // Set other fields
-      setMiles((record.miles || 0).toString());
-      setHours((record.hours || 0).toString());
+      // Set other fields - prefill latest vehicle reading if available, else fallback to previous record values
+      if (matchingVeh) {
+        if (matchingVeh.vehicleType === "Truck") {
+          const vMiles = (matchingVeh.currentMiles || "").trim();
+          setMiles(vMiles && vMiles !== "0" ? vMiles : (record.miles || 0).toString());
+          setHours("0");
+        } else if (matchingVeh.vehicleType === "Trailer") {
+          const vHours = (matchingVeh.hoursReading || "").trim();
+          setHours(vHours && vHours !== "0" ? vHours : (record.hours || 0).toString());
+          setMiles("0");
+        } else {
+          setMiles((record.miles || 0).toString());
+          setHours((record.hours || 0).toString());
+        }
+      } else {
+        setMiles((record.miles || 0).toString());
+        setHours((record.hours || 0).toString());
+      }
       // Set current date instead of stored record date when duplicating
       const todayFormatted = format(new Date(), "MM-dd-yyyy");
       setDate(todayFormatted);
@@ -5183,11 +5254,18 @@ export default function RecordsPage() {
                     className="mb-1 rounded-lg"
                   />
                   {selectedVehicleData && (
-                    <p className="text-xs text-gray-500 mb-4 pl-1">
-                      {selectedVehicleData.updatedAt
-                        ? `Last updated: ${selectedVehicleData.updatedAt}`
-                        : "No previous update recorded"}
-                    </p>
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1 mb-4 mt-1">
+                      <FaHistory className="text-emerald-600 flex-shrink-0" />
+                      <span>
+                        {(() => {
+                          const lastDate = getVehicleLastReadingDate(selectedVehicleData);
+                          const isTruck = selectedVehicleType === "Truck";
+                          return lastDate
+                            ? (isTruck ? `Last Mileage on ${lastDate}` : `Last Hours on ${lastDate}`)
+                            : "No previous update recorded";
+                        })()}
+                      </span>
+                    </div>
                   )}
                 </>
               )}
@@ -5594,14 +5672,29 @@ export default function RecordsPage() {
               </div>
               <div className="mb-4 flex flex-col gap-4">
                 {selectedVehicleData?.vehicleType === "Truck" && (
-                  <TextField
-                    fullWidth
-                    label="Miles"
-                    type="number"
-                    value={miles}
-                    onChange={(e: any) => setMiles(e.target.value)}
-                    className="mb-4 rounded-lg"
-                  />
+                  <div>
+                    <TextField
+                      fullWidth
+                      label="Miles"
+                      type="number"
+                      value={miles}
+                      onChange={(e: any) => setMiles(e.target.value)}
+                      className="rounded-lg"
+                    />
+                    {(() => {
+                      const lastDate = getVehicleLastReadingDate(selectedVehicleData);
+                      const readingStr = (selectedVehicleData.currentMiles || miles || "").trim();
+                      if (!readingStr || readingStr === "0") return null;
+                      return (
+                        <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1 mt-1.5">
+                          <FaHistory className="text-emerald-600 flex-shrink-0" />
+                          <span>
+                            {lastDate ? `Last Mileage on ${lastDate}` : `Last Mileage: ${readingStr} miles`}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 )}
 
                 {selectedVehicleData?.vehicleType === "Trailer" && (
@@ -5609,14 +5702,29 @@ export default function RecordsPage() {
                     {selectedVehicleData?.engineName === "DRY VAN" ? (
                       <div></div>
                     ) : (
-                      <TextField
-                        fullWidth
-                        label="Hours"
-                        type="number"
-                        value={hours}
-                        onChange={(e: any) => setHours(e.target.value)}
-                        className="mb-4 rounded-lg"
-                      />
+                      <div>
+                        <TextField
+                          fullWidth
+                          label="Hours"
+                          type="number"
+                          value={hours}
+                          onChange={(e: any) => setHours(e.target.value)}
+                          className="rounded-lg"
+                        />
+                        {(() => {
+                          const lastDate = getVehicleLastReadingDate(selectedVehicleData);
+                          const readingStr = (selectedVehicleData.hoursReading || hours || "").trim();
+                          if (!readingStr || readingStr === "0") return null;
+                          return (
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1 mt-1.5">
+                              <FaHistory className="text-emerald-600 flex-shrink-0" />
+                              <span>
+                                {lastDate ? `Last Hours on ${lastDate}` : `Last Hours: ${readingStr} hours`}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     )}
                   </>
                 )}

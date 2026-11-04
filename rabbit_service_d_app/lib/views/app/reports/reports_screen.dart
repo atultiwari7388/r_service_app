@@ -1283,7 +1283,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                       Expanded(
                         child: Text(
                           lastDate != null
-                              ? "Previous reading: $readingStr ${isTruck ? 'miles' : 'hours'} (Logged on: $lastDate)"
+                              ? (isTruck
+                                  ? "Last Mileage on $lastDate"
+                                  : "Last Hours on $lastDate")
                               : "Previous reading: $readingStr ${isTruck ? 'miles' : 'hours'}",
                           style: appStyle(12, kDark, FontWeight.w500),
                         ),
@@ -2099,8 +2101,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                       Expanded(
                         child: Text(
                           lastDate != null
-                              ? "Previous reading: $readingStr miles (Logged on: $lastDate)"
-                              : "Previous reading: $readingStr miles",
+                              ? "Last Mileage on $lastDate"
+                              : "Last Mileage: $readingStr miles",
                           style: appStyle(11, kDark, FontWeight.w500),
                         ),
                       ),
@@ -2151,8 +2153,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                       Expanded(
                         child: Text(
                           lastDate != null
-                              ? "Previous reading: $readingStr hours (Logged on: $lastDate)"
-                              : "Previous reading: $readingStr hours",
+                              ? "Last Hours on $lastDate"
+                              : "Last Hours: $readingStr hours",
                           style: appStyle(11, kDark, FontWeight.w500),
                         ),
                       ),
