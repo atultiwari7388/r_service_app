@@ -1537,7 +1537,7 @@ export default function FleetSharingPage() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
               <div>
                 <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
-                  Outbound Equipment Allocation
+                  Vehicles Allocation
                 </span>
                 <h2 className="text-xl font-black text-gray-900 mt-0.5">
                   Assign Vehicles to Partner Owner
@@ -1555,12 +1555,12 @@ export default function FleetSharingPage() {
               {/* Partner Email */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Second Owner Email Address *
+                  Other Owner Email Address *
                 </label>
                 <input
                   type="email"
                   required
-                  placeholder="e.g. partner.owner@transport.com"
+                  placeholder="demo@transport.com"
                   value={offerBorrowerEmail}
                   onChange={(e) => setOfferBorrowerEmail(e.target.value)}
                   className="w-full p-3 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
@@ -1633,34 +1633,33 @@ export default function FleetSharingPage() {
                 )}
               </div>
 
-              {/* Lease Duration & Terms */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    Estimated Duration (Days)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={offerDurationDays}
-                    onChange={(e) => setOfferDurationDays(e.target.value)}
-                    className="w-full p-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    Purpose / Load Note
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Interstate load support..."
-                    value={offerDescription}
-                    onChange={(e) => setOfferDescription(e.target.value)}
-                    className="w-full p-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
-                  />
-                </div>
+              {/* Purpose / Load Note (Estimated duration commented out) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Purpose / Load Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Interstate load support..."
+                  value={offerDescription}
+                  onChange={(e) => setOfferDescription(e.target.value)}
+                  className="w-full p-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
+                />
               </div>
+
+              {/* Estimated duration commented out per user request:
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Estimated Duration (Days)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={offerDurationDays}
+                  onChange={(e) => setOfferDurationDays(e.target.value)}
+                  className="w-full p-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
+                />
+              </div> */}
 
               {/* Notice */}
               <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2.5">
@@ -1705,10 +1704,10 @@ export default function FleetSharingPage() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
               <div>
                 <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
-                  Borrow Request
+                  Vehicle Request
                 </span>
                 <h2 className="text-xl font-black text-gray-900 mt-0.5">
-                  Request Equipment from Other Owner
+                  Vehicle Request from Other Owner
                 </h2>
               </div>
               <button
@@ -1722,18 +1721,18 @@ export default function FleetSharingPage() {
             <form onSubmit={handleCreateRequest} className="space-y-6">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Partner Owner Email Address *
+                  Carrier Email Address *
                 </label>
                 <input
                   type="email"
                   required
-                  placeholder="e.g. partner.owner@transport.com"
+                  placeholder="demo@transport.com"
                   value={reqLenderEmail}
                   onChange={(e) => setReqLenderEmail(e.target.value)}
                   className="w-full p-3 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
-                  The partner owner will receive an instant in-app & push
+                  The carrier will receive an instant in-app & push
                   notification in Trenoops to review your request.
                 </p>
               </div>
@@ -1766,6 +1765,7 @@ export default function FleetSharingPage() {
                 </div>
               </div>
 
+              {/* Estimated Days Required commented out per user request:
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
                   Estimated Days Required
@@ -1777,14 +1777,13 @@ export default function FleetSharingPage() {
                   onChange={(e) => setReqDurationDays(e.target.value)}
                   className="w-full p-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
                 />
-              </div>
+              </div> */}
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Description / Operational Need *
+                  Description / Operational Need (Optional)
                 </label>
                 <textarea
-                  required
                   rows={3}
                   placeholder="Describe your load, routes, dates, and driver arrangements..."
                   value={reqDescription}
@@ -1806,7 +1805,7 @@ export default function FleetSharingPage() {
                   disabled={isSubmitting}
                   className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#F96176] hover:bg-[#e04f63] text-white shadow-sm transition active:scale-95 disabled:opacity-50"
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Equipment Request"}
+                  {isSubmitting ? "Submitting..." : "Submit Vehicle Request"}
                 </button>
               </div>
             </form>

@@ -469,7 +469,7 @@ class _CreateShareOfferSheetState extends State<CreateShareOfferSheet> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Lend Equipment Offer",
+                  Text("Vehicles Allocation",
                       style: appStyle(18, kDark, FontWeight.bold)),
                   SizedBox(height: 2.h),
                   Text("Offer vehicles to another fleet owner",
@@ -490,7 +490,7 @@ class _CreateShareOfferSheetState extends State<CreateShareOfferSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. Borrower Email
-                  Text("Partner Owner Email",
+                  Text("Other Owner Email Address *",
                       style: appStyle(13, kDark, FontWeight.bold)),
                   SizedBox(height: 6.h),
                   Row(
@@ -500,7 +500,7 @@ class _CreateShareOfferSheetState extends State<CreateShareOfferSheet> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            hintText: "Enter partner fleet owner's email",
+                            hintText: "demo@transport.com",
                             prefixIcon: const Icon(Icons.email_outlined),
                             contentPadding: EdgeInsets.symmetric(
                                 horizontal: 12.w, vertical: 10.h),
@@ -823,7 +823,8 @@ class _CreateShareOfferSheetState extends State<CreateShareOfferSheet> {
                   ),
                   SizedBox(height: 18.h),
 
-                  // 3. Duration (Days)
+                  // 3. Duration (Commented out - UI hidden, defaults to 30 days)
+                  /*
                   Text("Sharing Duration (Days)",
                       style: appStyle(13, kDark, FontWeight.bold)),
                   SizedBox(height: 6.h),
@@ -841,16 +842,17 @@ class _CreateShareOfferSheetState extends State<CreateShareOfferSheet> {
                     ),
                   ),
                   SizedBox(height: 18.h),
+                  */
 
                   // 4. Description
-                  Text("Purpose / Description (Optional)",
+                  Text("Purpose / Load Note (Optional)",
                       style: appStyle(13, kDark, FontWeight.bold)),
                   SizedBox(height: 6.h),
                   TextFormField(
                     controller: _descriptionController,
                     maxLines: 2,
                     decoration: InputDecoration(
-                      hintText: "e.g. Seasonal peak overflow capacity...",
+                      hintText: "e.g. Seasonal peak overflow capacity, trip details...",
                       contentPadding: EdgeInsets.all(12.w),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10.r),

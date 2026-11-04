@@ -320,10 +320,10 @@ class _CreateBorrowRequestSheetState extends State<CreateBorrowRequestSheet> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Request Fleet Equipment",
+                  Text("Vehicle Request",
                       style: appStyle(18, kDark, FontWeight.bold)),
                   SizedBox(height: 2.h),
-                  Text("Borrow equipment from partner fleet owners",
+                  Text("Vehicle Request from Other Owner",
                       style: appStyle(12, kGray, FontWeight.normal)),
                 ],
               ),
@@ -341,7 +341,7 @@ class _CreateBorrowRequestSheetState extends State<CreateBorrowRequestSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. Lender Email
-                  Text("Lender Owner Email",
+                  Text("Carrier Email Address *",
                       style: appStyle(13, kDark, FontWeight.bold)),
                   SizedBox(height: 6.h),
                   Row(
@@ -351,7 +351,7 @@ class _CreateBorrowRequestSheetState extends State<CreateBorrowRequestSheet> {
                           controller: _lenderEmailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            hintText: "Enter partner Owner's email",
+                            hintText: "demo@transport.com",
                             prefixIcon: const Icon(Icons.email_outlined),
                             contentPadding: EdgeInsets.symmetric(
                                 horizontal: 12.w, vertical: 10.h),
@@ -388,6 +388,11 @@ class _CreateBorrowRequestSheetState extends State<CreateBorrowRequestSheet> {
                                 style: appStyle(13, kWhite, FontWeight.w600)),
                       ),
                     ],
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    "The carrier will receive an instant in-app & push notification in Trenoops to review your request.",
+                    style: appStyle(11, kGray, FontWeight.normal),
                   ),
                   if (_emailError != null) ...[
                     SizedBox(height: 4.h),
@@ -455,7 +460,8 @@ class _CreateBorrowRequestSheetState extends State<CreateBorrowRequestSheet> {
                   ),
                   SizedBox(height: 18.h),
 
-                  // 3. Duration
+                  // 3. Duration (Commented out - UI hidden, defaults to 30 days)
+                  /*
                   Text("Requested Duration (Days)",
                       style: appStyle(13, kDark, FontWeight.bold)),
                   SizedBox(height: 6.h),
@@ -473,9 +479,10 @@ class _CreateBorrowRequestSheetState extends State<CreateBorrowRequestSheet> {
                     ),
                   ),
                   SizedBox(height: 18.h),
+                  */
 
                   // 4. Description / Reason
-                  Text("Description / Operation Need",
+                  Text("Description / Operation Need (Optional)",
                       style: appStyle(13, kDark, FontWeight.bold)),
                   SizedBox(height: 6.h),
                   TextFormField(
@@ -515,7 +522,7 @@ class _CreateBorrowRequestSheetState extends State<CreateBorrowRequestSheet> {
                       child: const CircularProgressIndicator(
                           strokeWidth: 2, color: kWhite),
                     )
-                  : Text("Submit Borrow Request",
+                  : Text("Submit Vehicle Request",
                       style: appStyle(15, kWhite, FontWeight.bold)),
             ),
           ),
