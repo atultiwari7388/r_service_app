@@ -222,6 +222,12 @@ export default function AppSidebar() {
           icon: <Car size={16} />,
         },
         {
+          label: "Carriers Vehicles",
+          href: "/account/carriers-vehicles",
+          icon: <Truck size={16} />,
+          visible: userData?.role === "Owner" || userData?.role === "SubOwner",
+        },
+        {
           label: "Tripwise Vehicle",
           href: "/account/trip-wise-vehicle",
           icon: <Truck size={16} />,

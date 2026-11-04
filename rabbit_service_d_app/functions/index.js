@@ -1878,3 +1878,14 @@ const {
 
 exports.onFleetShareCreated = onFleetShareCreated;
 exports.onFleetShareStatusChanged = onFleetShareStatusChanged;
+
+// ==========================================
+// Carrier Vehicles & Records Triggers
+// ==========================================
+const {
+  onCarrierRecordCreated,
+  onCarrierVehicleUpdated,
+} = require("./carrierFleet");
+
+exports.onCarrierRecordCreated = onCarrierRecordCreated;
+exports.onCarrierVehicleUpdated = onCarrierVehicleUpdated;

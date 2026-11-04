@@ -905,6 +905,45 @@ export default function FleetSharingPage() {
         });
       }
 
+      // Populate global carriersVehicles collection
+      if (share.vehicles && share.vehicles.length > 0) {
+        for (const v of share.vehicles) {
+          if (!v.vehicleId) continue;
+          const cvId = `${share.id}_${v.vehicleId}`;
+          await setDoc(
+            doc(db, "carriersVehicles", cvId),
+            {
+              id: cvId,
+              shareId: share.id,
+              shareCode: share.shareCode || "",
+              vehicleId: v.vehicleId,
+              vehicleNumber: v.vehicleNumber || "",
+              vehicleType: v.vehicleType || "Truck",
+              companyName: v.companyName || "",
+              vin: v.vin || "",
+              fromId: share.lenderId,
+              fromEmail: share.lenderEmail || "",
+              fromName: share.lenderName || "Fleet Owner",
+              fromCompanyName: share.lenderCompanyName || "Logistics",
+              toId: effectiveUserId,
+              toEmail: user?.email || share.borrowerEmail || "",
+              toName: userProfile?.userName || userProfile?.name || "Partner",
+              toCompanyName: userProfile?.companyName || "Partner Logistics",
+              initialMiles: v.currentMilesAtShare || 0,
+              currentMiles: v.currentMilesAtShare || 0,
+              status: "active",
+              startDate: share.startDate || format(new Date(), "yyyy-MM-dd"),
+              expectedEndDate: share.expectedEndDate || "",
+              leaseTerms: share.leaseTerms || "",
+              description: share.description || "",
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
+      }
+
       toast.success(
         "Fleet share accepted! Vehicles are now available for service records."
       );
@@ -997,6 +1036,50 @@ export default function FleetSharingPage() {
         }
       );
 
+      // Populate global carriersVehicles collection for fulfilled vehicles
+      for (const v of selectedVehicles) {
+        if (!v.vehicleId) continue;
+        const cvId = `${shareToFulfill.id}_${v.vehicleId}`;
+        await setDoc(
+          doc(db, "carriersVehicles", cvId),
+          {
+            id: cvId,
+            shareId: shareToFulfill.id,
+            shareCode: shareToFulfill.shareCode || "",
+            vehicleId: v.vehicleId,
+            vehicleNumber: v.vehicleNumber || "",
+            vehicleType: v.vehicleType || "Truck",
+            companyName: v.companyName || "",
+            vin: v.vin || "",
+            fromId: effectiveUserId,
+            fromEmail: user?.email || "",
+            fromName:
+              userProfile?.userName || userProfile?.name || "Fleet Owner",
+            fromCompanyName:
+              userProfile?.companyName ||
+              userProfile?.carrierName ||
+              "Logistics",
+            toId: shareToFulfill.borrowerId || "",
+            toEmail: shareToFulfill.borrowerEmail || "",
+            toName: shareToFulfill.borrowerName || "Carrier",
+            toCompanyName: shareToFulfill.borrowerCompanyName || "",
+            initialMiles: v.currentMilesAtShare || 0,
+            currentMiles: v.currentMilesAtShare || 0,
+            status: "active",
+            startDate: format(new Date(), "yyyy-MM-dd"),
+            expectedEndDate: shareToFulfill.expectedEndDate || "",
+            leaseTerms:
+              fulfillNotes.trim() ||
+              shareToFulfill.leaseTerms ||
+              "Standard inter-fleet sharing agreement.",
+            description: shareToFulfill.description || "",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
       // Mark vehicles locally as assigned
       setMyVehicles((prev) =>
         prev.map((v) =>
@@ -1054,6 +1137,26 @@ export default function FleetSharingPage() {
           sharingPending: false,
           sharedWith: deleteField(),
         });
+      }
+
+      // Mark assigned vehicles in carriersVehicles as completed
+      if (shareToReturn.vehicles && shareToReturn.vehicles.length > 0) {
+        for (const v of shareToReturn.vehicles) {
+          if (!v.vehicleId) continue;
+          const cvId = `${shareToReturn.id}_${v.vehicleId}`;
+          try {
+            await updateDoc(doc(db, "carriersVehicles", cvId), {
+              status: "completed",
+              returnedDate: format(new Date(), "yyyy-MM-dd"),
+              returnNotes:
+                returnOdometerNote.trim() ||
+                "Equipment returned to original owner. Normal fleet operations restored.",
+              updatedAt: serverTimestamp(),
+            });
+          } catch (cvErr) {
+            console.error("Error completing carriersVehicles doc:", cvErr);
+          }
+        }
       }
 
       toast.success(

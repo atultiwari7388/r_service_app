@@ -247,7 +247,8 @@ export default function AddOtherExpenseModal({
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [selectedCompanyName, setSelectedCompanyName] = useState<string>("");
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
-  const [selectedVehicleNumber, setSelectedVehicleNumber] = useState<string>("");
+  const [selectedVehicleNumber, setSelectedVehicleNumber] =
+    useState<string>("");
   const [selectedTeamMember, setSelectedTeamMember] =
     useState<TeamMemberOption | null>(null);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState<boolean>(false);
@@ -337,7 +338,9 @@ export default function AddOtherExpenseModal({
             });
           }
         });
-        loadedCompanies.sort((a, b) => alphanumericSort(a.companyName, b.companyName));
+        loadedCompanies.sort((a, b) =>
+          alphanumericSort(a.companyName, b.companyName)
+        );
         setCompaniesList(loadedCompanies);
 
         // Fetch Vehicles: if logged in user is a SubOwner/TeamMember with assigned vehicles, load their assigned vehicles
@@ -377,7 +380,61 @@ export default function AddOtherExpenseModal({
             });
           }
         });
-        loadedVehicles.sort((a, b) => alphanumericSort(a.vehicleNumber, b.vehicleNumber));
+        // Also fetch active carrier vehicles
+        try {
+          const [cvSnapLender, cvSnapBorrower] = await Promise.all([
+            getDocs(
+              query(
+                collection(db, "carriersVehicles"),
+                where("fromId", "==", effectiveUserId),
+                where("status", "==", "active")
+              )
+            ),
+            getDocs(
+              query(
+                collection(db, "carriersVehicles"),
+                where("toId", "==", effectiveUserId),
+                where("status", "==", "active")
+              )
+            ),
+          ]);
+
+          const seenIds = new Set<string>();
+          [...cvSnapLender.docs, ...cvSnapBorrower.docs].forEach((cd) => {
+            if (seenIds.has(cd.id)) return;
+            seenIds.add(cd.id);
+            const cData = cd.data();
+            const isLent = cData.fromId === effectiveUserId;
+            const counterparty = isLent
+              ? cData.toCompanyName || cData.toName || "Carrier"
+              : cData.fromCompanyName || cData.fromName || "Lender";
+            loadedVehicles.push({
+              id: cData.vehicleId,
+              carrierVehicleDocId: cd.id,
+              fromId: cData.fromId,
+              toId: cData.toId,
+              vehicleNumber: cData.vehicleNumber,
+              vehicleType: cData.vehicleType || "Truck",
+              mycomId: "",
+              myCompany: cData.companyName || "",
+              companyName: `${cData.companyName || "Carrier"} [${
+                isLent ? `Lent: ${counterparty}` : `From: ${counterparty}`
+              }]`,
+              active: true,
+              isAssignedToOther: false,
+              isCarrierVehicle: true,
+            } as any);
+          });
+        } catch (cvErr) {
+          console.error(
+            "Error fetching carrier vehicles in expense modal:",
+            cvErr
+          );
+        }
+
+        loadedVehicles.sort((a, b) =>
+          alphanumericSort(a.vehicleNumber, b.vehicleNumber)
+        );
         setVehiclesList(loadedVehicles);
 
         // Fetch Team Members
@@ -686,9 +743,8 @@ export default function AddOtherExpenseModal({
 
       const recordId =
         editingRecord?.id ||
-        doc(
-          collection(db, "Users", effectiveUserId, "record_otherExpenses")
-        ).id;
+        doc(collection(db, "Users", effectiveUserId, "record_otherExpenses"))
+          .id;
 
       const matchedVeh = vehiclesList.find(
         (v) =>
@@ -751,6 +807,30 @@ export default function AddOtherExpenseModal({
 
       await setDoc(docRef, recordPayload, { merge: true });
 
+      // If a carrier vehicle was selected, also save to carriersOtherExpenses
+      const matchingVeh = vehiclesList.find(
+        (v) =>
+          v.id === selectedVehicleId ||
+          (v as any).carrierVehicleDocId === selectedVehicleId
+      );
+      if ((matchingVeh as any)?.isCarrierVehicle) {
+        try {
+          await setDoc(
+            doc(db, "carriersOtherExpenses", recordId),
+            {
+              ...recordPayload,
+              carrierVehicleDocId:
+                (matchingVeh as any).carrierVehicleDocId || "",
+              fromId: (matchingVeh as any).fromId || effectiveUserId,
+              toId: (matchingVeh as any).toId || effectiveUserId,
+            },
+            { merge: true }
+          );
+        } catch (cErr) {
+          console.error("Error saving carrier other expense:", cErr);
+        }
+      }
+
       // Audit Log
       const currentUserId = auth.currentUser?.uid || recordPayload.userId;
       if (currentUserId) {
@@ -759,7 +839,9 @@ export default function AddOtherExpenseModal({
           userId: currentUserId,
           action: editingRecord ? "EXPENSE_UPDATE" : "EXPENSE_CREATE",
           category: "Expenses",
-          title: editingRecord ? "Updated Other Expense" : "Recorded Other Expense",
+          title: editingRecord
+            ? "Updated Other Expense"
+            : "Recorded Other Expense",
           description: `${recordPayload.type} of $${recordPayload.amount} for ${recordPayload.serviceName}`,
           targetId: recordPayload.id,
           targetName: `${recordPayload.serviceName} - $${recordPayload.amount}`,
@@ -771,7 +853,10 @@ export default function AddOtherExpenseModal({
             company: recordPayload.companyName,
             vehicle: recordPayload.vehicleNumber,
           },
-          path: typeof window !== "undefined" ? window.location.pathname : "/other-expenses",
+          path:
+            typeof window !== "undefined"
+              ? window.location.pathname
+              : "/other-expenses",
         });
       }
 
@@ -798,9 +883,7 @@ export default function AddOtherExpenseModal({
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/70">
           <div>
             <h3 className="text-lg font-bold text-gray-900">
-              {editingRecord
-                ? "Edit Expense Record"
-                : "Add Expense / Service"}
+              {editingRecord ? "Edit Expense Record" : "Add Expense / Service"}
             </h3>
             <p className="text-xs text-gray-500">
               {editingRecord
@@ -817,7 +900,10 @@ export default function AddOtherExpenseModal({
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSaveExpense} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <form
+          onSubmit={handleSaveExpense}
+          className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+        >
           {/* Type Selector (Credit vs Debit) */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
@@ -895,9 +981,7 @@ export default function AddOtherExpenseModal({
               />
             </div>
             {formErrors.date && (
-              <p className="text-[11px] text-red-500 mt-1">
-                {formErrors.date}
-              </p>
+              <p className="text-[11px] text-red-500 mt-1">{formErrors.date}</p>
             )}
           </div>
 
@@ -1081,11 +1165,14 @@ export default function AddOtherExpenseModal({
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           selectedTeamMember.role.toLowerCase() === "driver"
                             ? "bg-blue-100 text-blue-800"
-                            : selectedTeamMember.role.toLowerCase() === "accountant"
+                            : selectedTeamMember.role.toLowerCase() ===
+                              "accountant"
                             ? "bg-emerald-100 text-emerald-800"
-                            : selectedTeamMember.role.toLowerCase() === "manager"
+                            : selectedTeamMember.role.toLowerCase() ===
+                              "manager"
                             ? "bg-purple-100 text-purple-800"
-                            : selectedTeamMember.role.toLowerCase() === "subowner"
+                            : selectedTeamMember.role.toLowerCase() ===
+                              "subowner"
                             ? "bg-amber-100 text-amber-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
@@ -1136,7 +1223,9 @@ export default function AddOtherExpenseModal({
                 className="w-full py-2.5 px-3 bg-gray-50 hover:bg-rose-50/50 border border-dashed border-gray-300 hover:border-rose-300 rounded-xl text-xs font-semibold text-gray-600 hover:text-[#F96176] flex items-center justify-center gap-2 transition cursor-pointer group"
               >
                 <FaUserPlus className="text-sm text-gray-400 group-hover:text-[#F96176] transition-colors" />
-                <span>+ Assign Team Member (Driver, Accountant, Manager...)</span>
+                <span>
+                  + Assign Team Member (Driver, Accountant, Manager...)
+                </span>
               </button>
             )}
           </div>
@@ -1214,9 +1303,7 @@ export default function AddOtherExpenseModal({
               ) : (
                 <>
                   <FaCheck className="text-xs" />
-                  <span>
-                    {editingRecord ? "Update Record" : "Save Record"}
-                  </span>
+                  <span>{editingRecord ? "Update Record" : "Save Record"}</span>
                 </>
               )}
             </button>
@@ -1282,8 +1369,7 @@ export default function AddOtherExpenseModal({
                     roleName === "All"
                       ? teamList.length
                       : teamList.filter(
-                          (m) =>
-                            m.role.toLowerCase() === roleName.toLowerCase()
+                          (m) => m.role.toLowerCase() === roleName.toLowerCase()
                         ).length;
 
                   return (
@@ -1297,7 +1383,8 @@ export default function AddOtherExpenseModal({
                           : "bg-gray-100 hover:bg-gray-200/80 text-gray-600"
                       }`}
                     >
-                      {roleName === "SubOwner" ? "Co-Owner" : roleName} ({count})
+                      {roleName === "SubOwner" ? "Co-Owner" : roleName} ({count}
+                      )
                     </button>
                   );
                 })}
@@ -1320,8 +1407,7 @@ export default function AddOtherExpenseModal({
                 </div>
               ) : (
                 filteredTeamMembers.map((member) => {
-                  const isCurrent =
-                    selectedTeamMember?.uid === member.uid;
+                  const isCurrent = selectedTeamMember?.uid === member.uid;
 
                   return (
                     <div
@@ -1374,7 +1460,9 @@ export default function AddOtherExpenseModal({
                           </div>
 
                           <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                            {member.email || member.phoneNumber || "No contact info"}
+                            {member.email ||
+                              member.phoneNumber ||
+                              "No contact info"}
                           </p>
                           {member.phoneNumber && member.email && (
                             <p className="text-[10px] text-gray-400 truncate">

@@ -9,6 +9,8 @@ import {
   getDocs,
   updateDoc,
   onSnapshot,
+  query,
+  where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
@@ -41,6 +43,8 @@ import AddOtherExpenseModal, {
   OtherExpenseServiceOption,
 } from "@/components/records/AddOtherExpenseModal";
 import { logActivity } from "@/lib/auditLogger";
+import VehicleScopeSelector, { VehicleScope } from "@/components/VehicleScopeSelector";
+import { CarrierVehicleDoc } from "@/types/carrierFleet";
 
 const DEFAULT_SERVICES: string[] = [
   "Cash Advance",
@@ -237,6 +241,11 @@ export default function OtherExpensesPage() {
     null
   );
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // Carrier Fleet Mode State
+  const [vehicleScope, setVehicleScope] = useState<VehicleScope>("my");
+  const [carrierVehicles, setCarrierVehicles] = useState<CarrierVehicleDoc[]>([]);
+  const [carrierExpenses, setCarrierExpenses] = useState<OtherExpenseRecord[]>([]);
 
   // PDF Print Template Ref
   const pdfTemplateRef = useRef<HTMLDivElement>(null);
@@ -543,7 +552,74 @@ export default function OtherExpensesPage() {
       }
     );
 
-    return () => unsubscribe();
+    // Listen to carriersVehicles
+    const qCarrierL = query(
+      collection(db, "carriersVehicles"),
+      where("fromId", "==", effectiveUserId)
+    );
+    const qCarrierB = query(
+      collection(db, "carriersVehicles"),
+      where("toId", "==", effectiveUserId)
+    );
+
+    let cvL: CarrierVehicleDoc[] = [];
+    let cvB: CarrierVehicleDoc[] = [];
+    const syncCarrierVehicles = () => {
+      const map = new Map<string, CarrierVehicleDoc>();
+      cvL.forEach((v) => map.set(v.id, v));
+      cvB.forEach((v) => map.set(v.id, v));
+      setCarrierVehicles(Array.from(map.values()));
+    };
+
+    const unsubCvL = onSnapshot(qCarrierL, (snap: any) => {
+      cvL = snap.docs.map((d: any) => ({ id: d.id, ...d.data() })) as CarrierVehicleDoc[];
+      syncCarrierVehicles();
+    });
+    const unsubCvB = onSnapshot(qCarrierB, (snap: any) => {
+      cvB = snap.docs.map((d: any) => ({ id: d.id, ...d.data() })) as CarrierVehicleDoc[];
+      syncCarrierVehicles();
+    });
+
+    // Listen to carriersOtherExpenses
+    const qExpL = query(
+      collection(db, "carriersOtherExpenses"),
+      where("fromId", "==", effectiveUserId)
+    );
+    const qExpB = query(
+      collection(db, "carriersOtherExpenses"),
+      where("toId", "==", effectiveUserId)
+    );
+
+    let expL: OtherExpenseRecord[] = [];
+    let expB: OtherExpenseRecord[] = [];
+    const syncCarrierExpenses = () => {
+      const map = new Map<string, OtherExpenseRecord>();
+      [...expL, ...expB].forEach((item) => map.set(item.id, item));
+      const list = Array.from(map.values());
+      list.sort((a, b) => {
+        const dateA = parseCustomDate(a.date)?.getTime() || 0;
+        const dateB = parseCustomDate(b.date)?.getTime() || 0;
+        return dateB - dateA;
+      });
+      setCarrierExpenses(list);
+    };
+
+    const unsubExpL = onSnapshot(qExpL, (snap: any) => {
+      expL = snap.docs.map((d: any) => ({ id: d.id, ...d.data() })) as OtherExpenseRecord[];
+      syncCarrierExpenses();
+    });
+    const unsubExpB = onSnapshot(qExpB, (snap: any) => {
+      expB = snap.docs.map((d: any) => ({ id: d.id, ...d.data() })) as OtherExpenseRecord[];
+      syncCarrierExpenses();
+    });
+
+    return () => {
+      unsubscribe();
+      unsubCvL();
+      unsubCvB();
+      unsubExpL();
+      unsubExpB();
+    };
   }, [effectiveUserId]);
 
   // Derived available companies for filter (from fetched companies + any companyName recorded in records)
@@ -628,9 +704,22 @@ export default function OtherExpensesPage() {
     [vehicleTypeMap]
   );
 
+  // Carrier vehicles transformed for filtering
+  const carrierVehiclesForFilter = useMemo(() => {
+    return carrierVehicles.map((cv) => ({
+      id: cv.vehicleId,
+      vehicleNumber: cv.vehicleNumber,
+      vehicleType: cv.vehicleType || "Truck",
+      mycomId: "",
+      myCompany: cv.companyName,
+      companyName: cv.companyName,
+      isAssignedToOther: false,
+    }));
+  }, [carrierVehicles]);
+
   // Vehicles available for filter based on selected company and selected vehicle type
   const availableVehiclesForFilter = useMemo(() => {
-    let list = vehicles;
+    let list = vehicleScope === "carrier" ? carrierVehiclesForFilter : vehicles;
 
     // 1. Filter by Company
     if (companyFilter !== "All") {
@@ -663,7 +752,7 @@ export default function OtherExpensesPage() {
     return [...list].sort((a, b) =>
       alphanumericSort(a.vehicleNumber, b.vehicleNumber)
     );
-  }, [vehicles, companyFilter, vehicleTypeFilter, companies]);
+  }, [vehicles, vehicleScope, carrierVehiclesForFilter, companyFilter, vehicleTypeFilter, companies]);
 
   // Handle Company filter change with smart vehicle reset
   const handleCompanyFilterChange = (selectedCompany: string) => {
@@ -715,9 +804,10 @@ export default function OtherExpensesPage() {
 
   // Filtered records
   const filteredRecords = useMemo(() => {
-    return records.filter((rec) => {
-      // 0. Assigned Vehicles filter for SubOwner / TeamMember
-      if (userRole === "SubOwner" || isTeamMember) {
+    const sourceRecords = vehicleScope === "carrier" ? carrierExpenses : records;
+    return sourceRecords.filter((rec) => {
+      // 0. Assigned Vehicles filter for SubOwner / TeamMember (only in My Vehicles mode)
+      if (vehicleScope === "my" && (userRole === "SubOwner" || isTeamMember)) {
         const vId = (rec.vehicleId || "").trim();
         const vNum = (rec.vehicleNumber || "").trim().toLowerCase();
         const cleanNum = vNum.replace(/[^a-z0-9]/g, "");
@@ -1284,6 +1374,24 @@ export default function OtherExpensesPage() {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Scope Selector: My Vehicles vs Carrier Vehicles */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-100 mt-3">
+            <VehicleScopeSelector
+              value={vehicleScope}
+              onChange={(s) => {
+                setVehicleScope(s);
+                setVehicleFilter("All");
+              }}
+              carrierCount={carrierVehicles.length}
+            />
+            {vehicleScope === "carrier" && (
+              <div className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Active Fleet Sharing Carrier Expenses ({carrierExpenses.length})
+              </div>
+            )}
           </div>
         </div>
       </div>

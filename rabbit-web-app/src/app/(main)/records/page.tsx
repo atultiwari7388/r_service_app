@@ -57,6 +57,8 @@ import {
 import toast from "react-hot-toast";
 import { ProfileValues, VehicleTypes, CompanyType } from "@/types/types";
 import { useAuth } from "@/contexts/AuthContexts";
+import VehicleScopeSelector, { VehicleScope } from "@/components/VehicleScopeSelector";
+import { CarrierVehicleDoc } from "@/types/carrierFleet";
 // import { GlobalToastError } from "@/utils/globalErrorToast";
 import { CiSearch, CiTurnL1 } from "react-icons/ci";
 import { IoMdAdd } from "react-icons/io";
@@ -733,6 +735,11 @@ export default function RecordsPage() {
   const [duplicateInvoiceRecord, setDuplicateInvoiceRecord] =
     useState<ServiceRecord | null>(null);
 
+  // Carrier Fleet Mode State
+  const [vehicleScope, setVehicleScope] = useState<VehicleScope>("my");
+  const [carrierVehicles, setCarrierVehicles] = useState<CarrierVehicleDoc[]>([]);
+  const [carrierRecords, setCarrierRecords] = useState<RecordData[]>([]);
+
   // Add Records Form State
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [selectedServices, setSelectedServices] = useState<Set<string>>(
@@ -1127,10 +1134,36 @@ export default function RecordsPage() {
 
   const handleAddRecordVehicleSelect = (value: string) => {
     const previousVehicleType = (
-      selectedVehicleData?.vehicleType || ""
+      selectedVehicleData?.vehicleType ||
+      selectedVehicleType ||
+      ""
     ).toLowerCase();
-    const vehicleData = vehicles.find((v) => v.id === value) || null;
-    if (vehicleData?.isAssignedToOther) {
+
+    // Look up vehicle in selectableVehicles, carrierVehicles, or vehicles
+    let vehicleData: VehicleTypes | null =
+      selectableVehicles.find((v) => v.id === value) ||
+      vehicles.find((v) => v.id === value) ||
+      null;
+
+    if (!vehicleData && vehicleScope === "carrier") {
+      const cv = carrierVehicles.find(
+        (c) => c.vehicleId === value || c.id === value
+      );
+      if (cv) {
+        vehicleData = {
+          id: cv.vehicleId,
+          vehicleNumber: cv.vehicleNumber,
+          vehicleType: cv.vehicleType,
+          companyName: cv.companyName,
+          vin: cv.vin,
+          currentMiles: cv.currentMiles,
+          isAssignedToOther: false,
+          active: cv.status === "active",
+        } as unknown as VehicleTypes;
+      }
+    }
+
+    if (vehicleScope !== "carrier" && vehicleData?.isAssignedToOther) {
       const borrower =
         vehicleData.sharedWith?.borrowerCompanyName ||
         vehicleData.sharedWith?.borrowerName ||
@@ -1144,6 +1177,9 @@ export default function RecordsPage() {
 
     setSelectedVehicle(value);
     setSelectedVehicleData(vehicleData);
+    if (vehicleData?.vehicleType) {
+      setSelectedVehicleType(vehicleData.vehicleType);
+    }
 
     // If switching between different vehicle types (e.g. Truck -> Trailer or Trailer -> Truck),
     // reset services and packages to prevent incompatibility.
@@ -1311,6 +1347,56 @@ export default function RecordsPage() {
     setIsMilesSaving(true);
     if (!selectedVehicle || !todayMiles || !effectiveUserId) {
       toast.error("Please select a vehicle and enter miles/hours.");
+      setIsMilesSaving(false);
+      return;
+    }
+
+    // Carrier Fleet Mode: Update carriersVehicles
+    if (vehicleScope === "carrier") {
+      try {
+        const cv = carrierVehicles.find(
+          (c) => c.vehicleId === selectedVehicle || c.id === selectedVehicle
+        );
+        if (!cv) {
+          toast.error("Carrier vehicle not found.");
+          setIsMilesSaving(false);
+          return;
+        }
+        const enteredValue = parseInt(todayMiles);
+        if (isNaN(enteredValue) || enteredValue < 0) {
+          toast.error("Please enter a valid mileage number.");
+          setIsMilesSaving(false);
+          return;
+        }
+
+        await updateDoc(doc(db, "carriersVehicles", cv.id), {
+          currentMiles: enteredValue,
+          updatedAt: serverTimestamp(),
+        });
+
+        // Condition requested by user:
+        // If Owner A (Lender): Skip calling Cloud Function!
+        if (cv.fromId === effectiveUserId) {
+          toast.success(
+            `Miles updated for ${cv.vehicleNumber} (internal record). Push notification skipped as unit is assigned out.`
+          );
+        } else {
+          // If Owner B (Carrier): Trigger notifications automatically
+          toast.success(
+            `Miles updated for ${cv.vehicleNumber}! Owner notified.`
+          );
+        }
+
+        setShowAddMiles(false);
+        setTodayMiles("");
+        setSelectedVehicle("");
+        setSelectedVehicleData(null);
+      } catch (err: any) {
+        console.error("Error saving carrier miles:", err);
+        toast.error("Failed to save carrier miles: " + err.message);
+      } finally {
+        setIsMilesSaving(false);
+      }
       return;
     }
 
@@ -1542,6 +1628,28 @@ export default function RecordsPage() {
 
     if (!effectiveUserId || !value) return;
 
+    // Carrier Fleet Mode lookup
+    if (vehicleScope === "carrier") {
+      const cv = carrierVehicles.find(
+        (c) => c.vehicleId === value || c.id === value
+      );
+      if (cv) {
+        const vData = {
+          id: cv.vehicleId,
+          vehicleNumber: cv.vehicleNumber,
+          vehicleType: cv.vehicleType,
+          companyName: cv.companyName,
+          vin: cv.vin,
+          currentMiles: cv.currentMiles,
+          isAssignedToOther: false,
+          active: cv.status === "active",
+        } as unknown as VehicleTypes;
+        setSelectedVehicleData(vData);
+        setSelectedVehicleType(cv.vehicleType);
+        return;
+      }
+    }
+
     try {
       const vehicleRef = doc(db, "Users", effectiveUserId, "Vehicles", value);
       const vehicleDoc = await getDoc(vehicleRef);
@@ -1562,10 +1670,14 @@ export default function RecordsPage() {
         }
         setSelectedVehicleData(vehicleData);
         setSelectedVehicleType(vehicleData.vehicleType);
-        if (vehicleData.vehicleType) {
-        }
       } else {
-        toast.error("Vehicle data not found.");
+        const matched = selectableVehicles.find((v) => v.id === value);
+        if (matched) {
+          setSelectedVehicleData(matched);
+          setSelectedVehicleType(matched.vehicleType);
+        } else {
+          toast.error("Vehicle data not found.");
+        }
       }
     } catch (error) {
       console.error("Error fetching vehicle data:", error);
@@ -2061,11 +2173,80 @@ export default function RecordsPage() {
     ]
   );
 
-  // Vehicles selectable for adding records / adding miles (filtered for SubOwners / team members)
-  const selectableVehicles = displayVehicles;
+  // Filtered & deduplicated services for Add/Edit Record modal (vehicleType-scoped)
+  const availableServicesForAddRecord = useMemo(() => {
+    const seenServiceNames = new Set<string>();
+    const activeType = (
+      selectedVehicleData?.vehicleType ||
+      selectedVehicleType ||
+      ""
+    ).toLowerCase();
 
-  // Records scoped to current user (for SubOwner: restricted to assigned vehicles; for Owner: all records)
+    const isDryVan = selectedVehicleData?.engineName === "DRY VAN";
+
+    return services
+      .filter((service) => {
+        const matchesSearch = service.sName
+          .toLowerCase()
+          .includes(serviceSearchText.toLowerCase());
+
+        const matchesVehicleType =
+          !activeType ||
+          (service.vType || "").toLowerCase() === activeType;
+
+        const isExcludedService =
+          DRY_VAN_EXCLUDED_SERVICES.includes(service.sName);
+
+        const cleanName = (service.sName || "").toLowerCase().trim();
+        const isDuplicate = seenServiceNames.has(cleanName);
+
+        if (
+          matchesSearch &&
+          matchesVehicleType &&
+          !(isDryVan && isExcludedService) &&
+          !isDuplicate
+        ) {
+          seenServiceNames.add(cleanName);
+          return true;
+        }
+        return false;
+      })
+      .sort((a, b) => a.sName.localeCompare(b.sName));
+  }, [services, serviceSearchText, selectedVehicleData, selectedVehicleType]);
+
+  // Carrier vehicles transformed for display in records & dropdowns
+  const carrierVehicleTypesList: VehicleTypes[] = useMemo(() => {
+    return carrierVehicles.map((cv) => {
+      const isLent = cv.fromId === effectiveUserId;
+      const counterparty = isLent
+        ? cv.toCompanyName || cv.toName || "Carrier"
+        : cv.fromCompanyName || cv.fromName || "Lender";
+      return {
+        id: cv.vehicleId,
+        vehicleNumber: cv.vehicleNumber,
+        vehicleType: cv.vehicleType,
+        companyName: `${cv.companyName || "Carrier Unit"} [${isLent ? `Lent: ${counterparty}` : `From: ${counterparty}`}]`,
+        vin: cv.vin,
+        currentMiles: cv.currentMiles,
+        isAssignedToOther: false, // In carrier mode, active and selectable!
+        active: cv.status === "active",
+      } as unknown as VehicleTypes;
+    });
+  }, [carrierVehicles, effectiveUserId]);
+
+  // Vehicles selectable for adding records / adding miles (filtered for SubOwners / team members)
+  const selectableVehicles = useMemo(() => {
+    if (vehicleScope === "carrier") {
+      return carrierVehicleTypesList;
+    }
+    return displayVehicles;
+  }, [vehicleScope, carrierVehicleTypesList, displayVehicles]);
+
+  // Records scoped to current user (for SubOwner: restricted to assigned vehicles; for Owner: all records; for Carrier: carrierRecords)
   const scopedRecords = useMemo(() => {
+    if (vehicleScope === "carrier") {
+      return carrierRecords;
+    }
     if (userRole === "SubOwner") {
       const assignedIds = new Set(displayVehicles.map((v) => v.id));
       const assignedNumbers = new Set(
@@ -2086,7 +2267,7 @@ export default function RecordsPage() {
       });
     }
     return records;
-  }, [userRole, displayVehicles, records]);
+  }, [vehicleScope, carrierRecords, userRole, displayVehicles, records]);
 
   const filteredRecords = useMemo(
     () =>
@@ -2563,11 +2744,134 @@ export default function RecordsPage() {
     fetchServicePackages();
     fetchWorkshopNames();
 
+    // Fetch carriersVehicles (where effectiveUserId is fromId or toId)
+    let unsubCarrierLender: (() => void) | undefined;
+    let unsubCarrierBorrower: (() => void) | undefined;
+
+    const qCarrierL = query(
+      collection(db, "carriersVehicles"),
+      where("fromId", "==", effectiveUserId)
+    );
+    const qCarrierB = query(
+      collection(db, "carriersVehicles"),
+      where("toId", "==", effectiveUserId)
+    );
+
+    let lList: CarrierVehicleDoc[] = [];
+    let bList: CarrierVehicleDoc[] = [];
+
+    const syncCarrierVehicles = () => {
+      const map = new Map<string, CarrierVehicleDoc>();
+      lList.forEach((v) => map.set(v.id, v));
+      bList.forEach((v) => map.set(v.id, v));
+      setCarrierVehicles(Array.from(map.values()));
+    };
+
+    unsubCarrierLender = onSnapshot(qCarrierL, (snap) => {
+      lList = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CarrierVehicleDoc[];
+      syncCarrierVehicles();
+    });
+
+    unsubCarrierBorrower = onSnapshot(qCarrierB, (snap) => {
+      bList = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CarrierVehicleDoc[];
+      syncCarrierVehicles();
+    });
+
+    // Fetch carriersRecords
+    let unsubRecLender: (() => void) | undefined;
+    let unsubRecBorrower: (() => void) | undefined;
+
+    const qRecL = query(
+      collection(db, "carriersRecords"),
+      where("fromId", "==", effectiveUserId)
+    );
+    const qRecB = query(
+      collection(db, "carriersRecords"),
+      where("toId", "==", effectiveUserId)
+    );
+
+    let rLList: any[] = [];
+    let rBList: any[] = [];
+
+    const syncCarrierRecords = () => {
+      const map = new Map<string, any>();
+      [...rLList, ...rBList].forEach((item) => map.set(item.id, item));
+      const formatted: RecordData[] = Array.from(map.values()).map((data) => {
+        let createdAtStr = "";
+        if (data.createdAt?.toDate) {
+          createdAtStr = data.createdAt.toDate().toISOString();
+        } else if (typeof data.createdAt === "string") {
+          createdAtStr = data.createdAt;
+        }
+
+        const sList = Array.isArray(data.services)
+          ? data.services
+          : data.serviceName
+          ? [data.serviceName]
+          : [];
+
+        const invAmt = data.invoiceAmount ? String(data.invoiceAmount) : data.cost ? String(data.cost) : "";
+        const costNum = parseFloat(invAmt.replace(/[^0-9.-]+/g, "")) || 0;
+
+        return {
+          id: data.id,
+          vehicleId: data.vehicleId || "",
+          vehicleDetails: {
+            vehicleNumber: data.vehicleNumber || "",
+            vehicleType: data.vehicleType || "Truck",
+            companyName: data.companyName || "",
+            engineNumber: "",
+          },
+          services: sList,
+          date: data.date || "",
+          hours: Number(data.hours) || 0,
+          miles: Number(data.miles) || 0,
+          totalMiles: Number(data.totalMiles || data.miles) || 0,
+          createdAt: createdAtStr,
+          workshopName: data.workshopName || "",
+          invoice: data.invoice || "",
+          description: data.description || "",
+          invoiceAmount: invAmt,
+          paidAmount: typeof data.paidAmount === "number" ? data.paidAmount : costNum,
+          balanceAmount: 0,
+          paymentStatus: data.paymentStatus || "Paid",
+          paymentHistory: [],
+          imageUrl: data.imageUrl || (Array.isArray(data.receiptUrls) && data.receiptUrls[0]) || "",
+          vehicle: data.companyName || data.vehicleNumber || "",
+        } as RecordData;
+      });
+
+      formatted.sort((a, b) => {
+        const dateA = a?.date ? new Date(a.date).getTime() : 0;
+        const dateB = b?.date ? new Date(b.date).getTime() : 0;
+        if (dateB !== dateA) return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+        const cA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const cB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return (isNaN(cB) ? 0 : cB) - (isNaN(cA) ? 0 : cA);
+      });
+
+      setCarrierRecords(formatted);
+    };
+
+    unsubRecLender = onSnapshot(qRecL, (snap) => {
+      rLList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      syncCarrierRecords();
+    });
+
+    unsubRecBorrower = onSnapshot(qRecB, (snap) => {
+      rBList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      syncCarrierRecords();
+    });
+
     return () => {
       unsubscribe();
       unsubscribeCompanies();
       if (unsubscribeVehicles) unsubscribeVehicles();
       if (unsubscribeAssignedVehicles) unsubscribeAssignedVehicles();
+      if (unsubCarrierLender) unsubCarrierLender();
+      if (unsubCarrierBorrower) unsubCarrierBorrower();
+      if (unsubRecLender) unsubRecLender();
+      if (unsubRecBorrower) unsubRecBorrower();
     };
   }, [effectiveUserId, user?.uid]);
 
@@ -3028,6 +3332,109 @@ export default function RecordsPage() {
         (!hasPredefinedServices && !hasOtherService)
       ) {
         toast.error("Please select vehicle and at least one service");
+        setIsRecordSaving(false);
+        return;
+      }
+
+      // Handle Carrier Fleet Mode Submission
+      if (vehicleScope === "carrier") {
+        const cv = carrierVehicles.find(
+          (c) => c.vehicleId === selectedVehicle || c.id === selectedVehicle
+        );
+        if (!cv) {
+          toast.error("Carrier vehicle data not found");
+          setIsRecordSaving(false);
+          return;
+        }
+
+        const isLender = cv.fromId === effectiveUserId;
+        const parsedCost = invoiceAmount
+          ? parseFloat(invoiceAmount.replace(/[^0-9.-]+/g, "")) || 0
+          : 0;
+
+        const allSelectedServiceNames = Array.from(selectedServices);
+        if (hasOtherService) {
+          allSelectedServiceNames.push(otherServiceName.trim());
+        }
+
+        // Upload documents if any
+        let uploadedDocsList: Array<{
+          imageUrl: string;
+          text: string;
+          fileType: string;
+        }> = [];
+
+        if (recordDocuments.length > 0) {
+          try {
+            uploadedDocsList = await uploadAllRecordDocuments();
+          } catch (error) {
+            toast.error("Failed to upload service documents");
+            setIsRecordSaving(false);
+            return;
+          }
+        }
+
+        const primaryImageUrl =
+          uploadedDocsList.length > 0
+            ? uploadedDocsList[0].imageUrl
+            : existingImageUrl || "";
+
+        const carrierMilesNum = Number(miles) || 0;
+        const carrierHoursNum = Number(hours) || 0;
+
+        const carrierRecordData: any = {
+          carrierVehicleDocId: cv.id,
+          vehicleId: cv.vehicleId,
+          vehicleNumber: cv.vehicleNumber,
+          vehicleType: cv.vehicleType,
+          companyName: cv.companyName,
+          vin: cv.vin || "",
+          fromId: cv.fromId,
+          toId: cv.toId,
+          createdById: effectiveUserId,
+          createdByEmail: user?.email || "",
+          createdByRole: isLender ? "Lender" : "Carrier",
+          serviceName:
+            allSelectedServiceNames.join(", ") || "Maintenance Service",
+          services: allSelectedServiceNames,
+          workshopName: workshopName.trim(),
+          cost: parsedCost,
+          invoiceAmount: invoiceAmount || "0",
+          invoice: invoice || "",
+          miles: carrierMilesNum,
+          hours: carrierHoursNum,
+          description: description.trim(),
+          date: date
+            ? format(new Date(date), "MM-dd-yyyy")
+            : format(new Date(), "MM-dd-yyyy"),
+          formattedDate: date
+            ? format(new Date(date), "MM-dd-yyyy")
+            : format(new Date(), "MM-dd-yyyy"),
+          paymentStatus: "Paid",
+          imageUrl: primaryImageUrl || "",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        await addDoc(collection(db, "carriersRecords"), carrierRecordData);
+
+        // Update carriersVehicles currentMiles if higher
+        if (carrierMilesNum && carrierMilesNum > (cv.currentMiles || 0)) {
+          await updateDoc(doc(db, "carriersVehicles", cv.id), {
+            currentMiles: carrierMilesNum,
+            updatedAt: serverTimestamp(),
+          });
+        }
+
+        if (isLender) {
+          toast.success(
+            "Carrier service record logged! Notification skipped as vehicle is currently assigned out."
+          );
+        } else {
+          toast.success("Carrier service record logged! Owner notified.");
+        }
+
+        resetForm();
         setIsRecordSaving(false);
         return;
       }
@@ -3799,11 +4206,11 @@ export default function RecordsPage() {
       // Set other fields - prefill latest vehicle reading if available, else fallback to previous record values
       if (matchingVeh) {
         if (matchingVeh.vehicleType === "Truck") {
-          const vMiles = (matchingVeh.currentMiles || "").trim();
+          const vMiles = String(matchingVeh.currentMiles ?? "").trim();
           setMiles(vMiles && vMiles !== "0" ? vMiles : (record.miles || 0).toString());
           setHours("0");
         } else if (matchingVeh.vehicleType === "Trailer") {
-          const vHours = (matchingVeh.hoursReading || "").trim();
+          const vHours = String(matchingVeh.hoursReading ?? "").trim();
           setHours(vHours && vHours !== "0" ? vHours : (record.hours || 0).toString());
           setMiles("0");
         } else {
@@ -4568,6 +4975,26 @@ export default function RecordsPage() {
 
   return userData?.isView ? (
     <div className="flex flex-col justify-center items-center p-3 sm:p-4 md:p-6 bg-gray-100 gap-4 sm:gap-6 w-full max-w-full overflow-hidden">
+      {/* Vehicle Scope Toggle: My Vehicles vs Carrier Vehicles */}
+      <div className="flex flex-col sm:flex-row items-center justify-between w-full max-w-7xl gap-3 px-2">
+        <VehicleScopeSelector
+          value={vehicleScope}
+          onChange={(newScope) => {
+            setVehicleScope(newScope);
+            setSelectedVehicle("");
+            setSelectedVehicleData(null);
+            setFilterVehicle("");
+          }}
+          carrierCount={carrierVehicles.length}
+        />
+        {vehicleScope === "carrier" && (
+          <div className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Active Fleet Sharing Carrier Records ({carrierRecords.length})
+          </div>
+        )}
+      </div>
+
       {/* Button Container */}
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full">
         {/** Add Record */}
@@ -5257,6 +5684,18 @@ export default function RecordsPage() {
         <DialogContent>
           <Card className="mt-4 shadow-lg rounded-lg">
             <CardContent>
+              <div className="mb-4 flex justify-center">
+                <VehicleScopeSelector
+                  value={vehicleScope}
+                  onChange={(s) => {
+                    setVehicleScope(s);
+                    setSelectedVehicle("");
+                    setSelectedVehicleData(null);
+                  }}
+                  size="sm"
+                  carrierCount={carrierVehicles.length}
+                />
+              </div>
               <div className="mb-4">
                 <FormControl fullWidth className="mb-4">
                   <InputLabel>Select Vehicle</InputLabel>
@@ -5372,6 +5811,18 @@ export default function RecordsPage() {
         <DialogContent>
           <Card className="mt-4 shadow-lg rounded-lg">
             <CardContent>
+              <div className="mb-4 flex justify-center">
+                <VehicleScopeSelector
+                  value={vehicleScope}
+                  onChange={(s) => {
+                    setVehicleScope(s);
+                    setSelectedVehicle("");
+                    setSelectedVehicleData(null);
+                  }}
+                  size="sm"
+                  carrierCount={carrierVehicles.length}
+                />
+              </div>
               <div className="mb-4">
                 <FormControl fullWidth variant="outlined">
                   <InputLabel id="select-vehicle-label">
@@ -5564,32 +6015,8 @@ export default function RecordsPage() {
               </div>
               {/** Select Services */}
               <div className="grid grid-cols-4 gap-3 mb-4">
-                {services
-                  .filter((service) => {
-                    const matchesSearch = service.sName
-                      .toLowerCase()
-                      .includes(serviceSearchText.toLowerCase());
-
-                    const matchesVehicleType =
-                      !selectedVehicleData ||
-                      (service.vType || "").toLowerCase() ===
-                        (selectedVehicleData.vehicleType || "").toLowerCase();
-
-                    // Exclude specific services for DRY VAN
-                    const isDryVan =
-                      selectedVehicleData?.engineName === "DRY VAN";
-                    const isExcludedService =
-                      DRY_VAN_EXCLUDED_SERVICES.includes(service.sName);
-
-                    return (
-                      matchesSearch &&
-                      matchesVehicleType &&
-                      !(isDryVan && isExcludedService)
-                    );
-                  })
-                  .sort((a, b) => a.sName.localeCompare(b.sName))
-                  .map((service) => (
-                    <div key={service.sId} className="w-full">
+                {availableServicesForAddRecord.map((service) => (
+                  <div key={service.sId} className="w-full">
                       <Chip
                         label={service.sName}
                         onClick={(e: any) => {
@@ -5738,7 +6165,7 @@ export default function RecordsPage() {
                     />
                     {(() => {
                       const lastDate = getVehicleLastReadingDate(selectedVehicleData);
-                      const readingStr = (selectedVehicleData.currentMiles || miles || "").trim();
+                      const readingStr = String(selectedVehicleData.currentMiles ?? miles ?? "").trim();
                       if (!readingStr || readingStr === "0") return null;
                       return (
                         <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1 mt-1.5">
@@ -5768,7 +6195,7 @@ export default function RecordsPage() {
                         />
                         {(() => {
                           const lastDate = getVehicleLastReadingDate(selectedVehicleData);
-                          const readingStr = (selectedVehicleData.hoursReading || hours || "").trim();
+                          const readingStr = String(selectedVehicleData.hoursReading ?? hours ?? "").trim();
                           if (!readingStr || readingStr === "0") return null;
                           return (
                             <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1 mt-1.5">
