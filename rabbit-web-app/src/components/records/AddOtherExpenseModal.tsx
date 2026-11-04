@@ -119,6 +119,27 @@ const DEFAULT_SERVICES: string[] = [
   "Other",
 ];
 
+const alphanumericSort = (
+  aStr?: string | null,
+  bStr?: string | null
+): number => {
+  const a = (aStr || "").trim();
+  const b = (bStr || "").trim();
+  if (!a && !b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+
+  const aIsAlpha = /^[a-zA-Z]/.test(a);
+  const bIsAlpha = /^[a-zA-Z]/.test(b);
+
+  // If one starts with a letter and the other starts with a number, letter comes first
+  if (aIsAlpha && !bIsAlpha) return -1;
+  if (!aIsAlpha && bIsAlpha) return 1;
+
+  // Natural alphanumeric comparison
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+};
+
 const sortServicesAlphabetical = (
   services: OtherExpenseServiceOption[]
 ): OtherExpenseServiceOption[] => {
@@ -129,9 +150,7 @@ const sortServicesAlphabetical = (
     (s) => s.sName.trim().toLowerCase() === "other"
   );
 
-  nonOther.sort((a, b) =>
-    a.sName.localeCompare(b.sName, undefined, { sensitivity: "base" })
-  );
+  nonOther.sort((a, b) => alphanumericSort(a.sName, b.sName));
 
   return [...nonOther, ...other];
 };
@@ -318,7 +337,7 @@ export default function AddOtherExpenseModal({
             });
           }
         });
-        loadedCompanies.sort((a, b) => a.companyName.localeCompare(b.companyName));
+        loadedCompanies.sort((a, b) => alphanumericSort(a.companyName, b.companyName));
         setCompaniesList(loadedCompanies);
 
         // Fetch Vehicles: if logged in user is a SubOwner/TeamMember with assigned vehicles, load their assigned vehicles
@@ -358,7 +377,7 @@ export default function AddOtherExpenseModal({
             });
           }
         });
-        loadedVehicles.sort((a, b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
+        loadedVehicles.sort((a, b) => alphanumericSort(a.vehicleNumber, b.vehicleNumber));
         setVehiclesList(loadedVehicles);
 
         // Fetch Team Members
@@ -447,9 +466,7 @@ export default function AddOtherExpenseModal({
   // Derived sorted companies (Alphabetical A-Z)
   const sortedCompanies = useMemo(() => {
     return [...companiesList].sort((a, b) =>
-      a.companyName.localeCompare(b.companyName, undefined, {
-        sensitivity: "base",
-      })
+      alphanumericSort(a.companyName, b.companyName)
     );
   }, [companiesList]);
 
@@ -479,10 +496,7 @@ export default function AddOtherExpenseModal({
     }
 
     return [...list].sort((a, b) =>
-      a.vehicleNumber.localeCompare(b.vehicleNumber, undefined, {
-        numeric: true,
-        sensitivity: "base",
-      })
+      alphanumericSort(a.vehicleNumber, b.vehicleNumber)
     );
   }, [vehiclesList, selectedCompanyId, companiesList]);
 

@@ -159,6 +159,27 @@ const parseCustomDate = (dateStr?: string | null): Date | null => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+const alphanumericSort = (
+  aStr?: string | null,
+  bStr?: string | null
+): number => {
+  const a = (aStr || "").trim();
+  const b = (bStr || "").trim();
+  if (!a && !b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+
+  const aIsAlpha = /^[a-zA-Z]/.test(a);
+  const bIsAlpha = /^[a-zA-Z]/.test(b);
+
+  // If one starts with a letter and the other starts with a number, letter comes first
+  if (aIsAlpha && !bIsAlpha) return -1;
+  if (!aIsAlpha && bIsAlpha) return 1;
+
+  // Natural alphanumeric comparison (e.g. AB001 vs AB002, 11 vs 112)
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+};
+
 const getVehicleLastReadingDate = (
   vehicle: VehicleTypes | null | undefined
 ): string | null => {
@@ -579,9 +600,7 @@ const getVehicleDisplayReading = (vehicle: VehicleTypes): string => {
 const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
   const sortedVehicles = useMemo(() => {
     return [...filteredVehicles].sort((a, b) => {
-      const timeA = getVehicleLatestTimestamp(a);
-      const timeB = getVehicleLatestTimestamp(b);
-      return timeB - timeA;
+      return alphanumericSort(a.vehicleNumber, b.vehicleNumber);
     });
   }, [filteredVehicles]);
 
@@ -759,7 +778,13 @@ export default function RecordsPage() {
     "all" | "truck" | "trailer"
   >("all");
   const [quickSortOption, setQuickSortOption] = useState<
-    "date_desc" | "date_asc" | "amount_desc" | "amount_asc" | "unit_desc"
+    | "date_desc"
+    | "date_asc"
+    | "amount_desc"
+    | "amount_asc"
+    | "unit_desc"
+    | "vehicle_asc"
+    | "vehicle_desc"
   >("date_desc");
   const [quickSearchText, setQuickSearchText] = useState<string>("");
 
@@ -1743,7 +1768,7 @@ export default function RecordsPage() {
       ...workshopList,
       ...records.map((r) => (r?.workshopName || "").trim()).filter(Boolean),
     ])
-  ).sort((a, b) => a.localeCompare(b));
+  ).sort(alphanumericSort);
 
   // Vehicles for display & selection for current user role
   const isSubOwner =
@@ -1772,11 +1797,17 @@ export default function RecordsPage() {
       );
 
       if (matched.length > 0) {
-        return matched;
+        return [...matched].sort((a, b) =>
+          alphanumericSort(a.vehicleNumber, b.vehicleNumber)
+        );
       }
-      return assignedVehicles;
+      return [...assignedVehicles].sort((a, b) =>
+        alphanumericSort(a.vehicleNumber, b.vehicleNumber)
+      );
     }
-    return vehicles;
+    return [...vehicles].sort((a, b) =>
+      alphanumericSort(a.vehicleNumber, b.vehicleNumber)
+    );
   }, [isSubOwner, assignedVehicles, vehicles]);
 
   const { assignedVehicleIds, assignedVehicleNumbers } = useMemo(() => {
@@ -1861,7 +1892,7 @@ export default function RecordsPage() {
         }
       });
     }
-    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+    return Array.from(map.values()).sort(alphanumericSort);
   }, [userRole, displayVehicles, companies, vehicles, records]);
 
   // Derived available vehicles based on quickCompanyFilter & quickTypeFilter
@@ -1875,7 +1906,9 @@ export default function RecordsPage() {
     }
 
     if (quickCompanyFilter === "all") {
-      return list;
+      return [...list].sort((a, b) =>
+        alphanumericSort(a.vehicleNumber, b.vehicleNumber)
+      );
     }
 
     const targetCompanyLower = quickCompanyFilter.toLowerCase().trim();
@@ -1885,7 +1918,7 @@ export default function RecordsPage() {
         c.id === quickCompanyFilter
     );
 
-    return list.filter((v) => {
+    const filtered = list.filter((v) => {
       const vCompName = (v.companyName || v.myCompany || "")
         .toLowerCase()
         .trim();
@@ -1894,6 +1927,10 @@ export default function RecordsPage() {
         return true;
       return false;
     });
+
+    return [...filtered].sort((a, b) =>
+      alphanumericSort(a.vehicleNumber, b.vehicleNumber)
+    );
   }, [displayVehicles, quickCompanyFilter, quickTypeFilter, companies]);
 
   // Handle Quick Company filter change with smart vehicle reset
@@ -2012,9 +2049,7 @@ export default function RecordsPage() {
           return true;
         })
         .sort((a, b) => {
-          const timeA = getVehicleLatestTimestamp(a);
-          const timeB = getVehicleLatestTimestamp(b);
-          return timeB - timeA;
+          return alphanumericSort(a.vehicleNumber, b.vehicleNumber);
         }),
     [
       displayVehicles,
@@ -2258,6 +2293,18 @@ export default function RecordsPage() {
             const valA = (Number(a?.miles) || 0) + (Number(a?.hours) || 0);
             const valB = (Number(b?.miles) || 0) + (Number(b?.hours) || 0);
             return valB - valA;
+          }
+
+          if (quickSortOption === "vehicle_asc") {
+            const vehA = a?.vehicleDetails?.vehicleNumber || "";
+            const vehB = b?.vehicleDetails?.vehicleNumber || "";
+            return alphanumericSort(vehA, vehB);
+          }
+
+          if (quickSortOption === "vehicle_desc") {
+            const vehA = a?.vehicleDetails?.vehicleNumber || "";
+            const vehB = b?.vehicleDetails?.vehicleNumber || "";
+            return alphanumericSort(vehB, vehA);
           }
 
           // Default: date_desc
@@ -4979,6 +5026,8 @@ export default function RecordsPage() {
                     | "amount_desc"
                     | "amount_asc"
                     | "unit_desc"
+                    | "vehicle_asc"
+                    | "vehicle_desc"
                 )
               }
               className={`w-full sm:w-auto px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
@@ -4992,6 +5041,8 @@ export default function RecordsPage() {
               <option value="amount_desc">Amount: High to Low</option>
               <option value="amount_asc">Amount: Low to High</option>
               <option value="unit_desc">Miles/Hours: Highest</option>
+              <option value="vehicle_asc">Vehicle: A-Z / 0-9</option>
+              <option value="vehicle_desc">Vehicle: 9-0 / Z-A</option>
             </select>
           )}
 
@@ -5217,8 +5268,12 @@ export default function RecordsPage() {
                     sx={{ minHeight: "56px" }}
                     label="Select Vehicle"
                   >
-                    {selectableVehicles.map((vehicle) => {
-                      const isAssigned = !!vehicle.isAssignedToOther;
+                    {[...selectableVehicles]
+                      .sort((a, b) =>
+                        alphanumericSort(a.vehicleNumber, b.vehicleNumber)
+                      )
+                      .map((vehicle) => {
+                        const isAssigned = !!vehicle.isAssignedToOther;
                       const borrower =
                         vehicle.sharedWith?.borrowerCompanyName ||
                         vehicle.sharedWith?.borrowerName ||
@@ -5333,11 +5388,11 @@ export default function RecordsPage() {
                       sx={{ minHeight: "56px", flex: 1, marginRight: "8px" }}
                       label="Select Vehicle"
                     >
-                      {/* Sort vehicles alphabetically by vehicleNumber before mapping */}
+                      {/* Sort vehicles alphabetically and numerically before mapping */}
                       {selectableVehicles
                         .slice()
                         .sort((a, b) =>
-                          a.vehicleNumber.localeCompare(b.vehicleNumber)
+                          alphanumericSort(a.vehicleNumber, b.vehicleNumber)
                         )
                         .map((vehicle) => {
                           const isAssigned = !!vehicle.isAssignedToOther;

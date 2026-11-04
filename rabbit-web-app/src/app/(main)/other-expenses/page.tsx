@@ -56,6 +56,27 @@ const DEFAULT_SERVICES: string[] = [
   "Other",
 ];
 
+const alphanumericSort = (
+  aStr?: string | null,
+  bStr?: string | null
+): number => {
+  const a = (aStr || "").trim();
+  const b = (bStr || "").trim();
+  if (!a && !b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+
+  const aIsAlpha = /^[a-zA-Z]/.test(a);
+  const bIsAlpha = /^[a-zA-Z]/.test(b);
+
+  // If one starts with a letter and the other starts with a number, letter comes first
+  if (aIsAlpha && !bIsAlpha) return -1;
+  if (!aIsAlpha && bIsAlpha) return 1;
+
+  // Natural alphanumeric comparison
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+};
+
 const sortServicesAlphabetical = (
   services: OtherExpenseServiceOption[]
 ): OtherExpenseServiceOption[] => {
@@ -66,9 +87,7 @@ const sortServicesAlphabetical = (
     (s) => s.sName.trim().toLowerCase() === "other"
   );
 
-  nonOther.sort((a, b) =>
-    a.sName.localeCompare(b.sName, undefined, { sensitivity: "base" })
-  );
+  nonOther.sort((a, b) => alphanumericSort(a.sName, b.sName));
 
   return [...nonOther, ...other];
 };
@@ -308,6 +327,7 @@ export default function OtherExpensesPage() {
             updated_at: data.updated_at,
           });
         });
+        loaded.sort((a, b) => alphanumericSort(a.companyName, b.companyName));
         setCompanies(loaded);
       },
       (error) => {
@@ -376,7 +396,7 @@ export default function OtherExpensesPage() {
             ids.add(docSnap.id);
           }
         });
-        loaded.sort((a, b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
+        loaded.sort((a, b) => alphanumericSort(a.vehicleNumber, b.vehicleNumber));
         setVehicles(loaded);
         setAssignedVehicleIds(ids);
         setAssignedVehicleNumbers(nums);
@@ -568,7 +588,7 @@ export default function OtherExpensesPage() {
         }
       });
     }
-    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+    return Array.from(map.values()).sort(alphanumericSort);
   }, [
     companies,
     records,
@@ -640,7 +660,9 @@ export default function OtherExpensesPage() {
       );
     }
 
-    return list;
+    return [...list].sort((a, b) =>
+      alphanumericSort(a.vehicleNumber, b.vehicleNumber)
+    );
   }, [vehicles, companyFilter, vehicleTypeFilter, companies]);
 
   // Handle Company filter change with smart vehicle reset
