@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -86,6 +87,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   // Check number management
   String? _currentCheckNumber;
   String? _nextCheckNumber;
+  bool _isFetchingCheckNumber = false;
+  List<Map<String, dynamic>> _carrierMembers = [];
+  StreamSubscription? _fleetSharesSub;
 
   String get _effectiveUserId {
     final rolesThatUseOwnerId = ['SubOwner', 'Manager', 'Accountant'];
@@ -143,6 +147,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     fetchUserDetails().then((_) {
       _fetchCompanies();
       _fetchCheckSeries();
+      _listenToCarriers();
       _fetchCurrentCheckNumber().then((_) {
         if (widget.autoOpenWriteCheck) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -152,6 +157,100 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       });
       fetchTeamMembersWithVehicles();
       fetchChecks();
+    });
+  }
+
+  void _listenToCarriers() {
+    _fleetSharesSub?.cancel();
+    final userEmail =
+        FirebaseAuth.instance.currentUser?.email?.toLowerCase().trim() ?? '';
+    final targetUids =
+        [_effectiveUserId, currentUId].where((id) => id.isNotEmpty).toSet();
+
+    _fleetSharesSub = FirebaseFirestore.instance
+        .collection('fleet_shares')
+        .snapshots()
+        .listen((snapshot) {
+      final Map<String, Map<String, dynamic>> carriersMap = {};
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final lenderId = (data['lenderId'] ?? '').toString().trim();
+        final lenderEmail =
+            (data['lenderEmail'] ?? '').toString().toLowerCase().trim();
+        final borrowerId = (data['borrowerId'] ?? '').toString().trim();
+        final borrowerEmail =
+            (data['borrowerEmail'] ?? '').toString().toLowerCase().trim();
+
+        final isLender = targetUids.contains(lenderId) ||
+            (userEmail.isNotEmpty && lenderEmail == userEmail);
+        final isBorrower = targetUids.contains(borrowerId) ||
+            (userEmail.isNotEmpty && borrowerEmail == userEmail);
+
+        if (isLender) {
+          final comp = (data['borrowerCompanyName'] ?? '').toString().trim();
+          final person = (data['borrowerName'] ?? '').toString().trim();
+          final email = (data['borrowerEmail'] ?? '').toString().trim();
+          final cName = (comp.isNotEmpty && person.isNotEmpty && comp != person)
+              ? '$comp ($person)'
+              : comp.isNotEmpty
+                  ? comp
+                  : person.isNotEmpty
+                      ? person
+                      : email;
+
+          if (cName.isNotEmpty) {
+            final memberId = borrowerId.isNotEmpty
+                ? borrowerId
+                : 'carrier_${cName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+            carriersMap[memberId.toLowerCase()] = {
+              'memberId': memberId,
+              'name': cName,
+              'role': 'Carrier',
+              'email': email,
+            };
+          }
+        }
+
+        if (isBorrower) {
+          final comp = (data['lenderCompanyName'] ?? '').toString().trim();
+          final person = (data['lenderName'] ?? '').toString().trim();
+          final email = (data['lenderEmail'] ?? '').toString().trim();
+          final cName = (comp.isNotEmpty && person.isNotEmpty && comp != person)
+              ? '$comp ($person)'
+              : comp.isNotEmpty
+                  ? comp
+                  : person.isNotEmpty
+                      ? person
+                      : email;
+
+          if (cName.isNotEmpty) {
+            final memberId = lenderId.isNotEmpty
+                ? lenderId
+                : 'carrier_${cName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+            carriersMap[memberId.toLowerCase()] = {
+              'memberId': memberId,
+              'name': cName,
+              'role': 'Carrier',
+              'email': email,
+            };
+          }
+        }
+      }
+
+      final list = carriersMap.values.toList();
+      list.sort((a, b) => a['name']
+          .toString()
+          .toLowerCase()
+          .compareTo(b['name'].toString().toLowerCase()));
+
+      if (mounted) {
+        setState(() {
+          _carrierMembers = list;
+        });
+      }
+    }, onError: (e) {
+      print('Error listening to fleet_shares carriers: $e');
     });
   }
 
@@ -312,20 +411,80 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     }
   }
 
-  Future<String?> _getNextAvailableCheckNumber() async {
-    if (_currentCheckNumber == null) return null;
-
+  Future<String?> _getNextAvailableCheckNumber(
+      [String? targetCompanyId]) async {
     try {
-      // Get all check series for the effective user
-      QuerySnapshot seriesSnapshot = await FirebaseFirestore.instance
-          .collection('CheckSeries')
-          .where('userId', isEqualTo: _effectiveUserId)
-          .get();
+      if (_effectiveUserId.isEmpty) return null;
 
-      // Parallel fetch checks from all series
-      List<String> allCheckNumbers = [];
+      // 1. Parallel fetch CheckSeries and used Checks
+      final results = await Future.wait([
+        FirebaseFirestore.instance
+            .collection('CheckSeries')
+            .where('userId', isEqualTo: _effectiveUserId)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('Checks')
+            .where('createdBy', isEqualTo: _effectiveUserId)
+            .get(),
+      ]);
+
+      final QuerySnapshot seriesSnapshot = results[0];
+      final QuerySnapshot usedChecksSnapshot = results[1];
+
+      if (seriesSnapshot.docs.isEmpty) return null;
+
+      final Set<String> usedCheckNumbers = usedChecksSnapshot.docs
+          .map((doc) => doc['checkNumber']?.toString().trim() ?? '')
+          .where((num) => num.isNotEmpty)
+          .toSet();
+
+      // 2. Filter series matching targetCompanyId if specified
+      List<QueryDocumentSnapshot> matchedSeriesDocs = seriesSnapshot.docs;
+      if (targetCompanyId != null && targetCompanyId.isNotEmpty) {
+        final targetComp = _companies.firstWhere(
+          (c) => c['id'] == targetCompanyId,
+          orElse: () => <String, dynamic>{},
+        );
+        final targetCompName =
+            (targetComp['companyName'] ?? '').toString().trim().toLowerCase();
+
+        final filtered = seriesSnapshot.docs.where((docSnap) {
+          final sData = docSnap.data() as Map<String, dynamic>;
+          final sCompId = (sData['companyId'] ?? '').toString().trim();
+          final sCompName =
+              (sData['companyName'] ?? '').toString().trim().toLowerCase();
+
+          if (sCompId.isNotEmpty && sCompId == targetCompanyId) return true;
+          if (targetCompName.isNotEmpty &&
+              sCompName.isNotEmpty &&
+              sCompName == targetCompName) {
+            return true;
+          }
+          return false;
+        }).toList();
+
+        if (filtered.isNotEmpty) {
+          matchedSeriesDocs = filtered;
+        } else {
+          // Check if ANY series has a company assigned
+          final hasAnyCompanySeries = seriesSnapshot.docs.any((d) {
+            final data = d.data() as Map<String, dynamic>;
+            final cId = (data['companyId'] ?? '').toString().trim();
+            final cName = (data['companyName'] ?? '').toString().trim();
+            return cId.isNotEmpty || cName.isNotEmpty;
+          });
+          if (!hasAnyCompanySeries) {
+            // Legacy series exist without any company assigned: allow fallback
+            matchedSeriesDocs = seriesSnapshot.docs;
+          } else {
+            return null;
+          }
+        }
+      }
+
+      // 3. Parallel fetch all checks in subcollections of matched series
       final checksSnapshots = await Future.wait(
-        seriesSnapshot.docs.map((seriesDoc) {
+        matchedSeriesDocs.map((seriesDoc) {
           return FirebaseFirestore.instance
               .collection('CheckSeries')
               .doc(seriesDoc.id)
@@ -334,45 +493,44 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         }),
       );
 
+      final List<Map<String, dynamic>> allSeriesChecks = [];
       for (var checksSnapshot in checksSnapshots) {
-        allCheckNumbers.addAll(checksSnapshot.docs.map((doc) {
-          return doc['checkNumber'] as String;
-        }));
-      }
-
-      if (allCheckNumbers.isEmpty) return null;
-
-      // Sort the check numbers
-      allCheckNumbers.sort((a, b) {
-        String prefixA = a.replaceAll(RegExp(r'[0-9]'), '');
-        String prefixB = b.replaceAll(RegExp(r'[0-9]'), '');
-
-        if (prefixA != prefixB) return prefixA.compareTo(prefixB);
-
-        int numA = int.tryParse(a.replaceAll(prefixA, '')) ?? 0;
-        int numB = int.tryParse(b.replaceAll(prefixB, '')) ?? 0;
-        return numA.compareTo(numB);
-      });
-
-      // Query all used check numbers in a SINGLE fast query instead of looping roundtrips
-      QuerySnapshot usedChecksSnapshot = await FirebaseFirestore.instance
-          .collection('Checks')
-          .where('createdBy', isEqualTo: _effectiveUserId)
-          .get();
-
-      final Set<String> usedCheckNumbers = usedChecksSnapshot.docs
-          .map((doc) => doc['checkNumber']?.toString() ?? '')
-          .where((num) => num.isNotEmpty)
-          .toSet();
-
-      // Find the first unused check number
-      for (var checkNumber in allCheckNumbers) {
-        if (!usedCheckNumbers.contains(checkNumber)) {
-          return checkNumber;
+        for (var doc in checksSnapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          allSeriesChecks.add({
+            'checkNumber': data['checkNumber']?.toString() ?? '',
+            'isUsed': data['isUsed'] == true,
+          });
         }
       }
 
-      return null; // No available check numbers
+      if (allSeriesChecks.isEmpty) return null;
+
+      // 4. Sort check numbers naturally
+      allSeriesChecks.sort((a, b) {
+        final strA = a['checkNumber'] as String;
+        final strB = b['checkNumber'] as String;
+        final prefixA = strA.replaceAll(RegExp(r'[0-9]'), '');
+        final prefixB = strB.replaceAll(RegExp(r'[0-9]'), '');
+
+        if (prefixA != prefixB) return prefixA.compareTo(prefixB);
+
+        final numA = int.tryParse(strA.replaceAll(prefixA, '')) ?? 0;
+        final numB = int.tryParse(strB.replaceAll(prefixB, '')) ?? 0;
+        return numA.compareTo(numB);
+      });
+
+      // 5. Find the first available unused check number
+      for (var item in allSeriesChecks) {
+        final cNum = (item['checkNumber'] as String).trim();
+        if (cNum.isEmpty) continue;
+
+        if (item['isUsed'] != true && !usedCheckNumbers.contains(cNum)) {
+          return cNum;
+        }
+      }
+
+      return null;
     } catch (e) {
       print('Error getting next check number: $e');
       return null;
@@ -1058,6 +1216,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     if (_companies.isNotEmpty) ...[
                       SizedBox(height: 16),
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         decoration: InputDecoration(
                           labelText: 'Company (Optional)',
                           labelStyle: appStyle(14, kDark, FontWeight.normal),
@@ -1074,6 +1233,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                                       child: Text(
                                         comp['companyName'] ?? '',
                                         overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
                                       ),
                                     ))
                             .toList(),
@@ -1091,6 +1251,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ],
                     SizedBox(height: 16),
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText: 'Select Type',
                         labelStyle: appStyle(14, kDark, FontWeight.normal),
@@ -1116,29 +1277,84 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ),
                     SizedBox(height: 16),
                     if (_selectedType == 'Carrier')
-                      TextFormField(
-                        controller: _carrierNameController,
-                        decoration: InputDecoration(
-                          labelText: 'Carrier Name',
-                          hintText: 'Enter carrier name',
-                          labelStyle: appStyle(14, kDark, FontWeight.normal),
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.local_shipping_outlined),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            final trimmed = value.trim();
-                            _selectedUserName =
-                                trimmed.isEmpty ? null : trimmed;
-                            _selectedUserId = trimmed.isEmpty
-                                ? null
-                                : 'carrier_${trimmed.toLowerCase().replaceAll(' ', '_')}';
-                          });
-                        },
-                        validator: (value) =>
-                            (value == null || value.trim().isEmpty)
-                                ? 'Please enter carrier name'
+                      Builder(
+                        builder: (context) {
+                          if (_carrierMembers.isEmpty) {
+                            return TextFormField(
+                              controller: _carrierNameController,
+                              decoration: InputDecoration(
+                                labelText: 'Carrier Name',
+                                hintText: 'Enter carrier name',
+                                labelStyle:
+                                    appStyle(14, kDark, FontWeight.normal),
+                                border: const OutlineInputBorder(),
+                                prefixIcon:
+                                    const Icon(Icons.local_shipping_outlined),
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  final trimmed = value.trim();
+                                  _selectedUserName =
+                                      trimmed.isEmpty ? null : trimmed;
+                                  _selectedUserId = trimmed.isEmpty
+                                      ? null
+                                      : 'carrier_${trimmed.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+                                });
+                              },
+                              validator: (value) =>
+                                  (value == null || value.trim().isEmpty)
+                                      ? 'Please enter carrier name'
+                                      : null,
+                            );
+                          }
+
+                          final validCarrierId = _carrierMembers.any((m) =>
+                                  m['memberId']?.toString() == _selectedUserId)
+                              ? _selectedUserId
+                              : null;
+
+                          return DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'Select Carrier',
+                              labelStyle:
+                                  appStyle(14, kDark, FontWeight.normal),
+                              border: const OutlineInputBorder(),
+                              prefixIcon: const Icon(
+                                  Icons.local_shipping_outlined,
+                                  color: kPrimary),
+                            ),
+                            value: validCarrierId,
+                            items: _carrierMembers
+                                .map<DropdownMenuItem<String>>(
+                                    (carrier) => DropdownMenuItem<String>(
+                                          value: carrier['memberId'].toString(),
+                                          child: Text(
+                                            carrier['name']?.toString() ??
+                                                'Unknown Carrier',
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedUserId = value;
+                                final matched = _carrierMembers.firstWhere(
+                                  (c) => c['memberId']?.toString() == value,
+                                  orElse: () => <String, dynamic>{},
+                                );
+                                _selectedUserName =
+                                    matched['name']?.toString() ?? value;
+                                _carrierNameController.text =
+                                    _selectedUserName ?? '';
+                              });
+                            },
+                            validator: (value) => value == null
+                                ? 'Please select a carrier'
                                 : null,
+                          );
+                        },
                       )
                     else if (_selectedType != null)
                       Builder(
@@ -1166,6 +1382,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                               : null;
 
                           return DropdownButtonFormField<String>(
+                            isExpanded: true,
                             decoration: InputDecoration(
                               labelText: 'Select Name',
                               labelStyle:
@@ -1174,13 +1391,15 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                             ),
                             value: validSelectedId,
                             items: typeMembers
-                                .map<DropdownMenuItem<String>>(
-                                    (member) => DropdownMenuItem<String>(
-                                          value: member['memberId'].toString(),
-                                          child: Text(
-                                              member['name']?.toString() ??
-                                                  'Unknown'),
-                                        ))
+                                .map<DropdownMenuItem<String>>((member) =>
+                                    DropdownMenuItem<String>(
+                                      value: member['memberId'].toString(),
+                                      child: Text(
+                                        member['name']?.toString() ?? 'Unknown',
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ))
                                 .toList(),
                             onChanged: (value) {
                               setState(() {
@@ -1427,16 +1646,18 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     if (_isSavingCheck) return;
 
     if (_selectedType == 'Carrier') {
-      final carrierName = _carrierNameController.text.trim();
-      if (carrierName.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter carrier name')),
-        );
-        return;
+      if (_selectedUserName == null || _selectedUserName!.trim().isEmpty) {
+        final carrierName = _carrierNameController.text.trim();
+        if (carrierName.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select a carrier')),
+          );
+          return;
+        }
+        _selectedUserName = carrierName;
+        _selectedUserId =
+            'carrier_${carrierName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
       }
-      _selectedUserName = carrierName;
-      _selectedUserId =
-          'carrier_${carrierName.toLowerCase().replaceAll(' ', '_')}';
     }
 
     if (_editingCheckId == null ||
@@ -2373,30 +2594,42 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       }
     }
 
-    // Get the next available check number
-    String? nextCheckNumber = await _getNextAvailableCheckNumber();
+    final defaultComp = _companies.firstWhere(
+      (c) => c['isDefault'] == true,
+      orElse: () =>
+          _companies.isNotEmpty ? _companies.first : <String, dynamic>{},
+    );
+    final initialCompId = defaultComp['id']?.toString();
+    final initialCompName = defaultComp['companyName']?.toString();
+
+    _selectedCompanyId = initialCompId;
+    _selectedCompanyName = initialCompName;
+    _checkNumberController.clear();
+    _isFetchingCheckNumber = true;
 
     if (_isPreparingAutoCheck && mounted) {
       setState(() => _isPreparingAutoCheck = false);
     }
 
-    if (nextCheckNumber != null) {
-      _checkNumberController.text = nextCheckNumber;
-      _autoSelectCompanyForCheck(nextCheckNumber);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'No available check numbers. Please add a check series first.')),
-      );
-      return;
-    }
+    bool initialFetchTriggered = false;
 
     await showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            if (!initialFetchTriggered) {
+              initialFetchTriggered = true;
+              _getNextAvailableCheckNumber(initialCompId).then((nextNum) {
+                if (mounted) {
+                  setState(() {
+                    _checkNumberController.text = nextNum ?? '';
+                    _isFetchingCheckNumber = false;
+                  });
+                }
+              });
+            }
+
             return AlertDialog(
               title: Text('Write Check',
                   style: appStyle(18, kDark, FontWeight.bold)),
@@ -2404,23 +2637,16 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: _checkNumberController,
-                      decoration: InputDecoration(
-                        labelText: 'Check Number',
-                        labelStyle: appStyle(14, kDark, FontWeight.normal),
-                        border: OutlineInputBorder(),
-                      ),
-                      readOnly: true,
-                    ),
+                    const SizedBox(height: 16),
                     if (_companies.isNotEmpty) ...[
-                      SizedBox(height: 16),
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         decoration: InputDecoration(
-                          labelText: 'Company (Optional)',
+                          labelText: 'Company',
                           labelStyle: appStyle(14, kDark, FontWeight.normal),
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.business_outlined,
+                              color: kPrimary),
                         ),
                         value:
                             _companies.any((c) => c['id'] == _selectedCompanyId)
@@ -2431,12 +2657,13 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                                 (comp) => DropdownMenuItem<String>(
                                       value: comp['id'],
                                       child: Text(
-                                        comp['companyName'] ?? '',
+                                        '${comp['companyName'] ?? ''}${comp['isDefault'] == true ? ' (Default)' : ''}',
                                         overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
                                       ),
                                     ))
                             .toList(),
-                        onChanged: (value) {
+                        onChanged: (value) async {
                           setState(() {
                             _selectedCompanyId = value;
                             final matched = _companies.firstWhere(
@@ -2444,12 +2671,88 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                               orElse: () => <String, dynamic>{},
                             );
                             _selectedCompanyName = matched['companyName'];
+                            _checkNumberController.clear();
+                            _isFetchingCheckNumber = true;
                           });
+
+                          final nextNum =
+                              await _getNextAvailableCheckNumber(value);
+                          if (mounted) {
+                            setState(() {
+                              _checkNumberController.text = nextNum ?? '';
+                              _isFetchingCheckNumber = false;
+                            });
+                          }
                         },
                       ),
+                      const SizedBox(height: 16),
                     ],
+                    if (_isFetchingCheckNumber)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: kPrimary.withOpacity(0.4)),
+                          borderRadius: BorderRadius.circular(4),
+                          color: kPrimary.withOpacity(0.06),
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: kPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Fetching check number...',
+                                style: appStyle(13, kPrimary, FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _checkNumberController,
+                            decoration: InputDecoration(
+                              labelText: 'Check Number',
+                              labelStyle:
+                                  appStyle(14, kDark, FontWeight.normal),
+                              border: const OutlineInputBorder(),
+                              filled: true,
+                              fillColor: _checkNumberController.text.isNotEmpty
+                                  ? Colors.grey[100]
+                                  : Colors.red.shade50,
+                              prefixIcon: const Icon(Icons.tag, color: kDark),
+                            ),
+                            readOnly: true,
+                          ),
+                          if (_checkNumberController.text.isEmpty &&
+                              _selectedCompanyId != null)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 4, left: 2, bottom: 4),
+                              child: Text(
+                                'No available check series for this company.',
+                                style: appStyle(
+                                    11, Colors.red.shade700, FontWeight.normal),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     SizedBox(height: 16),
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText: 'Select Type',
                         labelStyle: appStyle(14, kDark, FontWeight.normal),
@@ -2475,29 +2778,84 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ),
                     SizedBox(height: 16),
                     if (_selectedType == 'Carrier')
-                      TextFormField(
-                        controller: _carrierNameController,
-                        decoration: InputDecoration(
-                          labelText: 'Carrier Name',
-                          hintText: 'Enter carrier name',
-                          labelStyle: appStyle(14, kDark, FontWeight.normal),
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.local_shipping_outlined),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            final trimmed = value.trim();
-                            _selectedUserName =
-                                trimmed.isEmpty ? null : trimmed;
-                            _selectedUserId = trimmed.isEmpty
-                                ? null
-                                : 'carrier_${trimmed.toLowerCase().replaceAll(' ', '_')}';
-                          });
-                        },
-                        validator: (value) =>
-                            (value == null || value.trim().isEmpty)
-                                ? 'Please enter carrier name'
+                      Builder(
+                        builder: (context) {
+                          if (_carrierMembers.isEmpty) {
+                            return TextFormField(
+                              controller: _carrierNameController,
+                              decoration: InputDecoration(
+                                labelText: 'Carrier Name',
+                                hintText: 'Enter carrier name',
+                                labelStyle:
+                                    appStyle(14, kDark, FontWeight.normal),
+                                border: const OutlineInputBorder(),
+                                prefixIcon:
+                                    const Icon(Icons.local_shipping_outlined),
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  final trimmed = value.trim();
+                                  _selectedUserName =
+                                      trimmed.isEmpty ? null : trimmed;
+                                  _selectedUserId = trimmed.isEmpty
+                                      ? null
+                                      : 'carrier_${trimmed.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+                                });
+                              },
+                              validator: (value) =>
+                                  (value == null || value.trim().isEmpty)
+                                      ? 'Please enter carrier name'
+                                      : null,
+                            );
+                          }
+
+                          final validCarrierId = _carrierMembers.any((m) =>
+                                  m['memberId']?.toString() == _selectedUserId)
+                              ? _selectedUserId
+                              : null;
+
+                          return DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'Select Carrier',
+                              labelStyle:
+                                  appStyle(14, kDark, FontWeight.normal),
+                              border: const OutlineInputBorder(),
+                              prefixIcon: const Icon(
+                                  Icons.local_shipping_outlined,
+                                  color: kPrimary),
+                            ),
+                            value: validCarrierId,
+                            items: _carrierMembers
+                                .map<DropdownMenuItem<String>>(
+                                    (carrier) => DropdownMenuItem<String>(
+                                          value: carrier['memberId'].toString(),
+                                          child: Text(
+                                            carrier['name']?.toString() ??
+                                                'Unknown Carrier',
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedUserId = value;
+                                final matched = _carrierMembers.firstWhere(
+                                  (c) => c['memberId']?.toString() == value,
+                                  orElse: () => <String, dynamic>{},
+                                );
+                                _selectedUserName =
+                                    matched['name']?.toString() ?? value;
+                                _carrierNameController.text =
+                                    _selectedUserName ?? '';
+                              });
+                            },
+                            validator: (value) => value == null
+                                ? 'Please select a carrier'
                                 : null,
+                          );
+                        },
                       )
                     else if (_selectedType != null)
                       Builder(
@@ -2525,6 +2883,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                               : null;
 
                           return DropdownButtonFormField<String>(
+                            isExpanded: true,
                             decoration: InputDecoration(
                               labelText: 'Select Name',
                               labelStyle:
@@ -2533,13 +2892,15 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                             ),
                             value: validSelectedId,
                             items: typeMembers
-                                .map<DropdownMenuItem<String>>(
-                                    (member) => DropdownMenuItem<String>(
-                                          value: member['memberId'].toString(),
-                                          child: Text(
-                                              member['name']?.toString() ??
-                                                  'Unknown'),
-                                        ))
+                                .map<DropdownMenuItem<String>>((member) =>
+                                    DropdownMenuItem<String>(
+                                      value: member['memberId'].toString(),
+                                      child: Text(
+                                        member['name']?.toString() ?? 'Unknown',
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ))
                                 .toList(),
                             onChanged: (value) {
                               setState(() {
@@ -2660,7 +3021,10 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                           FontWeight.normal)),
                 ),
                 ElevatedButton(
-                  onPressed: (_serviceDetails.isEmpty || _isSavingCheck)
+                  onPressed: (_serviceDetails.isEmpty ||
+                          _isSavingCheck ||
+                          _isFetchingCheckNumber ||
+                          _checkNumberController.text.trim().isEmpty)
                       ? null
                       : () => _saveCheck(setState),
                   style: ElevatedButton.styleFrom(
@@ -2815,19 +3179,30 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   }
 
   Future<void> _saveCheck(StateSetter dialogSetState) async {
-    if (_isSavingCheck) return;
+    if (_isSavingCheck || _isFetchingCheckNumber) return;
+
+    if (_checkNumberController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'No available check number. Please select a company with an active check series.')),
+      );
+      return;
+    }
 
     if (_selectedType == 'Carrier') {
-      final carrierName = _carrierNameController.text.trim();
-      if (carrierName.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter carrier name')),
-        );
-        return;
+      if (_selectedUserName == null || _selectedUserName!.trim().isEmpty) {
+        final carrierName = _carrierNameController.text.trim();
+        if (carrierName.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select a carrier')),
+          );
+          return;
+        }
+        _selectedUserName = carrierName;
+        _selectedUserId =
+            'carrier_${carrierName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
       }
-      _selectedUserName = carrierName;
-      _selectedUserId =
-          'carrier_${carrierName.toLowerCase().replaceAll(' ', '_')}';
     }
 
     if (_selectedUserId == null || _serviceDetails.isEmpty) {
@@ -3199,6 +3574,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
   @override
   void dispose() {
+    _fleetSharesSub?.cancel();
     _memoNumberController.dispose();
     _checkNumberController.dispose();
     _carrierNameController.dispose();
