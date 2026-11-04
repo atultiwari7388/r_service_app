@@ -71,7 +71,7 @@ export default function TopBar() {
             <FaEnvelope />
             <a href="">
               {user === null ? (
-                <span>info@trenoops.com</span>
+                <span>team@trenoops.com</span>
               ) : (
                 <span>{contactInfo.contactMail}</span>
               )}
