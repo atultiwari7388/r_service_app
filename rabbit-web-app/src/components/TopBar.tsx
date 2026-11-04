@@ -80,7 +80,7 @@ export default function TopBar() {
           <div className="flex items-center space-x-2">
             <FaMapMarkerAlt />
             {user === null ? (
-              <span>New York, NY 10001, USA</span>
+              <span>California, 93711, USA</span>
             ) : (
               <span>{contactInfo.address}</span>
             )}
