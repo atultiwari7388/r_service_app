@@ -39,6 +39,7 @@ import {
   FiSave,
   FiHash,
   FiTrash2,
+  FiTruck,
 } from "react-icons/fi";
 import { FaFileAlt, FaBuilding } from "react-icons/fa";
 import { CompanyType } from "@/types/types";
@@ -115,6 +116,17 @@ const DEFAULT_SERVICE_DETAILS: ServiceDetail[] = [
   { serviceName: "", amount: 0 },
 ];
 
+const CHECK_TYPES = [
+  "Owner",
+  "Co-Owner",
+  "Carrier",
+  "Driver",
+  "Manager",
+  "Accountant",
+  "Vendor",
+  "Other Staff",
+];
+
 function ManageCheckScreenContent() {
   const [role, setUserRole] = useState<string>("");
   const [isCheque, setIsCheque] = useState<boolean>(false);
@@ -132,6 +144,7 @@ function ManageCheckScreenContent() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
+  const [carrierMembers, setCarrierMembers] = useState<Member[]>([]);
   const [serviceDetails, setServiceDetails] = useState<ServiceDetail[]>(
     DEFAULT_SERVICE_DETAILS
   );
@@ -141,6 +154,8 @@ function ManageCheckScreenContent() {
   const [showAddDetail, setShowAddDetail] = useState<boolean>(false);
   const [unpaidTrips, setUnpaidTrips] = useState<Trip[]>([]);
   const [checkNumber, setCheckNumber] = useState<string>("");
+  const [isFetchingCheckNumber, setIsFetchingCheckNumber] =
+    useState<boolean>(false);
   const [currentCheckNumber, setCurrentCheckNumber] = useState<string | null>(
     null
   );
@@ -153,11 +168,16 @@ function ManageCheckScreenContent() {
   const [showCheckSeries, setShowCheckSeries] = useState<boolean>(false);
   const [startSeriesNumber, setStartSeriesNumber] = useState<string>("");
   const [endSeriesNumber, setEndSeriesNumber] = useState<string>("");
-  const [selectedSeriesCompanyId, setSelectedSeriesCompanyId] = useState<string>("");
+  const [selectedSeriesCompanyId, setSelectedSeriesCompanyId] =
+    useState<string>("");
   const [addingSeries, setAddingSeries] = useState<boolean>(false);
   const [companies, setCompanies] = useState<CompanyType[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-  const [selectedCompanyName, setSelectedCompanyName] = useState<string | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    null
+  );
+  const [selectedCompanyName, setSelectedCompanyName] = useState<string | null>(
+    null
+  );
   const [filterCompanyId, setFilterCompanyId] = useState<string | null>(null);
   const [editingCheckNumber, setEditingCheckNumber] = useState<string>("");
   const [isSavingCheck, setIsSavingCheck] = useState<boolean>(false);
@@ -254,6 +274,201 @@ function ManageCheckScreenContent() {
     }
   }, [effectiveUserId, isCheque]);
 
+  // Realtime Auto-Sync: Listen to fleet_shares and assigned Vehicles to load dynamic Carriers
+  useEffect(() => {
+    if (!effectiveUserId) return;
+
+    const userEmail = (user?.email || "").trim().toLowerCase();
+    const targetUids = [effectiveUserId, user?.uid || ""].filter(Boolean);
+
+    const sharesMap = new Map<string, any>();
+    const vehiclesCarriersMap = new Map<string, Member>();
+
+    const rebuildCarriers = () => {
+      const carriersMap = new Map<string, Member>();
+
+      // 1. From fleet_shares collection
+      sharesMap.forEach((data) => {
+        const isLender =
+          targetUids.includes(data.lenderId) ||
+          (userEmail && data.lenderEmail?.toLowerCase() === userEmail);
+        const isBorrower =
+          targetUids.includes(data.borrowerId) ||
+          (userEmail && data.borrowerEmail?.toLowerCase() === userEmail);
+
+        if (isLender) {
+          const comp = (data.borrowerCompanyName || "").trim();
+          const person = (data.borrowerName || "").trim();
+          const email = (data.borrowerEmail || "").trim();
+          const cName =
+            comp && person && comp !== person
+              ? `${comp} (${person})`
+              : comp || person || email;
+
+          if (cName) {
+            const memberId =
+              data.borrowerId ||
+              `carrier_${cName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+            const key = memberId.toLowerCase();
+            if (!carriersMap.has(key)) {
+              carriersMap.set(key, {
+                name: cName,
+                email: email,
+                isActive: true,
+                memberId: memberId,
+                ownerId: effectiveUserId,
+                vehicles: [],
+                perMileCharge: 0,
+                role: "Carrier",
+              });
+            }
+          }
+        }
+
+        if (isBorrower) {
+          const comp = (data.lenderCompanyName || "").trim();
+          const person = (data.lenderName || "").trim();
+          const email = (data.lenderEmail || "").trim();
+          const cName =
+            comp && person && comp !== person
+              ? `${comp} (${person})`
+              : comp || person || email;
+
+          if (cName) {
+            const memberId =
+              data.lenderId ||
+              `carrier_${cName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+            const key = memberId.toLowerCase();
+            if (!carriersMap.has(key)) {
+              carriersMap.set(key, {
+                name: cName,
+                email: email,
+                isActive: true,
+                memberId: memberId,
+                ownerId: effectiveUserId,
+                vehicles: [],
+                perMileCharge: 0,
+                role: "Carrier",
+              });
+            }
+          }
+        }
+      });
+
+      // 2. From assigned vehicles in Vehicles collection
+      vehiclesCarriersMap.forEach((vCarrier, key) => {
+        if (!carriersMap.has(key)) {
+          carriersMap.set(key, vCarrier);
+        }
+      });
+
+      setCarrierMembers(Array.from(carriersMap.values()));
+    };
+
+    // Query 1: As Lender (effectiveUserId or user.uid)
+    const qLender = query(
+      collection(db, "fleet_shares"),
+      where("lenderId", "in", targetUids)
+    );
+
+    // Query 2: As Lender Email
+    const qLenderEmail = userEmail
+      ? query(
+          collection(db, "fleet_shares"),
+          where("lenderEmail", "==", userEmail)
+        )
+      : null;
+
+    // Query 3: As Borrower Id
+    const qBorrowerId = query(
+      collection(db, "fleet_shares"),
+      where("borrowerId", "in", targetUids)
+    );
+
+    // Query 4: As Borrower Email
+    const qBorrowerEmail = userEmail
+      ? query(
+          collection(db, "fleet_shares"),
+          where("borrowerEmail", "==", userEmail)
+        )
+      : null;
+
+    const handleShareSnapshot = (snapshot: any) => {
+      snapshot.forEach((docSnap: any) => {
+        sharesMap.set(docSnap.id, docSnap.data());
+      });
+      rebuildCarriers();
+    };
+
+    const unsubLender = onSnapshot(qLender, handleShareSnapshot, (err) =>
+      console.warn("fleet_shares lender listener:", err)
+    );
+    const unsubLenderEmail = qLenderEmail
+      ? onSnapshot(qLenderEmail, handleShareSnapshot, (err) =>
+          console.warn("fleet_shares lenderEmail listener:", err)
+        )
+      : () => {};
+    const unsubBorrowerId = onSnapshot(
+      qBorrowerId,
+      handleShareSnapshot,
+      (err) => console.warn("fleet_shares borrowerId listener:", err)
+    );
+    const unsubBorrowerEmail = qBorrowerEmail
+      ? onSnapshot(qBorrowerEmail, handleShareSnapshot, (err) =>
+          console.warn("fleet_shares borrowerEmail listener:", err)
+        )
+      : () => {};
+
+    // Also listen to Vehicles collection for any vehicle with isAssignedToOther
+    const vehRef = collection(db, "Users", effectiveUserId, "Vehicles");
+    const unsubVehicles = onSnapshot(
+      vehRef,
+      (snapshot) => {
+        vehiclesCarriersMap.clear();
+        snapshot.forEach((docSnap) => {
+          const vData = docSnap.data();
+          if (vData.isAssignedToOther && vData.sharedWith) {
+            const sw = vData.sharedWith;
+            const comp = (sw.borrowerCompanyName || "").trim();
+            const person = (sw.borrowerName || "").trim();
+            const email = (sw.borrowerEmail || "").trim();
+            const cName =
+              comp && person && comp !== person
+                ? `${comp} (${person})`
+                : comp || person || email;
+
+            if (cName) {
+              const memberId =
+                sw.borrowerId ||
+                `carrier_${cName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+              const key = memberId.toLowerCase();
+              vehiclesCarriersMap.set(key, {
+                name: cName,
+                email: email,
+                isActive: true,
+                memberId: memberId,
+                ownerId: effectiveUserId,
+                vehicles: [],
+                perMileCharge: 0,
+                role: "Carrier",
+              });
+            }
+          }
+        });
+        rebuildCarriers();
+      },
+      (err) => console.warn("Vehicles carrier listener:", err)
+    );
+
+    return () => {
+      unsubLender();
+      unsubLenderEmail();
+      unsubBorrowerId();
+      unsubBorrowerEmail();
+      unsubVehicles();
+    };
+  }, [effectiveUserId, user?.uid, user?.email]);
+
   // Handle prefilled query params when redirected from Pay Invoice screen
   useEffect(() => {
     if (!effectiveUserId) return;
@@ -315,21 +530,75 @@ function ManageCheckScreenContent() {
         setTotalAmount(total);
         setMemoNumber("");
 
-        getNextAvailableCheckNumber().then((nextCheckNumber) => {
-          if (nextCheckNumber) {
-            setCheckNumber(nextCheckNumber);
-            autoSelectCompanyForCheck(nextCheckNumber);
-            setShowWriteCheck(true);
-          } else {
-            toast.error(
-              "No available check numbers. Please add a check series first."
-            );
-            setShowAddSeries(true);
-          }
-        });
+        const defaultComp =
+          companies.find((c) => c.isDefault) || companies[0] || null;
+        const initialCompId = defaultComp?.id || null;
+        const initialCompName = defaultComp?.companyName || null;
+        setSelectedCompanyId(initialCompId);
+        setSelectedCompanyName(initialCompName);
+        setShowWriteCheck(true);
+
+        setIsFetchingCheckNumber(true);
+        getNextAvailableCheckNumber(initialCompId)
+          .then((nextCheckNumber) => {
+            if (nextCheckNumber) {
+              setCheckNumber(nextCheckNumber);
+            } else {
+              setCheckNumber("");
+              toast.error(
+                initialCompName
+                  ? `No available check numbers for ${initialCompName}. Please add a check series.`
+                  : "No available check numbers. Please add a check series first."
+              );
+            }
+          })
+          .finally(() => {
+            setIsFetchingCheckNumber(false);
+          });
       }
     }
-  }, [effectiveUserId, searchParams, allMembers]);
+  }, [effectiveUserId, searchParams, allMembers, companies]);
+
+  const getFilteredMembers = (type: string | null) => {
+    if (!type) return [];
+    if (type === "Carrier") {
+      const list = [...carrierMembers];
+      if (
+        selectedUserId &&
+        selectedUserName &&
+        !list.some((c) => c.memberId === selectedUserId)
+      ) {
+        list.push({
+          name: selectedUserName,
+          email: "",
+          isActive: true,
+          memberId: selectedUserId,
+          ownerId: effectiveUserId,
+          vehicles: [],
+          perMileCharge: 0,
+          role: "Carrier",
+        });
+      }
+      return list.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+      );
+    }
+    return allMembers
+      .filter((member) => {
+        const memberRole = (member.role || "").trim().toLowerCase();
+        if (type === "Co-Owner") {
+          const normalized = memberRole.replace(/[-_\s]/g, "");
+          return normalized === "coowner" || normalized === "subowner";
+        }
+        if (type === "Owner") {
+          return memberRole === "owner";
+        }
+        return memberRole === type.toLowerCase();
+      })
+      .sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+      );
+  };
 
   const fetchTeamMembersWithVehicles = async () => {
     try {
@@ -387,6 +656,33 @@ function ManageCheckScreenContent() {
           perMileCharge: memberData.perMileCharge || 0,
           role: memberData.role || "",
         });
+      }
+
+      // Include the Owner in members list so Owner can be selected for checks
+      try {
+        const ownerDocRef = doc(db, "Users", effectiveUserId);
+        const ownerDocSnap = await getDoc(ownerDocRef);
+        if (ownerDocSnap.exists()) {
+          const oData = ownerDocSnap.data();
+          const ownerName = oData.userName || oData.name || "Owner";
+          if (!members.some((m) => m.memberId === effectiveUserId)) {
+            members.push({
+              name: ownerName,
+              email: oData.email || "",
+              isActive: true,
+              memberId: effectiveUserId,
+              ownerId: effectiveUserId,
+              vehicles: [],
+              perMileCharge: oData.perMileCharge || 0,
+              role: "Owner",
+            });
+          }
+        }
+      } catch (ownerError) {
+        console.error(
+          "Error fetching owner in fetchTeamMembersWithVehicles:",
+          ownerError
+        );
       }
 
       console.log(`${showAddDetail}`);
@@ -453,8 +749,8 @@ function ManageCheckScreenContent() {
           (c) =>
             c.companyId === filterCompanyId ||
             c.companyName === filterCompanyId ||
-            companies.find((comp) => comp.id === filterCompanyId)?.companyName ===
-              c.companyName
+            companies.find((comp) => comp.id === filterCompanyId)
+              ?.companyName === c.companyName
         );
       }
 
@@ -522,7 +818,10 @@ function ManageCheckScreenContent() {
         return false;
       }
 
-      const startVal = parseInt(series.startNumber.replace(startPrefix, ""), 10);
+      const startVal = parseInt(
+        series.startNumber.replace(startPrefix, ""),
+        10
+      );
       const endVal = parseInt(series.endNumber.replace(endPrefix, ""), 10);
       const checkVal = parseInt(checkNum.replace(checkPrefix, ""), 10);
 
@@ -702,7 +1001,14 @@ function ManageCheckScreenContent() {
     if (effectiveUserId && isCheque) {
       fetchChecks();
     }
-  }, [filterType, filterCompanyId, startDate, endDate, effectiveUserId, isCheque]);
+  }, [
+    filterType,
+    filterCompanyId,
+    startDate,
+    endDate,
+    effectiveUserId,
+    isCheque,
+  ]);
 
   useEffect(() => {
     // Calculate total whenever serviceDetails changes
@@ -803,52 +1109,113 @@ function ManageCheckScreenContent() {
     return checkNumbers;
   };
 
-  const getNextAvailableCheckNumber = async (): Promise<string | null> => {
+  const getNextAvailableCheckNumber = async (
+    targetCompanyId?: string | null
+  ): Promise<string | null> => {
     try {
+      if (!effectiveUserId) return null;
+
       const seriesQuery = query(
         collection(db, "CheckSeries"),
-        where("userId", "==", effectiveUserId) // Use effectiveUserId
+        where("userId", "==", effectiveUserId)
       );
-      const seriesSnapshot = await getDocs(seriesQuery);
+      const usedChecksQuery = query(
+        collection(db, "Checks"),
+        where("createdBy", "==", effectiveUserId)
+      );
+
+      const [seriesSnapshot, usedChecksSnapshot] = await Promise.all([
+        getDocs(seriesQuery),
+        getDocs(usedChecksQuery),
+      ]);
+
       if (seriesSnapshot.empty) return null;
 
-      let allCheckNumbers: string[] = [];
+      // Build Set of already used check numbers from Checks collection
+      const usedSet = new Set<string>();
+      usedChecksSnapshot.forEach((docSnap) => {
+        const cNum = docSnap.data().checkNumber;
+        if (cNum !== undefined && cNum !== null) {
+          usedSet.add(String(cNum).trim());
+        }
+      });
 
-      for (const seriesDoc of seriesSnapshot.docs) {
-        const checksQuery = query(
-          collection(db, "CheckSeries", seriesDoc.id, "Checks")
-        );
-        const checksSnapshot = await getDocs(checksQuery);
+      // Filter series matching targetCompanyId if specified
+      let matchedSeriesDocs = seriesSnapshot.docs;
+      if (targetCompanyId) {
+        const targetComp = companies.find((c) => c.id === targetCompanyId);
+        const targetCompName = targetComp?.companyName?.trim().toLowerCase();
 
-        const checkNumbers = checksSnapshot.docs.map(
-          (doc) => doc.data().checkNumber as string
-        );
-        allCheckNumbers = [...allCheckNumbers, ...checkNumbers];
+        const filtered = seriesSnapshot.docs.filter((docSnap) => {
+          const sData = docSnap.data();
+          if (sData.companyId && sData.companyId === targetCompanyId)
+            return true;
+          if (
+            targetCompName &&
+            sData.companyName &&
+            sData.companyName.trim().toLowerCase() === targetCompName
+          ) {
+            return true;
+          }
+          return false;
+        });
+
+        if (filtered.length > 0) {
+          matchedSeriesDocs = filtered;
+        } else {
+          // If no series specifically tagged with this company, check if any series has a company assigned
+          const hasAnyCompanySeries = seriesSnapshot.docs.some(
+            (d) => d.data().companyId || d.data().companyName
+          );
+          if (!hasAnyCompanySeries) {
+            // Legacy series exist without any company assigned: allow them as fallback
+            matchedSeriesDocs = seriesSnapshot.docs;
+          } else {
+            return null;
+          }
+        }
       }
 
-      if (allCheckNumbers.length === 0) return null;
+      // Concurrently fetch all check numbers in the matched series
+      const seriesChecksPromises = matchedSeriesDocs.map(async (seriesDoc) => {
+        const checksSnapshot = await getDocs(
+          collection(db, "CheckSeries", seriesDoc.id, "Checks")
+        );
+        return checksSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            checkNumber: data.checkNumber as string,
+            isUsed: data.isUsed === true,
+          };
+        });
+      });
 
-      allCheckNumbers.sort((a, b) => {
-        const prefixA = a.replace(/\d/g, "");
-        const prefixB = b.replace(/\d/g, "");
+      const seriesChecksResults = await Promise.all(seriesChecksPromises);
+      const allSeriesChecks = seriesChecksResults.flat();
+
+      if (allSeriesChecks.length === 0) return null;
+
+      // Sort natural check numbers
+      allSeriesChecks.sort((a, b) => {
+        const numStrA = a.checkNumber || "";
+        const numStrB = b.checkNumber || "";
+        const prefixA = numStrA.replace(/\d/g, "");
+        const prefixB = numStrB.replace(/\d/g, "");
 
         if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
 
-        const numA = parseInt(a.replace(prefixA, ""));
-        const numB = parseInt(b.replace(prefixB, ""));
+        const numA = parseInt(numStrA.replace(prefixA, "")) || 0;
+        const numB = parseInt(numStrB.replace(prefixB, "")) || 0;
         return numA - numB;
       });
 
-      for (const checkNumber of allCheckNumbers) {
-        const usedCheckQuery = query(
-          collection(db, "Checks"),
-          where("checkNumber", "==", checkNumber),
-          where("createdBy", "==", effectiveUserId)
-        );
-        const usedCheckSnapshot = await getDocs(usedCheckQuery);
+      // Find first unused check number (both isUsed != true and not in Checks collection)
+      for (const item of allSeriesChecks) {
+        const cNum = item.checkNumber ? String(item.checkNumber).trim() : "";
+        if (!cNum) continue;
 
-        if (usedCheckSnapshot.empty) {
-          return checkNumber;
+        if (!item.isUsed && !usedSet.has(cNum)) {
+          return cNum;
         }
       }
 
@@ -912,6 +1279,14 @@ function ManageCheckScreenContent() {
       return;
     }
 
+    // Determine initial company: default company, or first company
+    const defaultComp =
+      companies.find((c) => c.isDefault) || companies[0] || null;
+    const initialCompId = defaultComp?.id || null;
+    const initialCompName = defaultComp?.companyName || null;
+
+    setSelectedCompanyId(initialCompId);
+    setSelectedCompanyName(initialCompName);
     setSelectedType(null);
     setSelectedUserId(null);
     setSelectedUserName(null);
@@ -926,17 +1301,61 @@ function ManageCheckScreenContent() {
     setMemoNumber("");
     setSelectedDate(new Date());
     setTotalAmount(0);
+    setShowWriteCheck(true);
 
-    const nextCheckNumber = await getNextAvailableCheckNumber();
-    if (nextCheckNumber) {
-      setCheckNumber(nextCheckNumber);
-      autoSelectCompanyForCheck(nextCheckNumber);
-      setShowWriteCheck(true);
-    } else {
-      toast.error(
-        "No available check numbers. Please add a check series first."
-      );
-      setShowAddSeries(true);
+    setIsFetchingCheckNumber(true);
+    try {
+      const nextCheckNumber = await getNextAvailableCheckNumber(initialCompId);
+      if (nextCheckNumber) {
+        setCheckNumber(nextCheckNumber);
+      } else {
+        setCheckNumber("");
+        if (initialCompName) {
+          toast.error(
+            `No available check numbers for ${initialCompName}. Please add a check series.`
+          );
+        } else {
+          toast.error(
+            "No available check numbers. Please add a check series first."
+          );
+        }
+      }
+    } finally {
+      setIsFetchingCheckNumber(false);
+    }
+  };
+
+  const handleCompanyChangeForWriteCheck = async (companyId: string) => {
+    const cId = companyId || null;
+    setSelectedCompanyId(cId);
+    const comp = companies.find((c) => c.id === cId);
+    const compName = comp?.companyName || null;
+    setSelectedCompanyName(compName);
+
+    if (!cId) {
+      setCheckNumber("");
+      return;
+    }
+
+    setIsFetchingCheckNumber(true);
+    setCheckNumber("");
+    try {
+      // Auto-fetch next available check number for the newly selected company
+      const nextCheckNumber = await getNextAvailableCheckNumber(cId);
+      if (nextCheckNumber) {
+        setCheckNumber(nextCheckNumber);
+      } else {
+        setCheckNumber("");
+        if (compName) {
+          toast.error(
+            `No available check numbers for ${compName}. Please add a check series.`
+          );
+        } else {
+          toast.error("No available check numbers found for this company.");
+        }
+      }
+    } finally {
+      setIsFetchingCheckNumber(false);
     }
   };
 
@@ -1059,6 +1478,15 @@ function ManageCheckScreenContent() {
   const saveCheck = async () => {
     if (isSavingCheck) return;
 
+    if (!selectedUserId) {
+      GlobalToastError(
+        selectedType === "Carrier"
+          ? "Please select a carrier"
+          : "Please select a recipient"
+      );
+      return;
+    }
+
     // Filter out service details based on the new logic
     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
       // First row: must have service name (amount can be 0 or negative)
@@ -1069,12 +1497,14 @@ function ManageCheckScreenContent() {
       return (detail?.serviceName || "").trim() !== "" || detail.amount !== 0;
     });
 
-    if (
-      !selectedUserId ||
-      nonEmptyDetails.length === 0 ||
-      !effectiveUserId ||
-      !checkNumber
-    ) {
+    if (!checkNumber) {
+      GlobalToastError(
+        "No available check number. Please select a company with a valid check series."
+      );
+      return;
+    }
+
+    if (nonEmptyDetails.length === 0 || !effectiveUserId) {
       GlobalToastError("Please fill at least the first service detail");
       return;
     }
@@ -1169,7 +1599,9 @@ function ManageCheckScreenContent() {
           action: "CHECK_CREATE",
           category: "Checks",
           title: `Created Check #${checkNumber}`,
-          description: `Created ${selectedType} check #${checkNumber} for ${selectedUserName || "Payee"} of amount $${totalAmount}`,
+          description: `Created ${selectedType} check #${checkNumber} for ${
+            selectedUserName || "Payee"
+          } of amount $${totalAmount}`,
           targetId: checkDocRef.id,
           targetName: `Check #${checkNumber} - $${totalAmount}`,
           metadata: {
@@ -1185,7 +1617,7 @@ function ManageCheckScreenContent() {
 
       await updateCheckNumberUsage(checkNumber);
 
-      if (selectedType === "Driver") {
+      if (selectedType === "Driver" && selectedUserId) {
         const batch = writeBatch(db);
         unpaidTrips.forEach((trip) => {
           const tripRef = doc(db, "Users", selectedUserId, "trips", trip.id);
@@ -1378,6 +1810,15 @@ function ManageCheckScreenContent() {
   const updateCheck = async () => {
     if (!editingCheckId || isUpdatingCheck) return;
 
+    if (!selectedUserId) {
+      GlobalToastError(
+        selectedType === "Carrier"
+          ? "Please select a carrier"
+          : "Please select a recipient"
+      );
+      return;
+    }
+
     // Filter out service details based on the new logic
     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
       // First row: must have service name (amount can be 0 or negative)
@@ -1388,7 +1829,7 @@ function ManageCheckScreenContent() {
       return (detail?.serviceName || "").trim() !== "" || detail.amount !== 0;
     });
 
-    if (!selectedUserId || nonEmptyDetails.length === 0 || !effectiveUserId) {
+    if (nonEmptyDetails.length === 0 || !effectiveUserId) {
       GlobalToastError("Please fill at least the first service detail");
       return;
     }
@@ -2203,8 +2644,12 @@ function ManageCheckScreenContent() {
         userEmail: user.email || "",
         action: "CHECK_PRINT",
         category: "Checks",
-        title: `Printed Check for ${printCheck.userName || "Payee"} ($${printCheck.totalAmount})`,
-        description: `Triggered print window for check #${printCheck.checkNumber || ""} to ${printCheck.userName}`,
+        title: `Printed Check for ${printCheck.userName || "Payee"} ($${
+          printCheck.totalAmount
+        })`,
+        description: `Triggered print window for check #${
+          printCheck.checkNumber || ""
+        } to ${printCheck.userName}`,
         targetId: printCheck.id,
         targetName: String(printCheck.userName || "Check"),
         metadata: {
@@ -2218,7 +2663,11 @@ function ManageCheckScreenContent() {
   };
 
   const fetchUserAddress = async (userId: string) => {
-    if (!userId || userId.startsWith("vendor_")) {
+    if (
+      !userId ||
+      userId.startsWith("vendor_") ||
+      userId.startsWith("carrier_")
+    ) {
       return {
         street: "",
         city: "",
@@ -2489,7 +2938,8 @@ function ManageCheckScreenContent() {
                 </select>
                 {companies.length === 0 && (
                   <p className="mt-1 text-xs text-gray-500">
-                    No companies available. You can add companies under My Companies.
+                    No companies available. You can add companies under My
+                    Companies.
                   </p>
                 )}
               </div>
@@ -2711,11 +3161,11 @@ function ManageCheckScreenContent() {
                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
               >
                 <option value="">Select Type</option>
-                <option value="Manager">Manager</option>
-                <option value="Accountant">Accountant</option>
-                <option value="Driver">Driver</option>
-                <option value="Vendor">Vendor</option>
-                <option value="Other Staff">Other Staff</option>
+                {CHECK_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -2724,31 +3174,41 @@ function ManageCheckScreenContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Recipient Name
+                  {selectedType === "Carrier"
+                    ? "Carrier Name (Fleet Sharing)"
+                    : "Recipient Name"}
                 </label>
                 <SearchableSelect
                   value={selectedUserId || ""}
                   onChange={(value) => {
-                    const member = allMembers.find((m) => m.memberId === value);
+                    const list = getFilteredMembers(selectedType);
+                    const member = list.find((m) => m.memberId === value);
                     setSelectedUserId(value || null);
                     setSelectedUserName(member?.name || null);
                   }}
-                  options={allMembers
-                    .filter((member) => member.role === selectedType)
-                    .map((member) => ({
-                      value: member.memberId,
-                      label: member.name,
-                    }))}
-                  placeholder="Search or select recipient..."
+                  options={getFilteredMembers(selectedType).map((member) => ({
+                    value: member.memberId,
+                    label: member.name,
+                  }))}
+                  placeholder={
+                    selectedType === "Carrier"
+                      ? "Search or select carrier (from Fleet Sharing)..."
+                      : "Search or select recipient..."
+                  }
+                  emptyMessage={
+                    selectedType === "Carrier"
+                      ? "No carriers found. Assign vehicles in Fleet Sharing first."
+                      : "No recipients found"
+                  }
                   disabled={!selectedType}
+                  isCarrier={selectedType === "Carrier"}
                 />
                 {selectedUserId && (
                   <p className="mt-2 text-sm text-green-600">
                     Selected:{" "}
-                    {
-                      allMembers.find((m) => m.memberId === selectedUserId)
-                        ?.name
-                    }
+                    {getFilteredMembers(selectedType).find(
+                      (m) => m.memberId === selectedUserId
+                    )?.name || selectedUserName}
                   </p>
                 )}
               </div>
@@ -3019,51 +3479,102 @@ function ManageCheckScreenContent() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Check Number
-              </label>
-              <input
-                type="text"
-                value={checkNumber}
-                onChange={(e) => {
-                  setCheckNumber(e.target.value);
-                  autoSelectCompanyForCheck(e.target.value);
-                }}
-                className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] bg-gray-50"
-                readOnly
-              />
-              <p className="mt-2 text-sm text-gray-500">
-                Next available check number
-              </p>
-            </div>
-
+            {/* 1. Company Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Company
               </label>
               <select
                 value={selectedCompanyId || ""}
-                onChange={(e) => {
-                  const cId = e.target.value;
-                  setSelectedCompanyId(cId || null);
-                  const comp = companies.find((c) => c.id === cId);
-                  setSelectedCompanyName(comp?.companyName || null);
-                }}
+                onChange={(e) =>
+                  handleCompanyChangeForWriteCheck(e.target.value)
+                }
                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] bg-white text-gray-800"
               >
-                <option value="">Select Company (Optional)</option>
+                <option value="">Select Company</option>
                 {companies.map((comp) => (
                   <option key={comp.id} value={comp.id}>
                     {comp.companyName} {comp.isDefault ? "(Default)" : ""}
                   </option>
                 ))}
               </select>
-              {selectedCompanyName && (
+              {selectedCompanyName ? (
                 <p className="mt-2 text-xs text-blue-600 font-medium flex items-center gap-1">
                   <FaBuilding className="text-[10px]" />
-                  Auto-selected from check series
+                  {selectedCompanyName}
                 </p>
+              ) : (
+                <p className="mt-2 text-xs text-gray-500">
+                  Select company to load its check series
+                </p>
+              )}
+            </div>
+
+            {/* 2. Check Number (Dynamic based on selected company) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Check Number
+              </label>
+              {isFetchingCheckNumber ? (
+                <div>
+                  <div className="w-full p-3 border border-pink-200 bg-gradient-to-r from-pink-50/70 via-white to-pink-50/70 rounded-lg shadow-sm flex items-center justify-between animate-pulse">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-4 h-4 border-2 border-[#F96176] border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm font-mono font-medium text-[#F96176]">
+                        Fetching check number...
+                      </span>
+                    </div>
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F96176] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F96176]"></span>
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500 flex items-center gap-1.5 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#F96176]" />
+                    Calculating next available check number...
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={checkNumber}
+                    placeholder={
+                      selectedCompanyId
+                        ? "No series available"
+                        : "Select company first"
+                    }
+                    className={`w-full p-3 border rounded-lg shadow-sm font-mono transition-all duration-200 ${
+                      checkNumber
+                        ? "border-gray-300 bg-gray-50 text-gray-800 font-semibold"
+                        : "border-red-200 bg-red-50 text-red-600"
+                    }`}
+                    readOnly
+                  />
+                  {checkNumber ? (
+                    <p className="mt-2 text-xs text-green-600 font-medium flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                      Next available check for this company
+                    </p>
+                  ) : (
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className="text-red-500 font-medium flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                        No series found
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSeriesCompanyId(selectedCompanyId || "");
+                          setShowAddSeries(true);
+                        }}
+                        className="text-[#F96176] hover:underline font-semibold"
+                      >
+                        + Add Series
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -3095,11 +3606,11 @@ function ManageCheckScreenContent() {
                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
               >
                 <option value="">Select Type</option>
-                <option value="Manager">Manager</option>
-                <option value="Accountant">Accountant</option>
-                <option value="Driver">Driver</option>
-                <option value="Vendor">Vendor</option>
-                <option value="Other Staff">Other Staff</option>
+                {CHECK_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -3108,31 +3619,41 @@ function ManageCheckScreenContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Recipient Name
+                  {selectedType === "Carrier"
+                    ? "Carrier Name (Fleet Sharing)"
+                    : "Recipient Name"}
                 </label>
                 <SearchableSelect
                   value={selectedUserId || ""}
                   onChange={(value) => {
-                    const member = allMembers.find((m) => m.memberId === value);
+                    const list = getFilteredMembers(selectedType);
+                    const member = list.find((m) => m.memberId === value);
                     setSelectedUserId(value || null);
                     setSelectedUserName(member?.name || null);
                   }}
-                  options={allMembers
-                    .filter((member) => member.role === selectedType)
-                    .map((member) => ({
-                      value: member.memberId,
-                      label: member.name,
-                    }))}
-                  placeholder="Search or select recipient..."
+                  options={getFilteredMembers(selectedType).map((member) => ({
+                    value: member.memberId,
+                    label: member.name,
+                  }))}
+                  placeholder={
+                    selectedType === "Carrier"
+                      ? "Search or select carrier (from Fleet Sharing)..."
+                      : "Search or select recipient..."
+                  }
+                  emptyMessage={
+                    selectedType === "Carrier"
+                      ? "No carriers found. Assign vehicles in Fleet Sharing first."
+                      : "No recipients found"
+                  }
                   disabled={!selectedType}
+                  isCarrier={selectedType === "Carrier"}
                 />
                 {selectedUserId && (
                   <p className="mt-2 text-sm text-green-600">
                     Selected:{" "}
-                    {
-                      allMembers.find((m) => m.memberId === selectedUserId)
-                        ?.name
-                    }
+                    {getFilteredMembers(selectedType).find(
+                      (m) => m.memberId === selectedUserId
+                    )?.name || selectedUserName}
                   </p>
                 )}
               </div>
@@ -3152,6 +3673,7 @@ function ManageCheckScreenContent() {
             </div>
           )}
 
+          {/* Write Check Section - Service Details */}
           {selectedUserId && (
             <>
               <div className="mb-6">
@@ -3331,11 +3853,16 @@ function ManageCheckScreenContent() {
                   onClick={saveCheck}
                   disabled={
                     isSavingCheck ||
+                    isFetchingCheckNumber ||
+                    !checkNumber ||
                     // First row must have service name (amount can be 0)
                     !serviceDetails[0]?.serviceName?.trim()
                   }
                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
-                    isSavingCheck || !serviceDetails[0]?.serviceName?.trim()
+                    isSavingCheck ||
+                    isFetchingCheckNumber ||
+                    !checkNumber ||
+                    !serviceDetails[0]?.serviceName?.trim()
                       ? "bg-gray-300 cursor-not-allowed"
                       : "bg-[#F96176] hover:bg-[#F96176]/80 cursor-pointer"
                   } text-white`}
@@ -3375,27 +3902,25 @@ function ManageCheckScreenContent() {
           <div className="flex flex-wrap items-center gap-3 flex-grow justify-start lg:justify-end">
             {/* Type Filter Pills */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              {["Manager", "Accountant", "Driver", "Vendor", "Other Staff"].map(
-                (type) => (
-                  <button
-                    key={type}
-                    className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm transition-all ${
-                      filterType === type
-                        ? "bg-[#F96176] text-white border border-[#F96176]"
-                        : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                    }`}
-                    onClick={() => {
-                      const newFilterType = filterType === type ? null : type;
-                      setFilterType(newFilterType);
-                      setLoadingChecks(true);
-                      fetchChecks();
-                    }}
-                  >
-                    {type}
-                    {filterType === type && <FiX className="ml-1 inline" />}
-                  </button>
-                )
-              )}
+              {CHECK_TYPES.map((type) => (
+                <button
+                  key={type}
+                  className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm transition-all ${
+                    filterType === type
+                      ? "bg-[#F96176] text-white border border-[#F96176]"
+                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                  }`}
+                  onClick={() => {
+                    const newFilterType = filterType === type ? null : type;
+                    setFilterType(newFilterType);
+                    setLoadingChecks(true);
+                    fetchChecks();
+                  }}
+                >
+                  {type}
+                  {filterType === type && <FiX className="ml-1 inline" />}
+                </button>
+              ))}
             </div>
 
             {/* Divider */}
@@ -3570,7 +4095,13 @@ function ManageCheckScreenContent() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                          check.type === "Manager"
+                          check.type === "Owner"
+                            ? "bg-indigo-100 text-indigo-800"
+                            : check.type === "Co-Owner"
+                            ? "bg-teal-100 text-teal-800"
+                            : check.type === "Carrier"
+                            ? "bg-orange-100 text-orange-800"
+                            : check.type === "Manager"
                             ? "bg-purple-100 text-purple-800"
                             : check.type === "Accountant"
                             ? "bg-green-100 text-green-800"
@@ -3713,7 +4244,9 @@ interface SearchableSelectProps {
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
   placeholder?: string;
+  emptyMessage?: string;
   disabled?: boolean;
+  isCarrier?: boolean;
 }
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -3721,7 +4254,9 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   onChange,
   options,
   placeholder = "Select or search...",
+  emptyMessage = "No recipients found",
   disabled = false,
+  isCarrier = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -3803,7 +4338,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             disabled={disabled}
           >
-            <FiUser size={18} />
+            {isCarrier ? <FiTruck size={18} /> : <FiUser size={18} />}
           </button>
         </div>
       </div>
@@ -3827,13 +4362,16 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             >
               <div className="flex items-center">
                 <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
-                  <FiUser className="text-gray-500" size={14} />
+                  {isCarrier ? (
+                    <FiTruck className="text-gray-500" size={14} />
+                  ) : (
+                    <FiUser className="text-gray-500" size={14} />
+                  )}
                 </div>
                 <div>
                   <div className="font-medium text-gray-800">
                     {option.label}
                   </div>
-                  {/* <div className="text-sm text-gray-500">{option.value}</div> */}
                 </div>
               </div>
             </div>
@@ -3841,9 +4379,9 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         </div>
       )}
 
-      {isOpen && searchTerm && filteredOptions.length === 0 && (
+      {isOpen && filteredOptions.length === 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
-          <p className="text-gray-500 text-center">No recipients found</p>
+          <p className="text-gray-500 text-center text-sm">{emptyMessage}</p>
         </div>
       )}
     </div>
