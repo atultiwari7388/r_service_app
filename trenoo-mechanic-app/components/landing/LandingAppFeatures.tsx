@@ -29,7 +29,7 @@ export default function LandingAppFeatures() {
       subtitle: "Active Status, Live Location & New Jobs",
       badge: "Command Center",
       badgeColor: "bg-[#EAF8F1] text-[#58BB87] border-[#58BB87]/30",
-      imageSrc: "/assets/appScreenshots/dashboard.PNG",
+      imageSrc: "/assets/appScreenshots/new_dashboard.png",
       tagline:
         "Manage your on-duty availability, inspect your live GPS terminal location, and browse filtered commercial truck work orders.",
       keyFeatures: [
@@ -76,7 +76,7 @@ export default function LandingAppFeatures() {
       subtitle: "Auto-Cancel Countdown, Custom Quotes & GPS Route",
       badge: "Rapid Response",
       badgeColor: "bg-[#FFEBF3] text-[#F96176] border-[#F96176]/30",
-      imageSrc: "/assets/appScreenshots/dashboard_with_upcoming_job.PNG",
+      imageSrc: "/assets/appScreenshots/new_dashboard_upcoming_job.png",
       tagline:
         "When an emergency roadside request arrives, respond with custom rates and live route tracking before the 5-minute safety window closes.",
       keyFeatures: [
@@ -155,7 +155,10 @@ export default function LandingAppFeatures() {
   const currentScreen = screens[activeTab];
 
   return (
-    <section id="features" className="py-20 sm:py-28 bg-white relative overflow-hidden border-t border-gray-200">
+    <section
+      id="features"
+      className="py-20 sm:py-28 bg-white relative overflow-hidden border-t border-gray-200"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
@@ -165,11 +168,14 @@ export default function LandingAppFeatures() {
           </div>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0B132B] tracking-tight leading-tight">
-            Designed for the <span className="text-[#F96176]">Modern Mechanic</span>
+            Designed for the{" "}
+            <span className="text-[#F96176]">Modern Mechanic</span>
           </h2>
 
           <p className="text-base sm:text-lg text-gray-600 leading-relaxed font-normal">
-            Take a look inside the official Trenoo Mechanic mobile app. Built with high-contrast, glove-friendly controls and intelligent dispatch automation.
+            Take a look inside the official Trenoo Mechanic mobile app. Built
+            with high-contrast, glove-friendly controls and intelligent dispatch
+            automation.
           </p>
 
           {/* Interactive Screen Selector Tabs */}
@@ -338,7 +344,9 @@ export default function LandingAppFeatures() {
                     </span>
                   </div>
 
-                  <h5 className="text-base font-black tracking-tight">{s.title}</h5>
+                  <h5 className="text-base font-black tracking-tight">
+                    {s.title}
+                  </h5>
                   <p
                     className={`text-xs line-clamp-2 ${
                       activeTab === idx ? "text-gray-300" : "text-gray-500"
