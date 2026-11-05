@@ -663,18 +663,6 @@ export default function AddOtherExpenseModal({
   // Handle vehicle change
   const handleVehicleChange = (vId: string) => {
     const matched = vehiclesList.find((v) => v.id === vId);
-    if (matched?.isAssignedToOther) {
-      const borrower =
-        matched.sharedWith?.borrowerCompanyName ||
-        matched.sharedWith?.borrowerName ||
-        "another owner";
-      toast.error(
-        `Vehicle ${matched.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be selected.`
-      );
-      setSelectedVehicleId("");
-      setSelectedVehicleNumber("");
-      return;
-    }
     setSelectedVehicleId(vId);
     setSelectedVehicleNumber(matched ? matched.vehicleNumber : "");
   };
@@ -752,17 +740,6 @@ export default function AddOtherExpenseModal({
           (selectedVehicleNumber && v.vehicleNumber === selectedVehicleNumber)
       );
 
-      if (matchedVeh?.isAssignedToOther) {
-        const borrower =
-          matchedVeh.sharedWith?.borrowerCompanyName ||
-          matchedVeh.sharedWith?.borrowerName ||
-          "another owner";
-        toast.error(
-          `Vehicle ${matchedVeh.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be used.`
-        );
-        setIsSaving(false);
-        return;
-      }
       const determinedVehicleType =
         matchedVeh?.vehicleType ||
         (selectedVehicleId || selectedVehicleNumber ? "Truck" : "");
@@ -1036,8 +1013,6 @@ export default function AddOtherExpenseModal({
                     <option
                       key={veh.id}
                       value={veh.id}
-                      disabled={isAssigned}
-                      className={isAssigned ? "text-gray-400 bg-gray-100" : ""}
                     >
                       {isTrailer ? "🚚 " : "🚛 "}
                       {veh.vehicleNumber} ({veh.vehicleType || "Truck"})

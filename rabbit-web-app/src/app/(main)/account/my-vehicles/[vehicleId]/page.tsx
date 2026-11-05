@@ -353,13 +353,6 @@ export default function MyVehicleDetailsScreen() {
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (vehicleData?.isAssignedToOther) {
-      toast.error(
-        "This vehicle is lent out under Fleet Sharing and new documents cannot be uploaded."
-      );
-      event.target.value = "";
-      return;
-    }
     if (event.target.files) {
       const newFiles = Array.from(event.target.files).map((file) => {
         // Strip extension for a clean default document name
@@ -432,12 +425,6 @@ export default function MyVehicleDetailsScreen() {
   };
 
   const handleOpenRenameModal = (doc: VehicleDocument) => {
-    if (vehicleData?.isAssignedToOther) {
-      toast.error(
-        "This vehicle is lent out under Fleet Sharing and documents cannot be modified."
-      );
-      return;
-    }
     setDocToRename(doc);
     setNewDocTitle(doc.text || "");
     setShowRenameModal(true);
@@ -500,12 +487,6 @@ export default function MyVehicleDetailsScreen() {
   };
 
   const confirmDelete = (doc: VehicleDocument) => {
-    if (vehicleData?.isAssignedToOther) {
-      toast.error(
-        "This vehicle is lent out under Fleet Sharing and documents cannot be deleted."
-      );
-      return;
-    }
     setDocToDelete(doc);
     setShowDeleteDialog(true);
   };
@@ -642,12 +623,6 @@ export default function MyVehicleDetailsScreen() {
   // 1. EDIT SERVICE INTERVAL MODAL
   // ─────────────────────────────────────────────────────────────
   const handleOpenEditModal = (service: ServiceData) => {
-    if (vehicleData?.isAssignedToOther) {
-      toast.error(
-        "This vehicle is lent out under Fleet Sharing and service values cannot be edited."
-      );
-      return;
-    }
     setEditingService(service);
     setServiceNewValue(service.defaultNotificationValue?.toString() || "");
     setSyncScope("all");
@@ -1544,22 +1519,21 @@ export default function MyVehicleDetailsScreen() {
       {/* Fleet Sharing Assignment Alert Banner */}
       {vehicleData?.isAssignedToOther && (
         <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 shadow-xs flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-amber-100 text-amber-700 shrink-0">
-            <FaLock className="text-base" />
+          <div className="p-2 rounded-lg bg-amber-100 text-amber-700 shrink-0 font-bold text-xs uppercase">
+            Lent Out
           </div>
           <div>
             <h4 className="text-sm font-bold text-amber-900">
               Vehicle Lent Out under Fleet Sharing
             </h4>
             <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-              This unit is currently assigned to{" "}
+              This unit is currently operating under assignment to{" "}
               <strong>
                 {vehicleData.sharedWith?.borrowerCompanyName ||
                   vehicleData.sharedWith?.borrowerName ||
                   "another fleet owner"}
               </strong>
-              . While operating under partner custody, master vehicle specifications,
-              service defaults, and documents cannot be modified or deleted.
+              .
             </p>
           </div>
         </div>

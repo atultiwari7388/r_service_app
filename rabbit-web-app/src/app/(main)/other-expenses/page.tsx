@@ -1018,24 +1018,6 @@ export default function OtherExpensesPage() {
       toast.error("You do not have permission to edit expenses");
       return;
     }
-    if (rec.vehicleId || rec.vehicleNumber) {
-      const matchedVeh = vehicles.find(
-        (v) =>
-          v.id === rec.vehicleId ||
-          (rec.vehicleNumber &&
-            v.vehicleNumber.toLowerCase() === rec.vehicleNumber.toLowerCase())
-      );
-      if (matchedVeh?.isAssignedToOther) {
-        const borrower =
-          matchedVeh.sharedWith?.borrowerCompanyName ||
-          matchedVeh.sharedWith?.borrowerName ||
-          "another owner";
-        toast.error(
-          `Vehicle ${matchedVeh.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and its expenses cannot be edited.`
-        );
-        return;
-      }
-    }
     setEditingRecord(rec);
     setIsModalOpen(true);
   };
@@ -1047,27 +1029,6 @@ export default function OtherExpensesPage() {
       return;
     }
     if (!deleteTarget || !effectiveUserId) return;
-
-    if (deleteTarget.vehicleId || deleteTarget.vehicleNumber) {
-      const matchedVeh = vehicles.find(
-        (v) =>
-          v.id === deleteTarget.vehicleId ||
-          (deleteTarget.vehicleNumber &&
-            v.vehicleNumber.toLowerCase() ===
-              deleteTarget.vehicleNumber.toLowerCase())
-      );
-      if (matchedVeh?.isAssignedToOther) {
-        const borrower =
-          matchedVeh.sharedWith?.borrowerCompanyName ||
-          matchedVeh.sharedWith?.borrowerName ||
-          "another owner";
-        toast.error(
-          `Vehicle ${matchedVeh.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and its expenses cannot be deleted.`
-        );
-        setDeleteTarget(null);
-        return;
-      }
-    }
     setIsDeleting(true);
     try {
       const docRef = doc(

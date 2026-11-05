@@ -1163,16 +1163,6 @@ export default function RecordsPage() {
       }
     }
 
-    if (vehicleScope !== "carrier" && vehicleData?.isAssignedToOther) {
-      const borrower =
-        vehicleData.sharedWith?.borrowerCompanyName ||
-        vehicleData.sharedWith?.borrowerName ||
-        "another owner";
-      toast.error(
-        `Vehicle ${vehicleData.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be used.`
-      );
-      return;
-    }
     const newVehicleType = (vehicleData?.vehicleType || "").toLowerCase();
 
     setSelectedVehicle(value);
@@ -1403,18 +1393,6 @@ export default function RecordsPage() {
     const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
     if (!vehicleData) {
       toast.error("Vehicle data not found.");
-      return;
-    }
-
-    if (vehicleData.isAssignedToOther) {
-      const borrower =
-        vehicleData.sharedWith?.borrowerCompanyName ||
-        vehicleData.sharedWith?.borrowerName ||
-        "another owner";
-      toast.error(
-        `Vehicle ${vehicleData.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot log miles/hours.`
-      );
-      setIsMilesSaving(false);
       return;
     }
 
@@ -1656,18 +1634,6 @@ export default function RecordsPage() {
 
       if (vehicleDoc.exists()) {
         const vehicleData = vehicleDoc.data() as VehicleTypes;
-        if (vehicleData.isAssignedToOther) {
-          const borrower =
-            vehicleData.sharedWith?.borrowerCompanyName ||
-            vehicleData.sharedWith?.borrowerName ||
-            "another owner";
-          toast.error(
-            `Vehicle ${vehicleData.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot log miles/hours.`
-          );
-          setSelectedVehicle("");
-          setSelectedVehicleData(null);
-          return;
-        }
         setSelectedVehicleData(vehicleData);
         setSelectedVehicleType(vehicleData.vehicleType);
       } else {
@@ -3292,17 +3258,6 @@ export default function RecordsPage() {
         return;
       }
 
-      if (selectedVehicleData?.isAssignedToOther) {
-        const borrower =
-          selectedVehicleData.sharedWith?.borrowerCompanyName ||
-          selectedVehicleData.sharedWith?.borrowerName ||
-          "another owner";
-        toast.error(
-          `Vehicle ${selectedVehicleData.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be modified.`
-        );
-        return;
-      }
-
       // Check for duplicate invoice number if provided
       const trimmedInvoice = invoice.trim();
       if (trimmedInvoice && !bypassDuplicateCheck) {
@@ -3904,16 +3859,6 @@ export default function RecordsPage() {
         (record.vehicleDetails
           ? (record.vehicleDetails as unknown as VehicleTypes)
           : null);
-      if (matchingVeh?.isAssignedToOther) {
-        const borrower =
-          matchingVeh.sharedWith?.borrowerCompanyName ||
-          matchingVeh.sharedWith?.borrowerName ||
-          "another owner";
-        toast.error(
-          `Vehicle ${matchingVeh.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and its records cannot be edited.`
-        );
-        return;
-      }
       setSelectedVehicleData(matchingVeh);
 
       const targetVehType = (
@@ -4090,16 +4035,6 @@ export default function RecordsPage() {
         (record.vehicleDetails
           ? (record.vehicleDetails as unknown as VehicleTypes)
           : null);
-      if (matchingVeh?.isAssignedToOther) {
-        const borrower =
-          matchingVeh.sharedWith?.borrowerCompanyName ||
-          matchingVeh.sharedWith?.borrowerName ||
-          "another owner";
-        toast.error(
-          `Vehicle ${matchingVeh.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and its records cannot be duplicated.`
-        );
-        return;
-      }
       setSelectedVehicleData(matchingVeh);
 
       const targetVehType = (
@@ -5721,8 +5656,6 @@ export default function RecordsPage() {
                         <MenuItem
                           key={vehicle.id}
                           value={vehicle.id}
-                          disabled={isAssigned}
-                          className={isAssigned ? "opacity-50" : ""}
                         >
                           {vehicle.vehicleNumber} ({vehicle.companyName})
                           {isAssigned ? ` [Lent to ${borrower}]` : ""}
@@ -5855,8 +5788,6 @@ export default function RecordsPage() {
                             <MenuItem
                               key={vehicle.id}
                               value={vehicle.id}
-                              disabled={isAssigned}
-                              className={isAssigned ? "opacity-50" : ""}
                             >
                               {vehicle.vehicleNumber} ({vehicle.companyName})
                               {isAssigned ? ` [Lent to ${borrower}]` : ""}

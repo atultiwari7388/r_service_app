@@ -1210,7 +1210,7 @@ function CreateNewLoadPageContent() {
         return {
           value: vehicle.id,
           label: isAssigned ? `${baseName} [Lent to ${borrower}]` : baseName,
-          disabled: isAssigned,
+          disabled: false,
         };
       });
 
@@ -1244,7 +1244,7 @@ function CreateNewLoadPageContent() {
         return {
           value: vehicle.id,
           label: isAssigned ? `${baseName} [Lent to ${borrower}]` : baseName,
-          disabled: isAssigned,
+          disabled: false,
         };
       });
 
@@ -1789,36 +1789,6 @@ function CreateNewLoadPageContent() {
     setIsSaving(true);
 
     try {
-      if (formData.truckId) {
-        const truck = availableFleetVehicles.find((v) => v.id === formData.truckId);
-        if (truck?.isAssignedToOther) {
-          const borrower =
-            truck.sharedWith?.borrowerCompanyName ||
-            truck.sharedWith?.borrowerName ||
-            "another owner";
-          toast.error(
-            `Truck ${truck.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be assigned.`
-          );
-          setIsSaving(false);
-          return;
-        }
-      }
-
-      if (formData.trailerId) {
-        const trailer = availableFleetVehicles.find((v) => v.id === formData.trailerId);
-        if (trailer?.isAssignedToOther) {
-          const borrower =
-            trailer.sharedWith?.borrowerCompanyName ||
-            trailer.sharedWith?.borrowerName ||
-            "another owner";
-          toast.error(
-            `Trailer ${trailer.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be assigned.`
-          );
-          setIsSaving(false);
-          return;
-        }
-      }
-
       const statusToSave = editingLoadId
         ? formData.status || "Draft"
         : overrideStatus || formData.status || "Draft";
@@ -1947,22 +1917,6 @@ function CreateNewLoadPageContent() {
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-
-    if (name === "truckId" || name === "trailerId") {
-      if (value) {
-        const selectedUnit = availableFleetVehicles.find((v) => v.id === value);
-        if (selectedUnit?.isAssignedToOther) {
-          const borrower =
-            selectedUnit.sharedWith?.borrowerCompanyName ||
-            selectedUnit.sharedWith?.borrowerName ||
-            "another owner";
-          toast.error(
-            `Vehicle ${selectedUnit.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot be assigned to this load.`
-          );
-          return;
-        }
-      }
-    }
 
     if (type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;

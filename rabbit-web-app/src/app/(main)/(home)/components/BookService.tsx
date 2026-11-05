@@ -846,18 +846,6 @@ const BookingSection: React.FC = () => {
 
   const handleVehicleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const vehicle = e.target.value;
-    const vData = vehicles.find((v) => v.vehicleNumber === vehicle);
-    if (vData?.isAssignedToOther) {
-      const borrower =
-        vData.sharedWith?.borrowerCompanyName ||
-        vData.sharedWith?.borrowerName ||
-        "another owner";
-      toast.error(
-        `Vehicle ${vehicle} is currently lent out to ${borrower} under Fleet Sharing and cannot request service.`
-      );
-      setSelectedVehicle("");
-      return;
-    }
     setSelectedVehicle(vehicle);
     console.log("Selected Vehicle:", vehicle);
   };
@@ -1377,18 +1365,6 @@ const BookingSection: React.FC = () => {
           throw new Error("Required data missing");
         }
 
-        if (selectedVehicleData.isAssignedToOther) {
-          const borrower =
-            selectedVehicleData.sharedWith?.borrowerCompanyName ||
-            selectedVehicleData.sharedWith?.borrowerName ||
-            "another owner";
-          toast.error(
-            `Vehicle ${selectedVehicleData.vehicleNumber} is currently lent out to ${borrower} under Fleet Sharing and cannot request service.`
-          );
-          setLoading(false);
-          return;
-        }
-
         const imageUrls: string[] = [];
 
         if (selectedImage) {
@@ -1770,8 +1746,6 @@ const BookingSection: React.FC = () => {
                             <option
                               key={index}
                               value={vehicle.vehicleNumber}
-                              disabled={isAssigned}
-                              className={isAssigned ? "text-gray-400 bg-gray-100" : ""}
                             >
                               {vehicle.vehicleNumber} ({vehicle.companyName})
                               {isAssigned ? ` [Lent to ${borrower}]` : ""}

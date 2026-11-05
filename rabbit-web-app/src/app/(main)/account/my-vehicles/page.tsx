@@ -474,14 +474,7 @@ export default function MyVehiclesPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Switch
                         checked={vehicle.active || false}
-                        disabled={vehicle.isAssignedToOther}
                         onChange={(value) => {
-                          if (vehicle.isAssignedToOther) {
-                            toast.error(
-                              "This vehicle is currently assigned to another fleet under Fleet Sharing and cannot be modified."
-                            );
-                            return;
-                          }
                           setMasterVehicles((prev) =>
                             prev.map((v) =>
                               v.id === vehicle.id
@@ -500,12 +493,7 @@ export default function MyVehiclesPage() {
                         }}
                         className={`${
                           vehicle.active ? "bg-[#F96176]" : "bg-gray-200"
-                        } ${
-                          vehicle.isAssignedToOther
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }
-                          relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F96176]`}
+                        } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F96176]`}
                       >
                         <span
                           className={`${
@@ -531,33 +519,22 @@ export default function MyVehiclesPage() {
                     >
                       View
                     </Link>
-                    {(role === "Owner" || role === "SubOwner") &&
-                      (vehicle.isAssignedToOther ? (
-                        <span
-                          className="text-gray-400 font-medium cursor-not-allowed inline-flex items-center gap-1.5"
-                          title="Lent out under Fleet Sharing - editing disabled"
-                        >
-                          <span className="line-through">Edit</span>
-                          <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 font-bold">
-                            Locked
-                          </span>
-                        </span>
-                      ) : (
-                        <Link
-                          href={`/account/my-vehicles/edit/${vehicle.id}`}
-                          onClick={() => {
-                            if (typeof window !== "undefined") {
-                              sessionStorage.setItem(
-                                "lastViewedVehicleId",
-                                vehicle.id
-                              );
-                            }
-                          }}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
-                        >
-                          Edit
-                        </Link>
-                      ))}
+                    {(role === "Owner" || role === "SubOwner") && (
+                      <Link
+                        href={`/account/my-vehicles/edit/${vehicle.id}`}
+                        onClick={() => {
+                          if (typeof window !== "undefined") {
+                            sessionStorage.setItem(
+                              "lastViewedVehicleId",
+                              vehicle.id
+                            );
+                          }
+                        }}
+                        className="text-indigo-600 hover:text-indigo-900 font-medium"
+                      >
+                        Edit
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}
