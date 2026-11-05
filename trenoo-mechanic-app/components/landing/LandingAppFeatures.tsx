@@ -76,7 +76,7 @@ export default function LandingAppFeatures() {
       subtitle: "Auto-Cancel Countdown, Custom Quotes & GPS Route",
       badge: "Rapid Response",
       badgeColor: "bg-[#FFEBF3] text-[#F96176] border-[#F96176]/30",
-      imageSrc: "/assets/appScreenshots/new_dashboard_upcoming_job.png",
+      imageSrc: "/assets/appScreenshots/new_upcoming_job.png",
       tagline:
         "When an emergency roadside request arrives, respond with custom rates and live route tracking before the 5-minute safety window closes.",
       keyFeatures: [
@@ -116,7 +116,7 @@ export default function LandingAppFeatures() {
       subtitle: "Lifecycle Tracking, History & Customer Ratings",
       badge: "Work Order Management",
       badgeColor: "bg-blue-50 text-[#0078A6] border-blue-200",
-      imageSrc: "/assets/appScreenshots/my_jobs.PNG",
+      imageSrc: "/assets/appScreenshots/new_my_jobs.png",
       tagline:
         "Track every active work order through its complete lifecycle from departure to final invoice sign-off and reviews.",
       keyFeatures: [
