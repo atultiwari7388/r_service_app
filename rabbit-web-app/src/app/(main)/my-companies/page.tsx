@@ -66,6 +66,8 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
   onAddressSelect,
   disabled,
 }) => {
+  /*
+  // Google Places Autocomplete disabled here (active only on Registration and Find Mechanic)
   const [showDropdown, setShowDropdown] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -198,9 +200,10 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
       });
     }
   };
+  */
 
   return (
-    <div ref={containerRef} className="relative rounded-lg shadow-sm">
+    <div className="relative rounded-lg shadow-sm">
       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
         <FaMapMarkerAlt className="text-sm" />
       </div>
@@ -208,16 +211,16 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
         type="text"
         id="address"
         name="address"
-        placeholder="Start typing street address (e.g. 123 Main St...)"
+        placeholder="Enter street address manually (e.g. 123 Main St)"
         value={value}
-        onChange={handleInputChange}
-        onFocus={() => setShowDropdown(true)}
-        disabled={disabled || !ready}
+        onChange={onChange}
+        disabled={disabled}
         className="block w-full pl-10 pr-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent transition"
         required
       />
 
-      {/* Autocomplete Dropdown */}
+      {/* Autocomplete Dropdown commented out - user types address manually */}
+      {/*
       {showDropdown && status === "OK" && data.length > 0 && (
         <ul className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100">
           {data.map(({ place_id, description, structured_formatting }) => (
@@ -239,6 +242,7 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
           ))}
         </ul>
       )}
+      */}
     </div>
   );
 };

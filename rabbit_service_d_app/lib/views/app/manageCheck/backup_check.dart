@@ -1,12 +1,15 @@
+// import 'dart:async';
 // import 'package:flutter/material.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';
 // import 'package:get/get.dart';
+// // import 'package:google_fonts/google_fonts.dart';
 // import 'package:intl/intl.dart';
 // import 'package:pdf/pdf.dart';
 // import 'package:printing/printing.dart';
 // import 'package:pdf/widgets.dart' as pw;
+// import 'package:flutter/services.dart' show rootBundle;
 // import 'package:regal_service_d_app/utils/app_styles.dart';
 // import 'package:regal_service_d_app/utils/constants.dart';
 // import 'package:regal_service_d_app/views/app/manageCheck/widgets/manage_check_numder_screen.dart';
@@ -14,7 +17,24 @@
 // import 'package:regal_service_d_app/widgets/custom_button.dart';
 
 // class ManageCheckScreen extends StatefulWidget {
-//   const ManageCheckScreen({super.key});
+//   final String? initialType;
+//   final String? initialPayee;
+//   final String? initialUserId;
+//   final double? initialTotalAmount;
+//   final List<Map<String, dynamic>>? initialServiceDetails;
+//   final List<Map<String, dynamic>>? attachedInvoices;
+//   final bool autoOpenWriteCheck;
+
+//   const ManageCheckScreen({
+//     super.key,
+//     this.initialType,
+//     this.initialPayee,
+//     this.initialUserId,
+//     this.initialTotalAmount,
+//     this.initialServiceDetails,
+//     this.attachedInvoices,
+//     this.autoOpenWriteCheck = false,
+//   });
 
 //   @override
 //   State<ManageCheckScreen> createState() => _ManageCheckScreenState();
@@ -29,16 +49,34 @@
 //   String? _ownerId;
 
 //   // Add Check Dialog variables
+//   static const List<String> _checkTypes = [
+//     'Owner',
+//     'Co-Owner',
+//     'Carrier',
+//     'Driver',
+//     'Manager',
+//     'Accountant',
+//     'Vendor',
+//     'Other Staff',
+//   ];
 //   String? _selectedType;
 //   String? _selectedUserId;
 //   String? _selectedUserName;
+//   String? _selectedCompanyId;
+//   String? _selectedCompanyName;
 //   final List<Map<String, dynamic>> _serviceDetails = [];
 //   final TextEditingController _memoNumberController = TextEditingController();
 //   final TextEditingController _checkNumberController = TextEditingController();
+//   final TextEditingController _carrierNameController = TextEditingController();
 //   DateTime _selectedDate = DateTime.now();
 //   double _totalAmount = 0.0;
 //   bool isAnonymous = true;
 //   bool isProfileComplete = false;
+
+//   // Companies & Check Series state
+//   List<Map<String, dynamic>> _companies = [];
+//   List<Map<String, dynamic>> _checkSeries = [];
+//   String? _filterCompanyId;
 
 //   // For displaying checks
 //   List<Map<String, dynamic>> _checks = [];
@@ -49,34 +87,312 @@
 //   // Check number management
 //   String? _currentCheckNumber;
 //   String? _nextCheckNumber;
+//   bool _isFetchingCheckNumber = false;
+//   List<Map<String, dynamic>> _carrierMembers = [];
+//   StreamSubscription? _fleetSharesSub;
 
-//   // Get effective user ID based on role
 //   String get _effectiveUserId {
-//     return role == 'SubOwner' ? _ownerId! : currentUId;
+//     final rolesThatUseOwnerId = ['SubOwner', 'Manager', 'Accountant'];
+//     return rolesThatUseOwnerId.contains(role) ? _ownerId! : currentUId;
 //   }
 
-//   // Check if current user can manage checks
-//   // bool get _canManageChecks {
-//   //   return role != 'SubOwner' &&
-//   //       isAnonymous == false &&
-//   //       isProfileComplete == true;
-//   // }
+//   // Edit Check variables
+//   bool _isEditing = false;
+//   String? _editingCheckId;
+//   String? _editingCheckNumber;
+//   List<Map<String, dynamic>> _attachedInvoices = [];
+//   bool _isPreparingAutoCheck = false;
+//   bool _isSavingCheck = false;
+
+//   double _parseAmount(dynamic val) {
+//     if (val == null) return 0.0;
+//     if (val is num) return val.toDouble();
+//     if (val is String) {
+//       final clean = val.replaceAll(RegExp(r'[^0-9.-]'), '');
+//       return double.tryParse(clean) ?? 0.0;
+//     }
+//     return 0.0;
+//   }
+
+//   DateTime _parseDate(dynamic val) {
+//     if (val == null) return DateTime.now();
+//     if (val is Timestamp) return val.toDate();
+//     if (val is DateTime) return val;
+//     if (val is String) {
+//       try {
+//         return DateTime.parse(val);
+//       } catch (_) {
+//         try {
+//           return DateFormat("MM/dd/yyyy").parse(val);
+//         } catch (_) {}
+//       }
+//     }
+//     return DateTime.now();
+//   }
 
 //   @override
 //   void initState() {
 //     super.initState();
+//     if (widget.autoOpenWriteCheck) {
+//       _isPreparingAutoCheck = true;
+//     }
+//     if (widget.initialPayee != null && widget.initialUserId != null) {
+//       _allMembers.add(<String, dynamic>{
+//         'name': widget.initialPayee!,
+//         'memberId': widget.initialUserId!,
+//         'role': widget.initialType ?? 'Vendor',
+//         'vehicles': <Map<String, dynamic>>[],
+//       });
+//     }
 //     fetchUserDetails().then((_) {
+//       _fetchCompanies();
+//       _fetchCheckSeries();
+//       _listenToCarriers();
+//       _fetchCurrentCheckNumber().then((_) {
+//         if (widget.autoOpenWriteCheck) {
+//           WidgetsBinding.instance.addPostFrameCallback((_) {
+//             _showAddCheckDialog();
+//           });
+//         }
+//       });
 //       fetchTeamMembersWithVehicles();
 //       fetchChecks();
-//       _fetchCurrentCheckNumber();
 //     });
+//   }
+
+//   void _listenToCarriers() {
+//     _fleetSharesSub?.cancel();
+//     final userEmail =
+//         FirebaseAuth.instance.currentUser?.email?.toLowerCase().trim() ?? '';
+//     final targetUids =
+//         [_effectiveUserId, currentUId].where((id) => id.isNotEmpty).toSet();
+
+//     _fleetSharesSub = FirebaseFirestore.instance
+//         .collection('fleet_shares')
+//         .snapshots()
+//         .listen((snapshot) {
+//       final Map<String, Map<String, dynamic>> carriersMap = {};
+
+//       for (var doc in snapshot.docs) {
+//         final data = doc.data();
+//         final lenderId = (data['lenderId'] ?? '').toString().trim();
+//         final lenderEmail =
+//             (data['lenderEmail'] ?? '').toString().toLowerCase().trim();
+//         final borrowerId = (data['borrowerId'] ?? '').toString().trim();
+//         final borrowerEmail =
+//             (data['borrowerEmail'] ?? '').toString().toLowerCase().trim();
+
+//         final isLender = targetUids.contains(lenderId) ||
+//             (userEmail.isNotEmpty && lenderEmail == userEmail);
+//         final isBorrower = targetUids.contains(borrowerId) ||
+//             (userEmail.isNotEmpty && borrowerEmail == userEmail);
+
+//         if (isLender) {
+//           final comp = (data['borrowerCompanyName'] ?? '').toString().trim();
+//           final person = (data['borrowerName'] ?? '').toString().trim();
+//           final email = (data['borrowerEmail'] ?? '').toString().trim();
+//           final cName = (comp.isNotEmpty && person.isNotEmpty && comp != person)
+//               ? '$comp ($person)'
+//               : comp.isNotEmpty
+//                   ? comp
+//                   : person.isNotEmpty
+//                       ? person
+//                       : email;
+
+//           if (cName.isNotEmpty) {
+//             final memberId = borrowerId.isNotEmpty
+//                 ? borrowerId
+//                 : 'carrier_${cName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+//             carriersMap[memberId.toLowerCase()] = {
+//               'memberId': memberId,
+//               'name': cName,
+//               'role': 'Carrier',
+//               'email': email,
+//             };
+//           }
+//         }
+
+//         if (isBorrower) {
+//           final comp = (data['lenderCompanyName'] ?? '').toString().trim();
+//           final person = (data['lenderName'] ?? '').toString().trim();
+//           final email = (data['lenderEmail'] ?? '').toString().trim();
+//           final cName = (comp.isNotEmpty && person.isNotEmpty && comp != person)
+//               ? '$comp ($person)'
+//               : comp.isNotEmpty
+//                   ? comp
+//                   : person.isNotEmpty
+//                       ? person
+//                       : email;
+
+//           if (cName.isNotEmpty) {
+//             final memberId = lenderId.isNotEmpty
+//                 ? lenderId
+//                 : 'carrier_${cName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+//             carriersMap[memberId.toLowerCase()] = {
+//               'memberId': memberId,
+//               'name': cName,
+//               'role': 'Carrier',
+//               'email': email,
+//             };
+//           }
+//         }
+//       }
+
+//       final list = carriersMap.values.toList();
+//       list.sort((a, b) => a['name']
+//           .toString()
+//           .toLowerCase()
+//           .compareTo(b['name'].toString().toLowerCase()));
+
+//       if (mounted) {
+//         setState(() {
+//           _carrierMembers = list;
+//         });
+//       }
+//     }, onError: (e) {
+//       print('Error listening to fleet_shares carriers: $e');
+//     });
+//   }
+
+//   Future<void> _fetchCompanies() async {
+//     try {
+//       final companiesSnapshot = await FirebaseFirestore.instance
+//           .collection('Users')
+//           .doc(_effectiveUserId)
+//           .collection('myCompanies')
+//           .get();
+
+//       List<Map<String, dynamic>> loadedCompanies = [];
+//       for (var doc in companiesSnapshot.docs) {
+//         final cData = doc.data();
+//         final cName =
+//             (cData['companyName'] ?? cData['name'] ?? '').toString().trim();
+//         final bool isActive = cData['isActive'] != false;
+//         if (cName.isNotEmpty && isActive) {
+//           loadedCompanies.add({
+//             'id': doc.id,
+//             'companyName': cName,
+//             'isDefault': cData['isDefault'] == true,
+//           });
+//         }
+//       }
+
+//       if (loadedCompanies.isEmpty) {
+//         final userDoc = await FirebaseFirestore.instance
+//             .collection('Users')
+//             .doc(_effectiveUserId)
+//             .get();
+//         if (userDoc.exists) {
+//           final data = userDoc.data() as Map<String, dynamic>?;
+//           final rootCompanyName =
+//               (data?['companyName'] ?? '').toString().trim();
+//           if (rootCompanyName.isNotEmpty) {
+//             loadedCompanies.add({
+//               'id': 'default',
+//               'companyName': rootCompanyName,
+//               'isDefault': true,
+//             });
+//           }
+//         }
+//       }
+
+//       loadedCompanies.sort((a, b) => (a['companyName'] ?? '')
+//           .toString()
+//           .toLowerCase()
+//           .compareTo((b['companyName'] ?? '').toString().toLowerCase()));
+
+//       if (mounted) {
+//         setState(() {
+//           _companies = loadedCompanies;
+//         });
+//       }
+//     } catch (e) {
+//       print('Error fetching companies in ManageCheckScreen: $e');
+//     }
+//   }
+
+//   Future<void> _fetchCheckSeries() async {
+//     try {
+//       final snapshot = await FirebaseFirestore.instance
+//           .collection('CheckSeries')
+//           .where('userId', isEqualTo: _effectiveUserId)
+//           .get();
+
+//       if (mounted) {
+//         setState(() {
+//           _checkSeries = snapshot.docs.map((doc) {
+//             final data = doc.data();
+//             return {
+//               'id': doc.id,
+//               ...data,
+//             };
+//           }).toList();
+//         });
+//       }
+//     } catch (e) {
+//       print('Error fetching check series in ManageCheckScreen: $e');
+//     }
+//   }
+
+//   void _autoSelectCompanyForCheck(String? checkNum) {
+//     if (checkNum == null || checkNum.isEmpty) {
+//       _applyDefaultCompanyFallback();
+//       return;
+//     }
+
+//     try {
+//       final prefix = checkNum.replaceAll(RegExp(r'[0-9]'), '');
+//       final numStr = checkNum.replaceAll(prefix, '');
+//       final currentNum = int.tryParse(numStr);
+
+//       if (currentNum != null) {
+//         for (final series in _checkSeries) {
+//           final sStart = series['startNumber']?.toString() ?? '';
+//           final sEnd = series['endNumber']?.toString() ?? '';
+//           final sPrefix = sStart.replaceAll(RegExp(r'[0-9]'), '');
+//           final sStartNum = int.tryParse(sStart.replaceAll(sPrefix, ''));
+//           final sEndNum = int.tryParse(sEnd.replaceAll(sPrefix, ''));
+
+//           if (sPrefix == prefix && sStartNum != null && sEndNum != null) {
+//             if (currentNum >= sStartNum && currentNum <= sEndNum) {
+//               final seriesCompId = series['companyId']?.toString();
+//               final seriesCompName = series['companyName']?.toString();
+//               if (seriesCompId != null && seriesCompId.isNotEmpty) {
+//                 _selectedCompanyId = seriesCompId;
+//                 _selectedCompanyName = seriesCompName;
+//                 return;
+//               }
+//             }
+//           }
+//         }
+//       }
+//     } catch (e) {
+//       print('Error matching check series: $e');
+//     }
+
+//     _applyDefaultCompanyFallback();
+//   }
+
+//   void _applyDefaultCompanyFallback() {
+//     if (_companies.isEmpty) {
+//       _selectedCompanyId = null;
+//       _selectedCompanyName = null;
+//       return;
+//     }
+
+//     final defaultComp = _companies.firstWhere(
+//       (c) => c['isDefault'] == true,
+//       orElse: () => _companies.first,
+//     );
+//     _selectedCompanyId = defaultComp['id'];
+//     _selectedCompanyName = defaultComp['companyName'];
 //   }
 
 //   Future<void> _fetchCurrentCheckNumber() async {
 //     try {
 //       DocumentSnapshot snapshot = await FirebaseFirestore.instance
 //           .collection('Users')
-//           .doc(_effectiveUserId) // Use effective user ID
+//           .doc(_effectiveUserId)
 //           .get();
 
 //       if (snapshot.exists) {
@@ -95,58 +411,126 @@
 //     }
 //   }
 
-//   Future<String?> _getNextAvailableCheckNumber() async {
-//     if (_currentCheckNumber == null) return null;
-
+//   Future<String?> _getNextAvailableCheckNumber(
+//       [String? targetCompanyId]) async {
 //     try {
-//       // Get all check series for the effective user
-//       QuerySnapshot seriesSnapshot = await FirebaseFirestore.instance
-//           .collection('CheckSeries')
-//           .where('userId', isEqualTo: _effectiveUserId) // Use effective user ID
-//           .get();
+//       if (_effectiveUserId.isEmpty) return null;
 
-//       // Get all checks from all series
-//       List<String> allCheckNumbers = [];
-//       for (var seriesDoc in seriesSnapshot.docs) {
-//         QuerySnapshot checksSnapshot = await FirebaseFirestore.instance
+//       // 1. Parallel fetch CheckSeries and used Checks
+//       final results = await Future.wait([
+//         FirebaseFirestore.instance
 //             .collection('CheckSeries')
-//             .doc(seriesDoc.id)
+//             .where('userId', isEqualTo: _effectiveUserId)
+//             .get(),
+//         FirebaseFirestore.instance
 //             .collection('Checks')
-//             .get();
+//             .where('createdBy', isEqualTo: _effectiveUserId)
+//             .get(),
+//       ]);
 
-//         allCheckNumbers.addAll(checksSnapshot.docs.map((doc) {
-//           return doc['checkNumber'] as String;
-//         }));
-//       }
+//       final QuerySnapshot seriesSnapshot = results[0];
+//       final QuerySnapshot usedChecksSnapshot = results[1];
 
-//       // Sort the check numbers
-//       allCheckNumbers.sort((a, b) {
-//         String prefixA = a.replaceAll(RegExp(r'[0-9]'), '');
-//         String prefixB = b.replaceAll(RegExp(r'[0-9]'), '');
+//       if (seriesSnapshot.docs.isEmpty) return null;
 
-//         if (prefixA != prefixB) return prefixA.compareTo(prefixB);
+//       final Set<String> usedCheckNumbers = usedChecksSnapshot.docs
+//           .map((doc) => doc['checkNumber']?.toString().trim() ?? '')
+//           .where((num) => num.isNotEmpty)
+//           .toSet();
 
-//         int numA = int.parse(a.replaceAll(prefixA, ''));
-//         int numB = int.parse(b.replaceAll(prefixB, ''));
-//         return numA.compareTo(numB);
-//       });
+//       // 2. Filter series matching targetCompanyId if specified
+//       List<QueryDocumentSnapshot> matchedSeriesDocs = seriesSnapshot.docs;
+//       if (targetCompanyId != null && targetCompanyId.isNotEmpty) {
+//         final targetComp = _companies.firstWhere(
+//           (c) => c['id'] == targetCompanyId,
+//           orElse: () => <String, dynamic>{},
+//         );
+//         final targetCompName =
+//             (targetComp['companyName'] ?? '').toString().trim().toLowerCase();
 
-//       // Find the first unused check number
-//       for (var checkNumber in allCheckNumbers) {
-//         // Check if this check number is used in the Checks collection
-//         QuerySnapshot usedCheck = await FirebaseFirestore.instance
-//             .collection('Checks')
-//             .where('checkNumber', isEqualTo: checkNumber)
-//             .where('createdBy',
-//                 isEqualTo: _effectiveUserId) // Use effective user ID
-//             .get();
+//         final filtered = seriesSnapshot.docs.where((docSnap) {
+//           final sData = docSnap.data() as Map<String, dynamic>;
+//           final sCompId = (sData['companyId'] ?? '').toString().trim();
+//           final sCompName =
+//               (sData['companyName'] ?? '').toString().trim().toLowerCase();
 
-//         if (usedCheck.docs.isEmpty) {
-//           return checkNumber;
+//           if (sCompId.isNotEmpty && sCompId == targetCompanyId) return true;
+//           if (targetCompName.isNotEmpty &&
+//               sCompName.isNotEmpty &&
+//               sCompName == targetCompName) {
+//             return true;
+//           }
+//           return false;
+//         }).toList();
+
+//         if (filtered.isNotEmpty) {
+//           matchedSeriesDocs = filtered;
+//         } else {
+//           // Check if ANY series has a company assigned
+//           final hasAnyCompanySeries = seriesSnapshot.docs.any((d) {
+//             final data = d.data() as Map<String, dynamic>;
+//             final cId = (data['companyId'] ?? '').toString().trim();
+//             final cName = (data['companyName'] ?? '').toString().trim();
+//             return cId.isNotEmpty || cName.isNotEmpty;
+//           });
+//           if (!hasAnyCompanySeries) {
+//             // Legacy series exist without any company assigned: allow fallback
+//             matchedSeriesDocs = seriesSnapshot.docs;
+//           } else {
+//             return null;
+//           }
 //         }
 //       }
 
-//       return null; // No available check numbers
+//       // 3. Parallel fetch all checks in subcollections of matched series
+//       final checksSnapshots = await Future.wait(
+//         matchedSeriesDocs.map((seriesDoc) {
+//           return FirebaseFirestore.instance
+//               .collection('CheckSeries')
+//               .doc(seriesDoc.id)
+//               .collection('Checks')
+//               .get();
+//         }),
+//       );
+
+//       final List<Map<String, dynamic>> allSeriesChecks = [];
+//       for (var checksSnapshot in checksSnapshots) {
+//         for (var doc in checksSnapshot.docs) {
+//           final data = doc.data() as Map<String, dynamic>;
+//           allSeriesChecks.add({
+//             'checkNumber': data['checkNumber']?.toString() ?? '',
+//             'isUsed': data['isUsed'] == true,
+//           });
+//         }
+//       }
+
+//       if (allSeriesChecks.isEmpty) return null;
+
+//       // 4. Sort check numbers naturally
+//       allSeriesChecks.sort((a, b) {
+//         final strA = a['checkNumber'] as String;
+//         final strB = b['checkNumber'] as String;
+//         final prefixA = strA.replaceAll(RegExp(r'[0-9]'), '');
+//         final prefixB = strB.replaceAll(RegExp(r'[0-9]'), '');
+
+//         if (prefixA != prefixB) return prefixA.compareTo(prefixB);
+
+//         final numA = int.tryParse(strA.replaceAll(prefixA, '')) ?? 0;
+//         final numB = int.tryParse(strB.replaceAll(prefixB, '')) ?? 0;
+//         return numA.compareTo(numB);
+//       });
+
+//       // 5. Find the first available unused check number
+//       for (var item in allSeriesChecks) {
+//         final cNum = (item['checkNumber'] as String).trim();
+//         if (cNum.isEmpty) continue;
+
+//         if (item['isUsed'] != true && !usedCheckNumbers.contains(cNum)) {
+//           return cNum;
+//         }
+//       }
+
+//       return null;
 //     } catch (e) {
 //       print('Error getting next check number: $e');
 //       return null;
@@ -214,15 +598,25 @@
 
 //       QuerySnapshot snapshot = await query.get();
 
-//       setState(() {
-//         _checks = snapshot.docs.map((doc) {
-//           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-//           return {
-//             'id': doc.id,
-//             ...data,
-//             'date': (data['date'] as Timestamp).toDate(),
-//           };
+//       var loadedChecks = snapshot.docs.map((doc) {
+//         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+//         return {
+//           'id': doc.id,
+//           ...data,
+//           'date': _parseDate(data['date']),
+//           'totalAmount': _parseAmount(data['totalAmount']),
+//         };
+//       }).toList();
+
+//       if (_filterCompanyId != null && _filterCompanyId!.isNotEmpty) {
+//         loadedChecks = loadedChecks.where((c) {
+//           final compId = c['companyId']?.toString();
+//           return compId == _filterCompanyId;
 //         }).toList();
+//       }
+
+//       setState(() {
+//         _checks = loadedChecks;
 //         _loadingChecks = false;
 //       });
 //     } catch (e) {
@@ -233,176 +627,308 @@
 //     }
 //   }
 
-//   // Future<void> _showDateRangePicker() async {
-//   //   final DateTimeRange? picked = await showDateRangePicker(
-//   //     context: context,
-//   //     firstDate: DateTime(2000),
-//   //     lastDate: DateTime(2100),
-//   //     initialDateRange: _dateRange ??
-//   //         DateTimeRange(
-//   //           start: DateTime.now().subtract(Duration(days: 30)),
-//   //           end: DateTime.now(),
-//   //         ),
-//   //   );
-
-//   //   if (picked != null) {
-//   //     setState(() {
-//   //       _dateRange = picked;
-//   //     });
-//   //     await fetchChecks();
-//   //   }
-//   // }
-
 //   Future<void> _printCheck(Map<String, dynamic> check) async {
+//     // Fetch user address
+//     String streetLine = '';
+//     String cityStateLine = '';
+//     String countryZipLine = '';
+
+//     try {
+//       DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+//           .collection('Users')
+//           .doc(check['userId'])
+//           .get();
+
+//       if (userSnapshot.exists) {
+//         final userData = userSnapshot.data() as Map<String, dynamic>;
+//         String street = userData['address'] ?? userData['street'] ?? '';
+//         String city = userData['city'] ?? '';
+//         String state = userData['state'] ?? '';
+//         String zipCode = userData['zipCode'] ?? userData['zip'] ?? '';
+//         String country = userData['country'] ?? '';
+
+//         // First line: Street address
+//         if (street.isNotEmpty) streetLine = street.toUpperCase();
+
+//         // Second line: City, State
+//         List<String> cityStateParts = [];
+//         if (city.isNotEmpty) cityStateParts.add(city.toUpperCase());
+//         if (state.isNotEmpty) cityStateParts.add(state.toUpperCase());
+//         cityStateLine = cityStateParts.join(', ');
+
+//         // Third line: Country, Zip Code
+//         List<String> countryZipParts = [];
+//         if (country.isNotEmpty) countryZipParts.add(country.toUpperCase());
+//         if (zipCode.isNotEmpty) countryZipParts.add(zipCode.toUpperCase());
+//         countryZipLine = countryZipParts.join(', ');
+//       }
+//     } catch (e) {
+//       print('Error fetching user address: $e');
+//     }
+
 //     final pdf = pw.Document();
+//     final universeFont =
+//         pw.Font.ttf(await rootBundle.load('assets/font/UniversRegular.ttf'));
+
+//     final rawDetails = (check['serviceDetails'] as List?) ?? [];
+//     final activeDetails = rawDetails.where((detail) {
+//       final name = (detail['serviceName'] ?? '').toString().trim();
+//       final amount = detail['amount'];
+//       return name.isNotEmpty || (amount != null && amount != 0);
+//     }).toList();
+
+//     final printableDetails = activeDetails.length > 1
+//         ? [
+//             {
+//               'serviceName': activeDetails[0]['serviceName']
+//                           ?.toString()
+//                           .trim()
+//                           .isNotEmpty ==
+//                       true
+//                   ? activeDetails[0]['serviceName']
+//                   : 'Payment for ${activeDetails.length} Invoices',
+//               'amount': check['totalAmount'],
+//             }
+//           ]
+//         : activeDetails.isNotEmpty
+//             ? activeDetails
+//             : [
+//                 {'serviceName': '', 'amount': check['totalAmount']}
+//               ];
 
 //     pdf.addPage(
 //       pw.Page(
 //         pageFormat: PdfPageFormat.a4,
 //         build: (pw.Context context) {
-//           return pw.Container(
-//             // padding: pw.EdgeInsets.all(20),
-//             child: pw.Column(
-//               crossAxisAlignment: pw.CrossAxisAlignment.start,
-//               children: [
-//                 pw.Row(
-//                   // mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-//                   children: [
-//                     pw.Text(""),
-//                     pw.Spacer(),
-//                     pw.SizedBox(width: 50),
-//                     pw.Text(
-//                       DateFormat('MM/dd/yyyy').format(check['date']),
-//                       style: pw.TextStyle(fontSize: 15),
-//                     ),
-//                   ],
-//                 ),
-//                 pw.SizedBox(height: 30),
-//                 pw.Row(
-//                   children: [
-//                     pw.Text(
-//                       '',
-//                       style: pw.TextStyle(fontSize: 11),
-//                     ),
-//                     pw.SizedBox(width: 45),
-//                     pw.Text(
-//                       check['userName'],
-//                       style: pw.TextStyle(
-//                           fontSize: 14, fontWeight: pw.FontWeight.bold),
-//                     ),
-//                     pw.Spacer(),
-//                     pw.Text(
-//                       '\$${check['totalAmount'].toStringAsFixed(2)}',
-//                       style: pw.TextStyle(fontSize: 14),
-//                     ),
-//                     pw.SizedBox(width: 50),
-//                   ],
-//                 ),
-//                 pw.SizedBox(height: 15),
-//                 pw.Row(children: [
-//                   pw.SizedBox(width: 10),
-//                   pw.Text(
-//                     _amountToWords(check['totalAmount']),
-//                     style: pw.TextStyle(fontSize: 13),
-//                   ),
-//                 ]),
-//                 pw.SizedBox(height: 30),
-//                 if (check['memoNumber'] != null)
+//           return pw.Transform.translate(
+//             offset: const PdfPoint(0, -10),
+//             child: pw.Container(
+//               child: pw.Column(
+//                 crossAxisAlignment: pw.CrossAxisAlignment.start,
+//                 children: [
+//                   pw.SizedBox(height: 6),
+//                   // Date row
 //                   pw.Row(
 //                     children: [
 //                       pw.Text(""),
-//                       pw.SizedBox(width: 50),
+//                       pw.Spacer(),
+//                       pw.SizedBox(width: 450),
 //                       pw.Text(
-//                         '${check['memoNumber']}',
-//                         style: pw.TextStyle(fontSize: 13),
+//                         DateFormat('MM/dd/yyyy').format(check['date']),
+//                         style: pw.TextStyle(fontSize: 11, font: universeFont),
 //                       ),
 //                     ],
 //                   ),
-//                 pw.SizedBox(height: 65),
-//                 pw.Divider(thickness: 1),
-//                 pw.SizedBox(height: 20),
-//                 pw.Row(
-//                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-//                   children: [
-//                     pw.Text(
-//                       'Check. No. #${check['checkNumber']}',
-//                       style: pw.TextStyle(fontSize: 15),
-//                     ),
-//                     pw.Text(
-//                       DateFormat('MM/dd/yyyy').format(check['date']),
-//                       style: pw.TextStyle(fontSize: 15),
-//                     ),
-//                   ],
-//                 ),
-//                 pw.SizedBox(height: 10),
-//                 ...check['serviceDetails'].map<pw.Widget>((detail) {
-//                   return pw.Row(
-//                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-//                     children: [
-//                       pw.Text(
-//                         detail['serviceName'],
-//                         style: pw.TextStyle(fontSize: 13),
-//                       ),
-//                       pw.Text(
-//                         '\$${detail['amount'].toStringAsFixed(2)}',
-//                         style: pw.TextStyle(fontSize: 13),
-//                       ),
-//                     ],
-//                   );
-//                 }).toList(),
-//                 pw.SizedBox(height: 20),
-//                 pw.Row(children: [
-//                   pw.Spacer(),
-//                   pw.Text(
-//                     '\$${check['totalAmount'].toStringAsFixed(2)}',
-//                     style: pw.TextStyle(
-//                         fontSize: 16, fontWeight: pw.FontWeight.bold),
-//                   ),
-//                 ]),
+//                   pw.SizedBox(height: 30),
 
-//                 //duplicate
-//                 pw.SizedBox(height: 65),
-//                 pw.Divider(thickness: 1),
-//                 pw.SizedBox(height: 20),
-//                 pw.Row(
-//                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-//                   children: [
-//                     pw.Text(
-//                       'Check. No. #${check['checkNumber']}',
-//                       style: pw.TextStyle(fontSize: 15),
+//                   // Payee Name (in CAPITAL)
+//                   pw.Container(
+//                     margin: pw.EdgeInsets.only(top: -5),
+//                     child: pw.Row(
+//                       children: [
+//                         pw.SizedBox(width: 5),
+//                         pw.Text(
+//                           check['userName'].toString().toUpperCase(),
+//                           style: pw.TextStyle(
+//                               fontSize: 11,
+//                               fontWeight: pw.FontWeight.normal,
+//                               font: universeFont),
+//                         ),
+//                         pw.Spacer(),
+//                         pw.SizedBox(width: 410),
+//                         pw.Text(
+//                           '**${check['totalAmount'] != null ? NumberFormat("#,##0.00", "en_US").format(check['totalAmount']) : "0.00"}',
+//                           style: pw.TextStyle(fontSize: 11, font: universeFont),
+//                         ),
+//                       ],
 //                     ),
-//                     pw.Text(
-//                       DateFormat('MM/dd/yyyy').format(check['date']),
-//                       style: pw.TextStyle(fontSize: 15),
+//                   ),
+//                   pw.SizedBox(height: 15),
+
+//                   pw.Container(
+//                     margin: pw.EdgeInsets.only(left: -18, top: -5),
+//                     child: pw.Text(
+//                       "****${_amountToWords(check['totalAmount'])}***********",
+//                       style: pw.TextStyle(fontSize: 11, font: universeFont),
 //                     ),
-//                   ],
-//                 ),
-//                 pw.SizedBox(height: 10),
-//                 ...check['serviceDetails'].map<pw.Widget>((detail) {
-//                   return pw.Row(
+//                   ),
+//                   pw.SizedBox(height: 20),
+
+//                   // Payee Address - Now in 3 lines
+//                   if (streetLine.isNotEmpty)
+//                     pw.Container(
+//                       margin: pw.EdgeInsets.only(left: -15),
+//                       child: pw.Text(
+//                         streetLine,
+//                         style: pw.TextStyle(fontSize: 11, font: universeFont),
+//                       ),
+//                     ),
+
+//                   if (cityStateLine.isNotEmpty)
+//                     pw.Container(
+//                       margin: pw.EdgeInsets.only(left: -15),
+//                       child: pw.Text(
+//                         cityStateLine,
+//                         style: pw.TextStyle(fontSize: 11, font: universeFont),
+//                       ),
+//                     ),
+
+//                   if (countryZipLine.isNotEmpty)
+//                     pw.Container(
+//                       margin: pw.EdgeInsets.only(left: -15),
+//                       child: pw.Text(
+//                         countryZipLine,
+//                         style: pw.TextStyle(fontSize: 11, font: universeFont),
+//                       ),
+//                     ),
+
+//                   // Adjust spacing based on which address lines are present
+//                   pw.SizedBox(
+//                       height: _calculateAddressHeight(
+//                           streetLine, cityStateLine, countryZipLine)),
+
+//                   // Memo number with negative margin
+//                   if (check['memoNumber'] != null)
+//                     pw.Container(
+//                       margin: pw.EdgeInsets.only(left: -15),
+//                       child: pw.Text(
+//                         '${check['memoNumber']}',
+//                         style: pw.TextStyle(fontSize: 11, font: universeFont),
+//                       ),
+//                     ),
+
+//                   pw.SizedBox(height: 85),
+//                   pw.Row(
 //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
 //                     children: [
 //                       pw.Text(
-//                         detail['serviceName'],
-//                         style: pw.TextStyle(fontSize: 13),
+//                         check['userName'].toString().toUpperCase(),
+//                         style: pw.TextStyle(
+//                             fontSize: 11,
+//                             fontWeight: pw.FontWeight.normal,
+//                             font: universeFont),
 //                       ),
 //                       pw.Text(
-//                         '\$${detail['amount'].toStringAsFixed(2)}',
-//                         style: pw.TextStyle(fontSize: 13),
+//                         DateFormat('MM/dd/yyyy').format(check['date']),
+//                         style: pw.TextStyle(fontSize: 15, font: universeFont),
 //                       ),
 //                     ],
-//                   );
-//                 }).toList(),
-//                 pw.SizedBox(height: 20),
-//                 pw.Row(children: [
-//                   pw.Spacer(),
-//                   pw.Text(
-//                     '\$${check['totalAmount'].toStringAsFixed(2)}',
-//                     style: pw.TextStyle(
-//                         fontSize: 16, fontWeight: pw.FontWeight.bold),
 //                   ),
-//                 ]),
-//               ],
+//                   pw.SizedBox(height: 10),
+//                   ...printableDetails.map<pw.Widget>((detail) {
+//                     final numberFormat = NumberFormat("#,##0.00", "en_US");
+//                     final formattedTotal = numberFormat.format(
+//                         detail['amount'] != null ? detail['amount'] : 0);
+//                     return pw.Row(
+//                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+//                       children: [
+//                         pw.Text(
+//                           detail['serviceName'],
+//                           style: pw.TextStyle(fontSize: 13, font: universeFont),
+//                         ),
+//                         pw.Text(
+//                           '\$${formattedTotal}',
+//                           style: pw.TextStyle(fontSize: 13, font: universeFont),
+//                         ),
+//                       ],
+//                     );
+//                   }).toList(),
+//                   pw.SizedBox(height: 20),
+//                   pw.Row(children: [
+//                     pw.Spacer(),
+//                     pw.Text(
+//                       '\$${check['totalAmount'] != null ? NumberFormat("#,##0.00", "en_US").format(check['totalAmount']) : "0.00"}',
+//                       style: pw.TextStyle(
+//                           fontSize: 13,
+//                           fontWeight: pw.FontWeight.normal,
+//                           font: universeFont),
+//                     ),
+//                   ]),
+//                   pw.SizedBox(height: 10),
+//                   if (check['memoNumber'] != null)
+//                     pw.Row(
+//                         mainAxisAlignment: pw.MainAxisAlignment.start,
+//                         children: [
+//                           pw.Text(
+//                             '${check['memoNumber'].toString()}',
+//                             style: pw.TextStyle(
+//                                 fontSize: 13,
+//                                 fontWeight: pw.FontWeight.normal,
+//                                 font: universeFont),
+//                           ),
+//                         ]),
+
+//                   //duplicate section
+//                   pw.SizedBox(height: 200),
+//                   pw.Row(
+//                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+//                     children: [
+//                       pw.Text(
+//                         check['userName'].toString().toUpperCase(),
+//                         style: pw.TextStyle(
+//                             fontSize: 13,
+//                             fontWeight: pw.FontWeight.normal,
+//                             font: universeFont),
+//                       ),
+//                       pw.Text(
+//                         DateFormat('MM/dd/yyyy')
+//                             .format(_parseDate(check['date'])),
+//                         style: pw.TextStyle(fontSize: 15, font: universeFont),
+//                       ),
+//                     ],
+//                   ),
+//                   pw.SizedBox(height: 10),
+//                   ...printableDetails.map<pw.Widget>((detail) {
+//                     final numberFormat = NumberFormat("#,##0.00", "en_US");
+//                     final formattedTotal =
+//                         numberFormat.format(_parseAmount(detail['amount']));
+//                     return pw.Row(
+//                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+//                       children: [
+//                         pw.Text(
+//                           detail['serviceName']?.toString() ?? '',
+//                           style: pw.TextStyle(fontSize: 13, font: universeFont),
+//                         ),
+//                         pw.Text(
+//                           '\$${formattedTotal}',
+//                           style: pw.TextStyle(fontSize: 13, font: universeFont),
+//                         ),
+//                       ],
+//                     );
+//                   }).toList(),
+//                   pw.SizedBox(height: 20),
+//                   pw.Row(children: [
+//                     pw.Spacer(),
+//                     pw.Text(
+//                       '\$${_parseAmount(check['totalAmount']).toStringAsFixed(2)}',
+//                       style: pw.TextStyle(
+//                           fontSize: 13,
+//                           fontWeight: pw.FontWeight.normal,
+//                           font: universeFont),
+//                     ),
+//                   ]),
+//                   pw.SizedBox(height: 10),
+//                   if (check['memoNumber'] != null)
+//                     pw.Row(
+//                         mainAxisAlignment: pw.MainAxisAlignment.start,
+//                         children: [
+//                           // pw.Text(
+//                           //   'Memo Number :',
+//                           //   style: pw.TextStyle(
+//                           //       fontSize: 13,
+//                           //       fontWeight: pw.FontWeight.normal,
+//                           //       font: universeFont),
+//                           // ),
+//                           pw.Text(
+//                             '${check['memoNumber'].toString()}',
+//                             style: pw.TextStyle(
+//                                 fontSize: 13,
+//                                 fontWeight: pw.FontWeight.normal,
+//                                 font: universeFont),
+//                           ),
+//                         ]),
+//                 ],
+//               ),
 //             ),
 //           );
 //         },
@@ -414,20 +940,28 @@
 //     );
 //   }
 
-//   String _amountToWords(double amount) {
+//   double _calculateAddressHeight(
+//       String street, String cityState, String countryZip) {
+//     int lineCount = 0;
+//     if (street.isNotEmpty) lineCount++;
+//     if (cityState.isNotEmpty) lineCount++;
+//     if (countryZip.isNotEmpty) lineCount++;
+
+//     // Adjust this value based on your layout needs
+//     if (lineCount == 0) return 15;
+//     if (lineCount == 1) return 25;
+//     if (lineCount == 2) return 15;
+//     return 10; // for 3 lines
+//   }
+
+//   String _amountToWords(num amount) {
 //     final wholePart = amount.floor();
 //     final decimalPart = ((amount - wholePart) * 100).round();
 
 //     String wholeWords = _numberToWords(wholePart);
-//     String decimalWords = _numberToWords(decimalPart);
+//     String decimalFraction = '${decimalPart.toString().padLeft(2, '0')}/100';
 
-//     String result = wholeWords + '';
-
-//     if (decimalPart > 0) {
-//       result += ' and ' + decimalWords + ' Cents';
-//     }
-
-//     return result + ' Only';
+//     return '$wholeWords and $decimalFraction********';
 //   }
 
 //   String _numberToWords(int number) {
@@ -445,6 +979,7 @@
 //       'Eight',
 //       'Nine'
 //     ];
+
 //     final teens = [
 //       'Ten',
 //       'Eleven',
@@ -457,6 +992,7 @@
 //       'Eighteen',
 //       'Nineteen'
 //     ];
+
 //     final tens = [
 //       '',
 //       'Ten',
@@ -472,16 +1008,31 @@
 
 //     String words = '';
 
-//     if ((number / 1000).floor() > 0) {
+//     // 👉 Ten Million
+//     if (number >= 10000000) {
+//       words += _numberToWords((number / 10000000).floor()) + ' Ten Million ';
+//       number %= 10000000;
+//     }
+
+//     // 👉 Million
+//     if (number >= 1000000) {
+//       words += _numberToWords((number / 1000000).floor()) + ' Million ';
+//       number %= 1000000;
+//     }
+
+//     // 👉 Thousands
+//     if (number >= 1000) {
 //       words += _numberToWords((number / 1000).floor()) + ' Thousand ';
 //       number %= 1000;
 //     }
 
-//     if ((number / 100).floor() > 0) {
+//     // 👉 Hundreds
+//     if (number >= 100) {
 //       words += _numberToWords((number / 100).floor()) + ' Hundred ';
 //       number %= 100;
 //     }
 
+//     // 👉 Tens and Units
 //     if (number > 0) {
 //       if (number < 10) {
 //         words += units[number];
@@ -498,7 +1049,1012 @@
 //     return words.trim();
 //   }
 
+//   Future<void> _showEditCheckDialog(Map<String, dynamic> check) async {
+//     final checkId = check['id']?.toString() ?? '';
+//     final checkNumStr = check['checkNumber']?.toString() ?? '';
+
+//     List<Map<String, dynamic>> initialAttachedInvoices = [];
+//     if (check['attachedInvoices'] is List) {
+//       initialAttachedInvoices = (check['attachedInvoices'] as List)
+//           .map((x) {
+//             if (x is Map) {
+//               final m = Map<String, dynamic>.from(x);
+//               m['amount'] = _parseAmount(m['amount'] ?? m['amountPaid']);
+//               return m;
+//             }
+//             return <String, dynamic>{};
+//           })
+//           .where((m) => m.isNotEmpty)
+//           .toList();
+//     }
+
+//     final initialDetails = (check['serviceDetails'] as List? ?? []).map((x) {
+//       if (x is Map) {
+//         final m = Map<String, dynamic>.from(x);
+//         m['amount'] = _parseAmount(m['amount']);
+//         return m;
+//       }
+//       return <String, dynamic>{'serviceName': '', 'amount': 0.0};
+//     }).toList();
+
+//     // 1. If attachedInvoices is empty, try to recover from InvoicePayments ledger
+//     if (initialAttachedInvoices.isEmpty && checkId.isNotEmpty) {
+//       try {
+//         final ledgerSnap = await FirebaseFirestore.instance
+//             .collection('Users')
+//             .doc(_effectiveUserId)
+//             .collection('InvoicePayments')
+//             .where('checkId', isEqualTo: checkId)
+//             .get();
+
+//         for (var doc in ledgerSnap.docs) {
+//           final data = doc.data();
+//           if (data['invoices'] is List) {
+//             for (var inv in data['invoices']) {
+//               if (inv is Map) {
+//                 final invMap = Map<String, dynamic>.from(inv);
+//                 invMap['amount'] =
+//                     _parseAmount(invMap['amount'] ?? invMap['amountPaid']);
+//                 initialAttachedInvoices.add(invMap);
+//               }
+//             }
+//           }
+//         }
+//       } catch (e) {
+//         print("Error fetching ledger for check edit: $e");
+//       }
+//     }
+
+//     // 2. Try matching serviceDetails to DataServices records if recordId is missing
+//     for (var sd in initialDetails) {
+//       if (sd['recordId'] == null || sd['recordId'].toString().isEmpty) {
+//         final serviceName = sd['serviceName']?.toString() ?? '';
+
+//         // Match with initialAttachedInvoices if available
+//         final matched = initialAttachedInvoices.firstWhere(
+//           (inv) =>
+//               (inv['invoiceNumber']?.toString().isNotEmpty == true &&
+//                   serviceName.contains(inv['invoiceNumber'].toString())) ||
+//               (inv['recordId']?.toString().isNotEmpty == true &&
+//                   serviceName.contains(inv['recordId'].toString())),
+//           orElse: () => <String, dynamic>{},
+//         );
+
+//         if (matched.isNotEmpty) {
+//           sd['recordId'] = matched['recordId'];
+//           sd['invoiceNumber'] = matched['invoiceNumber'];
+//           sd['vehicleNumber'] = matched['vehicleNumber'];
+//         } else {
+//           // Extract invoice number using pattern match (e.g. Inv #1001, Inv 1001, 1001)
+//           final regexMatch = RegExp(r'(?:Inv|Invoice)?\s*#?\s*([a-zA-Z0-9_-]+)',
+//                   caseSensitive: false)
+//               .firstMatch(serviceName);
+//           final extractedNum = regexMatch?.group(1);
+
+//           if (extractedNum != null && extractedNum.isNotEmpty) {
+//             try {
+//               final dsQuery = await FirebaseFirestore.instance
+//                   .collection('Users')
+//                   .doc(_effectiveUserId)
+//                   .collection('DataServices')
+//                   .where('invoice', isEqualTo: extractedNum)
+//                   .limit(1)
+//                   .get();
+
+//               if (dsQuery.docs.isNotEmpty) {
+//                 final dsDoc = dsQuery.docs.first;
+//                 final dsData = dsDoc.data();
+//                 sd['recordId'] = dsDoc.id;
+//                 sd['invoiceNumber'] = dsData['invoice'] ?? extractedNum;
+//                 sd['vehicleNumber'] = dsData['vehicleNumber'] ?? '';
+
+//                 if (!initialAttachedInvoices
+//                     .any((p) => p['recordId'] == dsDoc.id)) {
+//                   initialAttachedInvoices.add({
+//                     'recordId': dsDoc.id,
+//                     'invoiceNumber': sd['invoiceNumber'],
+//                     'vehicleNumber': sd['vehicleNumber'],
+//                     'amount': _parseAmount(sd['amount']),
+//                   });
+//                 }
+//               }
+//             } catch (_) {}
+//           }
+//         }
+//       }
+//     }
+
+//     setState(() {
+//       _isEditing = true;
+//       _editingCheckId = checkId;
+//       _editingCheckNumber = checkNumStr;
+//       _selectedCompanyId = check['companyId'];
+//       _selectedCompanyName = check['companyName'];
+//       _selectedType = check['type'];
+//       _selectedUserId = check['userId'];
+//       _selectedUserName = check['userName'];
+//       if (_selectedType == 'Carrier') {
+//         _carrierNameController.text = check['userName'] ?? '';
+//       } else {
+//         _carrierNameController.clear();
+//       }
+//       _serviceDetails.clear();
+//       _serviceDetails.addAll(initialDetails);
+//       _attachedInvoices = initialAttachedInvoices;
+//       _memoNumberController.text = check['memoNumber'] ?? '';
+//       _selectedDate = _parseDate(check['date']);
+//       _totalAmount = _parseAmount(check['totalAmount']);
+//       _calculateTotal();
+//     });
+
+//     await showDialog(
+//       context: context,
+//       builder: (BuildContext context) {
+//         return StatefulBuilder(
+//           builder: (context, setState) {
+//             return AlertDialog(
+//               title: Text('Edit Check',
+//                   style: appStyle(18, kDark, FontWeight.bold)),
+//               content: SingleChildScrollView(
+//                 child: Column(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     SizedBox(height: 16),
+//                     TextField(
+//                       controller:
+//                           TextEditingController(text: _editingCheckNumber),
+//                       decoration: InputDecoration(
+//                         labelText: 'Check Number',
+//                         labelStyle: appStyle(14, kDark, FontWeight.normal),
+//                         border: OutlineInputBorder(),
+//                         filled: true,
+//                         fillColor: Colors.grey[200],
+//                       ),
+//                       readOnly: true,
+//                       enabled: false,
+//                     ),
+//                     if (_companies.isNotEmpty) ...[
+//                       SizedBox(height: 16),
+//                       DropdownButtonFormField<String>(
+//                         isExpanded: true,
+//                         decoration: InputDecoration(
+//                           labelText: 'Company (Optional)',
+//                           labelStyle: appStyle(14, kDark, FontWeight.normal),
+//                           border: OutlineInputBorder(),
+//                         ),
+//                         value:
+//                             _companies.any((c) => c['id'] == _selectedCompanyId)
+//                                 ? _selectedCompanyId
+//                                 : null,
+//                         items: _companies
+//                             .map<DropdownMenuItem<String>>(
+//                                 (comp) => DropdownMenuItem<String>(
+//                                       value: comp['id'],
+//                                       child: Text(
+//                                         comp['companyName'] ?? '',
+//                                         overflow: TextOverflow.ellipsis,
+//                                         maxLines: 1,
+//                                       ),
+//                                     ))
+//                             .toList(),
+//                         onChanged: (value) {
+//                           setState(() {
+//                             _selectedCompanyId = value;
+//                             final matched = _companies.firstWhere(
+//                               (c) => c['id'] == value,
+//                               orElse: () => <String, dynamic>{},
+//                             );
+//                             _selectedCompanyName = matched['companyName'];
+//                           });
+//                         },
+//                       ),
+//                     ],
+//                     SizedBox(height: 16),
+//                     DropdownButtonFormField<String>(
+//                       isExpanded: true,
+//                       decoration: InputDecoration(
+//                         labelText: 'Select Type',
+//                         labelStyle: appStyle(14, kDark, FontWeight.normal),
+//                         border: const OutlineInputBorder(),
+//                       ),
+//                       value: _selectedType,
+//                       items: _checkTypes
+//                           .map<DropdownMenuItem<String>>(
+//                               (String type) => DropdownMenuItem<String>(
+//                                     value: type,
+//                                     child: Text(type),
+//                                   ))
+//                           .toList(),
+//                       onChanged: (value) {
+//                         setState(() {
+//                           _selectedType = value;
+//                           _selectedUserId = null;
+//                           _selectedUserName = null;
+//                           _carrierNameController.clear();
+//                         });
+//                       },
+//                       validator: (value) => value == null ? 'Required' : null,
+//                     ),
+//                     SizedBox(height: 16),
+//                     if (_selectedType == 'Carrier')
+//                       Builder(
+//                         builder: (context) {
+//                           if (_carrierMembers.isEmpty) {
+//                             return TextFormField(
+//                               controller: _carrierNameController,
+//                               decoration: InputDecoration(
+//                                 labelText: 'Carrier Name',
+//                                 hintText: 'Enter carrier name',
+//                                 labelStyle:
+//                                     appStyle(14, kDark, FontWeight.normal),
+//                                 border: const OutlineInputBorder(),
+//                                 prefixIcon:
+//                                     const Icon(Icons.local_shipping_outlined),
+//                               ),
+//                               onChanged: (value) {
+//                                 setState(() {
+//                                   final trimmed = value.trim();
+//                                   _selectedUserName =
+//                                       trimmed.isEmpty ? null : trimmed;
+//                                   _selectedUserId = trimmed.isEmpty
+//                                       ? null
+//                                       : 'carrier_${trimmed.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+//                                 });
+//                               },
+//                               validator: (value) =>
+//                                   (value == null || value.trim().isEmpty)
+//                                       ? 'Please enter carrier name'
+//                                       : null,
+//                             );
+//                           }
+
+//                           final validCarrierId = _carrierMembers.any((m) =>
+//                                   m['memberId']?.toString() == _selectedUserId)
+//                               ? _selectedUserId
+//                               : null;
+
+//                           return DropdownButtonFormField<String>(
+//                             isExpanded: true,
+//                             decoration: InputDecoration(
+//                               labelText: 'Select Carrier',
+//                               labelStyle:
+//                                   appStyle(14, kDark, FontWeight.normal),
+//                               border: const OutlineInputBorder(),
+//                               prefixIcon: const Icon(
+//                                   Icons.local_shipping_outlined,
+//                                   color: kPrimary),
+//                             ),
+//                             value: validCarrierId,
+//                             items: _carrierMembers
+//                                 .map<DropdownMenuItem<String>>(
+//                                     (carrier) => DropdownMenuItem<String>(
+//                                           value: carrier['memberId'].toString(),
+//                                           child: Text(
+//                                             carrier['name']?.toString() ??
+//                                                 'Unknown Carrier',
+//                                             overflow: TextOverflow.ellipsis,
+//                                             maxLines: 1,
+//                                           ),
+//                                         ))
+//                                 .toList(),
+//                             onChanged: (value) {
+//                               setState(() {
+//                                 _selectedUserId = value;
+//                                 final matched = _carrierMembers.firstWhere(
+//                                   (c) => c['memberId']?.toString() == value,
+//                                   orElse: () => <String, dynamic>{},
+//                                 );
+//                                 _selectedUserName =
+//                                     matched['name']?.toString() ?? value;
+//                                 _carrierNameController.text =
+//                                     _selectedUserName ?? '';
+//                               });
+//                             },
+//                             validator: (value) => value == null
+//                                 ? 'Please select a carrier'
+//                                 : null,
+//                           );
+//                         },
+//                       )
+//                     else if (_selectedType != null)
+//                       Builder(
+//                         builder: (context) {
+//                           final typeMembers = _allMembers.where((member) {
+//                             final role =
+//                                 member['role']?.toString().trim() ?? '';
+//                             if (_selectedType == 'Co-Owner') {
+//                               final normalized = role
+//                                   .toLowerCase()
+//                                   .replaceAll('-', '')
+//                                   .replaceAll(' ', '');
+//                               return normalized == 'coowner' ||
+//                                   normalized == 'subowner';
+//                             }
+//                             if (_selectedType == 'Owner') {
+//                               return role.toLowerCase() == 'owner';
+//                             }
+//                             return role.toLowerCase() ==
+//                                 _selectedType!.toLowerCase();
+//                           }).toList();
+//                           final validSelectedId = typeMembers.any((m) =>
+//                                   m['memberId']?.toString() == _selectedUserId)
+//                               ? _selectedUserId
+//                               : null;
+
+//                           return DropdownButtonFormField<String>(
+//                             isExpanded: true,
+//                             decoration: InputDecoration(
+//                               labelText: 'Select Name',
+//                               labelStyle:
+//                                   appStyle(14, kDark, FontWeight.normal),
+//                               border: const OutlineInputBorder(),
+//                             ),
+//                             value: validSelectedId,
+//                             items: typeMembers
+//                                 .map<DropdownMenuItem<String>>((member) =>
+//                                     DropdownMenuItem<String>(
+//                                       value: member['memberId'].toString(),
+//                                       child: Text(
+//                                         member['name']?.toString() ?? 'Unknown',
+//                                         overflow: TextOverflow.ellipsis,
+//                                         maxLines: 1,
+//                                       ),
+//                                     ))
+//                                 .toList(),
+//                             onChanged: (value) {
+//                               setState(() {
+//                                 _selectedUserId = value;
+//                                 final matched = _allMembers.firstWhere(
+//                                   (member) =>
+//                                       member['memberId']?.toString() == value,
+//                                   orElse: () => <String, dynamic>{
+//                                     'name': value ?? '',
+//                                     'memberId': value ?? '',
+//                                   },
+//                                 );
+//                                 _selectedUserName =
+//                                     matched['name']?.toString() ?? value;
+//                               });
+//                             },
+//                             validator: (value) =>
+//                                 value == null ? 'Required' : null,
+//                           );
+//                         },
+//                       ),
+//                     SizedBox(height: 16),
+//                     if (_selectedUserId != null)
+//                       Column(
+//                         children: [
+//                           CustomButton(
+//                             text: "Add Detail",
+//                             onPress: () {
+//                               _showAddDetailDialog(context, setState);
+//                             },
+//                             color: kPrimary,
+//                           ),
+//                           SizedBox(height: 16),
+//                         ],
+//                       ),
+//                     if (_serviceDetails.isNotEmpty)
+//                       Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text('Service Details:',
+//                               style: appStyle(14, kDark, FontWeight.bold)),
+//                           SizedBox(height: 8),
+//                           ..._serviceDetails.asMap().entries.map((entry) {
+//                             final index = entry.key;
+//                             final detail = entry.value;
+//                             return Padding(
+//                               padding: const EdgeInsets.symmetric(vertical: 4),
+//                               child: Row(
+//                                 children: [
+//                                   Expanded(
+//                                     child: Text(
+//                                       '${detail['serviceName']}: \$${detail['amount']}',
+//                                       style: appStyle(
+//                                           12, kDark, FontWeight.normal),
+//                                     ),
+//                                   ),
+//                                   IconButton(
+//                                     icon: Icon(Icons.edit, color: kPrimary),
+//                                     onPressed: () {
+//                                       _showEditDetailDialog(
+//                                           context, setState, index);
+//                                     },
+//                                   ),
+//                                   IconButton(
+//                                     icon: Icon(Icons.delete, color: Colors.red),
+//                                     onPressed: () {
+//                                       setState(() {
+//                                         _serviceDetails.removeAt(index);
+//                                         _calculateTotal();
+//                                       });
+//                                     },
+//                                   ),
+//                                 ],
+//                               ),
+//                             );
+//                           }),
+//                           SizedBox(height: 8),
+//                           Divider(),
+//                           Text('Total: \$$_totalAmount',
+//                               style: appStyle(14, kDark, FontWeight.bold)),
+//                           SizedBox(height: 16),
+//                         ],
+//                       ),
+//                     TextField(
+//                       controller: _memoNumberController,
+//                       decoration: InputDecoration(
+//                         labelText: 'Memo Number (Optional)',
+//                         labelStyle: appStyle(14, kDark, FontWeight.normal),
+//                         border: OutlineInputBorder(),
+//                       ),
+//                     ),
+//                     SizedBox(height: 16),
+//                     Row(
+//                       children: [
+//                         Text('Date: ',
+//                             style: appStyle(14, kDark, FontWeight.normal)),
+//                         TextButton(
+//                           onPressed: () async {
+//                             final DateTime? picked = await showDatePicker(
+//                               context: context,
+//                               initialDate: _selectedDate,
+//                               firstDate: DateTime(2000),
+//                               lastDate: DateTime(2100),
+//                             );
+//                             if (picked != null && picked != _selectedDate) {
+//                               setState(() {
+//                                 _selectedDate = picked;
+//                               });
+//                             }
+//                           },
+//                           child: Text(
+//                             DateFormat('MM/dd/yyyy').format(_selectedDate),
+//                             style: appStyle(14, kPrimary, FontWeight.normal),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//               actions: [
+//                 TextButton(
+//                   onPressed: _isSavingCheck
+//                       ? null
+//                       : () {
+//                           _resetForm();
+//                           Navigator.of(context).pop();
+//                         },
+//                   child: Text('Cancel',
+//                       style: appStyle(14, _isSavingCheck ? kGray : kDark,
+//                           FontWeight.normal)),
+//                 ),
+//                 ElevatedButton(
+//                   onPressed: (_serviceDetails.isEmpty || _isSavingCheck)
+//                       ? null
+//                       : () => _updateCheck(setState),
+//                   style: ElevatedButton.styleFrom(
+//                     backgroundColor: Colors.orange,
+//                     disabledBackgroundColor: Colors.orange.withOpacity(0.6),
+//                   ),
+//                   child: _isSavingCheck
+//                       ? SizedBox(
+//                           width: 18.w,
+//                           height: 18.w,
+//                           child: const CircularProgressIndicator(
+//                             strokeWidth: 2,
+//                             color: kWhite,
+//                           ),
+//                         )
+//                       : Text('Update Check',
+//                           style: appStyle(14, kWhite, FontWeight.normal)),
+//                 ),
+//               ],
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+
+//   void _showEditDetailDialog(
+//       BuildContext context, StateSetter setState, int index) {
+//     final detail = _serviceDetails[index];
+//     final TextEditingController serviceNameController =
+//         TextEditingController(text: detail['serviceName']);
+//     final TextEditingController amountController =
+//         TextEditingController(text: detail['amount'].toString());
+
+//     showDialog(
+//       context: context,
+//       builder: (BuildContext context) {
+//         return AlertDialog(
+//           title: Text('Edit Service Detail',
+//               style: appStyle(16, kDark, FontWeight.bold)),
+//           content: SingleChildScrollView(
+//             child: Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 TextField(
+//                   controller: serviceNameController,
+//                   maxLength: 70,
+//                   decoration: InputDecoration(
+//                     labelText: 'Enter Service Name',
+//                     labelStyle: appStyle(14, kDark, FontWeight.normal),
+//                     border: OutlineInputBorder(),
+//                   ),
+//                 ),
+//                 SizedBox(height: 16),
+//                 TextField(
+//                   controller: amountController,
+//                   decoration: InputDecoration(
+//                     labelText: 'Enter Amount',
+//                     labelStyle: appStyle(14, kDark, FontWeight.normal),
+//                     border: OutlineInputBorder(),
+//                   ),
+//                   keyboardType: TextInputType.number,
+//                 ),
+//               ],
+//             ),
+//           ),
+//           actions: [
+//             TextButton(
+//               onPressed: () => Navigator.of(context).pop(),
+//               child:
+//                   Text('Cancel', style: appStyle(14, kDark, FontWeight.normal)),
+//             ),
+//             ElevatedButton(
+//               onPressed: () {
+//                 if (serviceNameController.text.isEmpty ||
+//                     amountController.text.isEmpty) {
+//                   ScaffoldMessenger.of(context).showSnackBar(
+//                     SnackBar(content: Text('Please fill all fields')),
+//                   );
+//                   return;
+//                 }
+
+//                 setState(() {
+//                   _serviceDetails[index] = {
+//                     'serviceName': serviceNameController.text,
+//                     'amount': double.parse(amountController.text),
+//                     if (detail['recordId'] != null)
+//                       'recordId': detail['recordId'],
+//                     if (detail['invoiceNumber'] != null)
+//                       'invoiceNumber': detail['invoiceNumber'],
+//                     if (detail['vehicleNumber'] != null)
+//                       'vehicleNumber': detail['vehicleNumber'],
+//                   };
+//                   _calculateTotal();
+//                 });
+
+//                 Navigator.of(context).pop();
+//               },
+//               style: ElevatedButton.styleFrom(backgroundColor: kPrimary),
+//               child: Text('Update',
+//                   style: appStyle(14, kWhite, FontWeight.normal)),
+//             ),
+//           ],
+//         );
+//       },
+//     );
+//   }
+
+//   Future<void> _updateCheck(StateSetter dialogSetState) async {
+//     if (_isSavingCheck) return;
+
+//     if (_selectedType == 'Carrier') {
+//       if (_selectedUserName == null || _selectedUserName!.trim().isEmpty) {
+//         final carrierName = _carrierNameController.text.trim();
+//         if (carrierName.isEmpty) {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             const SnackBar(content: Text('Please select a carrier')),
+//           );
+//           return;
+//         }
+//         _selectedUserName = carrierName;
+//         _selectedUserId =
+//             'carrier_${carrierName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+//       }
+//     }
+
+//     if (_editingCheckId == null ||
+//         _selectedUserId == null ||
+//         _serviceDetails.isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Please fill all required fields')),
+//       );
+//       return;
+//     }
+
+//     dialogSetState(() => _isSavingCheck = true);
+//     setState(() => _isSavingCheck = true);
+
+//     try {
+//       final checkRef =
+//           FirebaseFirestore.instance.collection('Checks').doc(_editingCheckId);
+
+//       final prevCheckSnap = await checkRef.get();
+//       final prevCheckData = prevCheckSnap.exists
+//           ? prevCheckSnap.data() as Map<String, dynamic>
+//           : null;
+
+//       // Extract previous attached invoices
+//       final List<Map<String, dynamic>> prevAttachedInvoices = [];
+//       if (_attachedInvoices.isNotEmpty) {
+//         prevAttachedInvoices.addAll(_attachedInvoices);
+//       }
+//       if (prevCheckData?['attachedInvoices'] is List) {
+//         for (var inv in prevCheckData!['attachedInvoices']) {
+//           if (inv is Map) {
+//             final recId = inv['recordId']?.toString() ?? '';
+//             if (recId.isNotEmpty &&
+//                 !prevAttachedInvoices.any((p) => p['recordId'] == recId)) {
+//               prevAttachedInvoices.add({
+//                 'recordId': recId,
+//                 'invoiceNumber': inv['invoiceNumber']?.toString() ?? '',
+//                 'vehicleNumber': inv['vehicleNumber']?.toString() ?? '',
+//                 'amount': (inv['amount'] as num?)?.toDouble() ??
+//                     (inv['amountPaid'] as num?)?.toDouble() ??
+//                     0.0,
+//               });
+//             }
+//           }
+//         }
+//       }
+
+//       // If prevAttachedInvoices is still empty, try to extract from serviceDetails
+//       if (prevAttachedInvoices.isEmpty &&
+//           prevCheckData?['serviceDetails'] is List) {
+//         for (var sd in prevCheckData!['serviceDetails']) {
+//           if (sd is Map && sd['recordId'] != null) {
+//             final recId = sd['recordId'].toString();
+//             if (recId.isNotEmpty &&
+//                 !prevAttachedInvoices.any((p) => p['recordId'] == recId)) {
+//               prevAttachedInvoices.add({
+//                 'recordId': recId,
+//                 'invoiceNumber': sd['invoiceNumber']?.toString() ?? '',
+//                 'vehicleNumber': sd['vehicleNumber']?.toString() ?? '',
+//                 'amount': (sd['amount'] as num?)?.toDouble() ?? 0.0,
+//               });
+//             }
+//           }
+//         }
+//       }
+
+//       // Check DataServices directly for any records that have this check in their payment history
+//       try {
+//         final checkNumStr = _editingCheckNumber ??
+//             prevCheckData?['checkNumber']?.toString() ??
+//             '';
+//         final checkPaymentId = "PAY-CHK-$checkNumStr";
+//         final allDs = await FirebaseFirestore.instance
+//             .collection('Users')
+//             .doc(_effectiveUserId)
+//             .collection('DataServices')
+//             .get();
+//         for (var doc in allDs.docs) {
+//           final data = doc.data();
+//           if (data['paymentHistory'] is List) {
+//             final hasThisCheck = (data['paymentHistory'] as List).any((p) {
+//               if (p is Map) {
+//                 return p['checkId']?.toString() == _editingCheckId ||
+//                     p['paymentId']?.toString() == checkPaymentId ||
+//                     p['checkNumber']?.toString() == checkNumStr;
+//               }
+//               return false;
+//             });
+//             if (hasThisCheck) {
+//               if (!prevAttachedInvoices.any((p) => p['recordId'] == doc.id)) {
+//                 prevAttachedInvoices.add({
+//                   'recordId': doc.id,
+//                   'invoiceNumber': data['invoice']?.toString() ?? '',
+//                   'vehicleNumber': data['vehicleNumber']?.toString() ?? '',
+//                   'amount': 0.0,
+//                 });
+//               }
+//             }
+//           }
+//         }
+//       } catch (_) {}
+
+//       // Determine updated attached invoices from the currently edited _serviceDetails
+//       final List<Map<String, dynamic>> updatedAttachedInvoices = [];
+//       for (var detail in _serviceDetails) {
+//         String? matchedRecordId = detail['recordId']?.toString();
+//         final serviceName = detail['serviceName']?.toString() ?? '';
+//         final amount = (detail['amount'] as num?)?.toDouble() ?? 0.0;
+
+//         if ((matchedRecordId == null || matchedRecordId.isEmpty) &&
+//             prevAttachedInvoices.isNotEmpty) {
+//           final found = prevAttachedInvoices.firstWhere(
+//             (inv) =>
+//                 (inv['invoiceNumber']?.toString().isNotEmpty == true &&
+//                     serviceName.contains(inv['invoiceNumber'].toString())) ||
+//                 (inv['recordId']?.toString().isNotEmpty == true &&
+//                     serviceName.contains(inv['recordId'].toString())),
+//             orElse: () => <String, dynamic>{},
+//           );
+//           if (found.isNotEmpty) {
+//             matchedRecordId = found['recordId']?.toString();
+//             detail['recordId'] = found['recordId'];
+//             detail['invoiceNumber'] = found['invoiceNumber'];
+//             detail['vehicleNumber'] = found['vehicleNumber'];
+//           }
+//         }
+
+//         if (matchedRecordId != null &&
+//             matchedRecordId.isNotEmpty &&
+//             amount > 0) {
+//           updatedAttachedInvoices.add({
+//             'recordId': matchedRecordId,
+//             'invoiceNumber': detail['invoiceNumber']?.toString() ?? '',
+//             'vehicleNumber': detail['vehicleNumber']?.toString() ?? '',
+//             'amount': amount,
+//           });
+//         }
+//       }
+
+//       // Identify removed invoices
+//       final removedInvoices = prevAttachedInvoices.where((prevInv) {
+//         final pId = prevInv['recordId']?.toString();
+//         return !updatedAttachedInvoices.any((curr) => curr['recordId'] == pId);
+//       }).toList();
+
+//       // Identify modified invoices
+//       final modifiedInvoices = updatedAttachedInvoices.where((currInv) {
+//         final cId = currInv['recordId']?.toString();
+//         final prev = prevAttachedInvoices.firstWhere(
+//           (p) => p['recordId'] == cId,
+//           orElse: () => <String, dynamic>{},
+//         );
+//         return prev.isNotEmpty && prev['amount'] != currInv['amount'];
+//       }).toList();
+
+//       // Update check document
+//       await checkRef.update({
+//         'type': _selectedType,
+//         'userId': _selectedUserId,
+//         'userName': _selectedUserName,
+//         'serviceDetails': _serviceDetails,
+//         'totalAmount': _totalAmount,
+//         'memoNumber': _memoNumberController.text.isEmpty
+//             ? null
+//             : _memoNumberController.text,
+//         'date': _selectedDate,
+//         'attachedInvoices': updatedAttachedInvoices,
+//         'companyId': _selectedCompanyId,
+//         'companyName': _selectedCompanyName,
+//         'updatedAt': FieldValue.serverTimestamp(),
+//       });
+
+//       // Synchronize affected DataServices records if invoices removed or modified
+//       if (removedInvoices.isNotEmpty || modifiedInvoices.isNotEmpty) {
+//         final batch = FirebaseFirestore.instance.batch();
+//         final nowIso = DateTime.now().toIso8601String();
+//         final checkNumStr = _editingCheckNumber ??
+//             prevCheckData?['checkNumber']?.toString() ??
+//             '';
+//         final checkPaymentId = "PAY-CHK-$checkNumStr";
+
+//         // Fetch team members
+//         final teamSnap = await FirebaseFirestore.instance
+//             .collection('Users')
+//             .where('createdBy', isEqualTo: _effectiveUserId)
+//             .where('isTeamMember', isEqualTo: true)
+//             .get();
+//         final memberIds = teamSnap.docs.map((d) => d.id).toList();
+
+//         Future<void> syncRecordAdjustment(String recordId, String action,
+//             [double newAmount = 0.0]) async {
+//           if (recordId.isEmpty) return;
+
+//           final ownerDocRef = FirebaseFirestore.instance
+//               .collection('Users')
+//               .doc(_effectiveUserId)
+//               .collection('DataServices')
+//               .doc(recordId);
+//           DocumentSnapshot recordSnap = await ownerDocRef.get();
+//           DocumentReference targetOwnerRef = ownerDocRef;
+
+//           if (!recordSnap.exists) {
+//             final globalDocRef = FirebaseFirestore.instance
+//                 .collection('DataServicesRecords')
+//                 .doc(recordId);
+//             final gSnap = await globalDocRef.get();
+//             if (gSnap.exists) {
+//               recordSnap = gSnap;
+//             } else if (currentUId != _effectiveUserId) {
+//               final userDocRef = FirebaseFirestore.instance
+//                   .collection('Users')
+//                   .doc(currentUId)
+//                   .collection('DataServices')
+//                   .doc(recordId);
+//               final uSnap = await userDocRef.get();
+//               if (uSnap.exists) {
+//                 recordSnap = uSnap;
+//                 targetOwnerRef = userDocRef;
+//               }
+//             }
+//           }
+
+//           if (!recordSnap.exists) return;
+
+//           final recData = recordSnap.data() as Map<String, dynamic>;
+//           final rawTotal = recData['invoiceAmount'];
+//           final totalStr =
+//               rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ?? '0';
+//           final totalInv = double.tryParse(totalStr) ?? 0.0;
+
+//           List<dynamic> existingHist = [];
+//           if (recData['paymentHistory'] is List) {
+//             existingHist = List<dynamic>.from(recData['paymentHistory']);
+//           }
+
+//           List<dynamic> updatedHistory = [];
+//           if (action == 'remove') {
+//             updatedHistory = existingHist.where((p) {
+//               if (p is Map) {
+//                 final pCheckId = p['checkId']?.toString();
+//                 final pPaymentId = p['paymentId']?.toString();
+//                 final pCheckNum = p['checkNumber']?.toString();
+//                 if (pCheckId == _editingCheckId ||
+//                     pPaymentId == checkPaymentId ||
+//                     pCheckNum == checkNumStr) {
+//                   return false;
+//                 }
+//               }
+//               return true;
+//             }).toList();
+//           } else if (action == 'modify') {
+//             updatedHistory = existingHist.map((p) {
+//               if (p is Map) {
+//                 final pCheckId = p['checkId']?.toString();
+//                 final pPaymentId = p['paymentId']?.toString();
+//                 final pCheckNum = p['checkNumber']?.toString();
+//                 if (pCheckId == _editingCheckId ||
+//                     pPaymentId == checkPaymentId ||
+//                     pCheckNum == checkNumStr) {
+//                   final mapCopy = Map<String, dynamic>.from(p);
+//                   mapCopy['amountPaid'] = newAmount;
+//                   mapCopy['updatedAt'] = nowIso;
+//                   return mapCopy;
+//                 }
+//               }
+//               return p;
+//             }).toList();
+//           }
+
+//           double newPaid = 0.0;
+//           for (var p in updatedHistory) {
+//             if (p is Map && p['amountPaid'] != null) {
+//               newPaid += (p['amountPaid'] as num).toDouble();
+//             }
+//           }
+
+//           final newBalance =
+//               (totalInv - newPaid) > 0 ? (totalInv - newPaid) : 0.0;
+//           String newStatus = 'Unpaid';
+//           if (newPaid >= totalInv && totalInv > 0) {
+//             newStatus = 'Paid';
+//           } else if (newPaid > 0) {
+//             newStatus = 'Partially Paid';
+//           } else {
+//             newStatus = 'Unpaid';
+//           }
+
+//           final updatePayload = {
+//             'paidAmount': newPaid,
+//             'balanceAmount': newBalance,
+//             'paymentStatus': newStatus,
+//             'paymentHistory': updatedHistory,
+//             'updatedAt': nowIso,
+//           };
+
+//           batch.set(targetOwnerRef, updatePayload, SetOptions(merge: true));
+
+//           final globalDocRef = FirebaseFirestore.instance
+//               .collection('DataServicesRecords')
+//               .doc(recordId);
+//           batch.set(globalDocRef, updatePayload, SetOptions(merge: true));
+
+//           for (final mId in memberIds) {
+//             if (mId == _effectiveUserId) continue;
+//             final mDocRef = FirebaseFirestore.instance
+//                 .collection('Users')
+//                 .doc(mId)
+//                 .collection('DataServices')
+//                 .doc(recordId);
+//             final mSnap = await mDocRef.get();
+//             if (mSnap.exists) {
+//               batch.set(mDocRef, updatePayload, SetOptions(merge: true));
+//             }
+//           }
+//         }
+
+//         for (var rem in removedInvoices) {
+//           final rId = rem['recordId']?.toString() ?? '';
+//           if (rId.isNotEmpty) {
+//             await syncRecordAdjustment(rId, 'remove');
+//           }
+//         }
+
+//         for (var mod in modifiedInvoices) {
+//           final rId = mod['recordId']?.toString() ?? '';
+//           final amt = (mod['amount'] as num?)?.toDouble() ?? 0.0;
+//           if (rId.isNotEmpty) {
+//             await syncRecordAdjustment(rId, 'modify', amt);
+//           }
+//         }
+
+//         // Update Master Payment Ledger
+//         try {
+//           final ledgerSnap = await FirebaseFirestore.instance
+//               .collection('Users')
+//               .doc(_effectiveUserId)
+//               .collection('InvoicePayments')
+//               .where('checkId', isEqualTo: _editingCheckId)
+//               .get();
+
+//           for (var lDoc in ledgerSnap.docs) {
+//             if (updatedAttachedInvoices.isEmpty) {
+//               batch.delete(lDoc.reference);
+//             } else {
+//               batch.update(lDoc.reference, {
+//                 'totalAmount': _totalAmount,
+//                 'invoices': updatedAttachedInvoices,
+//                 'updatedAt': nowIso,
+//               });
+//             }
+//           }
+//         } catch (lErr) {
+//           print("Error updating ledger in check edit: $lErr");
+//         }
+
+//         await batch.commit();
+//       }
+
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Check updated successfully')),
+//       );
+
+//       _resetForm();
+//       Navigator.of(context).pop();
+//       await fetchChecks();
+//     } catch (e) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Error updating check: $e')),
+//       );
+//     } finally {
+//       if (mounted) {
+//         setState(() => _isSavingCheck = false);
+//       }
+//     }
+//   }
+
+//   void _resetForm() {
+//     setState(() {
+//       _isEditing = false;
+//       _editingCheckId = null;
+//       _editingCheckNumber = null;
+//       _attachedInvoices.clear();
+//       _selectedType = null;
+//       _selectedUserId = null;
+//       _selectedUserName = null;
+//       _selectedCompanyId = null;
+//       _selectedCompanyName = null;
+//       _serviceDetails.clear();
+//       _memoNumberController.clear();
+//       _selectedDate = DateTime.now();
+//       _totalAmount = 0.0;
+//     });
+//   }
+
 //   Widget _buildCheckCard(Map<String, dynamic> check) {
+//     final numberFormat = NumberFormat("#,##0.00", "en_US");
+//     final formattedTotal = numberFormat.format(check['totalAmount']);
 //     return Card(
 //       elevation: 4,
 //       margin: EdgeInsets.symmetric(vertical: 8),
@@ -513,14 +2069,52 @@
 //             Row(
 //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
 //               children: [
-//                 Text(
-//                   'Check #${check['checkNumber']}',
-//                   style: appStyle(16, kPrimary, FontWeight.bold),
+//                 Row(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     Column(
+//                       children: [
+//                         Text(
+//                           'Check #${check['checkNumber']}',
+//                           style: appStyle(16, kPrimary, FontWeight.bold),
+//                         ),
+//                         if (check['companyName'] != null &&
+//                             check['companyName'].toString().isNotEmpty) ...[
+//                           SizedBox(width: 8),
+//                           Container(
+//                             padding: EdgeInsets.symmetric(
+//                                 horizontal: 8, vertical: 2),
+//                             decoration: BoxDecoration(
+//                               color: kSecondary.withOpacity(0.1),
+//                               borderRadius: BorderRadius.circular(6),
+//                               border: Border.all(
+//                                   color: kSecondary.withOpacity(0.3)),
+//                             ),
+//                             child: Text(
+//                               check['companyName'].toString(),
+//                               style: TextStyle(
+//                                 fontSize: 11,
+//                                 fontWeight: FontWeight.w600,
+//                                 color: kSecondary,
+//                               ),
+//                             ),
+//                           ),
+//                         ],
+//                       ],
+//                     )
+//                   ],
 //                 ),
 //                 Text(
 //                   DateFormat('MMM dd, yyyy').format(check['date']),
 //                   style: appStyle(14, kGray, FontWeight.normal),
 //                 ),
+//                 if (role == "Owner" || role == "SubOwner") ...[
+//                   SizedBox(width: 8),
+//                   IconButton(
+//                     icon: Icon(Icons.edit, color: Colors.orange, size: 20),
+//                     onPressed: () => _showEditCheckDialog(check),
+//                   ),
+//                 ],
 //               ],
 //             ),
 //             SizedBox(height: 8),
@@ -530,18 +2124,27 @@
 //             ),
 //             SizedBox(height: 8),
 //             Divider(),
-//             ...check['serviceDetails'].map<Widget>((detail) {
+//             ...((check['serviceDetails'] is List)
+//                     ? (check['serviceDetails'] as List)
+//                     : [])
+//                 .map<Widget>((detail) {
+//               final formattedAmount = numberFormat
+//                   .format(detail['amount'] != null ? detail['amount'] : 0);
 //               return Padding(
 //                 padding: EdgeInsets.symmetric(vertical: 4),
 //                 child: Row(
 //                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
 //                   children: [
-//                     Text(
-//                       detail['serviceName'],
-//                       style: appStyle(14, kDark, FontWeight.normal),
+//                     Expanded(
+//                       child: Text(
+//                         detail['serviceName'],
+//                         overflow: TextOverflow.ellipsis,
+//                         maxLines: 1,
+//                         style: appStyle(14, kDark, FontWeight.normal),
+//                       ),
 //                     ),
 //                     Text(
-//                       '\$${detail['amount'].toStringAsFixed(2)}',
+//                       '\$${formattedAmount}',
 //                       style: appStyle(14, kDark, FontWeight.normal),
 //                     ),
 //                   ],
@@ -557,7 +2160,7 @@
 //                   style: appStyle(16, kDark, FontWeight.bold),
 //                 ),
 //                 Text(
-//                   '\$${check['totalAmount'].toStringAsFixed(2)}',
+//                   '\$${formattedTotal}',
 //                   style: appStyle(16, kPrimary, FontWeight.bold),
 //                 ),
 //               ],
@@ -586,82 +2189,239 @@
 //   }
 
 //   Widget _buildFilterRow() {
-//     return Padding(
-//       padding: EdgeInsets.symmetric(vertical: 8),
-//       child: Row(
-//         children: [
-//           Expanded(
-//             child: DropdownButtonFormField<String>(
-//               decoration: InputDecoration(
-//                 labelText: 'Filter by Type',
-//                 labelStyle: appStyle(14, kDark, FontWeight.normal),
-//                 border: OutlineInputBorder(),
-//                 contentPadding:
-//                     EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-//               ),
-//               value: _filterType,
-//               items: [
-//                 DropdownMenuItem(value: null, child: Text('All Types')),
-//                 ...['Manager', 'Accountant', 'Driver', 'Vendor', 'Other Staff']
-//                     .map((type) => DropdownMenuItem(
-//                           value: type,
-//                           child: Text(type),
-//                         ))
-//                     .toList(),
-//               ],
-//               onChanged: (value) {
-//                 setState(() {
-//                   _filterType = value;
-//                   _loadingChecks = true; // Show loading immediately
-//                 });
-//                 fetchChecks(); // Fetch checks with new filter
-//               },
-//             ),
-//           ),
-//           SizedBox(width: 8),
-//           if (role == "Owner" || role == "SubOwner")
-//             GestureDetector(
-//                 onTap: () =>
-//                     Get.to(() => AddTeamMember(currentUId: currentUId)),
-//                 child: CircleAvatar(
-//                     backgroundColor: kPrimary,
-//                     radius: 20.r,
-//                     child: Icon(Icons.add, color: kWhite))),
-//           SizedBox(width: 8),
-//           IconButton(
-//             icon: Icon(Icons.calendar_today, color: kPrimary),
-//             onPressed: () async {
-//               final DateTimeRange? picked = await showDateRangePicker(
-//                 context: context,
-//                 firstDate: DateTime(2000),
-//                 lastDate: DateTime(2100),
-//                 initialDateRange: _dateRange ??
-//                     DateTimeRange(
-//                       start: DateTime.now().subtract(Duration(days: 30)),
-//                       end: DateTime.now(),
-//                     ),
-//               );
+//     final bool hasActiveFilters =
+//         _filterType != null || _filterCompanyId != null || _dateRange != null;
 
-//               if (picked != null) {
-//                 setState(() {
-//                   _dateRange = picked;
-//                   _loadingChecks = true;
-//                 });
-//                 await fetchChecks();
-//               }
-//             },
+//     return Container(
+//       margin: const EdgeInsets.symmetric(vertical: 8),
+//       padding: const EdgeInsets.all(12),
+//       decoration: BoxDecoration(
+//         color: kWhite,
+//         borderRadius: BorderRadius.circular(12.r),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(0.04),
+//             blurRadius: 8,
+//             offset: const Offset(0, 2),
 //           ),
-//           if (_dateRange != null)
-//             IconButton(
-//               icon: Icon(Icons.clear, color: Colors.red),
-//               onPressed: () async {
-//                 setState(() {
-//                   _dateRange = null;
-//                   _loadingChecks = true; // Show loading immediately
-//                 });
-//                 await fetchChecks();
-//               },
-//             ),
+//         ],
+//         border: Border.all(color: Colors.grey.withOpacity(0.15)),
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           // Row 1: Dropdowns (Type & Company)
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: DropdownButtonFormField<String>(
+//                   isExpanded: true,
+//                   decoration: InputDecoration(
+//                     labelText: 'Type',
+//                     labelStyle: appStyle(12, kDark, FontWeight.normal),
+//                     border: OutlineInputBorder(
+//                       borderRadius: BorderRadius.circular(8.r),
+//                     ),
+//                     contentPadding:
+//                         EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
+//                   ),
+//                   value: _filterType,
+//                   items: [
+//                     DropdownMenuItem<String>(
+//                       value: null,
+//                       child: Text(
+//                         'All Types',
+//                         style: appStyle(12, kDark, FontWeight.normal),
+//                       ),
+//                     ),
+//                     ..._checkTypes.map((type) => DropdownMenuItem<String>(
+//                           value: type,
+//                           child: Text(
+//                             type,
+//                             style: appStyle(12, kDark, FontWeight.normal),
+//                             overflow: TextOverflow.ellipsis,
+//                           ),
+//                         )),
+//                   ],
+//                   onChanged: (value) {
+//                     setState(() {
+//                       _filterType = value;
+//                       _loadingChecks = true;
+//                     });
+//                     fetchChecks();
+//                   },
+//                 ),
+//               ),
+//               if (_companies.isNotEmpty) ...[
+//                 SizedBox(width: 8.w),
+//                 Expanded(
+//                   child: DropdownButtonFormField<String>(
+//                     isExpanded: true,
+//                     decoration: InputDecoration(
+//                       labelText: 'Company',
+//                       labelStyle: appStyle(12, kDark, FontWeight.normal),
+//                       border: OutlineInputBorder(
+//                         borderRadius: BorderRadius.circular(8.r),
+//                       ),
+//                       contentPadding: EdgeInsets.symmetric(
+//                           horizontal: 10.w, vertical: 10.h),
+//                     ),
+//                     value: _filterCompanyId,
+//                     items: [
+//                       DropdownMenuItem<String>(
+//                         value: null,
+//                         child: Text(
+//                           'All Companies',
+//                           style: appStyle(12, kDark, FontWeight.normal),
+//                         ),
+//                       ),
+//                       ..._companies.map((c) => DropdownMenuItem<String>(
+//                             value: c['id'],
+//                             child: Text(
+//                               c['companyName'] ?? '',
+//                               style: appStyle(12, kDark, FontWeight.normal),
+//                               overflow: TextOverflow.ellipsis,
+//                             ),
+//                           )),
+//                     ],
+//                     onChanged: (value) {
+//                       setState(() {
+//                         _filterCompanyId = value;
+//                         _loadingChecks = true;
+//                       });
+//                       fetchChecks();
+//                     },
+//                   ),
+//                 ),
+//               ],
+//             ],
+//           ),
+//           SizedBox(height: 10.h),
+//           // Row 2: Date Picker Bar & Action Buttons
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: InkWell(
+//                   onTap: () async {
+//                     final DateTimeRange? picked = await showDateRangePicker(
+//                       context: context,
+//                       firstDate: DateTime(2000),
+//                       lastDate: DateTime(2100),
+//                       initialDateRange: _dateRange ??
+//                           DateTimeRange(
+//                             start: DateTime.now()
+//                                 .subtract(const Duration(days: 30)),
+//                             end: DateTime.now(),
+//                           ),
+//                     );
+
+//                     if (picked != null) {
+//                       setState(() {
+//                         _dateRange = picked;
+//                         _loadingChecks = true;
+//                       });
+//                       await fetchChecks();
+//                     }
+//                   },
+//                   borderRadius: BorderRadius.circular(8.r),
+//                   child: Container(
+//                     padding:
+//                         EdgeInsets.symmetric(horizontal: 10.w, vertical: 9.h),
+//                     decoration: BoxDecoration(
+//                       border: Border.all(
+//                         color: _dateRange != null
+//                             ? kPrimary
+//                             : Colors.grey.withOpacity(0.5),
+//                       ),
+//                       borderRadius: BorderRadius.circular(8.r),
+//                       color: _dateRange != null
+//                           ? kPrimary.withOpacity(0.05)
+//                           : Colors.transparent,
+//                     ),
+//                     child: Row(
+//                       children: [
+//                         Icon(
+//                           Icons.calendar_today,
+//                           size: 16.sp,
+//                           color: _dateRange != null ? kPrimary : kGray,
+//                         ),
+//                         SizedBox(width: 6.w),
+//                         Expanded(
+//                           child: Text(
+//                             _dateRange != null
+//                                 ? '${DateFormat('MMM dd').format(_dateRange!.start)} - ${DateFormat('MMM dd, yyyy').format(_dateRange!.end)}'
+//                                 : 'Select Date Range',
+//                             style: appStyle(
+//                               12,
+//                               _dateRange != null ? kPrimary : kGray,
+//                               _dateRange != null
+//                                   ? FontWeight.w600
+//                                   : FontWeight.normal,
+//                             ),
+//                             overflow: TextOverflow.ellipsis,
+//                           ),
+//                         ),
+//                         if (_dateRange != null)
+//                           GestureDetector(
+//                             onTap: () async {
+//                               setState(() {
+//                                 _dateRange = null;
+//                                 _loadingChecks = true;
+//                               });
+//                               await fetchChecks();
+//                             },
+//                             child: Icon(Icons.close,
+//                                 size: 16.sp, color: Colors.red),
+//                           ),
+//                       ],
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//               if (hasActiveFilters) ...[
+//                 SizedBox(width: 8.w),
+//                 OutlinedButton.icon(
+//                   onPressed: () {
+//                     setState(() {
+//                       _filterType = null;
+//                       _filterCompanyId = null;
+//                       _dateRange = null;
+//                       _loadingChecks = true;
+//                     });
+//                     fetchChecks();
+//                   },
+//                   icon: Icon(Icons.refresh, size: 14.sp, color: Colors.red),
+//                   label: Text(
+//                     'Clear',
+//                     style: appStyle(11, Colors.red, FontWeight.w500),
+//                   ),
+//                   style: OutlinedButton.styleFrom(
+//                     side: const BorderSide(color: Colors.red),
+//                     padding:
+//                         EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(8.r),
+//                     ),
+//                   ),
+//                 ),
+//               ],
+//               if (role == "Owner" || role == "SubOwner") ...[
+//                 SizedBox(width: 8.w),
+//                 GestureDetector(
+//                   onTap: () =>
+//                       Get.to(() => AddTeamMember(currentUId: currentUId)),
+//                   child: Container(
+//                     padding: EdgeInsets.all(8.r),
+//                     decoration: const BoxDecoration(
+//                       color: kPrimary,
+//                       shape: BoxShape.circle,
+//                     ),
+//                     child: Icon(Icons.person_add, color: kWhite, size: 18.sp),
+//                   ),
+//                 ),
+//               ],
+//             ],
+//           ),
 //         ],
 //       ),
 //     );
@@ -696,54 +2456,92 @@
 
 //   Future<void> fetchTeamMembersWithVehicles() async {
 //     try {
-//       List<Map<String, dynamic>> membersWithVehicles = [];
-
 //       QuerySnapshot teamSnapshot = await FirebaseFirestore.instance
 //           .collection('Users')
-//           .where('createdBy',
-//               isEqualTo: _effectiveUserId) // Use effective user ID
-//           .where('uid', isNotEqualTo: _effectiveUserId) // Use effective user ID
+//           .where('createdBy', isEqualTo: _effectiveUserId)
+//           .where('uid', isNotEqualTo: _effectiveUserId)
 //           .where("active", isEqualTo: true)
 //           .get();
 
-//       for (var member in teamSnapshot.docs) {
-//         String memberId = member['uid'];
-//         String name = member['userName'] ?? 'No Name';
-//         String email = member['email'] ?? 'No Email';
-//         bool isActive = member['active'] ?? false;
+//       List<Map<String, dynamic>> membersWithVehicles = await Future.wait(
+//         teamSnapshot.docs.map((member) async {
+//           String memberId = member['uid'];
+//           String name = member['userName'] ?? 'No Name';
+//           String email = member['email'] ?? 'No Email';
+//           bool isActive = member['active'] ?? false;
 
-//         QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
-//             .collection('Users')
-//             .doc(memberId)
-//             .collection('Vehicles')
-//             .get();
+//           QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
+//               .collection('Users')
+//               .doc(memberId)
+//               .collection('Vehicles')
+//               .get();
 
-//         List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
-//           return {
-//             'companyName': doc['companyName'] ?? 'No Company',
-//             'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
+//           List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
+//             return {
+//               'companyName': doc['companyName'] ?? 'No Company',
+//               'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
+//             };
+//           }).toList();
+
+//           vehicles.sort((a, b) => a['vehicleNumber']
+//               .toString()
+//               .toLowerCase()
+//               .compareTo(b['vehicleNumber'].toString().toLowerCase()));
+
+//           return <String, dynamic>{
+//             'name': name,
+//             'email': email,
+//             'isActive': isActive,
+//             'memberId': memberId,
+//             'ownerId': member['createdBy'],
+//             'vehicles': vehicles,
+//             'perMileCharge': member['perMileCharge'],
+//             'role': member['role']
 //           };
-//         }).toList();
+//         }),
+//       );
 
-//         vehicles.sort((a, b) => a['vehicleNumber']
-//             .toString()
-//             .toLowerCase()
-//             .compareTo(b['vehicleNumber'].toString().toLowerCase()));
-
-//         membersWithVehicles.add({
-//           'name': name,
-//           'email': email,
-//           'isActive': isActive,
-//           'memberId': memberId,
-//           'ownerId': member['createdBy'],
-//           'vehicles': vehicles,
-//           'perMileCharge': member['perMileCharge'],
-//           'role': member['role']
-//         });
+//       // Include the Owner in members list so Owner can be selected for checks
+//       try {
+//         DocumentSnapshot ownerDoc = await FirebaseFirestore.instance
+//             .collection('Users')
+//             .doc(_effectiveUserId)
+//             .get();
+//         if (ownerDoc.exists) {
+//           final oData = ownerDoc.data() as Map<String, dynamic>;
+//           final ownerName =
+//               (oData['userName'] ?? oData['name'] ?? 'Owner').toString();
+//           if (!membersWithVehicles
+//               .any((m) => m['memberId'] == _effectiveUserId)) {
+//             membersWithVehicles.add(<String, dynamic>{
+//               'name': ownerName,
+//               'email': (oData['email'] ?? '').toString(),
+//               'isActive': true,
+//               'memberId': _effectiveUserId,
+//               'ownerId': _effectiveUserId,
+//               'vehicles': <Map<String, dynamic>>[],
+//               'role': 'Owner',
+//             });
+//           }
+//         }
+//       } catch (e) {
+//         print('Error fetching owner in fetchTeamMembersWithVehicles: $e');
 //       }
 
 //       setState(() {
 //         _allMembers = membersWithVehicles;
+//         if (widget.initialPayee != null && widget.initialUserId != null) {
+//           final exists = _allMembers
+//               .any((m) => m['memberId']?.toString() == widget.initialUserId);
+//           if (!exists) {
+//             _allMembers.add(<String, dynamic>{
+//               'name': widget.initialPayee!,
+//               'memberId': widget.initialUserId!,
+//               'role': widget.initialType ?? 'Vendor',
+//               'vehicles': <Map<String, dynamic>>[],
+//             });
+//           }
+//         }
 //         _isLoading = false;
 //       });
 //     } catch (e) {
@@ -755,32 +2553,83 @@
 //   }
 
 //   Future<void> _showAddCheckDialog() async {
-//     _selectedType = null;
-//     _selectedUserId = null;
-//     _selectedUserName = null;
-//     _serviceDetails.clear();
-//     _memoNumberController.clear();
-//     _selectedDate = DateTime.now();
-//     _totalAmount = 0.0;
-
-//     // Get the next available check number
-//     String? nextCheckNumber = await _getNextAvailableCheckNumber();
-//     if (nextCheckNumber != null) {
-//       _checkNumberController.text = nextCheckNumber;
+//     if (widget.initialPayee != null && widget.initialPayee!.isNotEmpty) {
+//       _selectedType = widget.initialType ?? 'Vendor';
+//       _selectedUserId = widget.initialUserId;
+//       _selectedUserName = widget.initialPayee;
+//       if (_selectedType == 'Carrier') {
+//         _carrierNameController.text = widget.initialPayee!;
+//       } else {
+//         _carrierNameController.clear();
+//       }
+//       _serviceDetails.clear();
+//       if (widget.initialServiceDetails != null) {
+//         _serviceDetails.addAll(
+//             List<Map<String, dynamic>>.from(widget.initialServiceDetails!));
+//       }
+//       _memoNumberController.clear();
+//       _selectedDate = DateTime.now();
+//       _totalAmount = widget.initialTotalAmount ?? 0.0;
 //     } else {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//             content: Text(
-//                 'No available check numbers. Please add a check series first.')),
-//       );
-//       return;
+//       _selectedType = null;
+//       _selectedUserId = null;
+//       _selectedUserName = null;
+//       _carrierNameController.clear();
+//       _serviceDetails.clear();
+//       _memoNumberController.clear();
+//       _selectedDate = DateTime.now();
+//       _totalAmount = 0.0;
 //     }
+
+//     if (_selectedUserId != null && _selectedUserName != null) {
+//       final exists =
+//           _allMembers.any((m) => m['memberId']?.toString() == _selectedUserId);
+//       if (!exists) {
+//         _allMembers.add(<String, dynamic>{
+//           'name': _selectedUserName!,
+//           'memberId': _selectedUserId!,
+//           'role': _selectedType ?? 'Vendor',
+//           'vehicles': <Map<String, dynamic>>[],
+//         });
+//       }
+//     }
+
+//     final defaultComp = _companies.firstWhere(
+//       (c) => c['isDefault'] == true,
+//       orElse: () =>
+//           _companies.isNotEmpty ? _companies.first : <String, dynamic>{},
+//     );
+//     final initialCompId = defaultComp['id']?.toString();
+//     final initialCompName = defaultComp['companyName']?.toString();
+
+//     _selectedCompanyId = initialCompId;
+//     _selectedCompanyName = initialCompName;
+//     _checkNumberController.clear();
+//     _isFetchingCheckNumber = true;
+
+//     if (_isPreparingAutoCheck && mounted) {
+//       setState(() => _isPreparingAutoCheck = false);
+//     }
+
+//     bool initialFetchTriggered = false;
 
 //     await showDialog(
 //       context: context,
 //       builder: (BuildContext context) {
 //         return StatefulBuilder(
 //           builder: (context, setState) {
+//             if (!initialFetchTriggered) {
+//               initialFetchTriggered = true;
+//               _getNextAvailableCheckNumber(initialCompId).then((nextNum) {
+//                 if (mounted) {
+//                   setState(() {
+//                     _checkNumberController.text = nextNum ?? '';
+//                     _isFetchingCheckNumber = false;
+//                   });
+//                 }
+//               });
+//             }
+
 //             return AlertDialog(
 //               title: Text('Write Check',
 //                   style: appStyle(18, kDark, FontWeight.bold)),
@@ -788,56 +2637,129 @@
 //                 child: Column(
 //                   mainAxisSize: MainAxisSize.min,
 //                   children: [
-//                     // if (role == 'SubOwner')
-//                     //   Container(
-//                     //     width: double.infinity,
-//                     //     padding: EdgeInsets.all(8),
-//                     //     decoration: BoxDecoration(
-//                     //       color: Colors.blue[50],
-//                     //       borderRadius: BorderRadius.circular(4),
-//                     //     ),
-//                     //     child: Row(
-//                     //       children: [
-//                     //         Icon(Icons.info_outline,
-//                     //             color: Colors.blue, size: 16),
-//                     //         SizedBox(width: 8),
-//                     //         Expanded(
-//                     //           child: Text(
-//                     //             'Writing check on behalf of owner',
-//                     //             style: TextStyle(
-//                     //               fontSize: 12,
-//                     //               color: Colors.blue[700],
-//                     //             ),
-//                     //           ),
-//                     //         ),
-//                     //       ],
-//                     //     ),
-//                     //   ),
-//                     SizedBox(height: 16),
-//                     TextField(
-//                       controller: _checkNumberController,
-//                       decoration: InputDecoration(
-//                         labelText: 'Check Number',
-//                         labelStyle: appStyle(14, kDark, FontWeight.normal),
-//                         border: OutlineInputBorder(),
+//                     const SizedBox(height: 16),
+//                     if (_companies.isNotEmpty) ...[
+//                       DropdownButtonFormField<String>(
+//                         isExpanded: true,
+//                         decoration: InputDecoration(
+//                           labelText: 'Company',
+//                           labelStyle: appStyle(14, kDark, FontWeight.normal),
+//                           border: const OutlineInputBorder(),
+//                           prefixIcon: const Icon(Icons.business_outlined,
+//                               color: kPrimary),
+//                         ),
+//                         value:
+//                             _companies.any((c) => c['id'] == _selectedCompanyId)
+//                                 ? _selectedCompanyId
+//                                 : null,
+//                         items: _companies
+//                             .map<DropdownMenuItem<String>>(
+//                                 (comp) => DropdownMenuItem<String>(
+//                                       value: comp['id'],
+//                                       child: Text(
+//                                         '${comp['companyName'] ?? ''}${comp['isDefault'] == true ? ' (Default)' : ''}',
+//                                         overflow: TextOverflow.ellipsis,
+//                                         maxLines: 1,
+//                                       ),
+//                                     ))
+//                             .toList(),
+//                         onChanged: (value) async {
+//                           setState(() {
+//                             _selectedCompanyId = value;
+//                             final matched = _companies.firstWhere(
+//                               (c) => c['id'] == value,
+//                               orElse: () => <String, dynamic>{},
+//                             );
+//                             _selectedCompanyName = matched['companyName'];
+//                             _checkNumberController.clear();
+//                             _isFetchingCheckNumber = true;
+//                           });
+
+//                           final nextNum =
+//                               await _getNextAvailableCheckNumber(value);
+//                           if (mounted) {
+//                             setState(() {
+//                               _checkNumberController.text = nextNum ?? '';
+//                               _isFetchingCheckNumber = false;
+//                             });
+//                           }
+//                         },
 //                       ),
-//                       readOnly: true,
-//                     ),
+//                       const SizedBox(height: 16),
+//                     ],
+//                     if (_isFetchingCheckNumber)
+//                       Container(
+//                         margin: const EdgeInsets.only(bottom: 16),
+//                         padding: const EdgeInsets.symmetric(
+//                             horizontal: 14, vertical: 14),
+//                         decoration: BoxDecoration(
+//                           border: Border.all(color: kPrimary.withOpacity(0.4)),
+//                           borderRadius: BorderRadius.circular(4),
+//                           color: kPrimary.withOpacity(0.06),
+//                         ),
+//                         child: Row(
+//                           children: [
+//                             const SizedBox(
+//                               width: 18,
+//                               height: 18,
+//                               child: CircularProgressIndicator(
+//                                 strokeWidth: 2.2,
+//                                 color: kPrimary,
+//                               ),
+//                             ),
+//                             const SizedBox(width: 12),
+//                             Expanded(
+//                               child: Text(
+//                                 'Fetching check number...',
+//                                 style: appStyle(13, kPrimary, FontWeight.w500),
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                       )
+//                     else
+//                       Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           TextField(
+//                             controller: _checkNumberController,
+//                             decoration: InputDecoration(
+//                               labelText: 'Check Number',
+//                               labelStyle:
+//                                   appStyle(14, kDark, FontWeight.normal),
+//                               border: const OutlineInputBorder(),
+//                               filled: true,
+//                               fillColor: _checkNumberController.text.isNotEmpty
+//                                   ? Colors.grey[100]
+//                                   : Colors.red.shade50,
+//                               prefixIcon: const Icon(Icons.tag, color: kDark),
+//                             ),
+//                             readOnly: true,
+//                           ),
+//                           if (_checkNumberController.text.isEmpty &&
+//                               _selectedCompanyId != null)
+//                             Padding(
+//                               padding: const EdgeInsets.only(
+//                                   top: 4, left: 2, bottom: 4),
+//                               child: Text(
+//                                 'No available check series for this company.',
+//                                 style: appStyle(
+//                                     11, Colors.red.shade700, FontWeight.normal),
+//                               ),
+//                             ),
+//                           const SizedBox(height: 16),
+//                         ],
+//                       ),
 //                     SizedBox(height: 16),
 //                     DropdownButtonFormField<String>(
+//                       isExpanded: true,
 //                       decoration: InputDecoration(
 //                         labelText: 'Select Type',
 //                         labelStyle: appStyle(14, kDark, FontWeight.normal),
-//                         border: OutlineInputBorder(),
+//                         border: const OutlineInputBorder(),
 //                       ),
 //                       value: _selectedType,
-//                       items: <String>[
-//                         'Manager',
-//                         'Accountant',
-//                         'Driver',
-//                         'Vendor',
-//                         'Other Staff'
-//                       ]
+//                       items: _checkTypes
 //                           .map<DropdownMenuItem<String>>(
 //                               (String type) => DropdownMenuItem<String>(
 //                                     value: type,
@@ -849,36 +2771,156 @@
 //                           _selectedType = value;
 //                           _selectedUserId = null;
 //                           _selectedUserName = null;
+//                           _carrierNameController.clear();
 //                         });
 //                       },
 //                       validator: (value) => value == null ? 'Required' : null,
 //                     ),
 //                     SizedBox(height: 16),
-//                     if (_selectedType != null)
-//                       DropdownButtonFormField<String>(
-//                         decoration: InputDecoration(
-//                           labelText: 'Select Name',
-//                           labelStyle: appStyle(14, kDark, FontWeight.normal),
-//                           border: OutlineInputBorder(),
-//                         ),
-//                         value: _selectedUserId,
-//                         items: _allMembers
-//                             .where((member) => member['role'] == _selectedType)
-//                             .map<DropdownMenuItem<String>>(
-//                                 (member) => DropdownMenuItem<String>(
-//                                       value: member['memberId'],
-//                                       child: Text(member['name']),
-//                                     ))
-//                             .toList(),
-//                         onChanged: (value) {
-//                           setState(() {
-//                             _selectedUserId = value;
-//                             _selectedUserName = _allMembers.firstWhere(
-//                                 (member) =>
-//                                     member['memberId'] == value)['name'];
-//                           });
+//                     if (_selectedType == 'Carrier')
+//                       Builder(
+//                         builder: (context) {
+//                           if (_carrierMembers.isEmpty) {
+//                             return TextFormField(
+//                               controller: _carrierNameController,
+//                               decoration: InputDecoration(
+//                                 labelText: 'Carrier Name',
+//                                 hintText: 'Enter carrier name',
+//                                 labelStyle:
+//                                     appStyle(14, kDark, FontWeight.normal),
+//                                 border: const OutlineInputBorder(),
+//                                 prefixIcon:
+//                                     const Icon(Icons.local_shipping_outlined),
+//                               ),
+//                               onChanged: (value) {
+//                                 setState(() {
+//                                   final trimmed = value.trim();
+//                                   _selectedUserName =
+//                                       trimmed.isEmpty ? null : trimmed;
+//                                   _selectedUserId = trimmed.isEmpty
+//                                       ? null
+//                                       : 'carrier_${trimmed.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+//                                 });
+//                               },
+//                               validator: (value) =>
+//                                   (value == null || value.trim().isEmpty)
+//                                       ? 'Please enter carrier name'
+//                                       : null,
+//                             );
+//                           }
+
+//                           final validCarrierId = _carrierMembers.any((m) =>
+//                                   m['memberId']?.toString() == _selectedUserId)
+//                               ? _selectedUserId
+//                               : null;
+
+//                           return DropdownButtonFormField<String>(
+//                             isExpanded: true,
+//                             decoration: InputDecoration(
+//                               labelText: 'Select Carrier',
+//                               labelStyle:
+//                                   appStyle(14, kDark, FontWeight.normal),
+//                               border: const OutlineInputBorder(),
+//                               prefixIcon: const Icon(
+//                                   Icons.local_shipping_outlined,
+//                                   color: kPrimary),
+//                             ),
+//                             value: validCarrierId,
+//                             items: _carrierMembers
+//                                 .map<DropdownMenuItem<String>>(
+//                                     (carrier) => DropdownMenuItem<String>(
+//                                           value: carrier['memberId'].toString(),
+//                                           child: Text(
+//                                             carrier['name']?.toString() ??
+//                                                 'Unknown Carrier',
+//                                             overflow: TextOverflow.ellipsis,
+//                                             maxLines: 1,
+//                                           ),
+//                                         ))
+//                                 .toList(),
+//                             onChanged: (value) {
+//                               setState(() {
+//                                 _selectedUserId = value;
+//                                 final matched = _carrierMembers.firstWhere(
+//                                   (c) => c['memberId']?.toString() == value,
+//                                   orElse: () => <String, dynamic>{},
+//                                 );
+//                                 _selectedUserName =
+//                                     matched['name']?.toString() ?? value;
+//                                 _carrierNameController.text =
+//                                     _selectedUserName ?? '';
+//                               });
+//                             },
+//                             validator: (value) => value == null
+//                                 ? 'Please select a carrier'
+//                                 : null,
+//                           );
 //                         },
-//                         validator: (value) => value == null ? 'Required' : null,
+//                       )
+//                     else if (_selectedType != null)
+//                       Builder(
+//                         builder: (context) {
+//                           final typeMembers = _allMembers.where((member) {
+//                             final role =
+//                                 member['role']?.toString().trim() ?? '';
+//                             if (_selectedType == 'Co-Owner') {
+//                               final normalized = role
+//                                   .toLowerCase()
+//                                   .replaceAll('-', '')
+//                                   .replaceAll(' ', '');
+//                               return normalized == 'coowner' ||
+//                                   normalized == 'subowner';
+//                             }
+//                             if (_selectedType == 'Owner') {
+//                               return role.toLowerCase() == 'owner';
+//                             }
+//                             return role.toLowerCase() ==
+//                                 _selectedType!.toLowerCase();
+//                           }).toList();
+//                           final validSelectedId = typeMembers.any((m) =>
+//                                   m['memberId']?.toString() == _selectedUserId)
+//                               ? _selectedUserId
+//                               : null;
+
+//                           return DropdownButtonFormField<String>(
+//                             isExpanded: true,
+//                             decoration: InputDecoration(
+//                               labelText: 'Select Name',
+//                               labelStyle:
+//                                   appStyle(14, kDark, FontWeight.normal),
+//                               border: const OutlineInputBorder(),
+//                             ),
+//                             value: validSelectedId,
+//                             items: typeMembers
+//                                 .map<DropdownMenuItem<String>>((member) =>
+//                                     DropdownMenuItem<String>(
+//                                       value: member['memberId'].toString(),
+//                                       child: Text(
+//                                         member['name']?.toString() ?? 'Unknown',
+//                                         overflow: TextOverflow.ellipsis,
+//                                         maxLines: 1,
+//                                       ),
+//                                     ))
+//                                 .toList(),
+//                             onChanged: (value) {
+//                               setState(() {
+//                                 _selectedUserId = value;
+//                                 final matched = _allMembers.firstWhere(
+//                                   (member) =>
+//                                       member['memberId']?.toString() == value,
+//                                   orElse: () => <String, dynamic>{
+//                                     'name': value ?? '',
+//                                     'memberId': value ?? '',
+//                                   },
+//                                 );
+//                                 _selectedUserName =
+//                                     matched['name']?.toString() ?? value;
+//                               });
+//                             },
+//                             validator: (value) =>
+//                                 value == null ? 'Required' : null,
+//                           );
+//                         },
 //                       ),
 //                     SizedBox(height: 16),
 //                     if (_selectedUserId != null)
@@ -972,15 +3014,34 @@
 //               ),
 //               actions: [
 //                 TextButton(
-//                   onPressed: () => Navigator.of(context).pop(),
+//                   onPressed:
+//                       _isSavingCheck ? null : () => Navigator.of(context).pop(),
 //                   child: Text('Cancel',
-//                       style: appStyle(14, kDark, FontWeight.normal)),
+//                       style: appStyle(14, _isSavingCheck ? kGray : kDark,
+//                           FontWeight.normal)),
 //                 ),
 //                 ElevatedButton(
-//                   onPressed: _serviceDetails.isEmpty ? null : _saveCheck,
-//                   style: ElevatedButton.styleFrom(backgroundColor: kPrimary),
-//                   child: Text('Save',
-//                       style: appStyle(14, kWhite, FontWeight.normal)),
+//                   onPressed: (_serviceDetails.isEmpty ||
+//                           _isSavingCheck ||
+//                           _isFetchingCheckNumber ||
+//                           _checkNumberController.text.trim().isEmpty)
+//                       ? null
+//                       : () => _saveCheck(setState),
+//                   style: ElevatedButton.styleFrom(
+//                     backgroundColor: kPrimary,
+//                     disabledBackgroundColor: kPrimary.withOpacity(0.6),
+//                   ),
+//                   child: _isSavingCheck
+//                       ? SizedBox(
+//                           width: 18.w,
+//                           height: 18.w,
+//                           child: const CircularProgressIndicator(
+//                             strokeWidth: 2,
+//                             color: kWhite,
+//                           ),
+//                         )
+//                       : Text('Save',
+//                           style: appStyle(14, kWhite, FontWeight.normal)),
 //                 ),
 //               ],
 //             );
@@ -1015,7 +3076,7 @@
 //         }).toList();
 
 //         driverUnpaidTotal = unpaidTrips.fold(
-//             0.0, (sum, trip) => sum + (trip['oEarnings'] as num).toDouble());
+//             0.0, (sum, trip) => sum + _parseAmount(trip['oEarnings']));
 
 //         setState(() {
 //           amountController.text = driverUnpaidTotal.toStringAsFixed(2);
@@ -1035,6 +3096,7 @@
 //               children: [
 //                 TextField(
 //                   controller: serviceNameController,
+//                   maxLength: 70,
 //                   decoration: InputDecoration(
 //                     labelText: 'Enter Service Name',
 //                     labelStyle: appStyle(14, kDark, FontWeight.normal),
@@ -1051,7 +3113,7 @@
 //                       ...unpaidTrips.map((trip) => Padding(
 //                             padding: const EdgeInsets.symmetric(vertical: 2),
 //                             child: Text(
-//                               '${trip['tripName']}: \$${(trip['oEarnings'] as num).toStringAsFixed(2)}',
+//                               '${trip['tripName']}: \$${_parseAmount(trip['oEarnings']).toStringAsFixed(2)}',
 //                               style: appStyle(12, kDark, FontWeight.normal),
 //                             ),
 //                           )),
@@ -1069,7 +3131,7 @@
 //                       labelStyle: appStyle(14, kDark, FontWeight.normal),
 //                       border: OutlineInputBorder(),
 //                     ),
-//                     keyboardType: TextInputType.number,
+//                     keyboardType: TextInputType.streetAddress,
 //                     enabled: true),
 //               ],
 //             ),
@@ -1091,9 +3153,10 @@
 //                 }
 
 //                 setState(() {
-//                   _serviceDetails.add({
-//                     'serviceName': serviceNameController.text,
-//                     'amount': double.parse(amountController.text),
+//                   _serviceDetails.add(<String, dynamic>{
+//                     'serviceName': serviceNameController.text.trim(),
+//                     'amount':
+//                         double.tryParse(amountController.text.trim()) ?? 0.0,
 //                   });
 //                   _calculateTotal();
 //                 });
@@ -1112,10 +3175,36 @@
 
 //   void _calculateTotal() {
 //     _totalAmount = _serviceDetails.fold(
-//         0.0, (sum, detail) => sum + (detail['amount'] as num).toDouble());
+//         0.0, (sum, detail) => sum + _parseAmount(detail['amount']));
 //   }
 
-//   Future<void> _saveCheck() async {
+//   Future<void> _saveCheck(StateSetter dialogSetState) async {
+//     if (_isSavingCheck || _isFetchingCheckNumber) return;
+
+//     if (_checkNumberController.text.trim().isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//             content: Text(
+//                 'No available check number. Please select a company with an active check series.')),
+//       );
+//       return;
+//     }
+
+//     if (_selectedType == 'Carrier') {
+//       if (_selectedUserName == null || _selectedUserName!.trim().isEmpty) {
+//         final carrierName = _carrierNameController.text.trim();
+//         if (carrierName.isEmpty) {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             const SnackBar(content: Text('Please select a carrier')),
+//           );
+//           return;
+//         }
+//         _selectedUserName = carrierName;
+//         _selectedUserId =
+//             'carrier_${carrierName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+//       }
+//     }
+
 //     if (_selectedUserId == null || _serviceDetails.isEmpty) {
 //       ScaffoldMessenger.of(context).showSnackBar(
 //         SnackBar(content: Text('Please fill all required fields')),
@@ -1123,11 +3212,56 @@
 //       return;
 //     }
 
+//     dialogSetState(() => _isSavingCheck = true);
+//     setState(() => _isSavingCheck = true);
+
 //     try {
 //       String checkNumber = _checkNumberController.text;
 
+//       // Derive active attached invoices from _serviceDetails
+//       final List<Map<String, dynamic>> activeAttachedInvoices = [];
+//       final List<Map<String, dynamic>> baseAttached =
+//           widget.attachedInvoices ?? _attachedInvoices;
+
+//       for (var detail in _serviceDetails) {
+//         final amt = _parseAmount(detail['amount']);
+//         if (amt <= 0) continue;
+
+//         String? recId = detail['recordId']?.toString();
+//         String? invNum = detail['invoiceNumber']?.toString();
+//         String? vehNum = detail['vehicleNumber']?.toString();
+
+//         if ((recId == null || recId.isEmpty) && baseAttached.isNotEmpty) {
+//           final sName = detail['serviceName']?.toString() ?? '';
+//           final matched = baseAttached.firstWhere(
+//             (inv) =>
+//                 (inv['invoiceNumber'] != null &&
+//                     sName.contains(inv['invoiceNumber'].toString())) ||
+//                 (inv['recordId'] != null &&
+//                     sName.contains(inv['recordId'].toString())),
+//             orElse: () => <String, dynamic>{},
+//           );
+//           if (matched.isNotEmpty) {
+//             recId = matched['recordId']?.toString();
+//             invNum = matched['invoiceNumber']?.toString();
+//             vehNum = matched['vehicleNumber']?.toString();
+//           }
+//         }
+
+//         if (recId != null && recId.isNotEmpty) {
+//           activeAttachedInvoices.add({
+//             'recordId': recId,
+//             'invoiceNumber': invNum ?? '',
+//             'vehicleNumber': vehNum ?? '',
+//             'amount': amt,
+//             'description': detail['serviceName'] ?? '',
+//           });
+//         }
+//       }
+
 //       // Create check document
-//       await FirebaseFirestore.instance.collection('Checks').add({
+//       final checkDocRef =
+//           await FirebaseFirestore.instance.collection('Checks').add({
 //         'checkNumber': checkNumber,
 //         'type': _selectedType,
 //         'userId': _selectedUserId,
@@ -1141,33 +3275,168 @@
 //         'createdBy': _effectiveUserId,
 //         'createdByUser': currentUId,
 //         'createdAt': FieldValue.serverTimestamp(),
+//         'attachedInvoices': activeAttachedInvoices,
+//         if (_selectedCompanyId != null) 'companyId': _selectedCompanyId,
+//         if (_selectedCompanyName != null) 'companyName': _selectedCompanyName,
 //       });
 
 //       // MARK CHECK NUMBER AS USED
 //       await _updateCheckNumberUsage(checkNumber);
 
-//       final userDoc = await FirebaseFirestore.instance
-//           .collection('Users')
-//           .doc(_selectedUserId!)
-//           .get();
-//       final currentWallet =
-//           (userDoc.data()?['wallet'] as num?)?.toDouble() ?? 0.0;
-//       final newWalletBalance = currentWallet + _totalAmount;
+//       // Sync attached invoices from Pay Invoice screen
+//       if (activeAttachedInvoices.isNotEmpty) {
+//         try {
+//           final batch = FirebaseFirestore.instance.batch();
+//           final now = DateTime.now();
+//           final nowIso = now.toIso8601String();
+//           final paymentId = "PAY-CHK-$checkNumber";
 
-//       await userDoc.reference.update({'wallet': newWalletBalance});
-//       if (_selectedType == 'Driver') {
-//         final querySnapshot = await FirebaseFirestore.instance
-//             .collection('Users')
-//             .doc(_selectedUserId)
-//             .collection('trips')
-//             .where('isPaid', isEqualTo: false)
-//             .get();
+//           // Fetch team members
+//           final teamSnap = await FirebaseFirestore.instance
+//               .collection('Users')
+//               .where('createdBy', isEqualTo: _effectiveUserId)
+//               .where('isTeamMember', isEqualTo: true)
+//               .get();
+//           final memberIds = teamSnap.docs.map((d) => d.id).toList();
 
-//         final batch = FirebaseFirestore.instance.batch();
-//         for (final doc in querySnapshot.docs) {
-//           batch.update(doc.reference, {'isPaid': true});
+//           final List<Map<String, dynamic>> ledgerInvoices = [];
+
+//           for (var inv in activeAttachedInvoices) {
+//             final recId = inv['recordId']?.toString() ?? '';
+//             if (recId.isEmpty) continue;
+
+//             final payAmt = (inv['amount'] as num?)?.toDouble() ?? 0.0;
+//             if (payAmt <= 0) continue;
+
+//             final ownerDocRef = FirebaseFirestore.instance
+//                 .collection('Users')
+//                 .doc(_effectiveUserId)
+//                 .collection('DataServices')
+//                 .doc(recId);
+//             final ownerSnap = await ownerDocRef.get();
+
+//             double totalInv = 0.0;
+//             double currentPaid = 0.0;
+//             List<dynamic> existingHist = [];
+
+//             if (ownerSnap.exists) {
+//               final recData = ownerSnap.data() as Map<String, dynamic>;
+//               final rawTotal = recData['invoiceAmount'];
+//               final totalStr =
+//                   rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ??
+//                       '0';
+//               totalInv = double.tryParse(totalStr) ?? 0.0;
+//               currentPaid = (recData['paidAmount'] as num?)?.toDouble() ?? 0.0;
+//               if (recData['paymentHistory'] is List) {
+//                 existingHist = List<dynamic>.from(recData['paymentHistory']);
+//               }
+//             } else {
+//               // Try global DataServicesRecords
+//               final globalDocRef = FirebaseFirestore.instance
+//                   .collection('DataServicesRecords')
+//                   .doc(recId);
+//               final gSnap = await globalDocRef.get();
+//               if (gSnap.exists) {
+//                 final recData = gSnap.data() as Map<String, dynamic>;
+//                 final rawTotal = recData['invoiceAmount'];
+//                 final totalStr =
+//                     rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ??
+//                         '0';
+//                 totalInv = double.tryParse(totalStr) ?? 0.0;
+//                 currentPaid =
+//                     (recData['paidAmount'] as num?)?.toDouble() ?? 0.0;
+//                 if (recData['paymentHistory'] is List) {
+//                   existingHist = List<dynamic>.from(recData['paymentHistory']);
+//                 }
+//               }
+//             }
+
+//             final newPaid = currentPaid + payAmt;
+//             final newBalance =
+//                 (totalInv - newPaid) > 0 ? (totalInv - newPaid) : 0.0;
+//             final newStatus = newBalance <= 0 ? 'Paid' : 'Partially Paid';
+
+//             final paymentEntry = {
+//               'paymentId': paymentId,
+//               'paymentMethod': 'Check',
+//               'amountPaid': payAmt,
+//               'checkNumber': checkNumber,
+//               'checkId': checkDocRef.id,
+//               'paidAt': nowIso,
+//               'paidBy': currentUId,
+//               'paidByName': _selectedUserName ?? 'User',
+//             };
+
+//             existingHist.add(paymentEntry);
+
+//             final updatePayload = {
+//               'paidAmount': newPaid,
+//               'balanceAmount': newBalance,
+//               'paymentStatus': newStatus,
+//               'paymentHistory': existingHist,
+//               'updatedAt': nowIso,
+//             };
+
+//             // 1. Owner record
+//             batch.set(ownerDocRef, updatePayload, SetOptions(merge: true));
+
+//             // 2. Global record
+//             final globalRef = FirebaseFirestore.instance
+//                 .collection('DataServicesRecords')
+//                 .doc(recId);
+//             batch.set(globalRef, updatePayload, SetOptions(merge: true));
+
+//             // 3. Team members
+//             for (final mId in memberIds) {
+//               if (mId == _effectiveUserId) continue;
+//               final memberRef = FirebaseFirestore.instance
+//                   .collection('Users')
+//                   .doc(mId)
+//                   .collection('DataServices')
+//                   .doc(recId);
+//               final mSnap = await memberRef.get();
+//               if (mSnap.exists) {
+//                 batch.set(memberRef, updatePayload, SetOptions(merge: true));
+//               }
+//             }
+
+//             ledgerInvoices.add({
+//               'recordId': recId,
+//               'invoiceNumber': inv['invoiceNumber'] ?? 'N/A',
+//               'vehicleNumber': inv['vehicleNumber'] ?? 'N/A',
+//               'amountPaid': payAmt,
+//               'remainingBalance': newBalance,
+//             });
+//           }
+
+//           if (ledgerInvoices.isNotEmpty) {
+//             final ledgerRef = FirebaseFirestore.instance
+//                 .collection('Users')
+//                 .doc(_effectiveUserId)
+//                 .collection('InvoicePayments')
+//                 .doc();
+
+//             batch.set(ledgerRef, {
+//               'id': ledgerRef.id,
+//               'paymentId': paymentId,
+//               'ownerId': _effectiveUserId,
+//               'vendorName': _selectedUserName ?? 'Vendor',
+//               'totalAmount': _totalAmount,
+//               'paymentMethod': 'Check',
+//               'checkNumber': checkNumber,
+//               'checkId': checkDocRef.id,
+//               'invoices': ledgerInvoices,
+//               'createdAt': FieldValue.serverTimestamp(),
+//               'createdBy': currentUId,
+//               'createdByName': _selectedUserName ?? 'User',
+//             });
+//           }
+
+//           await batch.commit();
+//         } catch (invoiceSyncError) {
+//           print(
+//               'Error updating invoice records on check creation: $invoiceSyncError');
 //         }
-//         await batch.commit();
 //       }
 
 //       ScaffoldMessenger.of(context).showSnackBar(
@@ -1180,6 +3449,10 @@
 //       ScaffoldMessenger.of(context).showSnackBar(
 //         SnackBar(content: Text('Error saving check: $e')),
 //       );
+//     } finally {
+//       if (mounted) {
+//         setState(() => _isSavingCheck = false);
+//       }
 //     }
 //   }
 
@@ -1210,50 +3483,101 @@
 //                 ),
 //               ],
 //       ),
-//       body: SingleChildScrollView(
-//         child: Padding(
-//           padding: const EdgeInsets.all(16.0),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               CustomButton(
-//                 text: "Write Check",
-//                 onPress: _showAddCheckDialog,
-//                 color: kPrimary,
+//       body: Stack(
+//         children: [
+//           SingleChildScrollView(
+//             child: Padding(
+//               padding: const EdgeInsets.all(16.0),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   if (role == "Owner" || role == "SubOwner") ...[
+//                     CustomButton(
+//                       text: "Write Check",
+//                       onPress: _showAddCheckDialog,
+//                       color: kPrimary,
+//                     ),
+//                   ],
+//                   const SizedBox(height: 16),
+//                   _buildFilterRow(),
+//                   if (_dateRange != null)
+//                     Padding(
+//                       padding: EdgeInsets.only(bottom: 8),
+//                       child: Text(
+//                         'Showing checks from ${DateFormat('MMM dd, yyyy').format(_dateRange!.start)} to ${DateFormat('MMM dd, yyyy').format(_dateRange!.end)}',
+//                         style: appStyle(12, kGray, FontWeight.normal),
+//                       ),
+//                     ),
+//                   if (_loadingChecks)
+//                     Center(child: CircularProgressIndicator())
+//                   else if (_checks.isEmpty)
+//                     Center(
+//                       child: Text(
+//                         'No checks found',
+//                         style: appStyle(16, kGray, FontWeight.normal),
+//                       ),
+//                     )
+//                   else
+//                     Column(
+//                       children: _checks
+//                           .map((check) => _buildCheckCard(check))
+//                           .toList(),
+//                     ),
+//                 ],
 //               ),
-//               const SizedBox(height: 16),
-//               _buildFilterRow(),
-//               // if (role == "Owner" || role == "SubOwner")
-//               //   GestureDetector(
-//               //       onTap: () =>
-//               //           Get.to(() => AddTeamMember(currentUId: currentUId)),
-//               //       child: CircleAvatar(radius: 20.r, child: Icon(Icons.add))),
-//               if (_dateRange != null)
-//                 Padding(
-//                   padding: EdgeInsets.only(bottom: 8),
-//                   child: Text(
-//                     'Showing checks from ${DateFormat('MMM dd, yyyy').format(_dateRange!.start)} to ${DateFormat('MMM dd, yyyy').format(_dateRange!.end)}',
-//                     style: appStyle(12, kGray, FontWeight.normal),
-//                   ),
-//                 ),
-//               if (_loadingChecks)
-//                 Center(child: CircularProgressIndicator())
-//               else if (_checks.isEmpty)
-//                 Center(
-//                   child: Text(
-//                     'No checks found',
-//                     style: appStyle(16, kGray, FontWeight.normal),
-//                   ),
-//                 )
-//               else
-//                 Column(
-//                   children:
-//                       _checks.map((check) => _buildCheckCard(check)).toList(),
-//                 ),
-//             ],
+//             ),
 //           ),
-//         ),
+//           if (_isPreparingAutoCheck)
+//             Container(
+//               color: Colors.black.withOpacity(0.35),
+//               child: Center(
+//                 child: Container(
+//                   margin: EdgeInsets.symmetric(horizontal: 32.w),
+//                   padding:
+//                       EdgeInsets.symmetric(horizontal: 24.w, vertical: 22.h),
+//                   decoration: BoxDecoration(
+//                     color: kWhite,
+//                     borderRadius: BorderRadius.circular(16.r),
+//                     boxShadow: [
+//                       BoxShadow(
+//                         color: Colors.black.withOpacity(0.12),
+//                         blurRadius: 15,
+//                         offset: const Offset(0, 5),
+//                       ),
+//                     ],
+//                   ),
+//                   child: Column(
+//                     mainAxisSize: MainAxisSize.min,
+//                     children: [
+//                       const CircularProgressIndicator(color: kPrimary),
+//                       SizedBox(height: 16.h),
+//                       Text(
+//                         "Preparing Check Details...",
+//                         style: appStyle(15, kDark, FontWeight.bold),
+//                         textAlign: TextAlign.center,
+//                       ),
+//                       SizedBox(height: 6.h),
+//                       Text(
+//                         "Loading prefilled invoice details and check series",
+//                         style: appStyle(12, kGray, FontWeight.normal),
+//                         textAlign: TextAlign.center,
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//               ),
+//             ),
+//         ],
 //       ),
 //     );
+//   }
+
+//   @override
+//   void dispose() {
+//     _fleetSharesSub?.cancel();
+//     _memoNumberController.dispose();
+//     _checkNumberController.dispose();
+//     _carrierNameController.dispose();
+//     super.dispose();
 //   }
 // }

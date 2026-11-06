@@ -105,7 +105,12 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     String userId = widget.currentUId;
     String address = _addressController.text.trim();
 
-    if (address.isNotEmpty && selectedLat != null && selectedLng != null) {
+    if (address.isNotEmpty) {
+      double finalLat =
+          selectedLat ?? currentLocation?.latitude ?? widget.userLat;
+      double finalLng =
+          selectedLng ?? currentLocation?.longitude ?? widget.userLng;
+
       DocumentReference addressRef = await FirebaseFirestore.instance
           .collection('Users')
           .doc(userId)
@@ -113,8 +118,8 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
           .add({
         'address': address,
         'location': {
-          'latitude': selectedLat,
-          'longitude': selectedLng,
+          'latitude': finalLat,
+          'longitude': finalLng,
         },
         'addressType': selectedAddressType,
         'date': DateTime.now(),
@@ -306,20 +311,21 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   ),
                   SizedBox(height: 5.h),
                   Text("Address", style: appStyle(16, kDark, FontWeight.w500)),
-                  _addressController.text.isEmpty
-                      ? SizedBox()
-                      : TextField(
-                          controller: _addressController,
-                          decoration: const InputDecoration(
-                            hintText: "Enter your address",
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
+                  TextField(
+                    controller: _addressController,
+                    decoration: const InputDecoration(
+                      hintText: "Enter your address manually",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   SizedBox(height: 16.h),
+                  /*
+                  // Commented out: Map place picker disabled (active only on Registration and Find Mechanic)
                   CustomButton(
                       color: kPrimary.withOpacity(0.8),
                       text: "Select Address From Map",
                       onPress: selectAddressFromMap),
+                  */
                   const Spacer(),
                   CustomButton(
                     color: kSecondary.withOpacity(0.8),

@@ -685,6 +685,8 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteProps> = ({
   label,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  /*
+  // Google Places Autocomplete disabled here (active only on Registration and Find Mechanic)
   const autocompleteInstanceRef =
     useRef<google.maps.places.Autocomplete | null>(null);
   const onChangeRef = useRef(onChange);
@@ -733,6 +735,7 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteProps> = ({
       }
     };
   }, []);
+  */
 
   return (
     <div className="space-y-2">
@@ -747,7 +750,7 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteProps> = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition-colors shadow-sm"
-          placeholder="Start typing an address..."
+          placeholder="Enter address manually..."
           required={required}
           autoComplete="off"
         />
@@ -1738,6 +1741,8 @@ export default function SettingPage() {
                     fullscreenControl: true,
                   }}
                 >
+                  {/* Autocomplete disabled here - active only on Registration and Find Mechanic */}
+                  {/*
                   <Autocomplete
                     fields={["formatted_address", "geometry"]}
                     options={{
@@ -1758,6 +1763,7 @@ export default function SettingPage() {
                       className="absolute top-4 left-1/2 transform -translate-x-1/2 w-4/5 z-10 p-3 rounded-2xl shadow-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] bg-white text-lg"
                     />
                   </Autocomplete>
+                  */}
                   <Marker position={mapCenter} />
                 </GoogleMap>
               )}

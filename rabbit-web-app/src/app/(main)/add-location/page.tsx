@@ -694,7 +694,9 @@ const addLocationGeocodeCache = new Map<string, google.maps.LatLngLiteral>();
 
 const SearchBox = ({
   mapRef,
+  selectedLocation,
   setSelectedLocation,
+  markerPosition,
   setMarkerPosition,
 }: {
   mapRef: React.MutableRefObject<google.maps.Map | null>;
@@ -703,6 +705,10 @@ const SearchBox = ({
   markerPosition: google.maps.LatLngLiteral | null;
   setMarkerPosition: (val: google.maps.LatLngLiteral) => void;
 }) => {
+  const [inputValue, setInputValue] = useState(selectedLocation || "");
+
+  /*
+  // Google Places Autocomplete disabled here (active only on Registration and Find Mechanic)
   const {
     ready,
     value,
@@ -741,52 +747,51 @@ const SearchBox = ({
       toast.error("Failed to select location. Please try again.");
     }
   };
+  */
 
   const handleSearchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!value) return;
+    if (!inputValue) return;
 
     try {
-      let coords = addLocationGeocodeCache.get(value);
+      let coords = addLocationGeocodeCache.get(inputValue);
       if (!coords) {
-        const results = await getGeocode({ address: value });
+        const results = await getGeocode({ address: inputValue });
         const { lat, lng } = await getLatLng(results[0]);
         coords = { lat, lng };
-        addLocationGeocodeCache.set(value, coords);
+        addLocationGeocodeCache.set(inputValue, coords);
       }
       setMarkerPosition(coords);
-      setSelectedLocation(value);
+      setSelectedLocation(inputValue);
 
       if (mapRef.current) {
         mapRef.current.panTo(coords);
         mapRef.current.setZoom(15);
       }
 
-      toast.success("Location found successfully!");
+      toast.success("Location set successfully!");
     } catch (error) {
       console.error("Error finding location:", error);
-      toast.error("Unable to locate. Please refine your search.");
+      setSelectedLocation(inputValue);
+      toast.success("Location address saved.");
     }
   };
 
   return (
     <form onSubmit={handleSearchSubmit} className="relative mb-6">
       <input
-        value={value}
+        value={inputValue}
         onChange={(e) => {
           const val = e.target.value;
-          if (val.trim().length < 3) {
-            setValue(val, false);
-            clearSuggestions();
-          } else {
-            setValue(val, true);
-          }
+          setInputValue(val);
+          setSelectedLocation(val);
         }}
-        disabled={!ready}
-        placeholder="Search for a location..."
+        placeholder="Type location address manually..."
         className="w-full px-12 py-3 border-2 border-gray-200 rounded-lg focus:border-[#F96176] focus:outline-none transition-colors"
       />
       <FaSearch className="absolute top-1/2 left-4 -translate-y-1/2 text-gray-400" />
+      {/* Autocomplete suggestions dropdown commented out - user types address manually */}
+      {/*
       {status === "OK" && (
         <ul className="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-2 max-h-60 overflow-y-auto">
           {data.map(({ place_id, description }) => (
@@ -804,6 +809,7 @@ const SearchBox = ({
           ))}
         </ul>
       )}
+      */}
     </form>
   );
 };
