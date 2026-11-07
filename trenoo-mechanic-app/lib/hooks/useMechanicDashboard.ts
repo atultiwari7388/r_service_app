@@ -410,17 +410,43 @@ export function useMechanicDashboard() {
 
   // Completed / Cancelled Jobs
   const historyJobs = useMemo(() => {
-    if (!currentUId) return [];
+    if (!currentUId) {
+      return allJobs.filter((job) => job.status === 5 || job.status === -1);
+    }
 
     return allJobs.filter((job) => {
       const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
-      if (!myOffer) return false;
+      if (!myOffer) return job.status === 5 || job.status === -1;
       return (
         myOffer.status === 5 ||
         myOffer.status === -1 ||
         job.status === 5 ||
         job.status === -1
       );
+    });
+  }, [allJobs, currentUId]);
+
+  // Distinct Completed Jobs (status == 5)
+  const completedJobs = useMemo(() => {
+    if (!currentUId) {
+      return allJobs.filter((job) => job.status === 5);
+    }
+    return allJobs.filter((job) => {
+      const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
+      if (myOffer && myOffer.status === 5) return true;
+      return job.status === 5;
+    });
+  }, [allJobs, currentUId]);
+
+  // Distinct Cancelled Jobs (status == -1)
+  const cancelledJobs = useMemo(() => {
+    if (!currentUId) {
+      return allJobs.filter((job) => job.status === -1);
+    }
+    return allJobs.filter((job) => {
+      const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
+      if (myOffer && myOffer.status === -1) return true;
+      return job.status === -1;
     });
   }, [allJobs, currentUId]);
 
@@ -710,6 +736,8 @@ export function useMechanicDashboard() {
     upcomingJobs,
     ongoingJobs,
     historyJobs,
+    completedJobs,
+    cancelledJobs,
     totalCompletedJobsCount,
     ongoingJobsCount,
     totalNewJobsCount,

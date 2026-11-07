@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   MapPin,
   RefreshCw,
@@ -16,6 +17,7 @@ import {
   ArrowUpDown,
   Navigation,
   AlertCircle,
+  ArrowRight,
 } from "lucide-react";
 import { useMechanicDashboard } from "@/lib/hooks/useMechanicDashboard";
 import UpcomingJobCard from "./UpcomingJobCard";
@@ -445,18 +447,35 @@ export default function MechanicDashboardView() {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredOngoing.map((job) => (
-                        <OngoingJobCard
-                          key={job.id}
-                          job={job}
-                          currentUId={currentUId}
-                          onUpdateStatus={updateJobStatus}
-                          onCancelClick={(j) => setCancelModalJob(j)}
-                          onRateClick={(j) => setRateModalJob(j)}
-                        />
-                      ))}
-                    </div>
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {filteredOngoing.slice(0, 6).map((job) => (
+                          <OngoingJobCard
+                            key={job.id}
+                            job={job}
+                            currentUId={currentUId}
+                            onUpdateStatus={updateJobStatus}
+                            onCancelClick={(j) => setCancelModalJob(j)}
+                            onRateClick={(j) => setRateModalJob(j)}
+                          />
+                        ))}
+                      </div>
+
+                      {filteredOngoing.length > 6 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-gray-200 shadow-xs">
+                          <span className="text-xs text-gray-500 font-medium">
+                            Showing 6 latest ongoing jobs out of {filteredOngoing.length} total.
+                          </span>
+                          <Link
+                            href="/find-jobs?tab=ongoing"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white text-xs font-semibold transition shadow-xs"
+                          >
+                            <span>View All in Jobs Board</span>
+                            <ArrowRight size={14} />
+                          </Link>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -478,18 +497,35 @@ export default function MechanicDashboardView() {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredHistory.map((job) => (
-                        <OngoingJobCard
-                          key={job.id}
-                          job={job}
-                          currentUId={currentUId}
-                          onUpdateStatus={updateJobStatus}
-                          onCancelClick={(j) => setCancelModalJob(j)}
-                          onRateClick={(j) => setRateModalJob(j)}
-                        />
-                      ))}
-                    </div>
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {filteredHistory.slice(0, 6).map((job) => (
+                          <OngoingJobCard
+                            key={job.id}
+                            job={job}
+                            currentUId={currentUId}
+                            onUpdateStatus={updateJobStatus}
+                            onCancelClick={(j) => setCancelModalJob(j)}
+                            onRateClick={(j) => setRateModalJob(j)}
+                          />
+                        ))}
+                      </div>
+
+                      {filteredHistory.length > 6 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-gray-200 shadow-xs">
+                          <span className="text-xs text-gray-500 font-medium">
+                            Showing 6 latest past jobs out of {filteredHistory.length} total.
+                          </span>
+                          <Link
+                            href="/find-jobs?tab=completed"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white text-xs font-semibold transition shadow-xs"
+                          >
+                            <span>View All in Jobs Board</span>
+                            <ArrowRight size={14} />
+                          </Link>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
