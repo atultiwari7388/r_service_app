@@ -54,11 +54,11 @@ export default function InspectionsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
           <div>
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#58BB87]">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#58BB87]">
               <ShieldCheck size={14} />
               <span>Federal & State Compliance</span>
             </div>
-            <h1 className="text-3xl font-black text-gray-900 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
               DOT & Commercial Trailer Inspections
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -69,7 +69,7 @@ export default function InspectionsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => alert("Start New DOT Inspection checklist.")}
-              className="px-4 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white font-semibold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
             >
               <Plus size={16} />
               <span>New Inspection Sheet</span>
@@ -79,13 +79,13 @@ export default function InspectionsPage() {
 
         {/* Inspections Table */}
         <div className="bg-white rounded-3xl border border-gray-200 shadow-xs p-6">
-          <h3 className="text-lg font-black text-gray-900 mb-4">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">
             Recent Inspection Certificates
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-500 font-bold uppercase text-[11px]">
+                <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-500 font-semibold uppercase text-[11px]">
                   <th className="py-3 px-4">Certificate #</th>
                   <th className="py-3 px-4">Fleet & Unit</th>
                   <th className="py-3 px-4">Inspection Standard</th>
@@ -98,14 +98,14 @@ export default function InspectionsPage() {
               <tbody className="divide-y divide-gray-100">
                 {MOCK_INSPECTIONS.map((insp) => (
                   <tr key={insp.id} className="hover:bg-gray-50">
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#F96176]">
+                    <td className="py-3.5 px-4 font-mono font-semibold text-[#F96176]">
                       {insp.reportNumber}
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="font-bold text-gray-900">{insp.unitNumber}</div>
+                      <div className="font-semibold text-gray-900">{insp.unitNumber}</div>
                       <div className="text-[11px] text-gray-500">{insp.fleetCompany}</div>
                     </td>
-                    <td className="py-3.5 px-4 font-medium text-gray-700">
+                    <td className="py-3.5 px-4 font-normal text-gray-700">
                       {insp.inspectionType}
                     </td>
                     <td className="py-3.5 px-4 text-gray-600">
@@ -116,7 +116,7 @@ export default function InspectionsPage() {
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase ${
                           insp.result === "PASSED"
                             ? "bg-[#EAF8F1] text-[#58BB87]"
                             : "bg-red-50 text-red-700"

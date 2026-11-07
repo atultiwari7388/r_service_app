@@ -61,11 +61,11 @@ export default function InvoicePage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
           <div>
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#F96176]">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#F96176]">
               <FileText size={14} />
               <span>Financial Ledger</span>
             </div>
-            <h1 className="text-3xl font-black text-gray-900 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
               Fleet Invoices & Statements
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -76,7 +76,7 @@ export default function InvoicePage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => alert("Create Invoice dialog opened.")}
-              className="px-4 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white font-semibold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
             >
               <Plus size={16} />
               <span>Create Invoice</span>
@@ -87,31 +87,31 @@ export default function InvoicePage() {
         {/* Invoice Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs">
-            <span className="text-xs text-gray-500 font-bold uppercase">Total Invoiced (MTD)</span>
-            <div className="text-2xl font-black text-gray-900 mt-1">$48,920.00</div>
-            <span className="text-xs text-[#58BB87] font-semibold">32 Invoices Issued</span>
+            <span className="text-xs text-[#F96176] font-semibold uppercase">Total Invoiced (MTD)</span>
+            <div className="text-2xl font-bold text-[#F96176] mt-1">$48,920.00</div>
+            <span className="text-xs text-[#58BB87] font-medium">32 Invoices Issued</span>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs">
-            <span className="text-xs text-gray-500 font-bold uppercase">Pending Payments</span>
-            <div className="text-2xl font-black text-amber-600 mt-1">$12,450.00</div>
-            <span className="text-xs text-amber-600 font-semibold">6 Awaiting Carrier Wire</span>
+            <span className="text-xs text-gray-500 font-semibold uppercase">Pending Payments</span>
+            <div className="text-2xl font-bold text-amber-600 mt-1">$12,450.00</div>
+            <span className="text-xs text-amber-600 font-medium">6 Awaiting Carrier Wire</span>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs">
-            <span className="text-xs text-gray-500 font-bold uppercase">Paid & Cleared</span>
-            <div className="text-2xl font-black text-[#58BB87] mt-1">$36,470.00</div>
-            <span className="text-xs text-[#58BB87] font-semibold">Direct Deposit Processed</span>
+            <span className="text-xs text-gray-500 font-semibold uppercase">Paid & Cleared</span>
+            <div className="text-2xl font-bold text-[#58BB87] mt-1">$36,470.00</div>
+            <span className="text-xs text-[#58BB87] font-medium">Direct Deposit Processed</span>
           </div>
         </div>
 
         {/* Invoices List */}
         <div className="bg-white rounded-3xl border border-gray-200 shadow-xs p-6">
-          <h3 className="text-lg font-black text-gray-900 mb-4">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">
             Recent Fleet Statements
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-500 font-bold uppercase text-[11px]">
+                <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-500 font-semibold uppercase text-[11px]">
                   <th className="py-3 px-4">Invoice #</th>
                   <th className="py-3 px-4">Fleet Carrier</th>
                   <th className="py-3 px-4">Unit Serviced</th>
@@ -124,10 +124,10 @@ export default function InvoicePage() {
               <tbody className="divide-y divide-gray-100">
                 {MOCK_INVOICES.map((inv) => (
                   <tr key={inv.id} className="hover:bg-gray-50">
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#F96176]">
+                    <td className="py-3.5 px-4 font-mono font-semibold text-[#F96176]">
                       {inv.invoiceNo}
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-gray-800">
+                    <td className="py-3.5 px-4 font-medium text-gray-800">
                       {inv.carrier}
                     </td>
                     <td className="py-3.5 px-4 text-gray-600">
@@ -136,12 +136,12 @@ export default function InvoicePage() {
                     <td className="py-3.5 px-4 text-gray-500">
                       {inv.date}
                     </td>
-                    <td className="py-3.5 px-4 font-black text-gray-900">
+                    <td className="py-3.5 px-4 font-semibold text-gray-900">
                       {formatCurrency(inv.amount)}
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase ${
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase ${
                           inv.status === "paid"
                             ? "bg-[#EAF8F1] text-[#58BB87]"
                             : inv.status === "pending"
@@ -155,7 +155,7 @@ export default function InvoicePage() {
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => alert(`Downloading ${inv.invoiceNo}.pdf`)}
-                        className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-900 hover:text-white transition text-gray-600"
+                        className="p-1.5 rounded-lg bg-gray-100 hover:bg-[#F96176] hover:text-white transition text-gray-600"
                         title="Download Invoice"
                       >
                         <Download size={14} />

@@ -28,7 +28,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <AppSidebar />
 
       {/* Main Content Area shifted right on desktop, flush on mobile */}
-      <div className="flex-1 min-w-0 flex flex-col transition-all duration-300 ease-in-out ml-0 md:ml-64">
+      <div className="flex-1 min-w-0 flex flex-col transition-all duration-300 ease-in-out ml-0 md:ml-56">
         {/* Mobile Header Bar (< md only) */}
         <header className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-white border-b border-gray-200 sticky top-0 z-30 shadow-2xs">
           <div className="flex items-center gap-2">

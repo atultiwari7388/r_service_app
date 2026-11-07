@@ -55,11 +55,11 @@ export default function TeamPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
           <div>
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#F96176]">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#F96176]">
               <Users size={14} />
               <span>Workshop Personnel</span>
             </div>
-            <h1 className="text-3xl font-black text-gray-900 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
               Heavy Duty Technician Team
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -70,7 +70,7 @@ export default function TeamPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => alert("Add Technician modal opened.")}
-              className="px-4 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white font-semibold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
             >
               <Plus size={16} />
               <span>Add Technician</span>
@@ -88,7 +88,7 @@ export default function TeamPage() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                       tech.status === "in_bay"
                         ? "bg-amber-50 text-amber-700"
                         : "bg-[#EAF8F1] text-[#58BB87]"
@@ -97,31 +97,31 @@ export default function TeamPage() {
                     ● {tech.status === "in_bay" ? "In Bay" : "Available"}
                   </span>
                   {tech.aseCertified && (
-                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#F96176]">
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-[#F96176]">
                       <ShieldCheck size={14} /> ASE
                     </span>
                   )}
                 </div>
 
-                <div className="h-12 w-12 rounded-xl bg-gray-900 text-white flex items-center justify-center font-bold text-base mb-3 shadow">
+                <div className="h-12 w-12 rounded-xl bg-[#F96176] text-white flex items-center justify-center font-bold text-base mb-3 shadow-xs">
                   {tech.name.split(" ").map((n) => n[0]).join("")}
                 </div>
 
-                <h3 className="text-base font-black text-gray-900">
+                <h3 className="text-base font-bold text-gray-900">
                   {tech.name}
                 </h3>
-                <p className="text-xs text-gray-500 font-semibold mb-2">
+                <p className="text-xs text-gray-500 font-normal mb-2">
                   {tech.title}
                 </p>
 
                 <div className="pt-3 border-t border-gray-100 text-xs text-gray-600 space-y-1.5">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Specialty:</span>
-                    <span className="font-bold text-gray-800">{tech.specialty}</span>
+                    <span className="font-medium text-gray-800">{tech.specialty}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Assigned:</span>
-                    <span className="font-bold text-[#F96176]">{tech.assignedBay}</span>
+                    <span className="font-medium text-[#F96176]">{tech.assignedBay}</span>
                   </div>
                 </div>
               </div>
@@ -129,7 +129,7 @@ export default function TeamPage() {
               <div className="mt-5 pt-3 border-t border-gray-100">
                 <a
                   href={`tel:${tech.phone}`}
-                  className="w-full py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold transition flex items-center justify-center gap-1.5"
+                  className="w-full py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-semibold transition flex items-center justify-center gap-1.5"
                 >
                   <Phone size={13} />
                   <span>Call Bay</span>

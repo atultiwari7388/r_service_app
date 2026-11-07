@@ -61,11 +61,11 @@ export default function CheckPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
           <div>
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#F96176]">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#F96176]">
               <CheckSquare size={14} />
               <span>Disbursements & Payments</span>
             </div>
-            <h1 className="text-3xl font-black text-gray-900 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
               Check Management & Ledger
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -76,7 +76,7 @@ export default function CheckPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => alert("Write Check modal opened.")}
-              className="px-4 py-2.5 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white font-semibold text-xs sm:text-sm transition flex items-center gap-2 shadow-xs cursor-pointer"
             >
               <Plus size={16} />
               <span>Write Vendor Check</span>
@@ -87,10 +87,10 @@ export default function CheckPage() {
         {/* Check Register Table */}
         <div className="bg-white rounded-3xl border border-gray-200 shadow-xs p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-black text-gray-900">
+            <h3 className="text-lg font-bold text-gray-900">
               Recent Issued Checks
             </h3>
-            <span className="text-xs font-semibold text-gray-500">
+            <span className="text-xs font-normal text-gray-500">
               Bank Account: Operating Checking (**** 8841)
             </span>
           </div>
@@ -98,7 +98,7 @@ export default function CheckPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-500 font-bold uppercase text-[11px]">
+                <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-500 font-semibold uppercase text-[11px]">
                   <th className="py-3 px-4">Check #</th>
                   <th className="py-3 px-4">Payee Name</th>
                   <th className="py-3 px-4">Memo / Description</th>
@@ -111,10 +111,10 @@ export default function CheckPage() {
               <tbody className="divide-y divide-gray-100">
                 {MOCK_CHECKS.map((chk) => (
                   <tr key={chk.id} className="hover:bg-gray-50">
-                    <td className="py-3.5 px-4 font-mono font-bold text-gray-900">
+                    <td className="py-3.5 px-4 font-mono font-semibold text-gray-900">
                       {chk.checkNo}
                     </td>
-                    <td className="py-3.5 px-4 font-bold text-gray-800">
+                    <td className="py-3.5 px-4 font-medium text-gray-800">
                       {chk.payee}
                     </td>
                     <td className="py-3.5 px-4 text-gray-600">
@@ -123,12 +123,12 @@ export default function CheckPage() {
                     <td className="py-3.5 px-4 text-gray-500">
                       {chk.date}
                     </td>
-                    <td className="py-3.5 px-4 font-black text-gray-900">
+                    <td className="py-3.5 px-4 font-semibold text-gray-900">
                       {formatCurrency(chk.amount)}
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase ${
                           chk.status === "cleared"
                             ? "bg-[#EAF8F1] text-[#58BB87]"
                             : chk.status === "printed"

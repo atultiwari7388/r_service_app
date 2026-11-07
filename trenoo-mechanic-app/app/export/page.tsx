@@ -37,11 +37,11 @@ export default function ExportPage() {
       <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="pb-6 border-b border-gray-200">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#F96176]">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#F96176]">
             <Download size={14} />
             <span>Data Management</span>
           </div>
-          <h1 className="text-3xl font-black text-gray-900 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
             Data Export & Integrations
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
@@ -61,12 +61,12 @@ export default function ExportPage() {
                   <div className="h-10 w-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#F96176]">
                     <FileSpreadsheet size={20} />
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-bold font-mono">
+                  <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold font-mono">
                     {card.format}
                   </span>
                 </div>
 
-                <h3 className="text-lg font-black text-gray-900 mb-1">
+                <h3 className="text-base font-bold text-gray-900 mb-1">
                   {card.title}
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 mb-6 leading-relaxed">
@@ -76,7 +76,7 @@ export default function ExportPage() {
 
               <button
                 onClick={() => alert(`Starting export: ${card.title}`)}
-                className="w-full py-3 rounded-xl bg-gray-900 hover:bg-[#F96176] text-white text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-auto self-start px-5 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
               >
                 <Download size={16} />
                 <span>{card.actionText}</span>

@@ -73,31 +73,31 @@ export default function AppSidebar() {
         />
       )}
 
-      {/* SIDEBAR ASIDE - ALWAYS EXPANDED (w-64) WITH PROMINENT LOGO */}
+      {/* SIDEBAR ASIDE - STREAMLINED WIDTH (w-56) */}
       <aside
         className={cn(
-          "fixed top-0 bottom-0 left-0 z-50 w-64 bg-white flex flex-col justify-between border-r border-gray-200 select-none shadow-xs transition-transform duration-300 ease-in-out",
+          "fixed top-0 bottom-0 left-0 z-50 w-56 bg-white flex flex-col justify-between border-r border-gray-200 select-none shadow-xs transition-transform duration-300 ease-in-out",
           // Mobile responsive drawer: slide in / out
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
-        {/* TOP SECTION: WIDE LOGO + NAVIGATION */}
+        {/* TOP SECTION: LOGO + NAVIGATION */}
         <div className="flex flex-col w-full overflow-y-auto no-scrollbar">
-          {/* Header with Sharp Treno Mechanic Logo */}
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          {/* Header with Treno Mechanic Logo */}
+          <div className="px-4 py-3.5 border-b border-gray-100 flex items-center justify-between">
             <Link
               href="/"
               onClick={closeMobile}
               className="flex items-center group transition-transform hover:opacity-90"
             >
-              <div className="relative h-9 w-auto flex items-center">
+              <div className="relative h-8 w-auto flex items-center">
                 <Image
                   src="/assets/treno_mechanic_logo.png"
                   alt="Treno Mechanic Logo"
-                  width={160}
-                  height={40}
+                  width={140}
+                  height={35}
                   priority
-                  className="h-9 w-auto max-w-[165px] object-contain drop-shadow-2xs"
+                  className="h-8 w-auto max-w-[145px] object-contain drop-shadow-2xs"
                 />
               </div>
             </Link>
@@ -109,19 +109,19 @@ export default function AppSidebar() {
               className="md:hidden p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition cursor-pointer"
               aria-label="Close navigation"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
 
           {/* Navigation Category Label */}
-          <div className="px-5 pt-5 pb-2">
-            <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+          <div className="px-4 pt-4 pb-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
               Operations & Jobs
             </span>
           </div>
 
-          {/* 7 Menus + Profile Link (Always showing Icon + Heading together) */}
-          <nav className="flex flex-col gap-1 px-3 w-full">
+          {/* 7 Menus + Profile Link */}
+          <nav className="flex flex-col gap-1 px-2.5 w-full">
             {SIDEBAR_MENU_ITEMS.map((item) => {
               const isActive = isMenuLinkActive(item.href);
 
@@ -131,10 +131,10 @@ export default function AppSidebar() {
                   href={item.href}
                   onClick={closeMobile}
                   className={cn(
-                    "group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150",
+                    "group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all duration-150",
                     isActive
-                      ? "bg-[#F96176] text-white shadow-xs font-bold"
-                      : "text-gray-600 hover:bg-gray-100/90 hover:text-gray-900"
+                      ? "bg-[#F96176] text-white shadow-xs font-semibold"
+                      : "text-gray-600 hover:bg-gray-100/90 hover:text-gray-900 font-medium"
                   )}
                   aria-label={item.label}
                 >
@@ -146,7 +146,7 @@ export default function AppSidebar() {
                         : "text-gray-500 group-hover:text-gray-900"
                     )}
                   >
-                    {MENU_ICONS[item.key] || <FileText size={18} />}
+                    {MENU_ICONS[item.key] || <FileText size={17} />}
                   </span>
 
                   <span className="truncate flex-1">{item.label}</span>
@@ -163,15 +163,15 @@ export default function AppSidebar() {
               href="/profile"
               onClick={closeMobile}
               className={cn(
-                "group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 mt-1",
+                "group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all duration-150 mt-1",
                 pathname === "/profile"
-                  ? "bg-[#F96176] text-white shadow-xs font-bold"
-                  : "text-gray-600 hover:bg-gray-100/90 hover:text-gray-900"
+                  ? "bg-[#F96176] text-white shadow-xs font-semibold"
+                  : "text-gray-600 hover:bg-gray-100/90 hover:text-gray-900 font-medium"
               )}
               aria-label="My Profile"
             >
               <UserIcon
-                size={18}
+                size={17}
                 className={cn(
                   "shrink-0",
                   pathname === "/profile"

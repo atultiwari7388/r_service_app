@@ -111,34 +111,34 @@ export default function ActiveWorkOrdersTable() {
     switch (status) {
       case "bay_in_progress":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
             In Bay Repair
           </span>
         );
       case "dot_inspection":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200">
             <Clock size={12} />
             DOT Inspection
           </span>
         );
       case "ready_for_pickup":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF8F1] text-[#58BB87] text-xs font-bold border border-[#58BB87]/30">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF8F1] text-[#58BB87] text-xs font-semibold border border-[#58BB87]/30">
             <CheckCircle2 size={12} />
             Ready for Pickup
           </span>
         );
       case "scheduled":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-semibold border border-purple-200">
             Scheduled
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-bold">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
             {status}
           </span>
         );
@@ -150,10 +150,10 @@ export default function ActiveWorkOrdersTable() {
       {/* Table Header Controls */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
-          <span className="text-xs font-black uppercase tracking-wider text-[#F96176]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#F96176]">
             Live Dispatch Board
           </span>
-          <h3 className="text-xl sm:text-2xl font-black text-gray-900">
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5">
             Commercial Truck & Trailer Work Orders
           </h3>
         </div>
@@ -172,11 +172,11 @@ export default function ActiveWorkOrdersTable() {
           </div>
 
           {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl text-xs font-bold text-gray-600">
+          <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl text-xs font-medium text-gray-600">
             <button
               onClick={() => setFilter("all")}
               className={`px-3 py-1.5 rounded-lg transition ${
-                filter === "all" ? "bg-white text-gray-900 shadow-xs" : "hover:text-gray-900"
+                filter === "all" ? "bg-white text-gray-900 shadow-xs font-semibold" : "hover:text-gray-900"
               }`}
             >
               All
@@ -185,7 +185,7 @@ export default function ActiveWorkOrdersTable() {
               onClick={() => setFilter("bay_in_progress")}
               className={`px-3 py-1.5 rounded-lg transition ${
                 filter === "bay_in_progress"
-                  ? "bg-white text-[#F96176] shadow-xs"
+                  ? "bg-white text-[#F96176] shadow-xs font-semibold"
                   : "hover:text-gray-900"
               }`}
             >
@@ -195,7 +195,7 @@ export default function ActiveWorkOrdersTable() {
               onClick={() => setFilter("ready_for_pickup")}
               className={`px-3 py-1.5 rounded-lg transition ${
                 filter === "ready_for_pickup"
-                  ? "bg-white text-[#58BB87] shadow-xs"
+                  ? "bg-white text-[#58BB87] shadow-xs font-semibold"
                   : "hover:text-gray-900"
               }`}
             >
@@ -205,7 +205,7 @@ export default function ActiveWorkOrdersTable() {
 
           <Link
             href="/find-jobs"
-            className="px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition flex items-center gap-1.5 ml-auto"
+            className="px-4 py-2 rounded-xl bg-[#F96176] text-white text-xs font-semibold hover:bg-[#e0485d] transition flex items-center gap-1.5 ml-auto shadow-xs"
           >
             <span>Full Jobs Board</span>
             <ArrowRight size={14} />
@@ -217,7 +217,7 @@ export default function ActiveWorkOrdersTable() {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs sm:text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-500 font-bold uppercase text-[11px] tracking-wider">
+            <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-500 font-semibold uppercase text-[11px] tracking-wider">
               <th className="py-3 px-4 rounded-l-xl">Unit & Order #</th>
               <th className="py-3 px-4">Fleet Carrier</th>
               <th className="py-3 px-4">Vehicle Type</th>
@@ -234,7 +234,7 @@ export default function ActiveWorkOrdersTable() {
                 className="hover:bg-gray-50/80 transition-colors group"
               >
                 <td className="py-3.5 px-4">
-                  <div className="font-extrabold text-gray-900 flex items-center gap-1.5">
+                  <div className="font-semibold text-gray-900 flex items-center gap-1.5">
                     <Truck size={15} className="text-[#F96176]" />
                     <span>{wo.unitNumber}</span>
                   </div>
@@ -242,14 +242,14 @@ export default function ActiveWorkOrdersTable() {
                     {wo.orderNumber}
                   </span>
                 </td>
-                <td className="py-3.5 px-4 font-semibold text-gray-800">
+                <td className="py-3.5 px-4 font-medium text-gray-800">
                   {wo.fleetCompany}
                 </td>
                 <td className="py-3.5 px-4 text-gray-600 text-xs">
                   {wo.vehicleType}
                 </td>
                 <td className="py-3.5 px-4 max-w-xs">
-                  <p className="font-medium text-gray-800 truncate" title={wo.primaryConcern}>
+                  <p className="font-normal text-gray-800 truncate" title={wo.primaryConcern}>
                     {wo.primaryConcern}
                   </p>
                   <span className="text-[11px] text-gray-500">
@@ -257,7 +257,7 @@ export default function ActiveWorkOrdersTable() {
                   </span>
                 </td>
                 <td className="py-3.5 px-4">
-                  <span className="font-bold text-gray-900">{wo.assignedBay}</span>
+                  <span className="font-semibold text-gray-900">{wo.assignedBay}</span>
                   <div className="text-[11px] text-gray-500 truncate">
                     {wo.leadTechnician}
                   </div>
@@ -266,7 +266,7 @@ export default function ActiveWorkOrdersTable() {
                 <td className="py-3.5 px-4 text-right">
                   <Link
                     href={`/invoice#${wo.orderNumber}`}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-800 font-bold text-xs hover:bg-[#F96176] hover:text-white transition group-hover:shadow-xs"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-800 font-semibold text-xs hover:bg-[#F96176] hover:text-white transition group-hover:shadow-xs"
                   >
                     <span>Details</span>
                     <ArrowRight size={13} />
