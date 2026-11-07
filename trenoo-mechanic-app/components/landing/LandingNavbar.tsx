@@ -33,8 +33,26 @@ export default function LandingNavbar() {
   const navLinks = [
     { label: "About", href: "#about", icon: Info },
     { label: "App Features", href: "#features", icon: Layers },
-    { label: "Download App", href: "#download", icon: Smartphone },
+    { label: "Download App", href: "#download-buttons", icon: Smartphone },
   ];
+
+  const handleNavLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("#")) {
+      e.preventDefault();
+      const targetId = href.replace("#", "");
+      const target =
+        document.getElementById(targetId) ||
+        document.getElementById("download-buttons") ||
+        document.getElementById("download-card") ||
+        document.getElementById("download");
+      if (target) {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: targetId.includes("download") ? "center" : "start",
+        });
+      }
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full transition-all duration-300">
@@ -70,7 +88,8 @@ export default function LandingNavbar() {
               <a
                 key={link.label}
                 href={link.href}
-                className="text-sm font-bold text-gray-700 hover:text-[#F96176] transition-colors relative py-1"
+                onClick={(e) => handleNavLinkClick(e, link.href)}
+                className="text-sm font-bold text-gray-700 hover:text-[#F96176] transition-colors relative py-1 cursor-pointer"
               >
                 {link.label}
               </a>
@@ -136,8 +155,11 @@ export default function LandingNavbar() {
                   <a
                     key={link.label}
                     href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-800 hover:bg-rose-50 hover:text-[#F96176] transition"
+                    onClick={(e) => {
+                      setMobileMenuOpen(false);
+                      handleNavLinkClick(e, link.href);
+                    }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-800 hover:bg-rose-50 hover:text-[#F96176] transition cursor-pointer"
                   >
                     <IconComponent size={18} className="text-gray-400" />
                     <span>{link.label}</span>

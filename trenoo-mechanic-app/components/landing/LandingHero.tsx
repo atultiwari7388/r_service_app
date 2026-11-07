@@ -19,6 +19,18 @@ import {
 import { APP_CONFIG } from "@/lib/constants";
 
 export default function LandingHero() {
+  const handleScrollToDownload = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const target =
+      document.getElementById("download-buttons") ||
+      document.getElementById("download-card") ||
+      document.getElementById("download");
+
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   return (
     <section className="relative w-full overflow-hidden bg-gradient-to-b from-[#FFF5F7] via-[#FAFAFC] to-white text-gray-900">
       {/* Background Image with Light Semi-Transparent Overlay */}
@@ -93,8 +105,9 @@ export default function LandingHero() {
               </Link>
 
               <a
-                href="#download"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white hover:bg-gray-50 text-gray-800 font-bold text-sm border-2 border-gray-200 transition-colors shadow-xs"
+                href="#download-buttons"
+                onClick={handleScrollToDownload}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white hover:bg-gray-50 text-gray-800 font-bold text-sm border-2 border-gray-200 transition-colors shadow-xs cursor-pointer"
               >
                 <Smartphone size={17} className="text-[#F96176]" />
                 <span>Get App</span>

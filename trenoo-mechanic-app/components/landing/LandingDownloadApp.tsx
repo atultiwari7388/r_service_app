@@ -71,7 +71,10 @@ export default function LandingDownloadApp() {
         </div>
 
         {/* Main Store Download Card */}
-        <div className="bg-white rounded-3xl p-8 sm:p-12 border-2 border-gray-100 shadow-xl">
+        <div
+          id="download-card"
+          className="bg-white rounded-3xl p-8 sm:p-12 border-2 border-gray-100 shadow-xl scroll-mt-24"
+        >
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
             {/* Left Column: Download Buttons, Description & Store Links */}
             <div className="lg:col-span-7 space-y-8 text-left">
@@ -91,7 +94,10 @@ export default function LandingDownloadApp() {
               </div>
 
               {/* Official Download Buttons: Green for Play, Pink for Apple */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+              <div
+                id="download-buttons"
+                className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2 scroll-mt-32"
+              >
                 {/* Android Google Play Link */}
                 <a
                   href={ANDROID_URL}

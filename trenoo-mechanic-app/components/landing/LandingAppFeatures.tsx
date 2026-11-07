@@ -154,6 +154,17 @@ export default function LandingAppFeatures() {
 
   const currentScreen = screens[activeTab];
 
+  const handleScrollToDownload = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const target =
+      document.getElementById("download-buttons") ||
+      document.getElementById("download-card") ||
+      document.getElementById("download");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   return (
     <section
       id="features"
@@ -286,8 +297,9 @@ export default function LandingAppFeatures() {
               {/* Download App Shortcut */}
               <div className="pt-2 flex items-center gap-4 flex-wrap">
                 <a
-                  href="#download"
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white text-xs font-black shadow-md shadow-[#F96176]/25 transition"
+                  href="#download-buttons"
+                  onClick={handleScrollToDownload}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white text-xs font-black shadow-md shadow-[#F96176]/25 transition cursor-pointer"
                 >
                   <Smartphone size={15} />
                   <span>Download App for Android & iOS</span>
