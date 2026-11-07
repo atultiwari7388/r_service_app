@@ -43,7 +43,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             <Link href="/" className="flex items-center">
               <Image
                 src="/assets/treno_mechanic_logo.png"
-                alt="Trenoo Mechanic"
+                alt="Treno Mechanic"
                 width={135}
                 height={34}
                 className="h-8 w-auto max-w-[135px] object-contain drop-shadow-2xs"

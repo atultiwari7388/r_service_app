@@ -20,7 +20,7 @@ export default function HomePage() {
             <span className="w-6 h-6 border-2 border-[#F96176] border-t-transparent rounded-full animate-spin" />
           </div>
           <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-            Loading Trenoo Mechanic...
+            Loading Treno Mechanic...
           </span>
         </div>
       </div>

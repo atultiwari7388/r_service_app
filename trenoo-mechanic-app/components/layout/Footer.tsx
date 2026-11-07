@@ -18,7 +18,7 @@ export default function Footer() {
               <div className="h-10 w-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center p-1.5 shadow-2xs">
                 <Image
                   src="/logo-new.png"
-                  alt="Trenoo Fleet Mechanic"
+                  alt="Treno Fleet Mechanic"
                   width={28}
                   height={28}
                   className="object-contain"

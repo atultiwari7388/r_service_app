@@ -142,7 +142,7 @@ export default function LiveLocationCard() {
                 </span>
               </div>
               <span className="text-xs font-black text-gray-900 mt-1.5 tracking-tight">
-                Trenoo Fleet Depot
+                Treno Fleet Depot
               </span>
               <span className="text-[10px] text-[#58BB87] font-bold">
                 California, 93711, USA

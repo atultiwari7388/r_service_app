@@ -55,7 +55,7 @@ export default function LandingNavbar() {
             <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-[#0B132B] flex items-center justify-center p-2 shadow-md group-hover:scale-105 transition-transform duration-300 border border-gray-800">
               <Image
                 src="/logo-new.png"
-                alt="Trenoo Mechanic Logo"
+                alt="Treno Mechanic Logo"
                 width={30}
                 height={30}
                 className="object-contain"
@@ -65,7 +65,7 @@ export default function LandingNavbar() {
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-lg sm:text-xl font-black text-[#0B132B] tracking-tight">
-                  TRENOO
+                  TRENO
                 </span>
                 <span className="text-lg sm:text-xl font-black text-[#F96176] tracking-tight">
                   MECHANIC

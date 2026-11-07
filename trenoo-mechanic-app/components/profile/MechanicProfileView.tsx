@@ -650,7 +650,7 @@ export default function MechanicProfileView() {
           <div className="pb-4 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">Account Management & Lifecycle</h2>
             <p className="text-xs text-gray-500">
-              Manage account deactivation, visibility, or complete removal from the Trenoo platform
+              Manage account deactivation, visibility, or complete removal from the Treno platform
             </p>
           </div>
 

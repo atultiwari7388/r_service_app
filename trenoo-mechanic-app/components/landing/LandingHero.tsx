@@ -54,10 +54,10 @@ export default function LandingHero() {
               <span>Commercial Fleet & Semi-Trailer Platform</span>
             </div>
 
-            {/* Main Brand Title as Requested: Trenoo Mechanic */}
+            {/* Main Brand Title as Requested: Treno Mechanic */}
             <div className="space-y-2">
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05] text-white">
-                Trenoo <span className="text-[#F96176]">Mechanic</span>
+                Treno <span className="text-[#F96176]">Mechanic</span>
               </h1>
               <p className="text-xl sm:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 via-gray-200 to-gray-400">
                 On-Demand Heavy-Duty Mobile & Shop Vehicle Repair

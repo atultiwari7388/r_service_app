@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Trenoo Fleet & Trailer - Commercial Truck & Trailer Mechanic Portal",
+  title: "Treno Fleet & Trailer - Commercial Truck & Trailer Mechanic Portal",
   description:
     "Commercial fleet management, heavy-duty truck & trailer maintenance, 24/7 roadside assistance, DOT annual inspections, air brakes, reefer & emergency bay diagnostics.",
   icons: {

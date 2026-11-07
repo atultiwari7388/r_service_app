@@ -173,7 +173,7 @@ export default function LandingAppFeatures() {
           </h2>
 
           <p className="text-base sm:text-lg text-gray-600 leading-relaxed font-normal">
-            Take a look inside the official Trenoo Mechanic mobile app. Built
+            Take a look inside the official Treno Mechanic mobile app. Built
             with high-contrast, glove-friendly controls and intelligent dispatch
             automation.
           </p>

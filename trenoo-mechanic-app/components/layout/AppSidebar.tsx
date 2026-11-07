@@ -83,7 +83,7 @@ export default function AppSidebar() {
       >
         {/* TOP SECTION: WIDE LOGO + NAVIGATION */}
         <div className="flex flex-col w-full overflow-y-auto no-scrollbar">
-          {/* Header with Sharp Trenoo Mechanic Logo */}
+          {/* Header with Sharp Treno Mechanic Logo */}
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <Link
               href="/"
@@ -93,7 +93,7 @@ export default function AppSidebar() {
               <div className="relative h-9 w-auto flex items-center">
                 <Image
                   src="/assets/treno_mechanic_logo.png"
-                  alt="Trenoo Mechanic Logo"
+                  alt="Treno Mechanic Logo"
                   width={160}
                   height={40}
                   priority

@@ -64,7 +64,7 @@ export default function LandingDownloadApp() {
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
             Take Your Service on the Road with the{" "}
-            <span className="text-[#F96176]">Trenoo Mechanic App</span>
+            <span className="text-[#F96176]">Treno Mechanic App</span>
           </h2>
 
           <p className="text-base sm:text-lg text-gray-300 leading-relaxed font-normal">
@@ -160,7 +160,7 @@ export default function LandingDownloadApp() {
                   <div className="h-14 w-14 rounded-2xl bg-[#1C2541] border border-gray-700 p-2.5 shadow-md flex items-center justify-center shrink-0">
                     <Image
                       src="/logo-new.png"
-                      alt="Trenoo Mechanic App Logo"
+                      alt="Treno Mechanic App Logo"
                       width={42}
                       height={42}
                       className="object-contain"
@@ -168,7 +168,7 @@ export default function LandingDownloadApp() {
                   </div>
                   <div>
                     <h4 className="text-base font-black text-white leading-tight">
-                      Trenoo Mechanic
+                      Treno Mechanic
                     </h4>
                     <p className="text-xs text-[#58BB87] font-semibold">
                       Official Technician Mobile Suite
