@@ -24,7 +24,7 @@ export default function LandingHero() {
       {/* Background Image with Light Semi-Transparent Overlay */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/find_mechanic.jpg"
+          src="/assets/find_mec_new.png"
           alt="Heavy Duty Commercial Fleet & Trailer Workshop"
           fill
           priority
@@ -61,9 +61,14 @@ export default function LandingHero() {
 
             {/* Description */}
             <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
-              Built exclusively for <strong className="text-gray-900 font-bold">Class 8 Semi-Trucks and 53ft Trailers</strong>. 
-              Connect with nearby verified mechanics for 24/7 roadside breakdown calls, 
-              scheduled PM services, and certified DOT inspections. Keep America&apos;s freight moving with zero downtime.
+              Built exclusively for{" "}
+              <strong className="text-gray-900 font-bold">
+                Class 8 Semi-Trucks and 53ft Trailers
+              </strong>
+              . Connect with nearby verified mechanics for 24/7 roadside
+              breakdown calls, scheduled PM services, and certified DOT
+              inspections. Keep America&apos;s freight moving with zero
+              downtime.
             </p>
 
             {/* Primary Action Buttons: Login (Pink) & Register (Green) */}
@@ -72,7 +77,10 @@ export default function LandingHero() {
                 href="/login"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl bg-[#F96176] hover:bg-[#e0485d] text-white font-black text-sm shadow-xl shadow-[#F96176]/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 group cursor-pointer"
               >
-                <LogIn size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                <LogIn
+                  size={18}
+                  className="group-hover:translate-x-0.5 transition-transform"
+                />
                 <span>Mechanic Login</span>
               </Link>
 
@@ -100,8 +108,12 @@ export default function LandingHero() {
                   <Flame size={18} />
                 </div>
                 <div>
-                  <div className="text-sm font-black text-gray-900">24/7 Roadside</div>
-                  <div className="text-[11px] text-gray-500">Emergency Dispatch</div>
+                  <div className="text-sm font-black text-gray-900">
+                    24/7 Roadside
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    Emergency Dispatch
+                  </div>
                 </div>
               </div>
 
@@ -110,8 +122,12 @@ export default function LandingHero() {
                   <ShieldCheck size={18} />
                 </div>
                 <div>
-                  <div className="text-sm font-black text-gray-900">DOT Certified</div>
-                  <div className="text-[11px] text-gray-500">FMCSA Part 396</div>
+                  <div className="text-sm font-black text-gray-900">
+                    DOT Certified
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    FMCSA Part 396
+                  </div>
                 </div>
               </div>
 
@@ -120,7 +136,9 @@ export default function LandingHero() {
                   <Star size={18} fill="currentColor" />
                 </div>
                 <div>
-                  <div className="text-sm font-black text-gray-900">4.98 Rating</div>
+                  <div className="text-sm font-black text-gray-900">
+                    4.98 Rating
+                  </div>
                   <div className="text-[11px] text-gray-500">500+ Fleets</div>
                 </div>
               </div>
@@ -130,8 +148,12 @@ export default function LandingHero() {
                   <Clock size={18} />
                 </div>
                 <div>
-                  <div className="text-sm font-black text-gray-900">5-Min Timer</div>
-                  <div className="text-[11px] text-gray-500">Rapid Response</div>
+                  <div className="text-sm font-black text-gray-900">
+                    5-Min Timer
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    Rapid Response
+                  </div>
                 </div>
               </div>
             </div>
@@ -201,13 +223,18 @@ export default function LandingHero() {
                     Freightliner Cascadia • 53ft Reefer
                   </h3>
                   <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">
-                    Blown air brake hose &amp; pressure drop on Interstate Highway
+                    Blown air brake hose &amp; pressure drop on Interstate
+                    Highway
                   </p>
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-gray-500 font-medium">Est. Payout:</span>
-                  <span className="text-base font-black text-[#58BB87]">$480.00</span>
+                  <span className="text-gray-500 font-medium">
+                    Est. Payout:
+                  </span>
+                  <span className="text-base font-black text-[#58BB87]">
+                    $480.00
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
@@ -231,13 +258,17 @@ export default function LandingHero() {
               {/* Quick stats mini row */}
               <div className="grid grid-cols-2 gap-2 text-center pt-1">
                 <div className="p-2.5 rounded-xl bg-[#FFEBF3]/50 border border-[#F96176]/20">
-                  <span className="text-lg font-black text-[#F96176]">1,480+</span>
+                  <span className="text-lg font-black text-[#F96176]">
+                    1,480+
+                  </span>
                   <span className="block text-[10px] uppercase font-bold text-gray-600">
                     Jobs Completed
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-[#EAF8F1]/60 border border-[#58BB87]/25">
-                  <span className="text-lg font-black text-[#58BB87]">14 Active</span>
+                  <span className="text-lg font-black text-[#58BB87]">
+                    14 Active
+                  </span>
                   <span className="block text-[10px] uppercase font-bold text-gray-600">
                     Bays Servicing
                   </span>
