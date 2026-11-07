@@ -98,9 +98,6 @@ export default function AppSidebar() {
                   height={40}
                   priority
                   className="h-9 w-auto max-w-[165px] object-contain drop-shadow-2xs"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/logo-new.png";
-                  }}
                 />
               </div>
             </Link>

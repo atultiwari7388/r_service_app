@@ -47,9 +47,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 width={135}
                 height={34}
                 className="h-8 w-auto max-w-[135px] object-contain drop-shadow-2xs"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "/logo-new.png";
-                }}
               />
             </Link>
           </div>

@@ -167,7 +167,7 @@ export default function LandingAppFeatures() {
             <span>Real Mobile Application Screenshots</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0B132B] tracking-tight leading-tight">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 tracking-tight leading-tight">
             Designed for the{" "}
             <span className="text-[#F96176]">Modern Mechanic</span>
           </h2>
@@ -187,13 +187,13 @@ export default function LandingAppFeatures() {
                 onClick={() => setActiveTab(idx as 0 | 1 | 2)}
                 className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold transition-all duration-200 cursor-pointer flex items-center gap-2 border ${
                   activeTab === idx
-                    ? "bg-[#0B132B] text-white border-[#0B132B] shadow-md shadow-[#0B132B]/20 scale-102"
-                    : "bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200"
+                    ? "bg-[#F96176] text-white border-[#F96176] shadow-md shadow-[#F96176]/30 scale-102"
+                    : "bg-white hover:bg-gray-100 text-gray-700 border-gray-200 shadow-xs"
                 }`}
               >
                 <span
                   className={`h-2 w-2 rounded-full ${
-                    activeTab === idx ? "bg-[#F96176]" : "bg-gray-400"
+                    activeTab === idx ? "bg-white" : "bg-[#58BB87]"
                   }`}
                 />
                 <span>{screen.title}</span>
@@ -207,17 +207,17 @@ export default function LandingAppFeatures() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
             {/* Left Column: Authentic Smartphone Frame with Exact Screenshot */}
             <div className="lg:col-span-5 flex justify-center">
-              <div className="relative w-full max-w-[290px] sm:max-w-[320px] aspect-[1/2.05] rounded-[48px] bg-gradient-to-b from-[#1C2541] to-[#0B132B] p-3 sm:p-3.5 shadow-2xl ring-1 ring-white/20">
+              <div className="relative w-full max-w-[290px] sm:max-w-[320px] aspect-[1/2.05] rounded-[48px] bg-gradient-to-b from-gray-100 to-gray-200 p-3 sm:p-3.5 shadow-2xl ring-2 ring-gray-300">
                 {/* Outer Phone Bezel Shine */}
-                <div className="absolute inset-0 rounded-[48px] border-4 border-gray-800 pointer-events-none" />
+                <div className="absolute inset-0 rounded-[48px] border-4 border-gray-300 pointer-events-none" />
 
                 {/* Speaker & Dynamic Island Top Notch */}
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 w-24 h-5 bg-black rounded-full z-30 flex items-center justify-center">
-                  <div className="h-2.5 w-2.5 rounded-full bg-gray-900 border border-gray-800 ml-auto mr-3" />
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 w-24 h-5 bg-gray-900 rounded-full z-30 flex items-center justify-center">
+                  <div className="h-2 w-2 rounded-full bg-gray-700 ml-auto mr-3" />
                 </div>
 
                 {/* Phone Display Screen */}
-                <div className="relative w-full h-full rounded-[38px] overflow-hidden bg-black shadow-inner">
+                <div className="relative w-full h-full rounded-[38px] overflow-hidden bg-white shadow-inner">
                   <Image
                     src={currentScreen.imageSrc}
                     alt={currentScreen.title}
@@ -229,7 +229,7 @@ export default function LandingAppFeatures() {
                 </div>
 
                 {/* Bottom Home Indicator Bar */}
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-28 h-1 bg-white/70 rounded-full z-30" />
+                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-28 h-1 bg-gray-400 rounded-full z-30" />
               </div>
             </div>
 
@@ -247,7 +247,7 @@ export default function LandingAppFeatures() {
                   </span>
                 </div>
 
-                <h3 className="text-2xl sm:text-3xl font-black text-[#0B132B]">
+                <h3 className="text-2xl sm:text-3xl font-black text-gray-900">
                   {currentScreen.title}
                 </h3>
 
@@ -271,7 +271,7 @@ export default function LandingAppFeatures() {
                         <ItemIcon size={20} className={item.color} />
                       </div>
                       <div className="space-y-0.5">
-                        <h4 className="text-sm font-black text-[#0B132B]">
+                        <h4 className="text-sm font-black text-gray-900">
                           {item.title}
                         </h4>
                         <p className="text-xs text-gray-600 leading-relaxed font-normal">
@@ -308,7 +308,7 @@ export default function LandingAppFeatures() {
             <span className="text-xs font-black uppercase tracking-wider text-gray-400">
               Interactive Screen Tour
             </span>
-            <h4 className="text-xl font-black text-[#0B132B] mt-0.5">
+            <h4 className="text-xl font-black text-gray-900 mt-0.5">
               Tap any screen below to inspect its features
             </h4>
           </div>
@@ -320,8 +320,8 @@ export default function LandingAppFeatures() {
                 onClick={() => setActiveTab(idx as 0 | 1 | 2)}
                 className={`p-5 rounded-3xl border transition-all duration-300 cursor-pointer flex flex-col justify-between ${
                   activeTab === idx
-                    ? "bg-[#0B132B] text-white border-transparent shadow-xl ring-2 ring-[#F96176]"
-                    : "bg-white hover:bg-gray-50 text-gray-800 border-gray-200 shadow-2xs"
+                    ? "bg-[#FFF5F7] text-gray-900 border-2 border-[#F96176] shadow-xl ring-2 ring-[#F96176]/20"
+                    : "bg-white hover:bg-gray-50 text-gray-800 border-gray-200 shadow-xs"
                 }`}
               >
                 <div className="space-y-2">
@@ -344,12 +344,12 @@ export default function LandingAppFeatures() {
                     </span>
                   </div>
 
-                  <h5 className="text-base font-black tracking-tight">
+                  <h5 className="text-base font-black tracking-tight text-gray-950">
                     {s.title}
                   </h5>
                   <p
                     className={`text-xs line-clamp-2 ${
-                      activeTab === idx ? "text-gray-300" : "text-gray-500"
+                      activeTab === idx ? "text-gray-700" : "text-gray-500"
                     }`}
                   >
                     {s.subtitle}
@@ -359,7 +359,7 @@ export default function LandingAppFeatures() {
                 <div
                   className={`mt-4 pt-3 border-t text-xs font-bold flex items-center justify-between ${
                     activeTab === idx
-                      ? "border-gray-800 text-[#F96176]"
+                      ? "border-[#F96176]/20 text-[#F96176]"
                       : "border-gray-100 text-gray-700"
                   }`}
                 >

@@ -51,29 +51,16 @@ export default function LandingNavbar() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-[#0B132B] flex items-center justify-center p-2 shadow-md group-hover:scale-105 transition-transform duration-300 border border-gray-800">
+          <Link href="/" className="flex items-center group">
+            <div className="relative h-9 sm:h-10 w-auto flex items-center">
               <Image
-                src="/logo-new.png"
+                src="/assets/treno_mechanic_logo.png"
                 alt="Treno Mechanic Logo"
-                width={30}
-                height={30}
-                className="object-contain"
+                width={170}
+                height={42}
                 priority
+                className="h-9 sm:h-10 w-auto object-contain drop-shadow-2xs group-hover:scale-102 transition-transform duration-300"
               />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg sm:text-xl font-black text-[#0B132B] tracking-tight">
-                  TRENO
-                </span>
-                <span className="text-lg sm:text-xl font-black text-[#F96176] tracking-tight">
-                  MECHANIC
-                </span>
-              </div>
-              <span className="text-[10px] font-bold text-[#58BB87] uppercase tracking-wider -mt-1 hidden sm:block">
-                Heavy-Duty Fleet & Trailer Platform
-              </span>
             </div>
           </Link>
 
@@ -105,9 +92,9 @@ export default function LandingNavbar() {
           <div className="hidden md:flex items-center gap-3">
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-700 hover:text-[#0B132B] hover:bg-gray-100 transition-all border border-gray-200 shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-[#58BB87] hover:text-[#48a674] hover:bg-[#EAF8F1] transition-all border-2 border-[#58BB87] shadow-xs"
             >
-              <LogIn size={15} className="text-[#F96176]" />
+              <LogIn size={15} className="text-[#58BB87]" />
               <span>Login</span>
             </Link>
 

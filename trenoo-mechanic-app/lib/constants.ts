@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-  name: "TrenoOps Fleet & Trailer Platform",
+  name: "Treno Mechanic Fleet & Trailer Platform",
   companyName: "Regal Application LLC",
   copyright: "© Regal Application LLC, All Right Reserved.",
   contact: {

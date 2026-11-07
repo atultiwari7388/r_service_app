@@ -47,7 +47,7 @@ export default function HeroSection({
 
           {/* Supporting Text */}
           <p className="text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed font-normal">
-            Stay available, manage incoming requests, and keep your fleet moving with <strong className="text-gray-900 font-bold">TrenoOps</strong>.
+            Stay available, manage incoming requests, and keep your fleet moving with <strong className="text-gray-900 font-bold">Treno Mechanic</strong>.
           </p>
 
           {/* Prominent Availability Card in Hero */}

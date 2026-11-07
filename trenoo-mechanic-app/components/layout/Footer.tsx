@@ -14,24 +14,14 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-10 border-b border-gray-200">
           {/* Brand & Fleet Mission */}
           <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center p-1.5 shadow-2xs">
-                <Image
-                  src="/logo-new.png"
-                  alt="Treno Fleet Mechanic"
-                  width={28}
-                  height={28}
-                  className="object-contain"
-                />
-              </div>
-              <div>
-                <span className="text-xl font-extrabold text-gray-900 tracking-tight">
-                  TRENO<span className="text-[#F96176]">OPS</span>
-                </span>
-                <p className="text-[10px] text-[#58BB87] font-bold tracking-wider uppercase">
-                  Commercial Fleet & Trailer Hub
-                </p>
-              </div>
+            <Link href="/" className="inline-flex items-center group">
+              <Image
+                src="/assets/treno_mechanic_logo.png"
+                alt="Treno Mechanic Logo"
+                width={170}
+                height={42}
+                className="h-9 w-auto object-contain drop-shadow-2xs group-hover:opacity-90 transition-opacity"
+              />
             </Link>
 
             <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">

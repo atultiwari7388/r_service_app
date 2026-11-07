@@ -70,7 +70,7 @@ export default function LandingAbout() {
             <span>Built by Truckers, For Truckers</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0B132B] tracking-tight leading-tight">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 tracking-tight leading-tight">
             About <span className="text-[#F96176]">Treno Mechanic</span>
           </h2>
 
@@ -85,9 +85,9 @@ export default function LandingAbout() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Story Column */}
             <div className="lg:col-span-7 space-y-5 text-gray-700 leading-relaxed text-sm sm:text-base">
-              <div className="p-4 rounded-2xl bg-[#0B132B] text-white border border-gray-800 flex items-start gap-3.5">
+              <div className="p-4 rounded-2xl bg-[#FFF5F7] text-gray-900 border-2 border-[#F96176]/30 flex items-start gap-3.5 shadow-xs">
                 <Truck size={24} className="text-[#F96176] shrink-0 mt-0.5" />
-                <p className="font-bold text-sm sm:text-base text-gray-100">
+                <p className="font-bold text-sm sm:text-base text-gray-900">
                   Treno Mechanic was founded by logistics professionals and
                   built with real truckers in mind.
                 </p>
@@ -128,7 +128,7 @@ export default function LandingAbout() {
                 rigs—all from one easy-to-use platform.
               </p>
 
-              <p className="bg-[#EAF8F1] p-4 rounded-2xl border border-[#58BB87]/30 text-[#0B132B] font-medium text-sm">
+              <p className="bg-[#EAF8F1] p-4 rounded-2xl border border-[#58BB87]/30 text-gray-900 font-medium text-sm">
                 <strong>Need a mechanic fast?</strong> Use{" "}
                 <strong>Treno Mechanic</strong> to find and connect with nearby
                 verified mechanics, perfect for both emergency fixes and
@@ -162,29 +162,29 @@ export default function LandingAbout() {
 
             {/* Right Visual Graphic Column */}
             <div className="lg:col-span-5 space-y-4">
-              <div className="rounded-3xl bg-gradient-to-br from-[#0B132B] to-[#1C2541] p-6 sm:p-8 text-white border border-gray-800 shadow-xl space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b border-gray-800">
+              <div className="rounded-3xl bg-white p-6 sm:p-8 text-gray-900 border-2 border-gray-100 shadow-xl space-y-6">
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                   <div className="flex items-center gap-2.5">
-                    <div className="h-10 w-10 rounded-xl bg-[#F96176]/20 text-[#F96176] flex items-center justify-center font-bold">
+                    <div className="h-10 w-10 rounded-xl bg-[#FFEBF3] text-[#F96176] flex items-center justify-center font-bold">
                       <Truck size={20} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-black text-white">
+                      <h4 className="text-sm font-black text-gray-900">
                         Full Rig Coverage
                       </h4>
-                      <p className="text-[11px] text-[#58BB87] font-semibold">
+                      <p className="text-[11px] text-[#58BB87] font-bold">
                         Tractor & 53&apos; Trailer
                       </p>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full bg-[#58BB87]/20 text-[#58BB87] text-[10px] font-black uppercase">
+                  <span className="px-2.5 py-1 rounded-full bg-[#EAF8F1] border border-[#58BB87]/40 text-[#58BB87] text-[10px] font-black uppercase">
                     100% Road Ready
                   </span>
                 </div>
 
                 <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                    <span className="text-gray-300">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200">
+                    <span className="text-gray-700 font-medium">
                       Predictive Service Alerts
                     </span>
                     <span className="font-bold text-[#58BB87] flex items-center gap-1">
@@ -192,8 +192,8 @@ export default function LandingAbout() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                    <span className="text-gray-300">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200">
+                    <span className="text-gray-700 font-medium">
                       Air Brake & DOT Inspection
                     </span>
                     <span className="font-bold text-[#58BB87] flex items-center gap-1">
@@ -201,8 +201,8 @@ export default function LandingAbout() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                    <span className="text-gray-300">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200">
+                    <span className="text-gray-700 font-medium">
                       Engine Oil, Filter & DEF
                     </span>
                     <span className="font-bold text-[#58BB87] flex items-center gap-1">
@@ -210,8 +210,8 @@ export default function LandingAbout() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                    <span className="text-gray-300">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200">
+                    <span className="text-gray-700 font-medium">
                       Mobile Mechanic Dispatch
                     </span>
                     <span className="font-bold text-[#F96176] flex items-center gap-1">
@@ -221,13 +221,13 @@ export default function LandingAbout() {
                 </div>
 
                 {/* Mechanic Trust Quote */}
-                <div className="p-4 rounded-2xl bg-[#1C2541]/80 border border-gray-700/80 text-center space-y-1">
-                  <span className="text-xs font-bold text-gray-300">
+                <div className="p-4 rounded-2xl bg-[#FFF5F7] border border-[#F96176]/30 text-center space-y-1">
+                  <span className="text-xs font-bold text-gray-800">
                     Trusted by Over 500+ Fleets & Truck Mechanics
                   </span>
-                  <div className="flex justify-center items-center gap-1 text-amber-400 text-xs">
+                  <div className="flex justify-center items-center gap-1 text-amber-500 text-xs">
                     ★★★★★{" "}
-                    <span className="text-gray-400 text-[11px] ml-1">
+                    <span className="text-gray-500 text-[11px] ml-1">
                       (4.98 / 5.0)
                     </span>
                   </div>
@@ -252,7 +252,7 @@ export default function LandingAbout() {
                   >
                     <Icon size={24} />
                   </div>
-                  <h3 className="text-base font-black text-[#0B132B]">
+                  <h3 className="text-base font-black text-gray-900">
                     {feature.title}
                   </h3>
                   <p className="text-xs text-gray-600 leading-relaxed font-normal">

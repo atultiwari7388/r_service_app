@@ -65,10 +65,9 @@ export function MechanicLoginView({ loginState }: MechanicLoginViewProps) {
               priority
               className="object-contain max-h-[170px] w-auto drop-shadow-sm"
               onError={(e) => {
-                // Fallback to logo-new.png if splash fails to render
                 const target = e.currentTarget as HTMLImageElement;
-                if (!target.src.includes("logo-new.png")) {
-                  target.src = "/logo-new.png";
+                if (!target.src.includes("treno_mechanic_logo.png")) {
+                  target.src = "/assets/treno_mechanic_logo.png";
                 }
               }}
             />

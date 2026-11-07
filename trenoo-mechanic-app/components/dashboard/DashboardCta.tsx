@@ -14,7 +14,7 @@ export default function DashboardCta() {
       <div className="relative z-10 space-y-3 max-w-2xl">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 text-gray-700 text-xs font-bold uppercase tracking-wider border border-red-100">
           <Truck size={14} className="text-[#F96176]" />
-          <span>TrenoOps Heavy-Duty Dispatch Network</span>
+          <span>Treno Mechanic Heavy-Duty Dispatch Network</span>
         </div>
 
         <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
