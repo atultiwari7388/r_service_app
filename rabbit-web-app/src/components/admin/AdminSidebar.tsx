@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,15 +14,27 @@ import {
   Menu,
   X,
   ChevronRight,
+  ChevronDown,
   ExternalLink,
+  CreditCard,
+  Truck,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
+
+interface SubNavItem {
+  name: string;
+  href: string;
+  description: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   description: string;
+  subItems?: SubNavItem[];
 }
 
 const navItems: NavItem[] = [
@@ -44,6 +56,26 @@ const navItems: NavItem[] = [
     icon: Database,
     description: "Maintenance service catalog",
   },
+  {
+    name: "Subscription Plans",
+    href: "/admin/subscription-plans",
+    icon: CreditCard,
+    description: "Pricing tiers & packages",
+    subItems: [
+      {
+        name: "For Owners/Drivers",
+        href: "/admin/subscription-plans/owners-drivers",
+        description: "Truck & trailer fleet plans",
+        icon: Truck,
+      },
+      {
+        name: "For Mechanics",
+        href: "/admin/subscription-plans/mechanics",
+        description: "Shops & technician plans",
+        icon: Wrench,
+      },
+    ],
+  },
 ];
 
 export default function AdminSidebar() {
@@ -52,6 +84,21 @@ export default function AdminSidebar() {
   const user = auth?.user;
   const logout = auth?.logout;
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    "/admin/subscription-plans": true,
+  });
+
+  useEffect(() => {
+    if (pathname?.startsWith("/admin/subscription-plans")) {
+      setExpandedMenus((prev) => ({ ...prev, "/admin/subscription-plans": true }));
+    }
+  }, [pathname]);
+
+  const toggleExpand = (href: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedMenus((prev) => ({ ...prev, [href]: !prev[href] }));
+  };
 
   const isActive = (href: string) => {
     if (href === "/admin/users" && (pathname === "/admin/users" || pathname?.startsWith("/admin/users/"))) {
@@ -63,7 +110,18 @@ export default function AdminSidebar() {
     if (href === "/admin/services-data" && pathname?.startsWith("/admin/services-data")) {
       return true;
     }
+    if (href === "/admin/subscription-plans" && pathname === "/admin/subscription-plans") {
+      return true;
+    }
     return pathname === href;
+  };
+
+  const isParentOrChildActive = (item: NavItem) => {
+    if (isActive(item.href)) return true;
+    if (item.subItems?.some((sub) => pathname === sub.href || pathname?.startsWith(sub.href + "/"))) {
+      return true;
+    }
+    return false;
   };
 
   const sidebarContent = (
@@ -100,45 +158,125 @@ export default function AdminSidebar() {
           <nav className="space-y-1.5">
             {navItems.map((item) => {
               const active = isActive(item.href);
+              const parentOrChildActive = isParentOrChildActive(item);
+              const hasSubItems = !!item.subItems && item.subItems.length > 0;
+              const isExpanded = expandedMenus[item.href] ?? true;
               const Icon = item.icon;
+
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`group flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
-                    active
-                      ? "bg-[#F96176] text-white shadow-md shadow-[#F96176]/25 font-bold"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                        active
-                          ? "bg-white/20 text-white"
-                          : "bg-gray-100 text-gray-600 group-hover:text-gray-900 group-hover:bg-gray-200"
-                      }`}
+                <div key={item.href} className="space-y-1">
+                  <div
+                    className={`group flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                      active
+                        ? "bg-[#F96176] text-white shadow-md shadow-[#F96176]/25 font-bold"
+                        : parentOrChildActive
+                        ? "bg-rose-50/80 text-[#F96176] font-bold border border-rose-100"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
+                    }`}
+                  >
+                    <Link
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-3 flex-1 min-w-0"
                     >
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="leading-tight">{item.name}</div>
                       <div
-                        className={`text-[11px] font-normal ${
-                          active ? "text-white/90" : "text-gray-400 group-hover:text-gray-500"
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+                          active
+                            ? "bg-white/20 text-white"
+                            : parentOrChildActive
+                            ? "bg-white text-[#F96176] shadow-xs"
+                            : "bg-gray-100 text-gray-600 group-hover:text-gray-900 group-hover:bg-gray-200"
                         }`}
                       >
-                        {item.description}
+                        <Icon className="w-4 h-4" />
                       </div>
-                    </div>
+                      <div className="min-w-0">
+                        <div className="leading-tight truncate">{item.name}</div>
+                        <div
+                          className={`text-[11px] font-normal truncate ${
+                            active
+                              ? "text-white/90"
+                              : parentOrChildActive
+                              ? "text-[#F96176]/80"
+                              : "text-gray-400 group-hover:text-gray-500"
+                          }`}
+                        >
+                          {item.description}
+                        </div>
+                      </div>
+                    </Link>
+
+                    {hasSubItems ? (
+                      <button
+                        type="button"
+                        onClick={(e) => toggleExpand(item.href, e)}
+                        className={`p-1 rounded-md transition-colors ${
+                          active
+                            ? "text-white/80 hover:text-white hover:bg-white/20"
+                            : parentOrChildActive
+                            ? "text-[#F96176] hover:bg-rose-100"
+                            : "text-gray-400 hover:text-gray-700 hover:bg-gray-200/60"
+                        }`}
+                        aria-label="Toggle Submenu"
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </button>
+                    ) : (
+                      <ChevronRight
+                        className={`w-4 h-4 transition-transform ${
+                          active
+                            ? "text-white opacity-90 translate-x-0.5"
+                            : "text-gray-400 opacity-0 group-hover:opacity-100"
+                        }`}
+                      />
+                    )}
                   </div>
-                  <ChevronRight
-                    className={`w-4 h-4 transition-transform ${
-                      active ? "text-white opacity-90 translate-x-0.5" : "text-gray-400 opacity-0 group-hover:opacity-100"
-                    }`}
-                  />
-                </Link>
+
+                  {/* Submenu Items */}
+                  {hasSubItems && isExpanded && (
+                    <div className="ml-5 pl-3 border-l-2 border-rose-100/80 space-y-1 py-1">
+                      {item.subItems!.map((sub) => {
+                        const isSubActive =
+                          pathname === sub.href || pathname?.startsWith(sub.href + "/");
+                        const SubIcon = sub.icon;
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            onClick={() => setMobileOpen(false)}
+                            className={`group/sub flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                              isSubActive
+                                ? "bg-[#F96176] text-white shadow-xs font-bold"
+                                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {SubIcon && (
+                                <SubIcon
+                                  className={`w-3.5 h-3.5 shrink-0 ${
+                                    isSubActive ? "text-white" : "text-gray-400 group-hover/sub:text-gray-700"
+                                  }`}
+                                />
+                              )}
+                              <span className="truncate">{sub.name}</span>
+                            </div>
+                            <ChevronRight
+                              className={`w-3 h-3 shrink-0 ${
+                                isSubActive
+                                  ? "text-white"
+                                  : "text-gray-400 opacity-0 group-hover/sub:opacity-100"
+                              }`}
+                            />
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
