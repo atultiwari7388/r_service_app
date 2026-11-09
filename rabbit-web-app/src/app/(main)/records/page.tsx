@@ -1519,13 +1519,26 @@ export default function RecordsPage() {
       );
       const dataServicesSnapshot = await getDocs(dataServicesQuery);
 
+      const isTruck = selectedVehicleType === "Truck";
+      const milesCallPayload = {
+        userId: effectiveUserId,
+        ownerId: ownerId,
+        vehicleId: selectedVehicle,
+        actionType: "miles",
+        source: "Web",
+        enteredMiles: isTruck ? enteredValue : null,
+        previousMiles: isTruck ? currentReading : null,
+        enteredHours: !isTruck ? enteredValue : null,
+        previousHours: !isTruck ? currentReading : null,
+      };
+
       if (dataServicesSnapshot.empty) {
         // Call cloud function to notify about missing services
         const checkAndNotify = httpsCallable(
           functions,
           "checkAndNotifyUserForVehicleService"
         );
-        await checkAndNotify({ userId: ownerId, vehicleId: selectedVehicle });
+        await checkAndNotify(milesCallPayload);
         console.log(
           "Called checkAndNotifyUserForVehicleService for",
           selectedVehicle
@@ -1536,10 +1549,7 @@ export default function RecordsPage() {
           functions,
           "checkDataServicesAndNotify"
         );
-        const result = await checkDataServices({
-          userId: ownerId,
-          vehicleId: selectedVehicle,
-        });
+        const result = await checkDataServices(milesCallPayload);
         console.log(
           "Check Data Services Cloud function result:",
           result.data,
@@ -3789,6 +3799,41 @@ export default function RecordsPage() {
       }
 
       await batch.commit();
+
+      // Invoke cloud function to evaluate service intervals and record audit to TrackDataNotifications
+      try {
+        const checkDataServices = httpsCallable(
+          functions,
+          "checkDataServicesAndNotify"
+        );
+        await checkDataServices({
+          userId: effectiveUserId,
+          ownerId: ownerId || effectiveUserId,
+          vehicleId: selectedVehicle,
+          actionType: "record",
+          source: "Web",
+          recordId: recordId,
+          invoice: invoice.trim(),
+          invoiceAmount: invoiceAmount.trim(),
+          workshopName: workshopName.trim(),
+          recordDate: formattedDate,
+          enteredMiles: currentMiles,
+          previousMiles: vehicleDoc.data()?.currentMiles || currentMiles,
+          enteredHours: currentHours,
+          previousHours: vehicleDoc.data()?.hoursReading || currentHours,
+          servicesSelected: Array.from(selectedServices),
+          previousServices: currentVehicleServices.map((vs: any) => ({
+            serviceId: vs.serviceId,
+            serviceName: vs.serviceName,
+            type: vs.type,
+            nextNotificationValue: vs.nextNotificationValue,
+            defaultValue: vs.defaultNotificationValue,
+          })),
+        });
+        console.log("checkDataServicesAndNotify record audit logged successfully");
+      } catch (cfErr) {
+        console.error("Error triggering checkDataServicesAndNotify for record:", cfErr);
+      }
 
       // Audit Log
       if (user?.uid) {

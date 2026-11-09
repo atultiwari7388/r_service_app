@@ -1,6 +1,7 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
+const { logTrackDataNotification } = require("./trackNotificationsHelper");
 
 admin.initializeApp();
 
@@ -482,6 +483,30 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
         console.log(
           `First time vehicle. Skipping notifications for ${vehicleId}`
         );
+
+        // Log initial baseline reading to TrackDataNotifications
+        await logTrackDataNotification({
+          userId,
+          ownerId,
+          vehicleId,
+          actionType: data.actionType || "miles",
+          source: data.source || "App",
+          enteredMiles:
+            data.enteredMiles !== undefined ? data.enteredMiles : null,
+          previousMiles:
+            data.previousMiles !== undefined ? data.previousMiles : null,
+          enteredHours:
+            data.enteredHours !== undefined ? data.enteredHours : null,
+          previousHours:
+            data.previousHours !== undefined ? data.previousHours : null,
+          recordDetails:
+            data.recordDetails || (data.actionType === "record" ? data : null),
+          previousServices: data.previousServices || [],
+          serviceNotifications: [],
+          hasNotifications: false,
+          notifiedRecipients: Array.from(notificationRecipients),
+        });
+
         return {
           success: true,
           hasNotifications: false,
@@ -705,6 +730,33 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
         serviceNotifications
       );
 
+      // Log maintenance activity, miles and notification comparisons to TrackDataNotifications
+      await logTrackDataNotification({
+        userId,
+        ownerId,
+        vehicleId,
+        actionType: data.actionType || "miles",
+        source: data.source || "App",
+        enteredMiles:
+          data.enteredMiles !== undefined ? data.enteredMiles : currentMiles,
+        previousMiles:
+          data.previousMiles !== undefined
+            ? data.previousMiles
+            : prevMilesValue,
+        enteredHours:
+          data.enteredHours !== undefined ? data.enteredHours : hoursReading,
+        previousHours:
+          data.previousHours !== undefined
+            ? data.previousHours
+            : prevHoursReadingValue,
+        recordDetails:
+          data.recordDetails || (data.actionType === "record" ? data : null),
+        previousServices: data.previousServices || [],
+        serviceNotifications,
+        hasNotifications,
+        notifiedRecipients: Array.from(notificationRecipients),
+      });
+
       return {
         success: true,
         hasNotifications: hasNotifications,
@@ -821,6 +873,29 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
         : null;
 
       if (!vehicleData.services || vehicleData.services.length === 0) {
+        // Still log maintenance activity to TrackDataNotifications
+        await logTrackDataNotification({
+          userId,
+          ownerId,
+          vehicleId,
+          actionType: data.actionType || "miles",
+          source: data.source || "App",
+          enteredMiles:
+            data.enteredMiles !== undefined ? data.enteredMiles : currentMiles,
+          previousMiles:
+            data.previousMiles !== undefined ? data.previousMiles : null,
+          enteredHours:
+            data.enteredHours !== undefined ? data.enteredHours : hoursReading,
+          previousHours:
+            data.previousHours !== undefined ? data.previousHours : null,
+          recordDetails:
+            data.recordDetails || (data.actionType === "record" ? data : null),
+          previousServices: data.previousServices || [],
+          serviceNotifications: [],
+          hasNotifications: false,
+          notifiedRecipients: Array.from(notificationRecipients),
+        });
+
         return {
           success: true,
           hasNotifications: false,
@@ -1001,6 +1076,29 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
             recipients: Array.from(notificationRecipients),
           });
       }
+
+      // Log maintenance activity, miles and notification comparisons to TrackDataNotifications
+      await logTrackDataNotification({
+        userId,
+        ownerId,
+        vehicleId,
+        actionType: data.actionType || "miles",
+        source: data.source || "App",
+        enteredMiles:
+          data.enteredMiles !== undefined ? data.enteredMiles : currentMiles,
+        previousMiles:
+          data.previousMiles !== undefined ? data.previousMiles : null,
+        enteredHours:
+          data.enteredHours !== undefined ? data.enteredHours : hoursReading,
+        previousHours:
+          data.previousHours !== undefined ? data.previousHours : null,
+        recordDetails:
+          data.recordDetails || (data.actionType === "record" ? data : null),
+        previousServices: data.previousServices || [],
+        serviceNotifications,
+        hasNotifications,
+        notifiedRecipients: Array.from(notificationRecipients),
+      });
 
       return {
         success: true,
@@ -1889,3 +1987,21 @@ const {
 
 exports.onCarrierRecordCreated = onCarrierRecordCreated;
 exports.onCarrierVehicleUpdated = onCarrierVehicleUpdated;
+
+// ==========================================
+// Maintenance Activity & Notifications Tracking
+// ==========================================
+exports.trackMaintenanceEvent = functions.https.onCall(
+  async (data, context) => {
+    const userId = data.userId;
+    const vehicleId = data.vehicleId;
+    if (!userId || !vehicleId) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Missing required parameters: userId and vehicleId"
+      );
+    }
+    const result = await logTrackDataNotification(data);
+    return { success: true, tracking: result };
+  }
+);

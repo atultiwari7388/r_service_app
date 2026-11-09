@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
@@ -1528,15 +1529,26 @@ class _ReportsScreenState extends State<ReportsScreen>
                             String functionMessage = '';
 
                             try {
+                              final Map<String, dynamic> milesCallPayload = {
+                                'userId': reController.currentUId,
+                                'vehicleId': vehicleId,
+                                'actionType': 'miles',
+                                'source': kIsWeb
+                                    ? 'Web'
+                                    : (Platform.isAndroid ? 'Android' : 'iOS'),
+                                'enteredMiles': isTruck ? enteredValue : null,
+                                'previousMiles': isTruck ? currentReading : null,
+                                'enteredHours': !isTruck ? enteredValue : null,
+                                'previousHours': !isTruck ? currentReading : null,
+                              };
+
                               if (dataServicesSnapshot.docs.isEmpty) {
                                 final HttpsCallable callable =
                                     FirebaseFunctions.instance.httpsCallable(
                                         'checkAndNotifyUserForVehicleService');
 
-                                final result = await callable.call({
-                                  'userId': reController.currentUId,
-                                  'vehicleId': vehicleId,
-                                });
+                                final result =
+                                    await callable.call(milesCallPayload);
 
                                 log('checkAndNotifyUserForVehicleService result: ${result.data}');
                                 if (result.data is Map) {
@@ -1567,10 +1579,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     FirebaseFunctions.instance.httpsCallable(
                                         'checkDataServicesAndNotify');
 
-                                final result = await callable.call({
-                                  'userId': reController.currentUId,
-                                  'vehicleId': vehicleId
-                                });
+                                final result =
+                                    await callable.call(milesCallPayload);
 
                                 log('checkDataServicesAndNotify result: ${result.data}');
                                 if (result.data is Map) {

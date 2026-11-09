@@ -1784,6 +1784,43 @@ class ReportsController extends GetxController {
       }
 
       await batch.commit();
+
+      // Invoke cloud function to evaluate service intervals and record audit to TrackDataNotifications
+      try {
+        final HttpsCallable recordTrackingCallable = FirebaseFunctions.instance
+            .httpsCallable('checkDataServicesAndNotify');
+        await recordTrackingCallable.call({
+          'userId': currentUId,
+          'vehicleId': selectedVehicle,
+          'actionType': 'record',
+          'source': Platform.isAndroid
+              ? 'Android'
+              : (Platform.isIOS ? 'iOS' : 'App'),
+          'recordId': docId,
+          'invoice': invoiceController.text.trim(),
+          'invoiceAmount': invoiceAmountController.text.trim(),
+          'workshopName': workshopController.text.trim(),
+          'recordDate': formattedDate,
+          'enteredMiles': enteredMiles ?? currentMiles,
+          'previousMiles': existingVehicleMiles,
+          'enteredHours': enteredHours ?? currentHours,
+          'previousHours': existingVehicleHours,
+          'servicesSelected': selectedServices.toList(),
+          'previousServices': vehicleServices
+              .map((vs) => {
+                    'serviceId': vs['serviceId'],
+                    'serviceName': vs['serviceName'],
+                    'type': vs['type'],
+                    'nextNotificationValue': vs['nextNotificationValue'],
+                    'defaultValue': vs['defaultNotificationValue'],
+                  })
+              .toList(),
+        });
+        log('checkDataServicesAndNotify record audit logged successfully');
+      } catch (cfErr) {
+        log('Error triggering checkDataServicesAndNotify for record: $cfErr');
+      }
+
       await triggerDailyDayCheck(ownerUid, selectedVehicle!);
       resetForm();
 
