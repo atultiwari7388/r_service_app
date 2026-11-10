@@ -21,9 +21,73 @@ import {
   Save,
   AlertTriangle,
   Radio,
+  CheckCircle2,
+  Sparkles,
+  CreditCard,
+  RefreshCw,
+  Clock,
 } from "lucide-react";
 import { useMechanicProfile } from "@/lib/hooks/useMechanicProfile";
 import Link from "next/link";
+
+// Strict MM/DD/YYYY Date Formatter
+function formatToMMDDYYYY(dateInput: any): string {
+  if (!dateInput) return "N/A";
+  let date: Date | null = null;
+  if (typeof dateInput === "string") {
+    const parsed = new Date(dateInput);
+    if (!isNaN(parsed.getTime())) date = parsed;
+  } else if (typeof dateInput === "number") {
+    const ms = dateInput < 10000000000 ? dateInput * 1000 : dateInput;
+    date = new Date(ms);
+  } else if (dateInput && typeof dateInput.toDate === "function") {
+    date = dateInput.toDate();
+  } else if (dateInput && dateInput.seconds) {
+    date = new Date(dateInput.seconds * 1000);
+  } else if (dateInput instanceof Date) {
+    date = dateInput;
+  }
+  if (!date || isNaN(date.getTime())) return "N/A";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
+}
+
+function getRenewalDate(sub: any): Date | null {
+  if (!sub) return null;
+  if (sub.currentPeriodEnd) {
+    const parsed = new Date(sub.currentPeriodEnd);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  const baseDate = sub.purchasedAt
+    ? new Date(sub.purchasedAt)
+    : sub.purchasedTimestamp
+    ? new Date(sub.purchasedTimestamp)
+    : new Date();
+  if (isNaN(baseDate.getTime())) return null;
+  const duration = (sub.duration || "").toLowerCase();
+  const renewal = new Date(baseDate.getTime());
+  if (duration.includes("year") || duration.includes("annual")) {
+    renewal.setFullYear(renewal.getFullYear() + 1);
+  } else if (duration.includes("quarter")) {
+    renewal.setMonth(renewal.getMonth() + 3);
+  } else if (duration.includes("semi") || duration.includes("6 month")) {
+    renewal.setMonth(renewal.getMonth() + 6);
+  } else if (duration.includes("week")) {
+    renewal.setDate(renewal.getDate() + 7);
+  } else {
+    renewal.setMonth(renewal.getMonth() + 1);
+  }
+  return renewal;
+}
+
+function getDaysRemaining(renewalDate: Date | null): number {
+  if (!renewalDate || isNaN(renewalDate.getTime())) return 0;
+  const diffMs = renewalDate.getTime() - Date.now();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 0;
+}
 
 export default function MechanicProfileView() {
   const {
@@ -37,6 +101,8 @@ export default function MechanicProfileView() {
     isUploadingPhoto,
     passwordState,
     setPasswordState,
+    subscription,
+    isSubscriptionPurchase,
     handleInputChange,
     handleLanguageToggle,
     handleActiveToggle,
@@ -48,15 +114,22 @@ export default function MechanicProfileView() {
   } = useMechanicProfile();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<"details" | "languages" | "security" | "account">("details");
+  const [activeTab, setActiveTab] = useState<
+    "details" | "subscription" | "languages" | "security" | "account"
+  >("details");
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const renewalDate = getRenewalDate(subscription);
+  const daysRemaining = getDaysRemaining(renewalDate);
 
   if (isLoading) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4">
         <Loader2 className="w-10 h-10 animate-spin text-[#F96176]" />
-        <p className="text-gray-500 font-medium text-sm">Loading mechanic profile...</p>
+        <p className="text-gray-500 font-medium text-sm">
+          Loading mechanic profile...
+        </p>
       </div>
     );
   }
@@ -67,9 +140,12 @@ export default function MechanicProfileView() {
         <div className="w-16 h-16 mx-auto rounded-2xl bg-red-50 text-[#F96176] flex items-center justify-center font-bold text-2xl">
           <Lock className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">Authentication Required</h2>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Authentication Required
+        </h2>
         <p className="text-gray-500 text-sm">
-          You must be logged in as a registered mechanic to view and manage your profile.
+          You must be logged in as a registered mechanic to view and manage your
+          profile.
         </p>
         <div className="pt-2">
           <Link
@@ -112,7 +188,12 @@ export default function MechanicProfileView() {
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-tr from-[#F96176] to-[#ff8c42] flex items-center justify-center text-3xl font-extrabold text-white">
-                    {(formData.userName || formData.workshopName || user.email || "M")
+                    {(
+                      formData.userName ||
+                      formData.workshopName ||
+                      user.email ||
+                      "M"
+                    )
                       .slice(0, 2)
                       .toUpperCase()}
                   </div>
@@ -137,7 +218,9 @@ export default function MechanicProfileView() {
             <div className="space-y-1.5 min-w-0">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 truncate">
-                  {formData.workshopName || formData.userName || "Mechanic Workshop"}
+                  {formData.workshopName ||
+                    formData.userName ||
+                    "Mechanic Workshop"}
                 </h1>
                 {formData.active ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-[#58BB87] border border-emerald-200">
@@ -154,9 +237,13 @@ export default function MechanicProfileView() {
 
               <p className="text-gray-600 font-medium text-sm sm:text-base flex items-center justify-center sm:justify-start gap-2">
                 <User className="w-4 h-4 text-[#F96176]" />
-                <span className="text-gray-900 font-bold">{formData.userName || "Registered Specialist"}</span>
+                <span className="text-gray-900 font-bold">
+                  {formData.userName || "Registered Specialist"}
+                </span>
                 <span className="text-gray-300">•</span>
-                <span className="text-gray-500 text-xs sm:text-sm">{formData.email}</span>
+                <span className="text-gray-500 text-xs sm:text-sm">
+                  {formData.email}
+                </span>
               </p>
 
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs text-gray-600 pt-1">
@@ -182,6 +269,41 @@ export default function MechanicProfileView() {
 
           {/* Quick Action & Wallet Widget */}
           <div className="flex flex-col sm:flex-row md:flex-col items-center sm:items-end gap-3 shrink-0">
+            {/* Subscription Quick Badge */}
+            {isSubscriptionPurchase && subscription ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab("subscription")}
+                className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-[#F96176] border border-rose-200 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                title="View Subscription Details"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#F96176]" />
+                <span className="truncate max-w-[120px]">
+                  {subscription.planName || "Active Plan"}
+                </span>
+                <span className="text-[10px] bg-[#58BB87] text-white px-1.5 py-0.5 rounded-full uppercase font-black tracking-wide">
+                  Active
+                </span>
+              </button>
+            ) : (
+              <Link
+                href={
+                  user
+                    ? `/choose-plan?mechanicId=${
+                        user.uid
+                      }&email=${encodeURIComponent(user.email || "")}`
+                    : "/choose-plan"
+                }
+                className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-2xs"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>No Active Plan</span>
+                <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded-full uppercase font-black">
+                  Choose Plan
+                </span>
+              </Link>
+            )}
+
             {/* Wallet Box */}
             <div className="flex items-center gap-3 bg-emerald-50 px-4 py-2.5 rounded-2xl border border-emerald-200/80 shadow-2xs">
               <div className="p-2 rounded-xl bg-emerald-100 text-[#58BB87]">
@@ -199,7 +321,9 @@ export default function MechanicProfileView() {
 
             {/* Availability Toggle */}
             <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-              <span className="text-xs text-gray-700 font-medium">Service Dispatch:</span>
+              <span className="text-xs text-gray-700 font-medium">
+                Service Dispatch:
+              </span>
               <button
                 type="button"
                 onClick={() => handleActiveToggle(!formData.active)}
@@ -224,7 +348,7 @@ export default function MechanicProfileView() {
           onClick={() => setActiveTab("details")}
           className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 cursor-pointer whitespace-nowrap ${
             activeTab === "details"
-              ? "border-[#F96176] text-[#F96176] bg-red-50/50"
+              ? "border-[#F96176] text-[#F96176] bg-rose-50/50"
               : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50"
           }`}
         >
@@ -233,10 +357,25 @@ export default function MechanicProfileView() {
         </button>
 
         <button
+          onClick={() => setActiveTab("subscription")}
+          className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+            activeTab === "subscription"
+              ? "border-[#58BB87] text-[#58BB87] bg-emerald-50/50"
+              : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          Subscription Plan
+          {isSubscriptionPurchase && (
+            <span className="w-2 h-2 rounded-full bg-[#58BB87] animate-pulse" />
+          )}
+        </button>
+
+        <button
           onClick={() => setActiveTab("languages")}
           className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 cursor-pointer whitespace-nowrap ${
             activeTab === "languages"
-              ? "border-[#F96176] text-[#F96176] bg-red-50/50"
+              ? "border-[#F96176] text-[#F96176] bg-rose-50/50"
               : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50"
           }`}
         >
@@ -248,7 +387,7 @@ export default function MechanicProfileView() {
           onClick={() => setActiveTab("security")}
           className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 cursor-pointer whitespace-nowrap ${
             activeTab === "security"
-              ? "border-[#F96176] text-[#F96176] bg-red-50/50"
+              ? "border-[#F96176] text-[#F96176] bg-rose-50/50"
               : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50"
           }`}
         >
@@ -274,7 +413,9 @@ export default function MechanicProfileView() {
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-4">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Mechanic & Workshop Details</h2>
+              <h2 className="text-lg font-bold text-gray-900">
+                Mechanic & Workshop Details
+              </h2>
               <p className="text-xs text-gray-500">
                 Update your business representation and dispatch parameters
               </p>
@@ -285,7 +426,11 @@ export default function MechanicProfileView() {
               disabled={isSaving}
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-xs hover:bg-[#e0485d] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               Save Changes
             </button>
           </div>
@@ -523,21 +668,365 @@ export default function MechanicProfileView() {
               disabled={isSaving}
               className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-xs hover:bg-[#e0485d] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               Update Profile Details
             </button>
           </div>
         </div>
       )}
 
-      {/* TAB CONTENT: 2. LANGUAGES */}
+      {/* TAB CONTENT: 2. SUBSCRIPTION PLAN DETAILS */}
+      {activeTab === "subscription" && (
+        <div className="space-y-6">
+          {isSubscriptionPurchase && subscription ? (
+            <>
+              {/* Plan Hero Banner */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-gray-100">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-[#58BB87] border border-emerald-200">
+                        <span className="w-2 h-2 rounded-full bg-[#58BB87] animate-pulse" />
+                        Active Membership
+                      </span>
+                      {subscription.autoPay ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-[#F96176] border border-rose-200">
+                          <RefreshCw className="w-3 h-3 text-[#F96176]" />
+                          Auto-Debit Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200">
+                          Manual Billing
+                        </span>
+                      )}
+                    </div>
+
+                    <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                      {subscription.planName || "Pro Mechanic Plan"}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-gray-500 font-medium">
+                      Billing Cycle:{" "}
+                      <span className="font-bold text-gray-800">
+                        {subscription.duration || "Monthly"}
+                      </span>{" "}
+                      • Priority Dispatch Access & US Workshop Privileges
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Link
+                      href={
+                        user
+                          ? `/choose-plan?mechanicId=${
+                              user.uid
+                            }&email=${encodeURIComponent(user.email || "")}`
+                          : "/choose-plan"
+                      }
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#F96176] text-white font-bold text-sm shadow-xs hover:bg-[#e0485d] active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Change / Upgrade Plan
+                    </Link>
+                  </div>
+                </div>
+
+                {/* 3 Metric Cards: Subscribed On, Next Renewal Date, Days Remaining */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
+                  {/* Metric 1: Valid From / Subscribed On (MM/DD/YYYY) */}
+                  <div className="bg-rose-50/50 rounded-2xl p-5 border border-rose-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                        Subscribed On
+                      </span>
+                      <div className="p-2 rounded-xl bg-white text-[#F96176] shadow-2xs border border-rose-100">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                      {formatToMMDDYYYY(
+                        subscription.purchasedAt ||
+                          subscription.purchasedTimestamp
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-500 font-medium">
+                      Plan activation date on Trenoo
+                    </p>
+                  </div>
+
+                  {/* Metric 2: Next Renewal Date (MM/DD/YYYY) */}
+                  <div className="bg-emerald-50/50 rounded-2xl p-5 border border-emerald-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
+                        Next Renewal Date
+                      </span>
+                      <div className="p-2 rounded-xl bg-white text-[#58BB87] shadow-2xs border border-emerald-100">
+                        <RefreshCw className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                      {formatToMMDDYYYY(renewalDate)}
+                    </div>
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      {subscription.autoPay
+                        ? "Auto-charges on renewal date"
+                        : "Expires on renewal date"}
+                    </p>
+                  </div>
+
+                  {/* Metric 3: Validity Period / Days Remaining */}
+                  <div className="bg-amber-50/50 rounded-2xl p-5 border border-amber-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">
+                        Validation Remaining
+                      </span>
+                      <div className="p-2 rounded-xl bg-white text-amber-600 shadow-2xs border border-amber-100">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                      {daysRemaining} Days Left
+                    </div>
+                    <p className="text-[11px] text-amber-700 font-medium">
+                      Valid through {formatToMMDDYYYY(renewalDate)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial & Workshop Privileges Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Billing Summary Box */}
+                <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-rose-50 text-[#F96176]">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-base font-bold text-gray-900">
+                        Billing & Payment Summary
+                      </h3>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700">
+                      Stripe Protected
+                    </span>
+                  </div>
+
+                  <div className="space-y-3.5 text-sm">
+                    <div className="flex items-center justify-between py-1 border-b border-gray-50">
+                      <span className="text-gray-500 font-medium">
+                        Amount Paid:
+                      </span>
+                      <span className="font-extrabold text-gray-900 text-base">
+                        ${subscription.amountPaid?.toFixed(2) || "0.00"}{" "}
+                        {subscription.currency?.toUpperCase() || "USD"}
+                      </span>
+                    </div>
+
+                    {subscription.originalPrice &&
+                      subscription.originalPrice > subscription.amountPaid && (
+                        <div className="flex items-center justify-between py-1 border-b border-gray-50">
+                          <span className="text-gray-500 font-medium">
+                            Standard Price:
+                          </span>
+                          <span className="line-through text-gray-400 font-medium">
+                            ${subscription.originalPrice.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                    <div className="flex items-center justify-between py-1 border-b border-gray-50">
+                      <span className="text-gray-500 font-medium">
+                        Billing Period:
+                      </span>
+                      <span className="font-semibold text-gray-800">
+                        {subscription.duration || "Monthly"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between py-1 border-b border-gray-50">
+                      <span className="text-gray-500 font-medium">
+                        Payment Gateway:
+                      </span>
+                      <span className="font-semibold text-gray-800">
+                        Stripe Auto-Pay (US ACH / Card)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-gray-500 font-medium">
+                        Plan Status:
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 font-bold text-[#58BB87]">
+                        <CheckCircle2 className="w-4 h-4 text-[#58BB87]" />
+                        Active & Verified
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Workshop Privileges & Limits */}
+                <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-emerald-50 text-[#58BB87]">
+                        <Building className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-base font-bold text-gray-900">
+                        Workshop Privileges
+                      </h3>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-[#58BB87] border border-emerald-200">
+                      Full Access
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    {/* Bay Capacity */}
+                    <div className="p-3.5 rounded-2xl bg-gray-50/80 border border-gray-100 space-y-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                        Service Bays
+                      </span>
+                      <span className="text-sm font-extrabold text-gray-900">
+                        {subscription.maxBays === -1 ||
+                        subscription.maxBays === undefined
+                          ? "Unlimited Bays"
+                          : `${subscription.maxBays} Active Bays`}
+                      </span>
+                    </div>
+
+                    {/* Coverage Radius */}
+                    <div className="p-3.5 rounded-2xl bg-gray-50/80 border border-gray-100 space-y-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                        Dispatch Radius
+                      </span>
+                      <span className="text-sm font-extrabold text-gray-900">
+                        {subscription.serviceRadiusMiles === -1 ||
+                        subscription.serviceRadiusMiles === undefined
+                          ? "Nationwide / Unlimited"
+                          : `${subscription.serviceRadiusMiles} Miles Radius`}
+                      </span>
+                    </div>
+
+                    {/* Priority Leads */}
+                    <div className="p-3.5 rounded-2xl bg-gray-50/80 border border-gray-100 space-y-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                        Job Leads
+                      </span>
+                      <span className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#58BB87]" />
+                        {subscription.priorityJobLeads !== false
+                          ? "Priority Dispatch"
+                          : "Standard Queue"}
+                      </span>
+                    </div>
+
+                    {/* Carrier Invoicing */}
+                    <div className="p-3.5 rounded-2xl bg-gray-50/80 border border-gray-100 space-y-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                        Carrier Billing
+                      </span>
+                      <span className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#58BB87]" />
+                        {subscription.directCarrierInvoicing !== false
+                          ? "Direct Invoicing"
+                          : "Manual Invoicing"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan Features & Benefits */}
+              {subscription.features && subscription.features.length > 0 && (
+                <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-4">
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#F96176]" />
+                    Included Plan Features & Benefits
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    {subscription.features.map((feature, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50/70 border border-gray-100"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-[#58BB87] shrink-0 mt-0.5" />
+                        <span className="text-xs sm:text-sm font-medium text-gray-800">
+                          {feature}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Terms and Conditions */}
+              {subscription.termsAndConditions &&
+                subscription.termsAndConditions.length > 0 && (
+                  <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-3">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Subscription Terms & Policy
+                    </h3>
+                    <ul className="space-y-1.5 text-xs text-gray-500 list-disc list-inside">
+                      {subscription.termsAndConditions.map((term, idx) => (
+                        <li key={idx} className="leading-relaxed">
+                          {term}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+            </>
+          ) : (
+            /* No Active Subscription Card */
+            <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-xs border border-gray-200 text-center max-w-2xl mx-auto space-y-6">
+              <div className="w-16 h-16 rounded-3xl bg-rose-50 text-[#F96176] flex items-center justify-center mx-auto shadow-xs border border-rose-100">
+                <CreditCard className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black text-gray-900">
+                  No Active Subscription Plan
+                </h3>
+                <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
+                  Choose a subscription plan to unlock full roadside dispatch
+                  privileges, priority truck driver leads, unlimited service
+                  bays, and direct carrier invoicing.
+                </p>
+              </div>
+              <div>
+                <Link
+                  href={
+                    user
+                      ? `/choose-plan?mechanicId=${
+                          user.uid
+                        }&email=${encodeURIComponent(user.email || "")}`
+                      : "/choose-plan"
+                  }
+                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-[#F96176] text-white font-bold text-sm shadow-md hover:bg-[#e0485d] active:scale-95 transition-all cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Choose Subscription Plan
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB CONTENT: 3. LANGUAGES */}
       {activeTab === "languages" && (
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-4">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Supported Languages</h2>
+              <h2 className="text-lg font-bold text-gray-900">
+                Supported Languages
+              </h2>
               <p className="text-xs text-gray-500">
-                Drivers often filter mechanics by spoken languages for clear roadside communication
+                Drivers often filter mechanics by spoken languages for clear
+                roadside communication
               </p>
             </div>
             <button
@@ -546,7 +1035,11 @@ export default function MechanicProfileView() {
               disabled={isSaving}
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#F96176] text-white font-semibold text-sm shadow-xs hover:bg-[#e0485d] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               Save Languages
             </button>
           </div>
@@ -569,7 +1062,11 @@ export default function MechanicProfileView() {
                     onChange={() => handleLanguageToggle(lang)}
                     className="w-4 h-4 rounded text-[#F96176] focus:ring-[#F96176] border-gray-300 cursor-pointer"
                   />
-                  <span className={`text-sm font-semibold ${isChecked ? "text-[#F96176]" : "text-gray-700"}`}>
+                  <span
+                    className={`text-sm font-semibold ${
+                      isChecked ? "text-[#F96176]" : "text-gray-700"
+                    }`}
+                  >
                     {lang}
                   </span>
                 </label>
@@ -580,7 +1077,9 @@ export default function MechanicProfileView() {
           <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800 leading-relaxed">
-              <strong>Tip:</strong> Selecting multilingual proficiencies improves dispatch matching for cross-border freight routes (e.g. English, Spanish, Punjabi).
+              <strong>Tip:</strong> Selecting multilingual proficiencies
+              improves dispatch matching for cross-border freight routes (e.g.
+              English, Spanish, Punjabi).
             </p>
           </div>
         </div>
@@ -590,9 +1089,12 @@ export default function MechanicProfileView() {
       {activeTab === "security" && (
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-6">
           <div className="pb-4 border-b border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900">Change Portal Password</h2>
+            <h2 className="text-lg font-bold text-gray-900">
+              Change Portal Password
+            </h2>
             <p className="text-xs text-gray-500">
-              Ensure your account uses a secure password of at least 6 characters
+              Ensure your account uses a secure password of at least 6
+              characters
             </p>
           </div>
 
@@ -605,7 +1107,10 @@ export default function MechanicProfileView() {
                 type="password"
                 value={passwordState.newPassword}
                 onChange={(e) =>
-                  setPasswordState((prev) => ({ ...prev, newPassword: e.target.value }))
+                  setPasswordState((prev) => ({
+                    ...prev,
+                    newPassword: e.target.value,
+                  }))
                 }
                 placeholder="••••••••"
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]/20 text-sm font-medium text-gray-800 transition outline-none"
@@ -620,7 +1125,10 @@ export default function MechanicProfileView() {
                 type="password"
                 value={passwordState.confirmPassword}
                 onChange={(e) =>
-                  setPasswordState((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                  setPasswordState((prev) => ({
+                    ...prev,
+                    confirmPassword: e.target.value,
+                  }))
                 }
                 placeholder="••••••••"
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]/20 text-sm font-medium text-gray-800 transition outline-none"
@@ -648,9 +1156,12 @@ export default function MechanicProfileView() {
       {activeTab === "account" && (
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200 space-y-6">
           <div className="pb-4 border-b border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900">Account Management & Lifecycle</h2>
+            <h2 className="text-lg font-bold text-gray-900">
+              Account Management & Lifecycle
+            </h2>
             <p className="text-xs text-gray-500">
-              Manage account deactivation, visibility, or complete removal from the Treno platform
+              Manage account deactivation, visibility, or complete removal from
+              the Treno platform
             </p>
           </div>
 
@@ -663,7 +1174,9 @@ export default function MechanicProfileView() {
                   Temporary Account Deactivation
                 </h3>
                 <p className="text-xs text-amber-800/90 leading-relaxed max-w-xl">
-                  Temporarily hides your workshop from search queries and pauses job dispatch notifications. All data, past invoices, and history are preserved for when you return.
+                  Temporarily hides your workshop from search queries and pauses
+                  job dispatch notifications. All data, past invoices, and
+                  history are preserved for when you return.
                 </p>
               </div>
               <button
@@ -683,7 +1196,9 @@ export default function MechanicProfileView() {
                   Permanent Account Deletion
                 </h3>
                 <p className="text-xs text-red-800/90 leading-relaxed max-w-xl">
-                  Irreversible action. Permanently purges your mechanic account, linked team profiles, and certifications according to data privacy retention standards.
+                  Irreversible action. Permanently purges your mechanic account,
+                  linked team profiles, and certifications according to data
+                  privacy retention standards.
                 </p>
               </div>
               <button
@@ -705,9 +1220,13 @@ export default function MechanicProfileView() {
             <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
               <Radio className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900">Temporarily Deactivate Account?</h3>
+            <h3 className="text-lg font-bold text-gray-900">
+              Temporarily Deactivate Account?
+            </h3>
             <p className="text-xs text-gray-600 leading-relaxed">
-              Your workshop will be set to offline and will not receive new service requests. You can reactivate anytime simply by signing back into the portal.
+              Your workshop will be set to offline and will not receive new
+              service requests. You can reactivate anytime simply by signing
+              back into the portal.
             </p>
             <div className="flex justify-end gap-3 pt-2">
               <button
@@ -736,9 +1255,13 @@ export default function MechanicProfileView() {
             <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center font-bold">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-red-600">Permanent Account Deletion</h3>
+            <h3 className="text-lg font-bold text-red-600">
+              Permanent Account Deletion
+            </h3>
             <p className="text-xs text-gray-600 leading-relaxed">
-              Are you sure you want to permanently delete your account? This action cannot be reversed. All mechanic profile records, bay assignments, and credentials will be removed.
+              Are you sure you want to permanently delete your account? This
+              action cannot be reversed. All mechanic profile records, bay
+              assignments, and credentials will be removed.
             </p>
             <div className="flex justify-end gap-3 pt-2">
               <button

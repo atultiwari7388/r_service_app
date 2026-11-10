@@ -8,6 +8,7 @@ import { auth, db, storage } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { MechanicCurrentSubscription } from "@/types/subscription";
 
 export interface ProfileFormData {
   userName: string;
@@ -62,6 +63,8 @@ export function useMechanicProfile() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
+  const [subscription, setSubscription] = useState<MechanicCurrentSubscription | null>(null);
+  const [isSubscriptionPurchase, setIsSubscriptionPurchase] = useState<boolean>(false);
   const [passwordState, setPasswordState] = useState({
     newPassword: "",
     confirmPassword: "",
@@ -141,6 +144,8 @@ export function useMechanicProfile() {
 
           setWallet(Number(data.wallet || 0));
           setProfilePicture(data.profilePicture || data.mDp || "");
+          setSubscription(data.currentSubscription || null);
+          setIsSubscriptionPurchase(Boolean(data.isSubscriptionPurchase));
         } else if (rawMechanic && isMounted) {
           setFormData({
             userName: rawMechanic.userName || rawMechanic.name || "",
@@ -162,6 +167,8 @@ export function useMechanicProfile() {
           });
           setWallet(Number(rawMechanic.wallet || 0));
           setProfilePicture(rawMechanic.profilePicture || rawMechanic.mDp || "");
+          setSubscription(rawMechanic.currentSubscription || null);
+          setIsSubscriptionPurchase(Boolean(rawMechanic.isSubscriptionPurchase));
         }
       } catch (err: any) {
         console.error("Error fetching mechanic doc:", err);
@@ -435,6 +442,8 @@ export function useMechanicProfile() {
     isUploadingPhoto,
     passwordState,
     setPasswordState,
+    subscription,
+    isSubscriptionPurchase,
     handleInputChange,
     handleLanguageToggle,
     handleActiveToggle,
