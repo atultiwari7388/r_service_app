@@ -19,6 +19,7 @@ function SuccessContent() {
   const [loading, setLoading] = useState(true);
   const [verifiedPlanName, setVerifiedPlanName] = useState<string>("Plan");
   const [error, setError] = useState<string | null>(null);
+  const [isAlreadyVerified, setIsAlreadyVerified] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -74,20 +75,33 @@ function SuccessContent() {
             }
           }
 
-          // 2. Dispatch email verification if user is still logged in
-          if (auth.currentUser) {
-            try {
-              await sendEmailVerification(auth.currentUser);
-            } catch (err) {
-              console.warn("Could not dispatch email verification:", err);
-            }
+          // 2. Check if the user is already email verified (e.g. existing/old mechanic)
+          const currentUser = auth.currentUser;
+          const emailVerified = currentUser?.emailVerified === true;
+
+          if (isMounted) {
+            setIsAlreadyVerified(emailVerified);
           }
 
-          // 3. Sign out to enforce email verification gate at login
-          try {
-            await signOut(auth);
-          } catch (soErr) {
-            console.warn("Sign out error:", soErr);
+          if (currentUser) {
+            if (!emailVerified) {
+              // ONLY dispatch verification email if user has NOT verified their email yet (e.g. new registration)
+              try {
+                await sendEmailVerification(currentUser);
+              } catch (err) {
+                console.warn("Could not dispatch email verification:", err);
+              }
+
+              // Sign out unverified user to enforce verification gate at next login
+              try {
+                await signOut(auth);
+              } catch (soErr) {
+                console.warn("Sign out error:", soErr);
+              }
+            } else {
+              // Old/existing verified mechanic: do NOT send verification email and do NOT sign out!
+              // They can proceed directly to the dashboard.
+            }
           }
         } else {
           if (isMounted) {
@@ -188,26 +202,52 @@ function SuccessContent() {
               </p>
             </div>
 
-            {/* Email Verification Callout */}
-            <div className="bg-emerald-50/60 rounded-2xl p-4 border border-emerald-200/80 text-left space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
-                <Mail className="w-4 h-4 text-[#58BB87]" />
-                <span>Verification Email Dispatched</span>
-              </div>
-              <p className="text-[11px] text-emerald-800 leading-relaxed">
-                A verification link has been sent to your email address. Please click the verification link in your inbox before logging in to your dashboard.
-              </p>
-            </div>
+            {/* Dynamic Status Callout based on email verification status */}
+            {isAlreadyVerified ? (
+              <>
+                <div className="bg-emerald-50/60 rounded-2xl p-4 border border-emerald-200/80 text-left space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+                    <CheckCircle2 className="w-4 h-4 text-[#58BB87]" />
+                    <span>Account Verified & Ready</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    Welcome back! Your email is already verified. Your mechanic station privileges, service bays, and priority roadside job broadcasts are now active.
+                  </p>
+                </div>
 
-            <div className="pt-2">
-              <Link
-                href="/login"
-                className="w-full py-3.5 rounded-2xl bg-[#58BB87] hover:bg-[#48a875] text-white font-bold text-sm shadow-md shadow-[#58BB87]/25 transition flex items-center justify-center gap-2"
-              >
-                <span>Proceed to Login</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+                <div className="pt-2">
+                  <Link
+                    href="/"
+                    className="w-full py-3.5 rounded-2xl bg-[#58BB87] hover:bg-[#48a875] text-white font-bold text-sm shadow-md shadow-[#58BB87]/25 transition flex items-center justify-center gap-2"
+                  >
+                    <span>Go to Dashboard</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-emerald-50/60 rounded-2xl p-4 border border-emerald-200/80 text-left space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+                    <Mail className="w-4 h-4 text-[#58BB87]" />
+                    <span>Verification Email Dispatched</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    A verification link has been sent to your email address. Please click the verification link in your inbox before logging in to your dashboard.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <Link
+                    href="/login"
+                    className="w-full py-3.5 rounded-2xl bg-[#58BB87] hover:bg-[#48a875] text-white font-bold text-sm shadow-md shadow-[#58BB87]/25 transition flex items-center justify-center gap-2"
+                  >
+                    <span>Proceed to Login</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

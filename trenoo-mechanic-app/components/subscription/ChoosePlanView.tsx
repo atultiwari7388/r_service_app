@@ -262,8 +262,16 @@ export default function ChoosePlanView() {
             </button>
           </div>
         ) : (
-          /* Plans Cards Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+          /* Dynamic Responsive Plans Grid */
+          <div
+            className={`mx-auto w-full transition-all duration-300 ${
+              plans.length === 1
+                ? "max-w-md flex justify-center"
+                : plans.length === 2
+                ? "max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 justify-center items-stretch"
+                : "max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch"
+            }`}
+          >
             {plans.map((plan) => {
               const hasDiscount =
                 plan.discountPrice !== undefined &&
@@ -282,7 +290,7 @@ export default function ChoosePlanView() {
               return (
                 <div
                   key={plan.id}
-                  className={`bg-white rounded-3xl border-2 shadow-xs transition-all duration-300 flex flex-col overflow-hidden relative ${
+                  className={`w-full bg-white rounded-3xl border-2 shadow-xs transition-all duration-300 flex flex-col overflow-hidden relative ${
                     plan.isPopular
                       ? "border-[#58BB87] shadow-lg shadow-[#58BB87]/15 ring-2 ring-[#58BB87]/30"
                       : "border-gray-200 hover:border-gray-300 hover:shadow-md"
