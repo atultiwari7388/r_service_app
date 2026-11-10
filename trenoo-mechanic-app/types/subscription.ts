@@ -42,6 +42,11 @@ export interface MechanicCurrentSubscription {
   purchasedAt: string;
   purchasedTimestamp: number;
   status: "active" | "expired" | "renewed" | "cancelled";
+  autoPay?: boolean;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripeSessionId?: string;
+  currentPeriodEnd?: string;
   maxBays?: number;
   serviceRadiusMiles?: number;
   priorityJobLeads?: boolean;
@@ -62,7 +67,12 @@ export interface MechanicSubscriptionHistoryItem {
   purchasedAt: string;
   purchasedTimestamp: number;
   status: "active" | "expired" | "renewed" | "cancelled";
-  paymentMethod: string;
+  paymentMethod: string; // "stripe" | "direct_activation"
+  autoPay?: boolean;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripeInvoiceId?: string;
+  currentPeriodEnd?: string;
   maxBays?: number;
   serviceRadiusMiles?: number;
   priorityJobLeads?: boolean;
@@ -70,4 +80,35 @@ export interface MechanicSubscriptionHistoryItem {
   features?: string[];
   termsAndConditions?: string[];
   createdAt?: any;
+}
+
+/**
+ * Schema for Global Collection `subscriptionPurchases`
+ * Stores platform-wide purchases across all users (mechanics, owners, drivers).
+ */
+export interface GlobalSubscriptionPurchase {
+  id?: string;
+  purchaseId: string; // Stripe Subscription ID or unique session ID
+  userId: string; // mechanicId / driverId
+  userEmail: string;
+  userType: "mechanic" | "owner_driver";
+  planId: string;
+  planName: string;
+  duration: string;
+  amountPaid: number;
+  currency: string;
+  status: "active" | "expired" | "cancelled" | "past_due";
+  autoPay: boolean;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripeSessionId?: string;
+  stripeInvoiceId?: string;
+  purchasedAt: string; // ISO 8601
+  purchasedTimestamp: number;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+  features?: string[];
+  termsAndConditions?: string[];
+  createdAt?: any;
+  updatedAt?: any;
 }

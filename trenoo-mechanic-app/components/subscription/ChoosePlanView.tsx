@@ -81,6 +81,15 @@ export default function ChoosePlanView() {
     loadPlans();
   }, []);
 
+  // Check for cancellation from Stripe
+  useEffect(() => {
+    if (searchParams.get("cancelled")) {
+      toast.error("Payment session was cancelled. You can select a plan whenever you are ready.", {
+        duration: 4000,
+      });
+    }
+  }, [searchParams]);
+
   const toggleTerms = (planId: string) => {
     setExpandedTerms((prev) => ({
       ...prev,
@@ -97,38 +106,35 @@ export default function ChoosePlanView() {
 
     setPurchasingPlanId(plan.id);
     try {
-      // 1. Update Mechanics/{uid} and create record in subcollection
-      const res = await purchaseMechanicPlan(effectiveMechanicId, plan);
+      // 1. Create secure Stripe Checkout session on server
+      const res = await fetch("/api/stripe/checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mechanicId: effectiveMechanicId,
+          planId: plan.id,
+          email: effectiveEmail || "",
+          planName: plan.name,
+          duration: plan.duration,
+          price: plan.price,
+          discountPrice: plan.discountPrice,
+          currency: plan.currency || "USD",
+        }),
+      });
 
-      // 2. Send email verification now that plan is purchased
-      if (auth.currentUser) {
-        try {
-          await sendEmailVerification(auth.currentUser);
-        } catch (verErr) {
-          console.warn("Error sending verification email upon plan purchase:", verErr);
-        }
+      const data = await res.json();
+
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Failed to initialize payment gateway");
       }
 
-      // 3. Sign out user to enforce email verification gate at login
-      try {
-        await signOut(auth);
-      } catch (soErr) {
-        console.warn("Sign out after purchase warning:", soErr);
-      }
-
-      toast.success(
-        "Subscription activated! A verification email has been sent. Please verify your email before logging in.",
-        { duration: 6000 }
-      );
-
-      // 4. Redirect to login
-      setTimeout(() => {
-        router.push("/login");
-      }, 1500);
+      // 2. Redirect to Stripe Checkout with Auto-Pay
+      window.location.href = data.url;
     } catch (err: any) {
       console.error("Purchase error:", err);
-      toast.error(err?.message || "Failed to activate subscription plan");
-    } finally {
+      toast.error(err?.message || "Failed to start payment session");
       setPurchasingPlanId(null);
     }
   };
