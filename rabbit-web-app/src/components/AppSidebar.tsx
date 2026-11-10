@@ -232,12 +232,12 @@ export default function AppSidebar() {
           href: "/account/trip-wise-vehicle",
           icon: <Truck size={16} />,
         },
-        {
-          label: "Fleet Sharing",
-          href: "/fleet-sharing",
-          icon: <Share2 size={16} />,
-          visible: userData?.role === "Owner" || userData?.role === "SubOwner",
-        },
+        // {
+        //   label: "Fleet Sharing",
+        //   href: "/fleet-sharing",
+        //   icon: <Share2 size={16} />,
+        //   visible: userData?.role === "Owner" || userData?.role === "SubOwner",
+        // },
       ],
     },
     {
