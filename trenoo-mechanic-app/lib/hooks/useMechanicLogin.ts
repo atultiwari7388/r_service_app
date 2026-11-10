@@ -79,6 +79,17 @@ export function useMechanicLogin(): UseMechanicLoginReturn {
             }, 600);
             return result;
 
+          case "subscription_required":
+            toast.error(
+              result.message || "Please purchase a subscription plan to activate your account.",
+              { duration: 5000 }
+            );
+            setErrorMessage(result.message || null);
+            setTimeout(() => {
+              router.push(result.redirectUrl || "/choose-plan");
+            }, 1200);
+            return result;
+
           case "email_not_verified":
             toast.error(
               result.message || "Please verify your email before logging in."

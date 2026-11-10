@@ -130,24 +130,17 @@ export async function registerMechanic(
       isMultiDeEnable: false,
       fcmToken: null,
       selected_services: [],
+      isSubscriptionPurchase: false,
       created_at: now,
       updated_at: now,
     });
 
-    // Send email verification
-    try {
-      await sendEmailVerification(user);
-    } catch (verErr) {
-      console.warn("Error sending verification email during registration:", verErr);
-    }
-
-    // Sign out to enforce email verification
-    await signOut(auth);
-
     return {
       success: true,
-      message: "A verification email has been sent to your email address. Please verify it before logging in.",
+      message: "Registration completed. Please choose your subscription plan.",
       user,
+      mechanicId: user.uid,
+      email: email,
     };
   } catch (error: any) {
     console.error("Mechanic registration error:", error);
@@ -178,25 +171,11 @@ export async function authenticateMechanic(
       };
     }
 
-    // 1. Verify email check
-    if (!user.emailVerified) {
-      try {
-        await sendEmailVerification(user);
-      } catch (err) {
-        console.warn("Error sending verification email:", err);
-      }
-      await signOut(auth);
-      return {
-        status: "email_not_verified",
-        message: "Please verify your email before logging in. A new verification link has been sent.",
-      };
-    }
-
-    // 2. Query Mechanics collection by doc UID
+    // 1. Query Mechanics collection by doc UID
     const mechanicDocRef = doc(db, "Mechanics", user.uid);
     const mechanicDocSnap = await getDoc(mechanicDocRef);
 
-    // 3. Not found in Mechanics collection -> Check customer Users collection
+    // 2. Not found in Mechanics collection -> Check customer Users collection
     if (!mechanicDocSnap.exists()) {
       const usersQuery = query(
         collection(db, "Users"),
@@ -220,10 +199,35 @@ export async function authenticateMechanic(
       };
     }
 
-    // 4. Found in Mechanics collection
+    // 3. Found in Mechanics collection
     const mechanicData = mechanicDocSnap.data() as MechanicProfile;
 
-    // Check if account is enabled
+    // 4. Verify Subscription Purchase first
+    if (mechanicData.isSubscriptionPurchase !== true) {
+      await signOut(auth);
+      return {
+        status: "subscription_required",
+        message: "You have not purchased a subscription plan yet. Please choose a plan to activate your account.",
+        redirectUrl: `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(user.email || email)}`,
+        mechanicData,
+      };
+    }
+
+    // 5. If subscription is purchased, check if email is verified
+    if (!user.emailVerified) {
+      try {
+        await sendEmailVerification(user);
+      } catch (err) {
+        console.warn("Error sending verification email:", err);
+      }
+      await signOut(auth);
+      return {
+        status: "email_not_verified",
+        message: "Please verify your email before logging in. A new verification link has been sent.",
+      };
+    }
+
+    // 6. Check if account is enabled
     if (mechanicData.isEnabled === false) {
       return {
         status: "account_deactivated",

@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import { MechanicCurrentSubscription } from "./subscription";
 
 export interface MechanicProfile {
   uid: string;
@@ -26,6 +27,8 @@ export interface MechanicProfile {
   profilePicture?: string;
   mDp?: string;
   selected_services?: string[];
+  isSubscriptionPurchase?: boolean;
+  currentSubscription?: MechanicCurrentSubscription;
   created_at?: Timestamp | any;
   createdAt?: Timestamp | any;
   updated_at?: Timestamp | any;
@@ -43,6 +46,7 @@ export interface LoginCredentials {
 
 export type LoginResultStatus =
   | "success"
+  | "subscription_required"
   | "email_not_verified"
   | "customer_app_email"
   | "account_not_registered"
@@ -55,6 +59,7 @@ export interface LoginResult {
   message?: string;
   user?: any;
   mechanicData?: MechanicProfile;
+  redirectUrl?: string;
 }
 
 export interface MechanicRegistrationData {
@@ -79,4 +84,6 @@ export interface RegistrationResult {
   success: boolean;
   message?: string;
   user?: any;
+  mechanicId?: string;
+  email?: string;
 }

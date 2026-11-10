@@ -54,20 +54,13 @@ export function MechanicRegistrationView({
   if (isSuccess) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 text-center">
-        <div className="w-12 h-12 border-3 border-[#F96176] border-t-transparent rounded-full animate-spin mb-4" />
+        <div className="w-12 h-12 border-3 border-[#58BB87] border-t-transparent rounded-full animate-spin mb-4" />
         <h2 className="text-xl font-bold text-gray-900">
-          Registration Successful!
+          Account Created!
         </h2>
         <p className="mt-2 text-xs text-gray-500 max-w-sm">
-          A verification link has been sent to your email. Please verify your
-          email before logging in.
+          Taking you to subscription plan selection...
         </p>
-        <Link
-          href="/login"
-          className="mt-6 inline-flex px-6 py-2.5 rounded-xl bg-[#F96176] text-white text-xs font-semibold shadow-xs hover:bg-[#e0485d] transition"
-        >
-          Proceed to Login
-        </Link>
       </div>
     );
   }

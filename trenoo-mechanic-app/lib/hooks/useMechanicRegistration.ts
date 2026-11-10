@@ -214,13 +214,11 @@ export function useMechanicRegistration(): UseMechanicRegistrationReturn {
         if (result.success) {
           setIsSuccess(true);
           toast.success(
-            result.message ||
-              "A verification email has been sent. Please verify before logging in.",
-            { duration: 5000 }
+            "Account created! Please choose your subscription plan to continue.",
+            { duration: 4000 }
           );
-          setTimeout(() => {
-            router.push("/login");
-          }, 2000);
+          const targetUrl = `/choose-plan?mechanicId=${result.mechanicId || ""}&email=${encodeURIComponent(result.email || email.trim())}`;
+          router.push(targetUrl);
           return true;
         } else {
           toast.error(result.message || "Registration failed. Please try again.");
