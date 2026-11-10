@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { auth } from "@/lib/firebase";
-import { signOut, sendEmailVerification } from "firebase/auth";
+import { signOut, sendEmailVerification, onAuthStateChanged, User } from "firebase/auth";
 import { SubscriptionPlan } from "@/types/subscription";
 import {
   fetchMechanicSubscriptionPlans,
@@ -42,25 +42,26 @@ export default function ChoosePlanView() {
   const [effectiveEmail, setEffectiveEmail] = useState<string | null>(
     queryEmail || null
   );
+  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasingPlanId, setPurchasingPlanId] = useState<string | null>(null);
   const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
 
-  // Resolve active mechanicId from query param or auth state
+  // Sync auth state and resolve mechanicId/email
   useEffect(() => {
-    if (queryMechanicId) {
-      setEffectiveMechanicId(queryMechanicId);
-    } else if (auth.currentUser?.uid) {
-      setEffectiveMechanicId(auth.currentUser.uid);
-    }
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      setCurrentUser(firebaseUser);
+      if (firebaseUser) {
+        if (!queryMechanicId) setEffectiveMechanicId(firebaseUser.uid);
+        if (!queryEmail) setEffectiveEmail(firebaseUser.email);
+      }
+      // Re-fetch plans once auth state is settled to avoid unauthenticated permission denials
+      loadPlans();
+    });
 
-    if (queryEmail) {
-      setEffectiveEmail(queryEmail);
-    } else if (auth.currentUser?.email) {
-      setEffectiveEmail(auth.currentUser.email);
-    }
+    return () => unsub();
   }, [queryMechanicId, queryEmail]);
 
   // Load plans from Firestore
@@ -76,10 +77,6 @@ export default function ChoosePlanView() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    loadPlans();
-  }, []);
 
   // Check for cancellation from Stripe
   useEffect(() => {
@@ -172,17 +169,38 @@ export default function ChoosePlanView() {
           </Link>
 
           <div className="flex items-center gap-4 text-xs font-semibold">
-            {effectiveEmail && (
-              <span className="hidden sm:inline-block text-gray-500 font-medium">
-                Registered: <b className="text-gray-800">{effectiveEmail}</b>
-              </span>
+            {currentUser ? (
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:inline-block text-gray-500 font-medium">
+                  Signed in: <b className="text-gray-800">{currentUser.email || effectiveEmail}</b>
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut(auth);
+                    router.push("/login");
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <>
+                {effectiveEmail && (
+                  <span className="hidden sm:inline-block text-gray-500 font-medium">
+                    Registered: <b className="text-gray-800">{effectiveEmail}</b>
+                  </span>
+                )}
+                <Link
+                  href="/login"
+                  className="px-3.5 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition"
+                >
+                  Sign In
+                </Link>
+              </>
             )}
-            <Link
-              href="/login"
-              className="px-3.5 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition"
-            >
-              Sign In
-            </Link>
           </div>
         </div>
       </header>

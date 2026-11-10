@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import TopBar from "./TopBar";
 import AppSidebar from "./AppSidebar";
 import Footer from "./Footer";
@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContexts";
 import { Menu, PhoneCall, User as UserIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { APP_CONFIG } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +18,23 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
+  const router = useRouter();
   const { toggleMobile } = useSidebar();
   const auth = useAuth();
   const user = auth?.user;
   const mechanic = auth?.mechanicProfile;
+  const isLoading = auth?.isLoading;
+
+  // Intercept unpaid mechanics attempting to access dashboard or workshop features
+  useEffect(() => {
+    if (!isLoading && user && mechanic) {
+      if (mechanic.isSubscriptionPurchase !== true) {
+        router.push(
+          `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(user.email || "")}`
+        );
+      }
+    }
+  }, [isLoading, user, mechanic, router]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAFC] w-full max-w-full overflow-x-hidden selection:bg-[#F96176] selection:text-white">

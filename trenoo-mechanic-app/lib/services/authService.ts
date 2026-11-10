@@ -204,7 +204,10 @@ export async function authenticateMechanic(
 
     // 4. Verify Subscription Purchase first
     if (mechanicData.isSubscriptionPurchase !== true) {
-      await signOut(auth);
+      // DO NOT call signOut(auth) here!
+      // The user must remain authenticated so that:
+      // 1. Firestore allows reading subscriptionPlans (which requires request.auth != null).
+      // 2. The mechanic session is preserved for Stripe Checkout.
       return {
         status: "subscription_required",
         message: "You have not purchased a subscription plan yet. Please choose a plan to activate your account.",

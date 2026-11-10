@@ -1,15 +1,28 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContexts";
 import MainLayout from "@/components/layout/MainLayout";
 import MechanicDashboardView from "@/components/dashboard/MechanicDashboardView";
 import LandingPage from "@/components/landing/LandingPage";
 
 export default function HomePage() {
+  const router = useRouter();
   const auth = useAuth();
   const user = auth?.user;
+  const mechanic = auth?.mechanicProfile;
   const isLoading = auth?.isLoading ?? false;
+
+  useEffect(() => {
+    if (!isLoading && user && mechanic) {
+      if (mechanic.isSubscriptionPurchase !== true) {
+        router.push(
+          `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(user.email || "")}`
+        );
+      }
+    }
+  }, [isLoading, user, mechanic, router]);
 
   // While checking auth state, show a clean, non-intrusive loading indicator
   if (isLoading) {
@@ -27,8 +40,21 @@ export default function HomePage() {
     );
   }
 
-  // If user is authenticated, render the full mechanic dashboard with sidebar
+  // If user is authenticated, check subscription before rendering dashboard
   if (user) {
+    if (mechanic && mechanic.isSubscriptionPurchase !== true) {
+      return (
+        <div className="min-h-screen bg-[#FAFAFC] flex flex-col items-center justify-center p-4">
+          <div className="flex flex-col items-center gap-3">
+            <span className="w-6 h-6 border-2 border-[#F96176] border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              Redirecting to plan selection...
+            </span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <MainLayout>
         <MechanicDashboardView />
