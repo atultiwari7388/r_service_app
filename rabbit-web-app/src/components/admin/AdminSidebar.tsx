@@ -76,6 +76,12 @@ const navItems: NavItem[] = [
       },
     ],
   },
+  {
+    name: "Subscribers",
+    href: "/admin/subscribers",
+    icon: Sparkles,
+    description: "Purchased mechanics & drivers",
+  },
 ];
 
 export default function AdminSidebar() {
@@ -111,6 +117,9 @@ export default function AdminSidebar() {
       return true;
     }
     if (href === "/admin/subscription-plans" && pathname === "/admin/subscription-plans") {
+      return true;
+    }
+    if (href === "/admin/subscribers" && pathname?.startsWith("/admin/subscribers")) {
       return true;
     }
     return pathname === href;

@@ -39,3 +39,47 @@ export interface SubscriptionPlan {
   createdAt?: any;
   updatedAt?: any;
 }
+
+export type SubscriberUserType = "mechanic" | "driver" | "owner";
+
+export interface SubscriptionPurchaseRecord {
+  id: string; // purchaseId or docId
+  userId: string;
+  userEmail: string;
+  userName?: string;
+  businessName?: string; // workshopName or companyName
+  userPhone?: string;
+  userLocation?: string;
+  userType: SubscriberUserType;
+  planId: string;
+  planName: string;
+  planType: SubscriptionPlanType;
+  duration: string;
+  amountPaid: number;
+  originalPrice?: number;
+  currency: string;
+  status: "active" | "expired" | "cancelled" | "pending";
+  autoPay?: boolean;
+  purchasedAt?: any;
+  purchasedTimestamp?: number;
+  currentPeriodStart?: any;
+  currentPeriodEnd?: any;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripeSessionId?: string;
+  stripeInvoiceId?: string;
+  features?: string[];
+  termsAndConditions?: string[];
+
+  // Limits
+  maxBays?: number;
+  serviceRadiusMiles?: number;
+  priorityJobLeads?: boolean;
+  directCarrierInvoicing?: boolean;
+  maxVehicles?: number;
+  truckLimit?: number;
+  trailerLimit?: number;
+  vehicleTypeScope?: string;
+
+  updatedAt?: any;
+}
