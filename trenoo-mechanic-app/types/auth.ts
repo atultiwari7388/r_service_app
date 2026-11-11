@@ -37,6 +37,21 @@ export interface MechanicProfile {
     latitude?: number;
     longitude?: number;
   };
+  // Team Management & Dispatch Engine Fields
+  role?: "owner" | "member";
+  ownerId?: string;
+  isTeamMember?: boolean;
+  baseCity?: string;
+  baseState?: string;
+  allowDirectJobAcceptance?: boolean;
+  inheritedSubscriptionOwnerId?: string;
+  teamMembers?: string[];
+  rating?: number;
+  totalReviewsCount?: number;
+  totalCompletedJobs?: number;
+  currentActiveJobId?: string | null;
+  activeJobStartedAt?: Timestamp | any | null;
+  activeJobEstimatedMinutes?: number | null;
 }
 
 export interface LoginCredentials {

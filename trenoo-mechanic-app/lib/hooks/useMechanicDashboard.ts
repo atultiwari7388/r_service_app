@@ -299,14 +299,28 @@ export function useMechanicDashboard() {
     if (!isOnline) return [];
 
     // 1. Filter by status, offers, services, and distance
+    const isMember = mechanicProfile?.role === "member" || !!mechanicProfile?.ownerId;
+    const allowDirect = mechanicProfile?.allowDirectJobAcceptance === true;
+
     const filtered = allJobs
       .filter((job) => {
         // Status must be 0 (new)
         if (job.status !== 0) return false;
 
+        // Autonomous Direct-Accept Gate for Members:
+        // If technician is a Member without direct accept permission,
+        // they ONLY see jobs directly assigned to them by their workshop owner!
+        if (isMember && !allowDirect) {
+          if (job.assignedMemberId !== currentUId) {
+            return false;
+          }
+        }
+
         // Check if current mechanic already made an offer with status == 1 (accepted/interested)
         if (currentUId && job.mechanicsOffer && job.mechanicsOffer.length > 0) {
-          const myOffer = job.mechanicsOffer.find((o) => o.mId === currentUId);
+          const myOffer = job.mechanicsOffer.find(
+            (o) => o.mId === currentUId || o.assignedMemberId === currentUId
+          );
           if (myOffer && myOffer.status === 1) {
             return false; // already interested/accepted
           }
@@ -384,13 +398,19 @@ export function useMechanicDashboard() {
   ]);
 
   // Ongoing Jobs (current mechanic has offer with status 1, 2, 3, or 4 and job not completed/cancelled)
+  // Or technician is assignedMemberId on the job
   const ongoingJobs = useMemo(() => {
     if (!currentUId) return [];
 
     return allJobs
       .filter((job) => {
         if (job.status === 5 || job.status === -1) return false;
-        const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
+        // Direct assignment match
+        if (job.assignedMemberId === currentUId) return true;
+
+        const myOffer = job.mechanicsOffer?.find(
+          (o) => o.mId === currentUId || o.assignedMemberId === currentUId
+        );
         if (!myOffer) return false;
         return [1, 2, 3, 4].includes(myOffer.status);
       })
@@ -415,7 +435,12 @@ export function useMechanicDashboard() {
     }
 
     return allJobs.filter((job) => {
-      const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
+      if (job.assignedMemberId === currentUId) {
+        return job.status === 5 || job.status === -1;
+      }
+      const myOffer = job.mechanicsOffer?.find(
+        (o) => o.mId === currentUId || o.assignedMemberId === currentUId
+      );
       if (!myOffer) return job.status === 5 || job.status === -1;
       return (
         myOffer.status === 5 ||
@@ -482,15 +507,24 @@ export function useMechanicDashboard() {
       perHourCharges,
       fixPrice,
       arrivalTime,
+      assignedMemberId,
+      assignedMemberName,
+      assignedMemberCity,
+      assignedMemberPhone,
     } = params;
 
     const offer: MechanicOffer = {
       mId: currentUId,
       mName:
+        assignedMemberName ||
         mechanicProfile?.workshopName ||
         mechanicProfile?.userName ||
         "Mechanic",
-      mNumber: mechanicProfile?.cellPhone || mechanicProfile?.telephone || "",
+      mNumber:
+        assignedMemberPhone ||
+        mechanicProfile?.cellPhone ||
+        mechanicProfile?.telephone ||
+        "",
       mDp: mechanicProfile?.profilePicture || mechanicProfile?.mDp || "",
       arrivalCharges: arrivalCharges || 0,
       perHourCharges: perHourCharges || mechanicProfile?.perHourCharge || 0,
@@ -508,6 +542,11 @@ export function useMechanicDashboard() {
         : ["English"],
       mechanicAddress: currentAddress,
       offerAcceptedDate: Timestamp.now(),
+      assignedMemberId,
+      assignedMemberName,
+      assignedMemberCity,
+      assignedMemberPhone,
+      isAssignedByOwner: Boolean(assignedMemberId),
     };
 
     try {
@@ -515,9 +554,20 @@ export function useMechanicDashboard() {
       const jobSnap = await getDoc(jobDocRef);
       const jobData = jobSnap.exists() ? jobSnap.data() : null;
 
-      await updateDoc(jobDocRef, {
+      const jobUpdatePayload: any = {
         mechanicsOffer: arrayUnion(offer),
-      });
+        ownerId: currentUId,
+      };
+
+      if (assignedMemberId) {
+        jobUpdatePayload.assignedMemberId = assignedMemberId;
+        jobUpdatePayload.assignedMemberName = assignedMemberName || "";
+        jobUpdatePayload.assignedMemberCity = assignedMemberCity || "";
+        jobUpdatePayload.assignedMemberPhone = assignedMemberPhone || "";
+        jobUpdatePayload.isAssignedByOwner = true;
+      }
+
+      await updateDoc(jobDocRef, jobUpdatePayload);
 
       // Target all related user histories (creator, fleet owner, user)
       const targetUids = new Set<string>();
@@ -545,10 +595,133 @@ export function useMechanicDashboard() {
         }
       }
 
-      toast.success("Offer submitted to driver successfully!");
+      toast.success(
+        assignedMemberName
+          ? `Offer submitted and dispatched to ${assignedMemberName}!`
+          : "Offer submitted to driver successfully!"
+      );
     } catch (err: any) {
       console.error("Error submitting offer:", err);
       toast.error(err.message || "Failed to submit offer");
+      throw err;
+    }
+  };
+
+  // Start Job with Estimated Duration (Scenario 1 & 2)
+  const startJobWithDuration = async (
+    jobId: string,
+    userId: string,
+    estimatedMinutes: number
+  ) => {
+    try {
+      const now = Timestamp.now();
+      const jobDocRef = doc(db, "jobs", jobId);
+      const jobSnap = await getDoc(jobDocRef);
+      const jobData = jobSnap.exists() ? jobSnap.data() : null;
+
+      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
+      const updatedOffers = offers.map((offer) => {
+        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
+          return { ...offer, status: 4 };
+        }
+        return offer;
+      });
+
+      await updateDoc(jobDocRef, {
+        status: 4,
+        mechanicsOffer: updatedOffers,
+        estimatedRepairMinutes: estimatedMinutes,
+        activeJobStartedAt: now,
+      });
+
+      // Update the technician's profile with active job & progress timer
+      const targetTechUid = jobData?.assignedMemberId || currentUId;
+      try {
+        const techRef = doc(db, "Mechanics", targetTechUid);
+        await updateDoc(techRef, {
+          currentActiveJobId: jobId,
+          activeJobStartedAt: now,
+          activeJobEstimatedMinutes: estimatedMinutes,
+        });
+      } catch (techErr) {
+        console.warn("Could not update technician active timer:", techErr);
+      }
+
+      toast.success(`Job started! Estimated repair timer set to ${estimatedMinutes} mins.`);
+    } catch (err: any) {
+      console.error("Error starting job with duration:", err);
+      toast.error(err.message || "Failed to start repair job");
+      throw err;
+    }
+  };
+
+  // Request Emergency Handover (Scenario 3)
+  const requestEmergencyHandover = async (jobId: string, reason: string) => {
+    try {
+      const jobDocRef = doc(db, "jobs", jobId);
+      await updateDoc(jobDocRef, {
+        handoverRequested: true,
+        handoverReason: reason,
+        handoverRequestedAt: Timestamp.now(),
+      });
+      toast.success("Emergency handover requested. Owner notified.");
+    } catch (err: any) {
+      console.error("Error requesting handover:", err);
+      toast.error(err?.message || "Failed to request handover");
+      throw err;
+    }
+  };
+
+  // Reassign Job Member (Scenario 3 - Owner action)
+  const reassignJobMember = async (
+    jobId: string,
+    newMemberId: string | null,
+    newMemberName: string
+  ) => {
+    try {
+      const jobDocRef = doc(db, "jobs", jobId);
+      const jobSnap = await getDoc(jobDocRef);
+      const oldMemberId = jobSnap.exists() ? jobSnap.data()?.assignedMemberId : null;
+
+      // Clear old member's active job
+      if (oldMemberId) {
+        try {
+          await updateDoc(doc(db, "Mechanics", oldMemberId), {
+            currentActiveJobId: null,
+            activeJobStartedAt: null,
+            activeJobEstimatedMinutes: null,
+          });
+        } catch (e) {
+          console.warn("Could not clear old member timer:", e);
+        }
+      }
+
+      // Assign to new member or self
+      if (newMemberId) {
+        try {
+          await updateDoc(doc(db, "Mechanics", newMemberId), {
+            currentActiveJobId: jobId,
+            activeJobStartedAt: Timestamp.now(),
+            activeJobEstimatedMinutes:
+              jobSnap.data()?.estimatedRepairMinutes || 45,
+          });
+        } catch (e) {
+          console.warn("Could not set new member timer:", e);
+        }
+      }
+
+      await updateDoc(jobDocRef, {
+        assignedMemberId: newMemberId || null,
+        assignedMemberName: newMemberName,
+        handoverRequested: false,
+        reassignedFromMemberId: oldMemberId || null,
+        reassignedAt: Timestamp.now(),
+      });
+
+      toast.success(`Job successfully reassigned to ${newMemberName}!`);
+    } catch (err: any) {
+      console.error("Error reassigning job:", err);
+      toast.error(err?.message || "Failed to reassign job");
       throw err;
     }
   };
@@ -608,6 +781,18 @@ export function useMechanicDashboard() {
       }
 
       if (newStatus === 5) {
+        const targetTechUid = jobSnap.exists()
+          ? jobSnap.data()?.assignedMemberId || currentUId
+          : currentUId;
+        try {
+          await updateDoc(doc(db, "Mechanics", targetTechUid), {
+            currentActiveJobId: null,
+            activeJobStartedAt: null,
+            activeJobEstimatedMinutes: null,
+          });
+        } catch (techErr) {
+          console.warn("Could not reset technician timer upon completion:", techErr);
+        }
         toast.success("Job marked as COMPLETED! Great work.");
       } else {
         toast.success(`Job status updated to Step ${newStatus}`);
@@ -750,5 +935,8 @@ export function useMechanicDashboard() {
     updateJobStatus,
     cancelJob,
     submitRating,
+    startJobWithDuration,
+    requestEmergencyHandover,
+    reassignJobMember,
   };
 }

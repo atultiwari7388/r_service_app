@@ -17,9 +17,27 @@ import {
 } from "@/types/subscription";
 
 /**
- * Fetch all active subscription plans configured for mechanics from Firestore `subscriptionPlans`.
+ * Fetch all active subscription plans configured for mechanics.
+ * Tries server-side API route first (bypassing browser permission issues),
+ * with client-side Firestore fallback.
  */
 export async function fetchMechanicSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+  // 1. Try server API route first (bulletproof against unauthenticated client permission denials)
+  try {
+    const res = await fetch("/api/subscription-plans", {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.plans) && json.plans.length > 0) {
+        return json.plans;
+      }
+    }
+  } catch (apiErr) {
+    console.warn("Server API fetch for plans failed, falling back to direct Firestore:", apiErr);
+  }
+
+  // 2. Direct Firestore fallback
   try {
     const plansRef = collection(db, "subscriptionPlans");
     const q = query(
@@ -59,7 +77,6 @@ export async function fetchMechanicSubscriptionPlans(): Promise<SubscriptionPlan
       });
     });
 
-    // Sort by sortOrder ascending, then price ascending
     plans.sort((a, b) => {
       const orderA = a.sortOrder ?? 0;
       const orderB = b.sortOrder ?? 0;

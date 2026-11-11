@@ -358,6 +358,360 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
   }
 });
 
+// ==========================================
+// MECHANIC WORKSHOP TEAM MANAGEMENT FUNCTIONS
+// ==========================================
+
+/**
+ * Creates a Field Mechanic Team Member under an authenticated Workshop Owner.
+ * Runs via Admin SDK: Owner session in browser is NEVER signed out.
+ * Saves to collection `Mechanics` with role="member", ownerId, baseCity, and inherited subscription.
+ */
+exports.createMechanicTeamMember = functions.https.onCall(
+  async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Owner must be logged in to create team members."
+      );
+    }
+
+    const ownerUid = context.auth.uid;
+    const db = admin.firestore();
+
+    // 1. Verify caller is an Owner in Mechanics with active subscription
+    const ownerDocRef = db.collection("Mechanics").doc(ownerUid);
+    const ownerDocSnap = await ownerDocRef.get();
+
+    if (!ownerDocSnap.exists) {
+      throw new functions.https.HttpsError(
+        "not-found",
+        "Owner mechanic profile not found."
+      );
+    }
+
+    const ownerData = ownerDocSnap.data();
+
+    if (ownerData.isSubscriptionPurchase !== true) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "An active workshop subscription plan is required to add team members."
+      );
+    }
+
+    const {
+      name,
+      email,
+      password,
+      phone,
+      telephone,
+      address,
+      baseCity,
+      baseState,
+      postalCode,
+      country,
+      perHCharge,
+      selectedServices,
+      allowDirectJobAcceptance = false,
+    } = data;
+
+    if (!email || !password || !name) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Name, email, and password are required fields."
+      );
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanName = String(name).trim();
+
+    try {
+      // 2. Create Firebase Auth user
+      const userRecord = await admin.auth().createUser({
+        email: cleanEmail,
+        password: String(password),
+        displayName: cleanName,
+      });
+
+      const now = admin.firestore.FieldValue.serverTimestamp();
+
+      // 3. Prepare Member document in Mechanics collection
+      const memberDocData = {
+        uid: userRecord.uid,
+        email: cleanEmail,
+        userName: cleanName,
+        workshopName:
+          ownerData.workshopName || ownerData.userName || "Mechanic Workshop",
+        cellPhone: phone ? String(phone).trim() : "",
+        telephone: telephone ? String(telephone).trim() : "",
+        address: address ? String(address).trim() : "",
+        city: baseCity ? String(baseCity).trim() : ownerData.city || "",
+        state: baseState ? String(baseState).trim() : ownerData.state || "",
+        country: country ? String(country).trim() : "USA",
+        postalCode: postalCode ? String(postalCode).trim() : "",
+        dateOfBirth: "",
+        experience: "",
+        description: "",
+        perHCharge:
+          typeof perHCharge === "number"
+            ? perHCharge
+            : parseFloat(perHCharge || "0") || ownerData.perHCharge || 0,
+        lastAddress: "",
+        languages: ownerData.languages || { English: true },
+        location: {
+          latitude:
+            typeof data.latitude === "number"
+              ? data.latitude
+              : ownerData.location?.latitude || 0,
+          longitude:
+            typeof data.longitude === "number"
+              ? data.longitude
+              : ownerData.location?.longitude || 0,
+        },
+        profilePicture:
+          "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
+        isNotificationOn: true,
+        wallet: 0,
+        active: true,
+        isEnabled: true,
+        isMultiDeEnable: false,
+        fcmToken: null,
+        selected_services: Array.isArray(selectedServices)
+          ? selectedServices
+          : ownerData.selected_services || [],
+
+        // Role & Subscription Hierarchy
+        role: "member",
+        isOwner: false,
+        isTeamMember: true,
+        ownerId: ownerUid,
+        isSubscriptionPurchase: true,
+        inheritedSubscriptionOwnerId: ownerUid,
+        allowDirectJobAcceptance: Boolean(allowDirectJobAcceptance),
+
+        // Performance stats
+        rating: 5.0,
+        totalCompletedJobs: 0,
+        totalReviewsCount: 0,
+
+        // Current workload
+        currentActiveJobId: null,
+        activeJobStartedAt: null,
+        activeJobEstimatedMinutes: null,
+
+        created_at: now,
+        updated_at: now,
+      };
+
+      // 4. Save to Firestore
+      await db.collection("Mechanics").doc(userRecord.uid).set(memberDocData);
+
+      // 5. Append to Owner's teamMembers list
+      await ownerDocRef.update({
+        teamMembers: admin.firestore.FieldValue.arrayUnion(userRecord.uid),
+        updated_at: now,
+      });
+
+      return {
+        success: true,
+        message: `Team member ${cleanName} created successfully!`,
+        memberUid: userRecord.uid,
+      };
+    } catch (err) {
+      console.error("Error creating mechanic team member:", err);
+      throw new functions.https.HttpsError(
+        err.code === "auth/email-already-exists"
+          ? "already-exists"
+          : "internal",
+        err.message || "Failed to create team member."
+      );
+    }
+  }
+);
+
+/**
+ * Removes a Field Mechanic Team Member and cleans up Auth & Owner references.
+ */
+exports.deleteMechanicTeamMember = functions.https.onCall(
+  async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Owner must be logged in to delete team members."
+      );
+    }
+
+    const ownerUid = context.auth.uid;
+    const { memberUid } = data;
+
+    if (!memberUid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "memberUid is required."
+      );
+    }
+
+    const db = admin.firestore();
+    const memberRef = db.collection("Mechanics").doc(memberUid);
+    const memberSnap = await memberRef.get();
+
+    if (!memberSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Member not found.");
+    }
+
+    const memberData = memberSnap.data();
+    if (memberData.ownerId !== ownerUid) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "You are not authorized to remove this team member."
+      );
+    }
+
+    try {
+      // 1. Delete from Firebase Auth
+      try {
+        await admin.auth().deleteUser(memberUid);
+      } catch (authErr) {
+        console.warn(
+          "Auth user deletion warning (may not exist in auth):",
+          authErr
+        );
+      }
+
+      // 2. Delete member document from Firestore
+      await memberRef.delete();
+
+      // 3. Remove from Owner's teamMembers array
+      await db
+        .collection("Mechanics")
+        .doc(ownerUid)
+        .update({
+          teamMembers: admin.firestore.FieldValue.arrayRemove(memberUid),
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return {
+        success: true,
+        message: "Team member removed successfully.",
+      };
+    } catch (err) {
+      console.error("Error deleting mechanic team member:", err);
+      throw new functions.https.HttpsError(
+        "internal",
+        err.message || "Failed to delete team member."
+      );
+    }
+  }
+);
+
+/**
+ * Updates an existing Field Mechanic Team Member profile.
+ */
+exports.updateMechanicTeamMember = functions.https.onCall(
+  async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Owner must be logged in."
+      );
+    }
+
+    const ownerUid = context.auth.uid;
+    const {
+      memberUid,
+      name,
+      phone,
+      telephone,
+      address,
+      baseCity,
+      baseState,
+      postalCode,
+      perHCharge,
+      selectedServices,
+      allowDirectJobAcceptance,
+      isEnabled,
+      active,
+      newPassword,
+    } = data;
+
+    if (!memberUid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "memberUid is required."
+      );
+    }
+
+    const db = admin.firestore();
+    const memberRef = db.collection("Mechanics").doc(memberUid);
+    const memberSnap = await memberRef.get();
+
+    if (!memberSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Member not found.");
+    }
+
+    if (memberSnap.data().ownerId !== ownerUid) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Unauthorized."
+      );
+    }
+
+    try {
+      const updateData = {
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (name) updateData.userName = String(name).trim();
+      if (phone !== undefined) updateData.cellPhone = String(phone).trim();
+      if (telephone !== undefined)
+        updateData.telephone = String(telephone).trim();
+      if (address !== undefined) updateData.address = String(address).trim();
+      if (baseCity !== undefined) updateData.city = String(baseCity).trim();
+      if (baseState !== undefined) updateData.state = String(baseState).trim();
+      if (postalCode !== undefined)
+        updateData.postalCode = String(postalCode).trim();
+      if (perHCharge !== undefined)
+        updateData.perHCharge = Number(perHCharge) || 0;
+      if (Array.isArray(selectedServices))
+        updateData.selected_services = selectedServices;
+      if (typeof allowDirectJobAcceptance === "boolean") {
+        updateData.allowDirectJobAcceptance = allowDirectJobAcceptance;
+      }
+      if (typeof isEnabled === "boolean") updateData.isEnabled = isEnabled;
+      if (typeof active === "boolean") updateData.active = active;
+      if (
+        typeof data.latitude === "number" &&
+        typeof data.longitude === "number"
+      ) {
+        updateData.location = {
+          latitude: data.latitude,
+          longitude: data.longitude,
+        };
+      }
+
+      await memberRef.update(updateData);
+
+      // Update password in Auth if provided
+      if (newPassword && String(newPassword).length >= 6) {
+        await admin
+          .auth()
+          .updateUser(memberUid, { password: String(newPassword) });
+      }
+
+      return {
+        success: true,
+        message: "Team member updated successfully.",
+      };
+    } catch (err) {
+      console.error("Error updating mechanic team member:", err);
+      throw new functions.https.HttpsError(
+        "internal",
+        err.message || "Failed to update member."
+      );
+    }
+  }
+);
+
 exports.updateUserEmail = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -2005,3 +2359,154 @@ exports.trackMaintenanceEvent = functions.https.onCall(
     return { success: true, tracking: result };
   }
 );
+
+// ==========================================
+// Mechanic Fleet Dispatch & Team Notifications Triggers
+// ==========================================
+/**
+ * Automatically notifies team members when assigned a job,
+ * and notifies Workshop Owners when an emergency handover is requested.
+ */
+exports.onJobAssignedOrHandoverTrigger = functions.firestore
+  .document("jobs/{jobId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    const jobId = context.params.jobId;
+    const db = admin.firestore();
+
+    // 1. Job assigned to a technician member
+    if (
+      after.assignedMemberId &&
+      before.assignedMemberId !== after.assignedMemberId
+    ) {
+      try {
+        const memberDoc = await db
+          .collection("Mechanics")
+          .doc(after.assignedMemberId)
+          .get();
+        if (memberDoc.exists) {
+          const memberData = memberDoc.data();
+          const fcmToken = memberData.fcmToken;
+          if (fcmToken) {
+            await admin.messaging().send({
+              token: fcmToken,
+              notification: {
+                title: "🔧 New Job Assigned to You!",
+                body: `Your workshop owner assigned you Order #${
+                  after.orderId || jobId
+                } (${after.selectedService || "Repair"}).`,
+              },
+              data: {
+                jobId: jobId,
+                type: "job_assigned",
+              },
+            });
+            console.log(
+              `Dispatched notification to member ${after.assignedMemberId}`
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Error sending job assigned notification:", err);
+      }
+    }
+
+    // 2. Emergency handover requested by technician
+    if (after.handoverRequested && !before.handoverRequested && after.ownerId) {
+      try {
+        const ownerDoc = await db
+          .collection("Mechanics")
+          .doc(after.ownerId)
+          .get();
+        if (ownerDoc.exists) {
+          const ownerData = ownerDoc.data();
+          const fcmToken = ownerData.fcmToken;
+          if (fcmToken) {
+            await admin.messaging().send({
+              token: fcmToken,
+              notification: {
+                title: "🚨 Emergency Handover Alert!",
+                body: `Technician ${
+                  after.assignedMemberName || "on-site"
+                } requested handover for #${after.orderId}. Reason: ${
+                  after.handoverReason || "Sudden illness/issue"
+                }`,
+              },
+              data: {
+                jobId: jobId,
+                type: "handover_alert",
+              },
+            });
+            console.log(`Dispatched handover alert to owner ${after.ownerId}`);
+          }
+        }
+      } catch (err) {
+        console.error("Error sending handover alert:", err);
+      }
+    }
+
+    return null;
+  });
+
+/**
+ * Updates individual technician's performance metrics & ratings upon job completion.
+ */
+exports.onJobRatedOrCompletedTrigger = functions.firestore
+  .document("jobs/{jobId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    const techId = after.assignedMemberId;
+    if (!techId) return null;
+
+    const db = admin.firestore();
+
+    // 1. Completion Counter & Active Job Cleanup
+    if (before.status !== 5 && after.status === 5) {
+      try {
+        await db
+          .collection("Mechanics")
+          .doc(techId)
+          .update({
+            totalCompletedJobs: admin.firestore.FieldValue.increment(1),
+            currentActiveJobId: null,
+            activeJobStartedAt: null,
+            activeJobEstimatedMinutes: null,
+          });
+      } catch (err) {
+        console.error("Error incrementing tech completed jobs:", err);
+      }
+    }
+
+    // 2. Individual Rating Attribution
+    const incomingRating = after.rating || after.driverRating || after.mRating;
+    const oldRating = before.rating || before.driverRating || before.mRating;
+
+    if (incomingRating && incomingRating !== oldRating) {
+      try {
+        const techRef = db.collection("Mechanics").doc(techId);
+        const techSnap = await techRef.get();
+        if (techSnap.exists) {
+          const tData = techSnap.data();
+          const currentTotalReviews = tData.totalReviewsCount || 0;
+          const currentRating = tData.rating || 5.0;
+          const newRatingVal = Number(incomingRating);
+
+          const updatedReviewsCount = currentTotalReviews + 1;
+          const updatedAverageRating =
+            (currentRating * currentTotalReviews + newRatingVal) /
+            updatedReviewsCount;
+
+          await techRef.update({
+            rating: Math.round(updatedAverageRating * 10) / 10,
+            totalReviewsCount: updatedReviewsCount,
+          });
+        }
+      } catch (rErr) {
+        console.error("Error attributing technician rating:", rErr);
+      }
+    }
+
+    return null;
+  });

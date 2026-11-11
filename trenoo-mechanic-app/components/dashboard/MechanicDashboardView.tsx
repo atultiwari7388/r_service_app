@@ -25,6 +25,9 @@ import OngoingJobCard from "./OngoingJobCard";
 import JobOfferModal from "./JobOfferModal";
 import CancelReasonModal from "./CancelReasonModal";
 import DriverRatingModal from "./DriverRatingModal";
+import StartJobDurationModal from "./StartJobDurationModal";
+import EmergencyHandoverModal from "./EmergencyHandoverModal";
+import ReassignMemberModal from "./ReassignMemberModal";
 import { FirestoreJob } from "@/types/job";
 import { APP_CONFIG } from "@/lib/constants";
 
@@ -51,6 +54,9 @@ export default function MechanicDashboardView() {
     updateJobStatus,
     cancelJob,
     submitRating,
+    startJobWithDuration,
+    requestEmergencyHandover,
+    reassignJobMember,
     currentUId,
     mechanicProfile,
   } = useMechanicDashboard();
@@ -67,6 +73,15 @@ export default function MechanicDashboardView() {
     null
   );
   const [rateModalJob, setRateModalJob] = useState<FirestoreJob | null>(null);
+  const [durationModalJob, setDurationModalJob] = useState<FirestoreJob | null>(
+    null
+  );
+  const [handoverModalJob, setHandoverModalJob] = useState<FirestoreJob | null>(
+    null
+  );
+  const [reassignModalJob, setReassignModalJob] = useState<FirestoreJob | null>(
+    null
+  );
 
   // Filter jobs by search
   const filterBySearch = (list: FirestoreJob[]) => {
@@ -454,7 +469,11 @@ export default function MechanicDashboardView() {
                             key={job.id}
                             job={job}
                             currentUId={currentUId}
+                            isOwner={mechanicProfile?.role !== "member"}
                             onUpdateStatus={updateJobStatus}
+                            onStartJobClick={(j) => setDurationModalJob(j)}
+                            onHandoverClick={(j) => setHandoverModalJob(j)}
+                            onReassignClick={(j) => setReassignModalJob(j)}
                             onCancelClick={(j) => setCancelModalJob(j)}
                             onRateClick={(j) => setRateModalJob(j)}
                           />
@@ -504,7 +523,11 @@ export default function MechanicDashboardView() {
                             key={job.id}
                             job={job}
                             currentUId={currentUId}
+                            isOwner={mechanicProfile?.role !== "member"}
                             onUpdateStatus={updateJobStatus}
+                            onStartJobClick={(j) => setDurationModalJob(j)}
+                            onHandoverClick={(j) => setHandoverModalJob(j)}
+                            onReassignClick={(j) => setReassignModalJob(j)}
                             onCancelClick={(j) => setCancelModalJob(j)}
                             onRateClick={(j) => setRateModalJob(j)}
                           />
@@ -542,9 +565,42 @@ export default function MechanicDashboardView() {
         onClose={() => setOfferJob(null)}
         onSubmit={submitOffer}
         defaultPerHour={mechanicProfile?.perHourCharge || 50}
+        ownerId={currentUId}
+        isOwner={mechanicProfile?.role !== "member"}
       />
 
-      {/* 2. Cancel Job Modal */}
+      {/* 2. Start Job Duration Modal (Scenario 1 & 2) */}
+      <StartJobDurationModal
+        job={durationModalJob}
+        isOpen={Boolean(durationModalJob)}
+        onClose={() => setDurationModalJob(null)}
+        onConfirm={(est) =>
+          startJobWithDuration(
+            durationModalJob?.id || "",
+            durationModalJob?.userId || "",
+            est
+          )
+        }
+      />
+
+      {/* 3. Emergency Handover Modal (Scenario 3) */}
+      <EmergencyHandoverModal
+        job={handoverModalJob}
+        isOpen={Boolean(handoverModalJob)}
+        onClose={() => setHandoverModalJob(null)}
+        onSubmit={requestEmergencyHandover}
+      />
+
+      {/* 4. Reassign Member Modal (Scenario 3 - Owner action) */}
+      <ReassignMemberModal
+        job={reassignModalJob}
+        isOpen={Boolean(reassignModalJob)}
+        onClose={() => setReassignModalJob(null)}
+        ownerId={currentUId}
+        onReassign={reassignJobMember}
+      />
+
+      {/* 5. Cancel Job Modal */}
       <CancelReasonModal
         isOpen={Boolean(cancelModalJob)}
         orderId={cancelModalJob?.orderId || ""}
@@ -559,7 +615,7 @@ export default function MechanicDashboardView() {
         }
       />
 
-      {/* 3. Driver Rating Modal */}
+      {/* 6. Driver Rating Modal */}
       <DriverRatingModal
         isOpen={Boolean(rateModalJob)}
         jobId={rateModalJob?.id || ""}

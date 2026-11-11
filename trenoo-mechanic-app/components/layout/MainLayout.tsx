@@ -26,9 +26,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isLoading = auth?.isLoading;
 
   // Intercept unpaid mechanics attempting to access dashboard or workshop features
+  // Team members inherit active subscription from their owner
   useEffect(() => {
     if (!isLoading && user && mechanic) {
-      if (mechanic.isSubscriptionPurchase !== true) {
+      const isMember = mechanic.role === "member" || !!mechanic.ownerId;
+      if (!isMember && mechanic.isSubscriptionPurchase !== true) {
         router.push(
           `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(user.email || "")}`
         );

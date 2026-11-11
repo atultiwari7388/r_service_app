@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MapPin,
   Calendar,
@@ -15,13 +15,20 @@ import {
   Star,
   PlayCircle,
   Banknote,
+  UserCheck,
+  Radio,
+  Send,
 } from "lucide-react";
 import { FirestoreJob, MechanicOffer } from "@/types/job";
 
 interface OngoingJobCardProps {
   job: FirestoreJob;
   currentUId: string;
+  isOwner?: boolean;
   onUpdateStatus: (jobId: string, userId: string, newStatus: number) => Promise<void>;
+  onStartJobClick: (job: FirestoreJob) => void;
+  onHandoverClick: (job: FirestoreJob) => void;
+  onReassignClick: (job: FirestoreJob) => void;
   onCancelClick: (job: FirestoreJob) => void;
   onRateClick: (job: FirestoreJob) => void;
 }
@@ -29,15 +36,30 @@ interface OngoingJobCardProps {
 export default function OngoingJobCard({
   job,
   currentUId,
+  isOwner = true,
   onUpdateStatus,
+  onStartJobClick,
+  onHandoverClick,
+  onReassignClick,
   onCancelClick,
   onRateClick,
 }: OngoingJobCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [nowTime, setNowTime] = useState<number>(Date.now());
 
   // Retrieve mechanic's specific offer
-  const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
+  const myOffer = job.mechanicsOffer?.find(
+    (o) => o.mId === currentUId || o.assignedMemberId === currentUId
+  );
   const offerStatus = myOffer?.status ?? job.status;
+
+  // Refresh progress clock every 10 seconds for live progress bar
+  useEffect(() => {
+    if (offerStatus === 4) {
+      const interval = setInterval(() => setNowTime(Date.now()), 10000);
+      return () => clearInterval(interval);
+    }
+  }, [offerStatus]);
 
   // Format date
   const formattedDate = (() => {
@@ -61,6 +83,28 @@ export default function OngoingJobCard({
     } catch {
       return "Active";
     }
+  })();
+
+  // Calculate live repair progress
+  const progressDetails = (() => {
+    if (offerStatus !== 4) return null;
+    const startMs = job.activeJobStartedAt?.toMillis
+      ? job.activeJobStartedAt.toMillis()
+      : job.activeJobStartedAt?.seconds
+      ? job.activeJobStartedAt.seconds * 1000
+      : null;
+
+    if (!startMs) return null;
+    const elapsedMinutes = Math.max(0, Math.floor((nowTime - startMs) / 60000));
+    const estimated = job.estimatedRepairMinutes || 45;
+    const progressPercent = Math.min(100, Math.round((elapsedMinutes / estimated) * 100));
+
+    return {
+      elapsedMinutes,
+      estimated,
+      progressPercent,
+      canQueueNext: progressPercent >= 70,
+    };
   })();
 
   const handleAdvanceStatus = async (targetStatus: number) => {
@@ -91,7 +135,7 @@ export default function OngoingJobCard({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs hover:shadow-md transition-all p-4 sm:p-5 flex flex-col gap-4">
+    <div className="bg-white rounded-3xl border border-gray-200/90 shadow-xs hover:shadow-md transition-all p-5 flex flex-col gap-4">
       {/* HEADER: Avatar, ID, Status Badge & Date */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -171,8 +215,87 @@ export default function OngoingJobCard({
         </div>
       </div>
 
+      {/* ASSIGNED TECHNICIAN BADGE (Team Dispatch) */}
+      {job.assignedMemberName && (
+        <div className="px-3.5 py-2 rounded-2xl bg-slate-50 border border-gray-200 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <UserCheck size={14} className="text-[#58BB87]" />
+            <span className="text-gray-500 font-medium">Assigned Technician:</span>
+            <span className="font-bold text-gray-900">{job.assignedMemberName}</span>
+          </div>
+          {job.assignedMemberCity && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-[#F96176]">
+              📍 {job.assignedMemberCity}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* EMERGENCY HANDOVER NOTIFICATION (Scenario 3) */}
+      {job.handoverRequested && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-xs text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-extrabold block">🚨 Emergency Handover Requested!</span>
+              <p className="text-[11px] text-amber-800">
+                Reason: {job.handoverReason || "Technician unable to complete on-site repair."}
+              </p>
+            </div>
+          </div>
+
+          {isOwner && (
+            <button
+              onClick={() => onReassignClick(job)}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition shadow-xs cursor-pointer shrink-0"
+            >
+              Reassign Now
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* LIVE PROGRESS TIMER & 70% THRESHOLD (Scenario 2) */}
+      {progressDetails && (
+        <div className="p-3.5 rounded-2xl bg-slate-50 border border-gray-200 space-y-2 text-xs">
+          <div className="flex items-center justify-between font-bold">
+            <span className="flex items-center gap-1.5 text-gray-700">
+              <Clock size={14} className="text-[#58BB87]" />
+              Repair Progress:
+            </span>
+            <span className="text-gray-900">
+              {progressDetails.elapsedMinutes}m / {progressDetails.estimated}m (
+              {progressDetails.progressPercent}%)
+            </span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 rounded-full ${
+                progressDetails.canQueueNext ? "bg-[#58BB87]" : "bg-amber-500"
+              }`}
+              style={{ width: `${progressDetails.progressPercent}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-gray-500">70% Queueing Rule Threshold:</span>
+            {progressDetails.canQueueNext ? (
+              <span className="text-[#58BB87] font-extrabold">
+                ✓ Ready for next job assignment
+              </span>
+            ) : (
+              <span className="text-amber-700 font-bold">
+                Blocked until 70% reached ({Math.round(progressDetails.estimated * 0.7)}m)
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* SERVICE SPECIFICATION */}
-      <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 flex flex-col gap-2 text-xs">
+      <div className="p-3 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col gap-2 text-xs">
         <div className="flex items-center justify-between">
           <span className="font-semibold text-gray-500 flex items-center gap-1.5">
             <Wrench size={13} className="text-[#F96176]" /> Service:
@@ -216,22 +339,8 @@ export default function OngoingJobCard({
         )}
       </div>
 
-      {/* STATUS-SPECIFIC MESSAGES & INSTRUCTIONS (from Flutter) */}
-      {offerStatus === 3 && (
-        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200/70 text-xs text-emerald-900 font-medium">
-          <span className="font-bold block mb-0.5">✓ Driver confirmed your offer!</span>
-          Click the Map button to navigate to the vehicle location immediately.
-        </div>
-      )}
-
-      {offerStatus === -1 && job.cancelReason && (
-        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900">
-          <span className="font-bold">Cancellation Reason:</span> {job.cancelReason}
-        </div>
-      )}
-
       {/* ACTION TOOLBAR BY STATUS */}
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 flex-wrap">
         {/* Step 1: Waiting for driver acceptance */}
         {offerStatus === 1 && (
           <>
@@ -265,7 +374,7 @@ export default function OngoingJobCard({
 
         {/* Step 3: Driver confirmed, mechanic on the way */}
         {offerStatus === 3 && (
-          <div className="flex items-center justify-between w-full gap-2">
+          <div className="flex items-center justify-between w-full gap-2 flex-wrap">
             <div className="flex items-center gap-1.5">
               {job.userPhoneNumber && (
                 <a
@@ -278,27 +387,38 @@ export default function OngoingJobCard({
               )}
               <button
                 onClick={openDirections}
-                className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
+                className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer"
               >
                 <Navigation size={13} className="text-[#58BB87]" />
                 <span>Map</span>
               </button>
             </div>
 
-            <button
-              onClick={() => handleAdvanceStatus(4)}
-              disabled={isUpdating}
-              className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
-            >
-              <PlayCircle size={15} />
-              <span>Arrived & Start Job</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onHandoverClick(job)}
+                className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
+                title="Request Emergency Handover"
+              >
+                <AlertTriangle size={13} />
+                <span>Handover</span>
+              </button>
+
+              <button
+                onClick={() => onStartJobClick(job)}
+                disabled={isUpdating}
+                className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
+              >
+                <PlayCircle size={15} />
+                <span>Arrived & Set Duration</span>
+              </button>
+            </div>
           </div>
         )}
 
         {/* Step 4: Service in progress */}
         {offerStatus === 4 && (
-          <div className="flex items-center justify-between w-full gap-2">
+          <div className="flex items-center justify-between w-full gap-2 flex-wrap">
             <div className="flex items-center gap-1.5">
               {job.userPhoneNumber && (
                 <a
@@ -309,6 +429,14 @@ export default function OngoingJobCard({
                   <span>Call</span>
                 </a>
               )}
+              <button
+                onClick={() => onHandoverClick(job)}
+                className="inline-flex items-center gap-1 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
+                title="Request Emergency Handover"
+              >
+                <AlertTriangle size={13} />
+                <span>Handover</span>
+              </button>
             </div>
 
             <button

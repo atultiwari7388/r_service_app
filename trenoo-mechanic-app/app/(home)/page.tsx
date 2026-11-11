@@ -16,9 +16,12 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading && user && mechanic) {
-      if (mechanic.isSubscriptionPurchase !== true) {
+      const isMember = mechanic.role === "member" || !!mechanic.ownerId;
+      if (!isMember && mechanic.isSubscriptionPurchase !== true) {
         router.push(
-          `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(user.email || "")}`
+          `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(
+            user.email || ""
+          )}`
         );
       }
     }
@@ -42,7 +45,8 @@ export default function HomePage() {
 
   // If user is authenticated, check subscription before rendering dashboard
   if (user) {
-    if (mechanic && mechanic.isSubscriptionPurchase !== true) {
+    const isMember = mechanic?.role === "member" || !!mechanic?.ownerId;
+    if (mechanic && !isMember && mechanic.isSubscriptionPurchase !== true) {
       return (
         <div className="min-h-screen bg-[#FAFAFC] flex flex-col items-center justify-center p-4">
           <div className="flex flex-col items-center gap-3">

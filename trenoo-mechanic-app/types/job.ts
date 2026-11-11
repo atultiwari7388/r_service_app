@@ -17,6 +17,12 @@ export interface MechanicOffer {
   languages?: string[];
   mechanicAddress?: string;
   offerAcceptedDate?: Timestamp | Date | any;
+  // Dispatch & Team fields
+  assignedMemberId?: string;
+  assignedMemberName?: string;
+  assignedMemberCity?: string;
+  assignedMemberPhone?: string;
+  isAssignedByOwner?: boolean;
 }
 
 export interface FirestoreJob {
@@ -51,6 +57,18 @@ export interface FirestoreJob {
   mReview?: string;
   mReviewSubmitted?: boolean;
   calculatedDistance?: number;
+  // Dispatch & Queueing fields
+  assignedMemberId?: string;
+  assignedMemberName?: string;
+  assignedMemberCity?: string;
+  assignedMemberPhone?: string;
+  ownerId?: string;
+  estimatedRepairMinutes?: number;
+  activeJobStartedAt?: Timestamp | Date | any;
+  handoverRequested?: boolean;
+  handoverReason?: string;
+  handoverRequestedAt?: Timestamp | Date | any;
+  reassignedFromMemberId?: string;
 }
 
 export interface SubmitOfferParams {
@@ -60,6 +78,11 @@ export interface SubmitOfferParams {
   perHourCharges?: string | number;
   fixPrice?: string | number;
   arrivalTime: string;
+  // Team Dispatch
+  assignedMemberId?: string;
+  assignedMemberName?: string;
+  assignedMemberCity?: string;
+  assignedMemberPhone?: string;
 }
 
 export interface CompleteJobParams {

@@ -202,12 +202,33 @@ export async function authenticateMechanic(
     // 3. Found in Mechanics collection
     const mechanicData = mechanicDocSnap.data() as MechanicProfile;
 
-    // 4. Verify Subscription Purchase first
-    if (mechanicData.isSubscriptionPurchase !== true) {
-      // DO NOT call signOut(auth) here!
-      // The user must remain authenticated so that:
-      // 1. Firestore allows reading subscriptionPlans (which requires request.auth != null).
-      // 2. The mechanic session is preserved for Stripe Checkout.
+    // 4. Verify Subscription Purchase / Workshop Membership
+    const isTeamMember = mechanicData.role === "member" || !!mechanicData.ownerId;
+    if (isTeamMember && mechanicData.ownerId) {
+      // Team Member: Inherits subscription from Owner
+      try {
+        const ownerSnap = await getDoc(doc(db, "Mechanics", mechanicData.ownerId));
+        if (!ownerSnap.exists()) {
+          await signOut(auth);
+          return {
+            status: "error",
+            message: "Assigned workshop not found. Please contact your workshop owner.",
+          };
+        }
+        const ownerData = ownerSnap.data() as MechanicProfile;
+        if (ownerData.isSubscriptionPurchase !== true) {
+          await signOut(auth);
+          return {
+            status: "subscription_required",
+            message: "Your workshop's subscription is inactive. Please ask your workshop owner to renew the plan.",
+            redirectUrl: "/login",
+          };
+        }
+      } catch (ownerErr: any) {
+        console.error("Failed to verify owner subscription:", ownerErr);
+      }
+    } else if (mechanicData.isSubscriptionPurchase !== true) {
+      // Workshop Owner: Must have purchased a subscription plan
       return {
         status: "subscription_required",
         message: "You have not purchased a subscription plan yet. Please choose a plan to activate your account.",
@@ -216,8 +237,9 @@ export async function authenticateMechanic(
       };
     }
 
-    // 5. If subscription is purchased, check if email is verified
-    if (!user.emailVerified) {
+    // 5. If subscription is purchased/inherited, check if email is verified
+    // (Note: Admin-created team members have emailVerified=true by default)
+    if (!user.emailVerified && !isTeamMember) {
       try {
         await sendEmailVerification(user);
       } catch (err) {
