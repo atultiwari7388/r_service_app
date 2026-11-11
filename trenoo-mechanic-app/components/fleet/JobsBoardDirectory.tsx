@@ -27,12 +27,15 @@ import {
   FileText,
   DollarSign,
   User,
+  AlertTriangle,
 } from "lucide-react";
 import { useMechanicDashboard } from "@/lib/hooks/useMechanicDashboard";
 import { FirestoreJob, MechanicOffer } from "@/types/job";
 import JobOfferModal from "@/components/dashboard/JobOfferModal";
 import CancelReasonModal from "@/components/dashboard/CancelReasonModal";
 import DriverRatingModal from "@/components/dashboard/DriverRatingModal";
+import StartJobDurationModal from "@/components/dashboard/StartJobDurationModal";
+import EmergencyHandoverModal from "@/components/dashboard/EmergencyHandoverModal";
 
 type JobTab = "upcoming" | "ongoing" | "completed" | "cancelled";
 
@@ -51,6 +54,8 @@ export default function JobsBoardDirectory() {
     updateJobStatus,
     cancelJob,
     submitRating,
+    startJobWithDuration,
+    requestEmergencyHandover,
     cancelReasons,
   } = useMechanicDashboard();
 
@@ -75,6 +80,8 @@ export default function JobsBoardDirectory() {
   const [offerModalJob, setOfferModalJob] = useState<FirestoreJob | null>(null);
   const [cancelModalJob, setCancelModalJob] = useState<FirestoreJob | null>(null);
   const [rateModalJob, setRateModalJob] = useState<FirestoreJob | null>(null);
+  const [durationModalJob, setDurationModalJob] = useState<FirestoreJob | null>(null);
+  const [handoverModalJob, setHandoverModalJob] = useState<FirestoreJob | null>(null);
   const [isAdvancingStatus, setIsAdvancingStatus] = useState(false);
 
   // Sync tab from URL if changed
@@ -586,21 +593,32 @@ export default function JobsBoardDirectory() {
                             <>
                               {offerStatus === 3 && (
                                 <button
-                                  onClick={() => handleAdvanceStatus(job, 4)}
+                                  onClick={() => setDurationModalJob(job)}
                                   disabled={isAdvancingStatus}
-                                  className="px-3 py-1.5 rounded-lg bg-[#58BB87] hover:bg-[#48a674] text-white text-xs font-semibold transition shadow-xs"
+                                  className="px-3 py-1.5 rounded-lg bg-[#58BB87] hover:bg-[#48a674] text-white text-xs font-semibold transition shadow-xs flex items-center gap-1.5"
+                                  title="Arrived at truck breakdown & specify repair minutes"
                                 >
-                                  Reached Bay
+                                  <Clock size={12} />
+                                  <span>Arrived & Set Duration</span>
                                 </button>
                               )}
                               {offerStatus === 4 && (
-                                <button
-                                  onClick={() => handleAdvanceStatus(job, 5)}
-                                  disabled={isAdvancingStatus}
-                                  className="px-3 py-1.5 rounded-lg bg-[#58BB87] hover:bg-[#48a674] text-white text-xs font-semibold transition shadow-xs"
-                                >
-                                  Complete
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleAdvanceStatus(job, 5)}
+                                    disabled={isAdvancingStatus}
+                                    className="px-3 py-1.5 rounded-lg bg-[#58BB87] hover:bg-[#48a674] text-white text-xs font-semibold transition shadow-xs"
+                                  >
+                                    Complete
+                                  </button>
+                                  <button
+                                    onClick={() => setHandoverModalJob(job)}
+                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition"
+                                    title="Emergency Handover"
+                                  >
+                                    <AlertTriangle size={13} />
+                                  </button>
+                                </div>
                               )}
                             </>
                           )}
@@ -945,6 +963,36 @@ export default function JobsBoardDirectory() {
         onClose={() => setRateModalJob(null)}
         onSubmit={submitRating}
       />
+
+      {/* Start Job Duration Modal */}
+      {durationModalJob && (
+        <StartJobDurationModal
+          job={durationModalJob}
+          isOpen={Boolean(durationModalJob)}
+          onClose={() => setDurationModalJob(null)}
+          onConfirm={async (minutes: number) => {
+            await startJobWithDuration(
+              durationModalJob.id,
+              durationModalJob.userId,
+              minutes
+            );
+            setDurationModalJob(null);
+          }}
+        />
+      )}
+
+      {/* Emergency Handover Modal */}
+      {handoverModalJob && (
+        <EmergencyHandoverModal
+          job={handoverModalJob}
+          isOpen={Boolean(handoverModalJob)}
+          onClose={() => setHandoverModalJob(null)}
+          onSubmit={async (jobId: string, reason: string) => {
+            await requestEmergencyHandover(jobId, reason);
+            setHandoverModalJob(null);
+          }}
+        />
+      )}
     </div>
   );
 }

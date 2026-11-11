@@ -74,8 +74,12 @@ export function useMechanicLogin(): UseMechanicLoginReturn {
           case "success":
             setLoginSuccess(true);
             toast.success("Login Successful");
+            const isMember =
+              result.mechanicData?.role === "member" ||
+              !!result.mechanicData?.ownerId ||
+              result.mechanicData?.isTeamMember === true;
             setTimeout(() => {
-              router.push("/");
+              router.push(isMember ? "/find-jobs" : "/");
             }, 600);
             return result;
 

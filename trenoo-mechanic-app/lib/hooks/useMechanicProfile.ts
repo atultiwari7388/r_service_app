@@ -433,6 +433,7 @@ export function useMechanicProfile() {
 
   return {
     user,
+    mechanicProfile: rawMechanic,
     formData,
     wallet,
     profilePicture,

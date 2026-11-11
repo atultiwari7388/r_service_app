@@ -9,7 +9,8 @@ import { useAuth } from "@/contexts/AuthContexts";
 import { Menu, PhoneCall, User as UserIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import toast from "react-hot-toast";
 import { APP_CONFIG } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -17,26 +18,62 @@ interface MainLayoutProps {
   children: React.ReactNode;
 }
 
+const RESTRICTED_MEMBER_ROUTES = [
+  "/team",
+  "/invoice",
+  "/check",
+  "/inspections",
+  "/reports",
+  "/export",
+  "/choose-plan",
+];
+
 export default function MainLayout({ children }: MainLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { toggleMobile } = useSidebar();
   const auth = useAuth();
   const user = auth?.user;
   const mechanic = auth?.mechanicProfile;
   const isLoading = auth?.isLoading;
 
+  const isMember =
+    mechanic?.role === "member" ||
+    !!mechanic?.ownerId ||
+    mechanic?.isTeamMember === true;
+
   // Intercept unpaid mechanics attempting to access dashboard or workshop features
   // Team members inherit active subscription from their owner
   useEffect(() => {
     if (!isLoading && user && mechanic) {
-      const isMember = mechanic.role === "member" || !!mechanic.ownerId;
       if (!isMember && mechanic.isSubscriptionPurchase !== true) {
         router.push(
           `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(user.email || "")}`
         );
+        return;
+      }
+
+      // Member Access Gate: Team members can ONLY access Find Jobs and My Profile
+      if (isMember) {
+        const isRestricted = RESTRICTED_MEMBER_ROUTES.some((route) =>
+          pathname.startsWith(route)
+        );
+
+        if (isRestricted) {
+          toast.error(
+            "Access restricted: This section is available only to the Shop Owner."
+          );
+          router.replace("/find-jobs");
+          return;
+        }
+
+        // If member visits root '/', seamlessly route them to Find Jobs
+        if (pathname === "/") {
+          router.replace("/find-jobs");
+        }
       }
     }
-  }, [isLoading, user, mechanic, router]);
+  }, [isLoading, user, mechanic, isMember, pathname, router]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAFC] w-full max-w-full overflow-x-hidden selection:bg-[#F96176] selection:text-white">
@@ -56,7 +93,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             >
               <Menu size={22} />
             </button>
-            <Link href="/" className="flex items-center">
+            <Link href={isMember ? "/find-jobs" : "/"} className="flex items-center">
               <Image
                 src="/assets/treno_mechanic_logo.png"
                 alt="Treno Mechanic"

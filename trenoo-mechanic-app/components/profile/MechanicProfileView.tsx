@@ -92,6 +92,7 @@ function getDaysRemaining(renewalDate: Date | null): number {
 export default function MechanicProfileView() {
   const {
     user,
+    mechanicProfile,
     formData,
     wallet,
     profilePicture,
@@ -112,6 +113,11 @@ export default function MechanicProfileView() {
     deactivateAccount,
     deleteAccountPermanently,
   } = useMechanicProfile();
+
+  const isMember =
+    mechanicProfile?.role === "member" ||
+    !!mechanicProfile?.ownerId ||
+    mechanicProfile?.isTeamMember === true;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<
@@ -218,10 +224,17 @@ export default function MechanicProfileView() {
             <div className="space-y-1.5 min-w-0">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 truncate">
-                  {formData.workshopName ||
-                    formData.userName ||
-                    "Mechanic Workshop"}
+                  {isMember
+                    ? formData.userName || "Technician"
+                    : formData.workshopName ||
+                      formData.userName ||
+                      "Mechanic Workshop"}
                 </h1>
+                {isMember && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-[#58BB87] border border-emerald-200">
+                    Field Technician • Team Member
+                  </span>
+                )}
                 {formData.active ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-[#58BB87] border border-emerald-200">
                     <span className="w-2 h-2 rounded-full bg-[#58BB87] animate-pulse" />
@@ -261,7 +274,7 @@ export default function MechanicProfileView() {
                 )}
                 <span className="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 text-amber-700 font-bold">
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  4.98 Rating
+                  {mechanicProfile?.rating ? Number(mechanicProfile.rating).toFixed(1) : "5.0"} Rating
                 </span>
               </div>
             </div>
@@ -270,7 +283,12 @@ export default function MechanicProfileView() {
           {/* Quick Action & Wallet Widget */}
           <div className="flex flex-col sm:flex-row md:flex-col items-center sm:items-end gap-3 shrink-0">
             {/* Subscription Quick Badge */}
-            {isSubscriptionPurchase && subscription ? (
+            {isMember ? (
+              <div className="flex items-center gap-2 bg-emerald-50 text-[#58BB87] border border-emerald-200 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-[#58BB87]" />
+                <span>Team Seat Active</span>
+              </div>
+            ) : isSubscriptionPurchase && subscription ? (
               <button
                 type="button"
                 onClick={() => setActiveTab("subscription")}
@@ -353,23 +371,25 @@ export default function MechanicProfileView() {
           }`}
         >
           <Building className="w-4 h-4" />
-          Personal & Workshop Info
+          {isMember ? "Personal Profile" : "Personal & Workshop Info"}
         </button>
 
-        <button
-          onClick={() => setActiveTab("subscription")}
-          className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 cursor-pointer whitespace-nowrap ${
-            activeTab === "subscription"
-              ? "border-[#58BB87] text-[#58BB87] bg-emerald-50/50"
-              : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-          }`}
-        >
-          <CreditCard className="w-4 h-4" />
-          Subscription Plan
-          {isSubscriptionPurchase && (
-            <span className="w-2 h-2 rounded-full bg-[#58BB87] animate-pulse" />
-          )}
-        </button>
+        {!isMember && (
+          <button
+            onClick={() => setActiveTab("subscription")}
+            className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+              activeTab === "subscription"
+                ? "border-[#58BB87] text-[#58BB87] bg-emerald-50/50"
+                : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            Subscription Plan
+            {isSubscriptionPurchase && (
+              <span className="w-2 h-2 rounded-full bg-[#58BB87] animate-pulse" />
+            )}
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab("languages")}
@@ -395,17 +415,19 @@ export default function MechanicProfileView() {
           Password & Security
         </button>
 
-        <button
-          onClick={() => setActiveTab("account")}
-          className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 cursor-pointer whitespace-nowrap ${
-            activeTab === "account"
-              ? "border-red-600 text-red-600 bg-red-50/50"
-              : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-          }`}
-        >
-          <ShieldAlert className="w-4 h-4" />
-          Account & Deactivation
-        </button>
+        {!isMember && (
+          <button
+            onClick={() => setActiveTab("account")}
+            className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 cursor-pointer whitespace-nowrap ${
+              activeTab === "account"
+                ? "border-red-600 text-red-600 bg-red-50/50"
+                : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4" />
+            Account & Deactivation
+          </button>
+        )}
       </div>
 
       {/* TAB CONTENT: 1. DETAILS */}

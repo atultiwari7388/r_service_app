@@ -46,7 +46,20 @@ export default function AppSidebar() {
 
   const { isMobileOpen, closeMobile } = useSidebar();
 
+  const isMember =
+    mechanic?.role === "member" ||
+    !!mechanic?.ownerId ||
+    mechanic?.isTeamMember === true;
+
+  // Filter menu items: Members ONLY see "Find Jobs", Owners see all 7 items
+  const menuItems = isMember
+    ? SIDEBAR_MENU_ITEMS.filter((item) => item.key === "find-jobs")
+    : SIDEBAR_MENU_ITEMS;
+
   const isMenuLinkActive = (href: string) => {
+    if (href === "/find-jobs" && (pathname === "/find-jobs" || pathname === "/")) {
+      return true;
+    }
     if (href === "/" && pathname === "/") return true;
     if (href !== "/" && pathname.startsWith(href)) return true;
     return false;
@@ -86,7 +99,7 @@ export default function AppSidebar() {
           {/* Header with Treno Mechanic Logo */}
           <div className="px-4 py-3.5 border-b border-gray-100 flex items-center justify-between">
             <Link
-              href="/"
+              href={isMember ? "/find-jobs" : "/"}
               onClick={closeMobile}
               className="flex items-center group transition-transform hover:opacity-90"
             >
@@ -116,13 +129,13 @@ export default function AppSidebar() {
           {/* Navigation Category Label */}
           <div className="px-4 pt-4 pb-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-              Operations & Jobs
+              {isMember ? "Technician Portal" : "Operations & Jobs"}
             </span>
           </div>
 
-          {/* 7 Menus + Profile Link */}
+          {/* Menus + Profile Link (Members ONLY see Find Jobs & My Profile) */}
           <nav className="flex flex-col gap-1 px-2.5 w-full">
-            {SIDEBAR_MENU_ITEMS.map((item) => {
+            {menuItems.map((item) => {
               const isActive = isMenuLinkActive(item.href);
 
               return (
@@ -237,11 +250,18 @@ export default function AppSidebar() {
 
                 {/* Profile Text */}
                 <div className="overflow-hidden min-w-0 flex-1">
-                  <h4 className="text-xs font-bold text-gray-900 truncate group-hover:text-[#F96176] transition-colors">
-                    {mechanic?.workshopName ||
-                      mechanic?.userName ||
-                      "Mechanic Account"}
-                  </h4>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-gray-900 truncate group-hover:text-[#F96176] transition-colors">
+                      {mechanic?.userName ||
+                        mechanic?.workshopName ||
+                        "Technician"}
+                    </h4>
+                    {isMember && (
+                      <span className="px-1.5 py-0.2 bg-emerald-50 text-[#58BB87] border border-emerald-200 rounded text-[9px] font-bold shrink-0">
+                        Tech
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[10px] text-gray-500 truncate">
                     {mechanic?.email || user?.email}
                   </p>
@@ -251,13 +271,15 @@ export default function AppSidebar() {
                         size={10}
                         className="fill-amber-400 text-amber-400 mr-0.5"
                       />
-                      4.98
+                      {mechanic?.rating ? Number(mechanic.rating).toFixed(1) : "5.0"}
                     </span>
                     <span className="text-[10px] text-gray-400">•</span>
                     <span className="text-[10px] text-gray-500 font-medium truncate">
-                      {[mechanic?.city, mechanic?.state]
-                        .filter(Boolean)
-                        .join(", ") || "Bay Hub"}
+                      {mechanic?.baseCity ||
+                        [mechanic?.city, mechanic?.state]
+                          .filter(Boolean)
+                          .join(", ") ||
+                        "USA Bay"}
                     </span>
                   </div>
                 </div>

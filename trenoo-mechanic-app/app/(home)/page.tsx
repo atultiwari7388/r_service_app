@@ -16,8 +16,18 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading && user && mechanic) {
-      const isMember = mechanic.role === "member" || !!mechanic.ownerId;
-      if (!isMember && mechanic.isSubscriptionPurchase !== true) {
+      const isMember =
+        mechanic.role === "member" ||
+        !!mechanic.ownerId ||
+        mechanic.isTeamMember === true;
+
+      if (isMember) {
+        // Members only have access to Find Jobs and My Profile
+        router.replace("/find-jobs");
+        return;
+      }
+
+      if (mechanic.isSubscriptionPurchase !== true) {
         router.push(
           `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(
             user.email || ""
