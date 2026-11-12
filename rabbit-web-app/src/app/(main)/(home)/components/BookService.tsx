@@ -19,6 +19,7 @@ import {
   getDoc,
   getDocs,
   serverTimestamp,
+  Timestamp,
   setDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -498,6 +499,9 @@ const BookingSection: React.FC = () => {
   const [guestLat, setGuestLat] = useState<number | null>(null);
   const [guestLng, setGuestLng] = useState<number | null>(null);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationPermissionDenied, setLocationPermissionDenied] =
+    useState(false);
+  const [showChromeGuide, setShowChromeGuide] = useState(false);
   const [guestCountryCode, setGuestCountryCode] = useState("+1");
   const [guestPhoneNumber, setGuestPhoneNumber] = useState("");
 
@@ -1046,7 +1050,7 @@ const BookingSection: React.FC = () => {
     return null;
   };
 
-  // Robust Unified Location Detection (GPS first, then IP fallback)
+  // Robust Unified Location Detection (Precise GPS first, then Low Accuracy, then IP fallback)
   const handleDetectLocation = async (isManualTap = true) => {
     setIsDetectingLocation(true);
 
@@ -1057,7 +1061,7 @@ const BookingSection: React.FC = () => {
         setGuestLat(ipResult.lat);
         setGuestLng(ipResult.lng);
         if (isManualTap) {
-          toast.success("Location detected!");
+          toast.success("Approximate network location detected!");
         }
         return true;
       }
@@ -1073,43 +1077,203 @@ const BookingSection: React.FC = () => {
       return;
     }
 
-    // Try standard browser geolocation (low accuracy first for instant speed & desktop compatibility)
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setGuestLat(lat);
-        setGuestLng(lng);
+    const queryGps = (enableHighAccuracy: boolean, timeout: number) =>
+      new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy,
+          timeout,
+          maximumAge: enableHighAccuracy ? 0 : 300000,
+        });
+      });
 
-        try {
-          const resolvedAddress = await resolveAddressFromCoords(lat, lng);
-          setGuestAddress(resolvedAddress);
-          if (isManualTap) {
-            toast.success("Location detected!");
-          }
-        } catch {
-          setGuestAddress(`GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-          if (isManualTap) {
-            toast.success("Coordinates acquired!");
-          }
-        } finally {
-          setIsDetectingLocation(false);
-        }
-      },
-      async (err) => {
+    let pos: GeolocationPosition | null = null;
+    try {
+      // Tier 1: Precise High Accuracy GPS
+      pos = await queryGps(true, 7000);
+      setLocationPermissionDenied(false);
+    } catch (err: any) {
+      if (err.code === 1) {
+        // Permission Denied in Chrome
         console.warn(
-          "Browser GPS unavailable or denied, attempting IP location fallback:",
+          "Location permission denied in browser/Chrome:",
           err.message
         );
-        const ok = await applyIpFallback();
-        setIsDetectingLocation(false);
-        if (!ok && isManualTap) {
-          toast.error("Could not fetch GPS. Please search or enter your location.");
+        setLocationPermissionDenied(true);
+      } else {
+        console.warn(
+          "High accuracy GPS timed out, trying standard accuracy:",
+          err.message
+        );
+        try {
+          pos = await queryGps(false, 5000);
+          setLocationPermissionDenied(false);
+        } catch (err2: any) {
+          if (err2.code === 1) {
+            setLocationPermissionDenied(true);
+          }
+          console.warn("Standard accuracy also failed:", err2.message);
         }
-      },
-      { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
-    );
+      }
+    }
+
+    if (pos) {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      setGuestLat(lat);
+      setGuestLng(lng);
+
+      try {
+        const resolvedAddress = await resolveAddressFromCoords(lat, lng);
+        setGuestAddress(resolvedAddress);
+        if (isManualTap) {
+          toast.success("Precise location detected!");
+        }
+      } catch {
+        setGuestAddress(`GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        if (isManualTap) {
+          toast.success("Coordinates acquired!");
+        }
+      }
+    } else {
+      const ok = await applyIpFallback();
+      if (!ok && isManualTap) {
+        toast.error(
+          "Could not fetch GPS. Please enter your location manually."
+        );
+      }
+    }
+
+    setIsDetectingLocation(false);
   };
+
+  // GPS detection for registered fleet users
+  const handleRegisteredGpsDetect = async () => {
+    setIsDetectingLocation(true);
+
+    const queryGps = (enableHighAccuracy: boolean, timeout: number) =>
+      new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy,
+          timeout,
+          maximumAge: enableHighAccuracy ? 0 : 300000,
+        });
+      });
+
+    let pos: GeolocationPosition | null = null;
+    try {
+      pos = await queryGps(true, 7000);
+      setLocationPermissionDenied(false);
+    } catch (err: any) {
+      if (err.code === 1) {
+        setLocationPermissionDenied(true);
+      } else {
+        try {
+          pos = await queryGps(false, 5000);
+          setLocationPermissionDenied(false);
+        } catch (err2: any) {
+          if (err2.code === 1) setLocationPermissionDenied(true);
+        }
+      }
+    }
+
+    let lat = pos?.coords.latitude;
+    let lng = pos?.coords.longitude;
+    let finalAddress = "";
+
+    if (lat !== undefined && lng !== undefined) {
+      try {
+        finalAddress = await resolveAddressFromCoords(lat, lng);
+      } catch {
+        finalAddress = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      }
+    } else {
+      const ipResult = await detectLocationFromIP();
+      if (ipResult) {
+        lat = ipResult.lat;
+        lng = ipResult.lng;
+        finalAddress = ipResult.address;
+        toast("Using approximate location based on your network.", {
+          icon: "🌐",
+        });
+      } else {
+        toast.error(
+          "Could not detect GPS location. Please select or add an address."
+        );
+        setIsDetectingLocation(false);
+        return;
+      }
+    }
+
+    if (finalAddress && lat !== undefined && lng !== undefined) {
+      setSelectedLocation(finalAddress);
+      setLocation((prev) => {
+        if (prev.some((l) => l.address === finalAddress)) return prev;
+        return [
+          {
+            address: finalAddress,
+            addressType: "Current Breakdown",
+            date: Timestamp.now(),
+            id: "gps_" + Date.now(),
+            isAddressSelected: true,
+            location: {
+              latitude: lat!,
+              longitude: lng!,
+            },
+          },
+          ...prev,
+        ];
+      });
+      toast.success("Current GPS location selected!");
+    }
+
+    setIsDetectingLocation(false);
+  };
+
+  // Check for newly saved location from /add-location (localStorage)
+  useEffect(() => {
+    const pickUpSavedLocation = () => {
+      try {
+        const raw = localStorage.getItem("selectedBookingLocation");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.address) {
+            // For Guest
+            setGuestAddress(parsed.address);
+            if (parsed.lat) setGuestLat(parsed.lat);
+            if (parsed.lng) setGuestLng(parsed.lng);
+
+            // For Registered
+            setSelectedLocation(parsed.address);
+            setLocation((prev) => {
+              if (prev.some((l) => l.address === parsed.address)) return prev;
+              return [
+                {
+                  address: parsed.address,
+                  addressType: "Selected Location",
+                  date: Timestamp.now(),
+                  id: "picked_" + Date.now(),
+                  isAddressSelected: true,
+                  location: {
+                    latitude: parsed.lat || 0,
+                    longitude: parsed.lng || 0,
+                  },
+                },
+                ...prev,
+              ];
+            });
+
+            localStorage.removeItem("selectedBookingLocation");
+          }
+        }
+      } catch (e) {
+        console.warn("Error picking up selectedBookingLocation:", e);
+      }
+    };
+
+    pickUpSavedLocation();
+    window.addEventListener("focus", pickUpSavedLocation);
+    return () => window.removeEventListener("focus", pickUpSavedLocation);
+  }, []);
 
   // Auto-detect location on initial load without requiring manual button tap
   useEffect(() => {
@@ -1743,10 +1907,7 @@ const BookingSection: React.FC = () => {
                             vehicle.sharedWith?.borrowerName ||
                             "Other";
                           return (
-                            <option
-                              key={index}
-                              value={vehicle.vehicleNumber}
-                            >
+                            <option key={index} value={vehicle.vehicleNumber}>
                               {vehicle.vehicleNumber} ({vehicle.companyName})
                               {isAssigned ? ` [Lent to ${borrower}]` : ""}
                             </option>
@@ -1786,30 +1947,118 @@ const BookingSection: React.FC = () => {
                     />
                   </div>
 
-                  {/* Location Select */}
-                  <div className="flex gap-2">
-                    <select
-                      onChange={handleLocationChange}
-                      value={selectedLocation || ""}
-                      className="w-full h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-gray-800 bg-white"
-                    >
-                      <option value="">Select Your Location</option>
-                      {location.map((loc, index) => (
-                        <option key={index} value={loc.address}>
-                          {loc.address}
-                        </option>
-                      ))}
-                    </select>
+                  {/* Location Select with GPS & Add Map Location */}
+                  <div className="space-y-2">
+                    {locationPermissionDenied && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 shadow-2xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2">
+                            <span className="text-base mt-0.5">🔒</span>
+                            <div>
+                              <span className="font-bold">
+                                Location blocked in Chrome:
+                              </span>{" "}
+                              Tap the lock icon 🔒 next to the website URL to
+                              Allow Location, or pick on map.
+                              <div className="mt-1.5 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={handleRegisteredGpsDetect}
+                                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-[11px] cursor-pointer"
+                                >
+                                  🔄 Retry GPS
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setShowChromeGuide(!showChromeGuide)
+                                  }
+                                  className="px-2 py-1 bg-white border border-amber-300 text-amber-800 rounded-md font-semibold text-[11px] cursor-pointer"
+                                >
+                                  {showChromeGuide
+                                    ? "Hide Steps"
+                                    : "How to Allow in Chrome 🔒"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setLocationPermissionDenied(false)}
+                            className="text-amber-500 hover:text-amber-800 p-0.5 text-xs font-bold cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        {showChromeGuide && (
+                          <div className="mt-2 pt-2 border-t border-amber-200 text-[11px] space-y-1 text-amber-950">
+                            <div>
+                              • <b>Desktop Chrome:</b> Click 🔒 on the address
+                              bar → Location → Allow → Refresh.
+                            </div>
+                            <div>
+                              • <b>Android Chrome:</b> Tap ⋮ (menu) → Site
+                              settings → Location → Allow.
+                            </div>
+                            <div>
+                              • <b>iPhone/iOS Chrome:</b> iOS Settings → Chrome
+                              → Location → While Using App.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                    <Link href="/add-location">
+                    <div className="flex gap-2">
+                      <select
+                        onChange={handleLocationChange}
+                        value={selectedLocation || ""}
+                        className="w-full h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-gray-800 bg-white"
+                      >
+                        <option value="">Select Your Location</option>
+                        {location.map((loc, index) => (
+                          <option key={index} value={loc.address}>
+                            {loc.address}
+                          </option>
+                        ))}
+                      </select>
+
                       <button
                         type="button"
-                        className="bg-[#F96176] text-white text-2xl rounded-md hover:bg-[#eb929e] px-3 h-full flex items-center justify-center"
-                        title="Add Location"
+                        onClick={handleRegisteredGpsDetect}
+                        disabled={isDetectingLocation}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-md px-3.5 h-14 flex items-center justify-center gap-1.5 text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap disabled:opacity-50"
+                        title="Use current GPS breakdown location"
                       >
-                        +
+                        {isDetectingLocation ? (
+                          <span className="animate-spin text-sm">⏳</span>
+                        ) : (
+                          <>
+                            <span>📍</span>
+                            <span className="hidden sm:inline">GPS</span>
+                          </>
+                        )}
                       </button>
-                    </Link>
+
+                      <Link href="/add-location?redirect=/find-mechanic">
+                        <button
+                          type="button"
+                          className="bg-[#F96176] text-white text-2xl rounded-md hover:bg-[#eb929e] px-3 h-14 flex items-center justify-center cursor-pointer"
+                          title="Pick location on map"
+                        >
+                          +
+                        </button>
+                      </Link>
+                    </div>
+
+                    {selectedLocation && (
+                      <div className="text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center gap-1.5 font-medium">
+                        <span>✓ Selected Location:</span>
+                        <span className="font-bold truncate">
+                          {selectedLocation}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
@@ -1901,6 +2150,67 @@ const BookingSection: React.FC = () => {
                       />
                     )}
                   </div>
+
+                  {/* Chrome Permission Notice for Guest Form */}
+                  {locationPermissionDenied && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 shadow-2xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-base mt-0.5">🔒</span>
+                          <div>
+                            <span className="font-bold">
+                              Location blocked in Chrome:
+                            </span>{" "}
+                            Tap 🔒 in the address bar to Allow Location, or
+                            search your address below.
+                            <div className="mt-1.5 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleDetectLocation(true)}
+                                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-[11px] cursor-pointer"
+                              >
+                                🔄 Retry GPS
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setShowChromeGuide(!showChromeGuide)
+                                }
+                                className="px-2 py-1 bg-white border border-amber-300 text-amber-800 rounded-md font-semibold text-[11px] cursor-pointer"
+                              >
+                                {showChromeGuide
+                                  ? "Hide Steps"
+                                  : "How to Allow in Chrome 🔒"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setLocationPermissionDenied(false)}
+                          className="text-amber-500 hover:text-amber-800 p-0.5 text-xs font-bold cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {showChromeGuide && (
+                        <div className="mt-2 pt-2 border-t border-amber-200 text-[11px] space-y-1 text-amber-950">
+                          <div>
+                            • <b>Desktop Chrome:</b> Click 🔒 on the address bar
+                            → Location → Allow → Refresh.
+                          </div>
+                          <div>
+                            • <b>Android Chrome:</b> Tap ⋮ (menu) → Site
+                            settings → Location → Allow.
+                          </div>
+                          <div>
+                            • <b>iPhone/iOS Chrome:</b> iOS Settings → Chrome →
+                            Location → While Using App.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Location with Places Autocomplete & GPS */}
                   <GuestLocationSearchInput
