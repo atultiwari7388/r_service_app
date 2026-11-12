@@ -369,14 +369,14 @@ const GuestLocationSearchInput: React.FC<GuestLocationSearchInputProps> = ({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+    <div ref={containerRef} className="relative w-full max-w-full">
+      <div className="flex items-center gap-2 w-full max-w-full">
+        <div className="relative flex-1 min-w-0">
           <input
             type="text"
             placeholder={
               isDetectingGps
-                ? "Detecting your current location..."
+                ? "Detecting GPS location..."
                 : "Current Location / Search Place"
             }
             value={value}
@@ -384,7 +384,7 @@ const GuestLocationSearchInput: React.FC<GuestLocationSearchInputProps> = ({
             onFocus={() => {
               if (data.length > 0) setShowDropdown(true);
             }}
-            className="w-full h-14 p-4 pr-8 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-sm text-gray-800 bg-white"
+            className="w-full min-w-0 h-14 p-4 pr-8 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-sm text-gray-800 bg-white"
             required
             autoComplete="off"
           />
@@ -409,13 +409,16 @@ const GuestLocationSearchInput: React.FC<GuestLocationSearchInputProps> = ({
           type="button"
           onClick={onDetectGps}
           disabled={isDetectingGps}
-          className="bg-[#F96176] text-white text-xs font-semibold rounded-md hover:bg-[#eb929e] px-3 whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer transition shadow-xs disabled:opacity-50"
+          className="shrink-0 bg-[#F96176] text-white text-xs font-semibold rounded-md hover:bg-[#eb929e] px-3.5 h-14 whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer transition shadow-xs disabled:opacity-50"
           title="Refresh current GPS location"
         >
           {isDetectingGps ? (
-            <span className="inline-block animate-spin">⏳</span>
+            <span className="inline-block animate-spin text-sm">⏳</span>
           ) : (
-            <span>📍 GPS</span>
+            <>
+              <span>📍</span>
+              <span className="font-bold">GPS</span>
+            </>
           )}
         </button>
       </div>
@@ -1878,7 +1881,7 @@ const BookingSection: React.FC = () => {
           </div>
 
           {/* Right Section: Form */}
-          <div className="lg:w-[420px] bg-white/90 backdrop-blur-md border border-gray-300 rounded-xl shadow-xl p-4 sm:p-8 space-y-1 mt-5">
+          <div className="w-full max-w-md lg:w-[420px] bg-white/90 backdrop-blur-md border border-gray-300 rounded-xl shadow-xl p-4 sm:p-8 space-y-1 mt-5 overflow-hidden box-border">
             <h1 className="text-xl font-semibold text-center text-gray-800 mb-5">
               Find Nearby Mechanics in Seconds
             </h1>
@@ -1888,36 +1891,38 @@ const BookingSection: React.FC = () => {
                 /* Registered User Form */
                 <>
                   {/* Vehicle Select */}
-                  <div className="flex gap-2">
-                    <select
-                      onChange={handleVehicleChange}
-                      value={selectedVehicle || ""}
-                      className="w-full h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-gray-800 bg-white"
-                    >
-                      <option value="">Select A Vehicle</option>
-                      {vehicles
-                        .slice()
-                        .sort((a, b) =>
-                          a.vehicleNumber.localeCompare(b.vehicleNumber)
-                        )
-                        .map((vehicle, index) => {
-                          const isAssigned = !!vehicle.isAssignedToOther;
-                          const borrower =
-                            vehicle.sharedWith?.borrowerCompanyName ||
-                            vehicle.sharedWith?.borrowerName ||
-                            "Other";
-                          return (
-                            <option key={index} value={vehicle.vehicleNumber}>
-                              {vehicle.vehicleNumber} ({vehicle.companyName})
-                              {isAssigned ? ` [Lent to ${borrower}]` : ""}
-                            </option>
-                          );
-                        })}
-                    </select>
+                  <div className="flex items-center gap-2 w-full max-w-full">
+                    <div className="flex-1 min-w-0">
+                      <select
+                        onChange={handleVehicleChange}
+                        value={selectedVehicle || ""}
+                        className="w-full min-w-0 h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-sm text-gray-800 bg-white truncate"
+                      >
+                        <option value="">Select A Vehicle</option>
+                        {vehicles
+                          .slice()
+                          .sort((a, b) =>
+                            a.vehicleNumber.localeCompare(b.vehicleNumber)
+                          )
+                          .map((vehicle, index) => {
+                            const isAssigned = !!vehicle.isAssignedToOther;
+                            const borrower =
+                              vehicle.sharedWith?.borrowerCompanyName ||
+                              vehicle.sharedWith?.borrowerName ||
+                              "Other";
+                            return (
+                              <option key={index} value={vehicle.vehicleNumber}>
+                                {vehicle.vehicleNumber} ({vehicle.companyName})
+                                {isAssigned ? ` [Lent to ${borrower}]` : ""}
+                              </option>
+                            );
+                          })}
+                      </select>
+                    </div>
 
                     <button
                       type="button"
-                      className="bg-[#F96176] text-white text-2xl rounded-md hover:bg-[#eb929e] px-3"
+                      className="shrink-0 bg-[#F96176] text-white text-2xl rounded-md hover:bg-[#eb929e] px-3.5 h-14 flex items-center justify-center cursor-pointer"
                       title="Add Vehicle"
                       onClick={(e) => {
                         e.preventDefault();
@@ -1948,13 +1953,13 @@ const BookingSection: React.FC = () => {
                   </div>
 
                   {/* Location Select with GPS & Add Map Location */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 w-full max-w-full">
                     {locationPermissionDenied && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 shadow-2xs">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-2">
-                            <span className="text-base mt-0.5">🔒</span>
-                            <div>
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 shadow-2xs max-w-full overflow-hidden">
+                        <div className="flex items-start justify-between gap-2 min-w-0">
+                          <div className="flex items-start gap-2 min-w-0 flex-1">
+                            <span className="text-base mt-0.5 shrink-0">🔒</span>
+                            <div className="min-w-0 flex-1">
                               <span className="font-bold">
                                 Location blocked in Chrome:
                               </span>{" "}
@@ -1964,7 +1969,7 @@ const BookingSection: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={handleRegisteredGpsDetect}
-                                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-[11px] cursor-pointer"
+                                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-[11px] cursor-pointer shrink-0"
                                 >
                                   🔄 Retry GPS
                                 </button>
@@ -1973,7 +1978,7 @@ const BookingSection: React.FC = () => {
                                   onClick={() =>
                                     setShowChromeGuide(!showChromeGuide)
                                   }
-                                  className="px-2 py-1 bg-white border border-amber-300 text-amber-800 rounded-md font-semibold text-[11px] cursor-pointer"
+                                  className="px-2 py-1 bg-white border border-amber-300 text-amber-800 rounded-md font-semibold text-[11px] cursor-pointer shrink-0"
                                 >
                                   {showChromeGuide
                                     ? "Hide Steps"
@@ -1985,7 +1990,7 @@ const BookingSection: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setLocationPermissionDenied(false)}
-                            className="text-amber-500 hover:text-amber-800 p-0.5 text-xs font-bold cursor-pointer"
+                            className="text-amber-500 hover:text-amber-800 p-0.5 text-xs font-bold cursor-pointer shrink-0"
                           >
                             ✕
                           </button>
@@ -2009,25 +2014,27 @@ const BookingSection: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="flex gap-2">
-                      <select
-                        onChange={handleLocationChange}
-                        value={selectedLocation || ""}
-                        className="w-full h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-gray-800 bg-white"
-                      >
-                        <option value="">Select Your Location</option>
-                        {location.map((loc, index) => (
-                          <option key={index} value={loc.address}>
-                            {loc.address}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="flex items-center gap-2 w-full max-w-full">
+                      <div className="flex-1 min-w-0">
+                        <select
+                          onChange={handleLocationChange}
+                          value={selectedLocation || ""}
+                          className="w-full min-w-0 h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-sm text-gray-800 bg-white truncate"
+                        >
+                          <option value="">Select Your Location</option>
+                          {location.map((loc, index) => (
+                            <option key={index} value={loc.address}>
+                              {loc.address}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
                       <button
                         type="button"
                         onClick={handleRegisteredGpsDetect}
                         disabled={isDetectingLocation}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-md px-3.5 h-14 flex items-center justify-center gap-1.5 text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap disabled:opacity-50"
+                        className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md px-3 sm:px-3.5 h-14 flex items-center justify-center gap-1.5 text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap disabled:opacity-50"
                         title="Use current GPS breakdown location"
                       >
                         {isDetectingLocation ? (
@@ -2040,10 +2047,10 @@ const BookingSection: React.FC = () => {
                         )}
                       </button>
 
-                      <Link href="/add-location?redirect=/find-mechanic">
+                      <Link href="/add-location?redirect=/find-mechanic" className="shrink-0">
                         <button
                           type="button"
-                          className="bg-[#F96176] text-white text-2xl rounded-md hover:bg-[#eb929e] px-3 h-14 flex items-center justify-center cursor-pointer"
+                          className="bg-[#F96176] text-white text-2xl rounded-md hover:bg-[#eb929e] px-3.5 h-14 flex items-center justify-center cursor-pointer"
                           title="Pick location on map"
                         >
                           +
@@ -2052,9 +2059,9 @@ const BookingSection: React.FC = () => {
                     </div>
 
                     {selectedLocation && (
-                      <div className="text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center gap-1.5 font-medium">
-                        <span>✓ Selected Location:</span>
-                        <span className="font-bold truncate">
+                      <div className="text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center gap-1.5 font-medium min-w-0 max-w-full overflow-hidden">
+                        <span className="shrink-0 font-bold">✓ Location:</span>
+                        <span className="truncate min-w-0 flex-1">
                           {selectedLocation}
                         </span>
                       </div>
@@ -2228,11 +2235,11 @@ const BookingSection: React.FC = () => {
 
                   {/* Mobile Number with Country Code (if unauthenticated) */}
                   {(!user || !user.phoneNumber) && (
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2 w-full max-w-full">
                       <select
                         value={guestCountryCode}
                         onChange={(e) => setGuestCountryCode(e.target.value)}
-                        className="w-36 h-14 px-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-xs text-gray-800 bg-white font-medium"
+                        className="shrink-0 w-28 sm:w-36 h-14 px-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-xs text-gray-800 bg-white font-medium"
                       >
                         {COUNTRY_CODES.map((item) => (
                           <option key={item.code} value={item.code}>
@@ -2245,7 +2252,7 @@ const BookingSection: React.FC = () => {
                         placeholder="Mobile Number"
                         value={guestPhoneNumber}
                         onChange={(e) => setGuestPhoneNumber(e.target.value)}
-                        className="w-full h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-sm text-gray-800 bg-white"
+                        className="flex-1 min-w-0 w-full h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition text-sm text-gray-800 bg-white"
                         required
                       />
                     </div>
