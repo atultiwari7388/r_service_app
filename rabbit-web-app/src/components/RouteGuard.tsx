@@ -23,6 +23,23 @@ const AUTH_ROUTES = new Set([
   "/forgot-password",
 ]);
 
+// Protected routes that Guest / Phone Auth users are permitted to access
+const GUEST_ROUTE_PREFIXES = [
+  "/my-jobs",
+  "/history",
+];
+
+const isGuestRoute = (pathname: string): boolean => {
+  if (!pathname) return false;
+  const normalized =
+    pathname.length > 1 && pathname.endsWith("/")
+      ? pathname.slice(0, -1)
+      : pathname;
+  return GUEST_ROUTE_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`)
+  );
+};
+
 // Prefixes that are public (static assets, API endpoints, etc.)
 const PUBLIC_PREFIXES = [
   "/_next",
@@ -69,21 +86,63 @@ export default function RouteGuard({
       ? pathname.slice(0, -1)
       : pathname;
   const isAuthPage = AUTH_ROUTES.has(normalizedPath);
+  const isGuestAllowed = isGuestRoute(normalizedPath) || isPublic;
 
   useEffect(() => {
     if (isLoading) return;
 
-    const isVerifiedUser = Boolean(user && user.emailVerified);
+    // Detect user authentication type
+    const isPhoneOrGuestUser = Boolean(
+      user && (user.phoneNumber || user.isAnonymous)
+    );
+    const isEmailVerifiedUser = Boolean(user && user.emailVerified);
 
-    if (!isVerifiedUser && !isPublic) {
-      // User is not logged in or email is not verified, and route is protected -> redirect to /login
+    // 1. Not logged in at all
+    if (!user) {
+      if (!isPublic) {
+        const returnUrl = encodeURIComponent(pathname);
+        router.replace(`/login?redirect=${returnUrl}`);
+      }
+      return;
+    }
+
+    // 2. Phone Auth / Guest User (verified via Phone OTP)
+    if (isPhoneOrGuestUser) {
+      if (normalizedPath === "/login") {
+        router.replace("/my-jobs");
+      } else if (normalizedPath === "/sign-up") {
+        // Allow guest to stay on /sign-up for "Upgrade to Owner" flow
+        return;
+      } else if (!isGuestAllowed) {
+        // Guest attempting to access owner-only pages (e.g. /records, /dispatch, etc.)
+        router.replace("/my-jobs");
+      }
+      return;
+    }
+
+    // 3. Email User who is verified
+    if (isEmailVerifiedUser) {
+      if (isAuthPage) {
+        router.replace("/records");
+      }
+      return;
+    }
+
+    // 4. Email User who has NOT verified their email
+    if (!isPublic) {
       const returnUrl = encodeURIComponent(pathname);
       router.replace(`/login?redirect=${returnUrl}`);
-    } else if (isVerifiedUser && isAuthPage) {
-      // User is already logged in with verified email but visits /login, /sign-up -> redirect to /records
-      router.replace("/records");
     }
-  }, [user, isLoading, pathname, isPublic, isAuthPage, router]);
+  }, [
+    user,
+    isLoading,
+    pathname,
+    isPublic,
+    isAuthPage,
+    isGuestAllowed,
+    normalizedPath,
+    router,
+  ]);
 
   // If auth is still resolving on a protected route, show clean loading state
   if (isLoading && !isPublic) {

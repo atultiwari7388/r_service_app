@@ -60,8 +60,12 @@ const Login: React.FC = () => {
   const { user } = useAuth() || { user: null };
 
   useEffect(() => {
-    if (user && user.emailVerified) {
-      router.push("/records");
+    if (user) {
+      if (user.phoneNumber || user.isAnonymous) {
+        router.push("/my-jobs");
+      } else if (user.emailVerified) {
+        router.push("/records");
+      }
     }
   }, [router, user]);
 
