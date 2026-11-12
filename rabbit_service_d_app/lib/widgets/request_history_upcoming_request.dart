@@ -120,10 +120,11 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                   snapshot.data!.exists) {
                                 final mechanicData = snapshot.data!.data()
                                     as Map<String, dynamic>?;
-                                final workshopName = mechanicData?['workshopName']
-                                        ?.toString()
-                                        .trim() ??
-                                    '';
+                                final workshopName =
+                                    mechanicData?['workshopName']
+                                            ?.toString()
+                                            .trim() ??
+                                        '';
                                 if (workshopName.isNotEmpty) {
                                   displayName = workshopName;
                                 }
@@ -480,7 +481,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                     onPressed: () {
                       _showConfirmStartDialog(widget.mId);
                     },
-                    child: Text("Confirm to Start"),
+                    child: Text("Confirm to Start Job"),
                   ),
                 SizedBox(height: 10.h),
                 if (widget.jobStatus == 3)
