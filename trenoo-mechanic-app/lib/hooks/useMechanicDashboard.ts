@@ -60,13 +60,22 @@ export function useMechanicDashboard() {
   const currentUId = user?.uid || "";
 
   // State
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [currentAddress, setCurrentAddress] = useState<string>(
-    "Loading terminal location..."
-  );
+  const [isOnline, setIsOnline] = useState<boolean>(false);
+  const [currentAddress, setCurrentAddress] = useState<string>("");
   const [currentLat, setCurrentLat] = useState<number>(0);
   const [currentLng, setCurrentLng] = useState<number>(0);
   const [isUpdatingLocation, setIsUpdatingLocation] = useState<boolean>(false);
+
+  // Active Plan Check (Owner must have isSubscriptionPurchase, Member can inherit)
+  const isMember =
+    mechanicProfile?.role === "member" ||
+    !!mechanicProfile?.ownerId ||
+    mechanicProfile?.isTeamMember === true;
+
+  const hasActivePlan = Boolean(
+    mechanicProfile?.isSubscriptionPurchase === true ||
+    (isMember && mechanicProfile?.inheritedSubscriptionOwnerId)
+  );
 
   // Sorting & Nearby Filtering state (matching Flutter DashboardController)
   const [selectedSortOption, setSelectedSortOption] = useState<
@@ -82,11 +91,13 @@ export function useMechanicDashboard() {
   useEffect(() => {
     if (mechanicProfile) {
       if (typeof mechanicProfile.active === "boolean") {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsOnline(mechanicProfile.active);
-      }
-      if (mechanicProfile.address) {
-        setCurrentAddress(mechanicProfile.address);
+        // Only show address if currently online
+        if (mechanicProfile.active && mechanicProfile.address) {
+          setCurrentAddress(mechanicProfile.address);
+        } else if (!mechanicProfile.active) {
+          setCurrentAddress("");
+        }
       }
       if (
         mechanicProfile.location?.latitude &&
@@ -98,9 +109,7 @@ export function useMechanicDashboard() {
     }
   }, [mechanicProfile]);
 
-  // Request browser geolocation ONLY if mechanic profile does not have saved coordinates,
-  // or when explicitly triggered by the user via refreshLocation()
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  // Request browser geolocation ONLY when explicitly triggered or on active switch toggle ON
   const refreshLocation = useCallback(async () => {
     if (typeof window === "undefined" || !navigator.geolocation) return;
     setIsUpdatingLocation(true);
@@ -113,8 +122,7 @@ export function useMechanicDashboard() {
         setCurrentLng(lng);
 
         // Reverse geocoding via OpenStreetMap Nominatim for human readable street/city
-        let resolvedAddress =
-          mechanicProfile?.address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        let resolvedAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
@@ -126,7 +134,7 @@ export function useMechanicDashboard() {
             }
           }
         } catch {
-          // fallback to lat/lng or profile address
+          // fallback to lat/lng
         }
 
         setCurrentAddress(resolvedAddress);
@@ -150,31 +158,12 @@ export function useMechanicDashboard() {
       },
       (err) => {
         console.warn("Geolocation warning:", err.message);
-        if (mechanicProfile?.address) {
-          setCurrentAddress(mechanicProfile.address);
-        } else {
-          setCurrentAddress("Depot Terminal (Location access disabled)");
-        }
+        toast.error("Could not obtain GPS location: " + err.message);
         setIsUpdatingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [currentUId, mechanicProfile?.address]);
-
-  // If mechanic does not have coordinates saved yet, initialize location
-  useEffect(() => {
-    if (
-      !mechanicProfile?.location?.latitude &&
-      !mechanicProfile?.location?.longitude
-    ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      refreshLocation();
-    }
-  }, [
-    mechanicProfile?.location?.latitude,
-    mechanicProfile?.location?.longitude,
-    refreshLocation,
-  ]);
+  }, [currentUId]);
 
   // Fetch cancel reasons from metadata
   useEffect(() => {
@@ -274,18 +263,82 @@ export function useMechanicDashboard() {
 
   // Toggle active/inactive in Firestore
   const toggleActive = async (newVal: boolean) => {
-    setIsOnline(newVal);
-    if (!currentUId) return;
-    try {
-      await updateDoc(doc(db, "Mechanics", currentUId), {
-        active: newVal,
-      });
-      toast.success(
-        newVal ? "You are now ONLINE & accepting jobs" : "You are now OFFLINE"
-      );
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update online status");
-      setIsOnline(!newVal); // revert
+    if (newVal) {
+      // Must have an active plan to go online
+      if (!hasActivePlan) {
+        toast.error("Active membership required to go online. Please purchase a plan.");
+        return;
+      }
+
+      setIsOnline(true);
+      // Fetch GPS position & address on active toggle ON
+      if (typeof window !== "undefined" && navigator.geolocation) {
+        setIsUpdatingLocation(true);
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            setCurrentLat(lat);
+            setCurrentLng(lng);
+
+            let resolvedAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            try {
+              const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+              );
+              if (res.ok) {
+                const data = await res.json();
+                if (data?.display_name) {
+                  resolvedAddress = data.display_name;
+                }
+              }
+            } catch {
+              // fallback
+            }
+
+            setCurrentAddress(resolvedAddress);
+
+            if (currentUId) {
+              try {
+                await updateDoc(doc(db, "Mechanics", currentUId), {
+                  active: true,
+                  address: resolvedAddress,
+                  location: {
+                    latitude: lat,
+                    longitude: lng,
+                  },
+                });
+                toast.success("You are now ONLINE & accepting jobs");
+              } catch (err: any) {
+                console.error("Firestore active error:", err);
+              }
+            }
+            setIsUpdatingLocation(false);
+          },
+          (err) => {
+            console.warn("Geolocation warning on toggle online:", err.message);
+            toast.error("Location permission required to go online: " + err.message);
+            setIsUpdatingLocation(false);
+            setIsOnline(false);
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+        return;
+      }
+    } else {
+      // Toggle OFF: clear current address & set active: false
+      setIsOnline(false);
+      setCurrentAddress("");
+      if (!currentUId) return;
+      try {
+        await updateDoc(doc(db, "Mechanics", currentUId), {
+          active: false,
+        });
+        toast.success("You are now OFFLINE");
+      } catch (err: any) {
+        toast.error(err.message || "Failed to update offline status");
+        setIsOnline(true); // revert
+      }
     }
   };
 
@@ -909,6 +962,7 @@ export function useMechanicDashboard() {
     user,
     mechanicProfile,
     currentUId,
+    hasActivePlan,
     isOnline,
     currentAddress,
     currentLat,

@@ -63,6 +63,7 @@ export async function fetchMechanicSubscriptionPlans(): Promise<SubscriptionPlan
             ? Number(data.discountPrice)
             : null,
         currency: data.currency || "USD",
+        countryPrices: data.countryPrices || undefined,
         isActive: data.isActive ?? true,
         isPopular: data.isPopular ?? false,
         sortOrder: data.sortOrder ?? 0,

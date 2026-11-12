@@ -90,7 +90,7 @@ export function useMechanicLogin(): UseMechanicLoginReturn {
             );
             setErrorMessage(result.message || null);
             setTimeout(() => {
-              router.push(result.redirectUrl || "/choose-plan");
+              router.push("/");
             }, 1200);
             return result;
 

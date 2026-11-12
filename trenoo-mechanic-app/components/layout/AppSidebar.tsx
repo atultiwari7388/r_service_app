@@ -18,6 +18,8 @@ import {
   User as UserIcon,
   ChevronRight,
   X,
+  Lock,
+  LayoutDashboard,
 } from "lucide-react";
 import { SIDEBAR_MENU_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -51,15 +53,16 @@ export default function AppSidebar() {
     !!mechanic?.ownerId ||
     mechanic?.isTeamMember === true;
 
+  const hasActivePlan =
+    mechanic?.isSubscriptionPurchase === true ||
+    (isMember && !!mechanic?.inheritedSubscriptionOwnerId);
+
   // Filter menu items: Members ONLY see "Find Jobs", Owners see all 7 items
   const menuItems = isMember
     ? SIDEBAR_MENU_ITEMS.filter((item) => item.key === "find-jobs")
     : SIDEBAR_MENU_ITEMS;
 
   const isMenuLinkActive = (href: string) => {
-    if (href === "/find-jobs" && (pathname === "/find-jobs" || pathname === "/")) {
-      return true;
-    }
     if (href === "/" && pathname === "/") return true;
     if (href !== "/" && pathname.startsWith(href)) return true;
     return false;
@@ -135,17 +138,61 @@ export default function AppSidebar() {
 
           {/* Menus + Profile Link (Members ONLY see Find Jobs & My Profile) */}
           <nav className="flex flex-col gap-1 px-2.5 w-full">
+            {/* Dashboard / Home Link */}
+            <Link
+              href="/"
+              onClick={closeMobile}
+              className={cn(
+                "group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all duration-150",
+                pathname === "/"
+                  ? "bg-[#F96176] text-white shadow-xs font-semibold"
+                  : "text-gray-600 hover:bg-gray-100/90 hover:text-gray-900 font-medium"
+              )}
+              aria-label="Dashboard"
+            >
+              <span
+                className={cn(
+                  "shrink-0 transition-transform group-hover:scale-105",
+                  pathname === "/"
+                    ? "text-white"
+                    : "text-gray-500 group-hover:text-gray-900"
+                )}
+              >
+                <LayoutDashboard size={17} />
+              </span>
+              <span className="truncate flex-1">Dashboard</span>
+              {pathname === "/" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+              )}
+            </Link>
+
             {menuItems.map((item) => {
               const isActive = isMenuLinkActive(item.href);
+              const isLocked = !hasActivePlan;
 
               return (
                 <Link
                   key={item.key}
-                  href={item.href}
-                  onClick={closeMobile}
+                  href={isLocked ? "#" : item.href}
+                  onClick={(e) => {
+                    if (isLocked) {
+                      e.preventDefault();
+                      toast.error(
+                        "Active subscription required to access this feature. Please choose a plan on your dashboard."
+                      );
+                      if (pathname !== "/") {
+                        router.push("/");
+                      }
+                      closeMobile();
+                      return;
+                    }
+                    closeMobile();
+                  }}
                   className={cn(
-                    "group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all duration-150",
-                    isActive
+                    "group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all duration-150 relative",
+                    isLocked
+                      ? "text-gray-400 hover:bg-amber-50/60 hover:text-amber-700 cursor-not-allowed"
+                      : isActive
                       ? "bg-[#F96176] text-white shadow-xs font-semibold"
                       : "text-gray-600 hover:bg-gray-100/90 hover:text-gray-900 font-medium"
                   )}
@@ -154,7 +201,9 @@ export default function AppSidebar() {
                   <span
                     className={cn(
                       "shrink-0 transition-transform group-hover:scale-105",
-                      isActive
+                      isLocked
+                        ? "text-gray-400 group-hover:text-amber-600"
+                        : isActive
                         ? "text-white"
                         : "text-gray-500 group-hover:text-gray-900"
                     )}
@@ -164,9 +213,17 @@ export default function AppSidebar() {
 
                   <span className="truncate flex-1">{item.label}</span>
 
-                  {isActive && (
+                  {isLocked ? (
+                    <span className="flex items-center gap-1.5 shrink-0" title="Subscription Locked">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                      </span>
+                      <Lock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                    </span>
+                  ) : isActive ? (
                     <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-                  )}
+                  ) : null}
                 </Link>
               );
             })}

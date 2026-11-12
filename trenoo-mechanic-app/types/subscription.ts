@@ -1,5 +1,57 @@
 export type SubscriptionPlanType = "trenoops" | "treno_mechanic";
 
+export type SubscriptionDuration =
+  | "Monthly"
+  | "Quarterly"
+  | "Semi-Annually"
+  | "Yearly"
+  | "Weekly"
+  | "Lifetime"
+  | string;
+
+export interface CountryPriceConfig {
+  countryCode: "USA" | "CA" | "MX" | "UK" | "AU" | string;
+  currency: string;
+  symbol: string;
+  price: number;
+  discountPrice?: number | null;
+  enabled: boolean;
+}
+
+export interface SupportedCountryItem {
+  code: string;
+  name: string;
+  currency: string;
+  symbol: string;
+  flag: string;
+  defaultPrice?: number;
+}
+
+export const SUPPORTED_PLAN_COUNTRIES: SupportedCountryItem[] = [
+  { code: "USA", name: "United States", currency: "USD", symbol: "$", flag: "🇺🇸", defaultPrice: 49.99 },
+  { code: "CA", name: "Canada", currency: "CAD", symbol: "C$", flag: "🇨🇦", defaultPrice: 59.99 },
+  { code: "MX", name: "Mexico", currency: "MXN", symbol: "Mex$", flag: "🇲🇽", defaultPrice: 899 },
+  { code: "UK", name: "United Kingdom", currency: "GBP", symbol: "£", flag: "🇬🇧", defaultPrice: 39.99 },
+  { code: "AU", name: "Australia", currency: "AUD", symbol: "A$", flag: "🇦🇺", defaultPrice: 69.99 },
+];
+
+export const getCurrencySymbol = (currency?: string, countryCode?: string): string => {
+  if (!currency && !countryCode) return "$";
+  const normCurr = (currency || "").toUpperCase();
+  const normCountry = (countryCode || "").toUpperCase();
+  const match = SUPPORTED_PLAN_COUNTRIES.find(
+    (c) => c.currency === normCurr || c.code === normCountry
+  );
+  if (match) return match.symbol;
+  if (normCurr === "CAD") return "C$";
+  if (normCurr === "GBP") return "£";
+  if (normCurr === "EUR") return "€";
+  if (normCurr === "AUD") return "A$";
+  if (normCurr === "MXN") return "Mex$";
+  if (normCurr === "INR") return "₹";
+  return "$";
+};
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
@@ -9,6 +61,7 @@ export interface SubscriptionPlan {
   price: number;
   discountPrice?: number | null;
   currency: string; // e.g. "USD"
+  countryPrices?: Record<string, CountryPriceConfig>;
   isActive: boolean;
   isPopular?: boolean;
   sortOrder?: number;

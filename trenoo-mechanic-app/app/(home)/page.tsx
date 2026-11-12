@@ -26,14 +26,6 @@ export default function HomePage() {
         router.replace("/find-jobs");
         return;
       }
-
-      if (mechanic.isSubscriptionPurchase !== true) {
-        router.push(
-          `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(
-            user.email || ""
-          )}`
-        );
-      }
     }
   }, [isLoading, user, mechanic, router]);
 
@@ -53,22 +45,8 @@ export default function HomePage() {
     );
   }
 
-  // If user is authenticated, check subscription before rendering dashboard
+  // If user is authenticated, render dashboard (MechanicDashboardView handles plans when unpaid)
   if (user) {
-    const isMember = mechanic?.role === "member" || !!mechanic?.ownerId;
-    if (mechanic && !isMember && mechanic.isSubscriptionPurchase !== true) {
-      return (
-        <div className="min-h-screen bg-[#FAFAFC] flex flex-col items-center justify-center p-4">
-          <div className="flex flex-col items-center gap-3">
-            <span className="w-6 h-6 border-2 border-[#F96176] border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              Redirecting to plan selection...
-            </span>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <MainLayout>
         <MechanicDashboardView />

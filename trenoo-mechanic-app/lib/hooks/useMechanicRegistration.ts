@@ -68,7 +68,7 @@ export function useMechanicRegistration(): UseMechanicRegistrationReturn {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
-  const [country, setCountry] = useState("");
+  const [country, setCountry] = useState("USA");
   const [postalCode, setPostalCode] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [experience, setExperience] = useState("");
@@ -214,11 +214,10 @@ export function useMechanicRegistration(): UseMechanicRegistrationReturn {
         if (result.success) {
           setIsSuccess(true);
           toast.success(
-            "Account created! Please choose your subscription plan to continue.",
-            { duration: 4000 }
+            "Account registered successfully! A verification email has been sent. Please verify your email, then log in.",
+            { duration: 5000 }
           );
-          const targetUrl = `/choose-plan?mechanicId=${result.mechanicId || ""}&email=${encodeURIComponent(result.email || email.trim())}`;
-          router.push(targetUrl);
+          router.push("/login");
           return true;
         } else {
           toast.error(result.message || "Registration failed. Please try again.");

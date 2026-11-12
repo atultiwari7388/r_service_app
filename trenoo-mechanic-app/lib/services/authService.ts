@@ -135,9 +135,17 @@ export async function registerMechanic(
       updated_at: now,
     });
 
+    // Send email verification link and sign out
+    try {
+      await sendEmailVerification(user);
+    } catch (verifErr) {
+      console.warn("Could not send verification email during registration:", verifErr);
+    }
+    await signOut(auth);
+
     return {
       success: true,
-      message: "Registration completed. Please choose your subscription plan.",
+      message: "Registration completed. Please verify your email and sign in.",
       user,
       mechanicId: user.uid,
       email: email,
@@ -201,43 +209,9 @@ export async function authenticateMechanic(
 
     // 3. Found in Mechanics collection
     const mechanicData = mechanicDocSnap.data() as MechanicProfile;
-
-    // 4. Verify Subscription Purchase / Workshop Membership
     const isTeamMember = mechanicData.role === "member" || !!mechanicData.ownerId;
-    if (isTeamMember && mechanicData.ownerId) {
-      // Team Member: Inherits subscription from Owner
-      try {
-        const ownerSnap = await getDoc(doc(db, "Mechanics", mechanicData.ownerId));
-        if (!ownerSnap.exists()) {
-          await signOut(auth);
-          return {
-            status: "error",
-            message: "Assigned workshop not found. Please contact your workshop owner.",
-          };
-        }
-        const ownerData = ownerSnap.data() as MechanicProfile;
-        if (ownerData.isSubscriptionPurchase !== true) {
-          await signOut(auth);
-          return {
-            status: "subscription_required",
-            message: "Your workshop's subscription is inactive. Please ask your workshop owner to renew the plan.",
-            redirectUrl: "/login",
-          };
-        }
-      } catch (ownerErr: any) {
-        console.error("Failed to verify owner subscription:", ownerErr);
-      }
-    } else if (mechanicData.isSubscriptionPurchase !== true) {
-      // Workshop Owner: Must have purchased a subscription plan
-      return {
-        status: "subscription_required",
-        message: "You have not purchased a subscription plan yet. Please choose a plan to activate your account.",
-        redirectUrl: `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(user.email || email)}`,
-        mechanicData,
-      };
-    }
 
-    // 5. If subscription is purchased/inherited, check if email is verified
+    // 4. Check if email is verified
     // (Note: Admin-created team members have emailVerified=true by default)
     if (!user.emailVerified && !isTeamMember) {
       try {
@@ -252,8 +226,9 @@ export async function authenticateMechanic(
       };
     }
 
-    // 6. Check if account is enabled
+    // 5. Check if account is enabled
     if (mechanicData.isEnabled === false) {
+      await signOut(auth);
       return {
         status: "account_deactivated",
         message: "Your account is deactivated. Please contact admin.",
@@ -261,18 +236,10 @@ export async function authenticateMechanic(
       };
     }
 
-    // Update active status
-    try {
-      await updateDoc(mechanicDocRef, {
-        active: true,
-      });
-    } catch (updateErr) {
-      console.warn("Could not update active flag:", updateErr);
-    }
-
+    // 6. Return success! Mechanics land on Home (/) where subscription state is handled
     return {
       status: "success",
-      message: "Login Successful",
+      message: "Login successful.",
       user,
       mechanicData,
     };

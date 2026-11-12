@@ -18,8 +18,13 @@ import {
   Navigation,
   AlertCircle,
   ArrowRight,
+  ShieldCheck,
+  Lock,
+  Sparkles,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { useMechanicDashboard } from "@/lib/hooks/useMechanicDashboard";
+import HomeSubscriptionPlans from "./HomeSubscriptionPlans";
 import UpcomingJobCard from "./UpcomingJobCard";
 import OngoingJobCard from "./OngoingJobCard";
 import JobOfferModal from "./JobOfferModal";
@@ -31,8 +36,32 @@ import ReassignMemberModal from "./ReassignMemberModal";
 import { FirestoreJob } from "@/types/job";
 import { APP_CONFIG } from "@/lib/constants";
 
+function formatRenewalDate(dateInput: any): string {
+  if (!dateInput) return "Active Plan";
+  let date: Date | null = null;
+  if (typeof dateInput === "string") {
+    const parsed = new Date(dateInput);
+    if (!isNaN(parsed.getTime())) date = parsed;
+  } else if (typeof dateInput === "number") {
+    const ms = dateInput < 10000000000 ? dateInput * 1000 : dateInput;
+    date = new Date(ms);
+  } else if (dateInput && typeof dateInput.toDate === "function") {
+    date = dateInput.toDate();
+  } else if (dateInput && dateInput.seconds) {
+    date = new Date(dateInput.seconds * 1000);
+  }
+  if (!date || isNaN(date.getTime())) return "Active Plan";
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function MechanicDashboardView() {
   const {
+    user,
+    hasActivePlan,
     isOnline,
     currentAddress,
     isUpdatingLocation,
@@ -103,99 +132,220 @@ export default function MechanicDashboardView() {
 
   return (
     <div className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
-      {/* 1. 24/7 HOTLINE TICKER */}
-      <div className="rounded-2xl bg-white p-3 sm:p-4 text-gray-800 border border-gray-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 text-xs font-semibold">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F96176] text-white text-[11px] font-black uppercase tracking-wider animate-pulse">
-            <Flame size={12} /> 24/7 Commercial Dispatch
-          </span>
-          <span className="text-gray-600 hidden md:inline">
-            Direct roadside breakdown requests from highway fleets &
-            owner-operators.
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2.5 text-xs">
-          <span className="text-gray-400 hidden sm:inline">
-            Emergency Dispatch:
-          </span>
-          <a
-            href={APP_CONFIG.contact.whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs transition shadow-xs"
-          >
-            <PhoneCall size={13} />
-            <span>{APP_CONFIG.contact.phoneDisplay}</span>
-          </a>
-        </div>
-      </div>
-
-      {/* 2. LIVE TERMINAL BAR: ADDRESS + ACTIVE/INACTIVE SWITCH */}
-      <div className="bg-white rounded-3xl border border-gray-200 p-4 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Real-time Address */}
-        <div className="flex items-start sm:items-center gap-3 min-w-0">
-          <div className="h-11 w-11 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-[#F96176] shrink-0">
-            <MapPin size={22} />
+      {/* 1. 24/7 HOTLINE TICKER (Hidden/commented out when mechanic has purchased an active plan) */}
+      {!hasActivePlan && (
+        <div className="rounded-2xl bg-white p-3 sm:p-4 text-gray-800 border border-gray-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 text-xs font-semibold">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F96176] text-white text-[11px] font-black uppercase tracking-wider animate-pulse">
+              <Flame size={12} /> 24/7 Commercial Dispatch
+            </span>
+            <span className="text-gray-600 hidden md:inline">
+              Direct roadside breakdown requests from highway fleets &
+              owner-operators.
+            </span>
           </div>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-                Active Service Terminal / Address
-              </span>
+          <div className="flex items-center gap-2.5 text-xs">
+            <span className="text-gray-400 hidden sm:inline">
+              Emergency Dispatch:
+            </span>
+            <a
+              href={APP_CONFIG.contact.whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs transition shadow-xs"
+            >
+              <PhoneCall size={13} />
+              <span>{APP_CONFIG.contact.phoneDisplay}</span>
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* 2. LIVE TERMINAL & MEMBERSHIP SECTION */}
+      {hasActivePlan ? (
+        /* TWO CARDS SIDE-BY-SIDE WHEN PLAN IS PURCHASED */
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Card 1: Address & Active/Inactive Duty Switch */}
+          <div className="bg-white rounded-3xl border border-gray-200 p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="h-11 w-11 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-[#F96176] shrink-0">
+                  <MapPin size={22} />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                      Active Service Terminal / Address
+                    </span>
+                    <button
+                      onClick={refreshLocation}
+                      disabled={isUpdatingLocation || !isOnline}
+                      className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition disabled:opacity-40"
+                      title="Refresh GPS Coordinates"
+                    >
+                      <RefreshCw
+                        size={13}
+                        className={isUpdatingLocation ? "animate-spin text-[#F96176]" : ""}
+                      />
+                    </button>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate mt-0.5">
+                    {isOnline
+                      ? currentAddress || "GPS Connected (Resolving Address...)"
+                      : "Offline • Duty Paused (Toggle switch to activate GPS location)"}
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            {/* Duty Switch Controller */}
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              <div className="flex flex-col">
+                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                  Mechanic Duty Status
+                </span>
+                <span
+                  className={`text-xs font-black ${
+                    isOnline ? "text-[#58BB87]" : "text-gray-400"
+                  }`}
+                >
+                  {isOnline ? "ONLINE • RECEIVING JOBS" : "OFFLINE • DUTY PAUSED"}
+                </span>
+              </div>
+
               <button
-                onClick={refreshLocation}
-                disabled={isUpdatingLocation}
-                className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition disabled:animate-spin"
-                title="Refresh GPS Coordinates"
+                type="button"
+                role="switch"
+                aria-checked={isOnline}
+                onClick={() => toggleActive(!isOnline)}
+                className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                  isOnline ? "bg-[#58BB87]" : "bg-gray-300"
+                }`}
               >
-                <RefreshCw size={13} />
+                <span
+                  className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
+                    isOnline ? "translate-x-6" : "translate-x-0"
+                  }`}
+                >
+                  <Power
+                    size={14}
+                    className={isOnline ? "text-[#58BB87]" : "text-gray-400"}
+                  />
+                </span>
               </button>
             </div>
-            <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate">
-              {currentAddress}
-            </h3>
-          </div>
-        </div>
-
-        {/* Active/Inactive Switch Controller */}
-        <div className="flex items-center gap-3 shrink-0 self-end md:self-center border-t md:border-t-0 pt-3 md:pt-0 border-gray-100 w-full md:w-auto justify-between md:justify-end">
-          <div className="flex flex-col items-end">
-            <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-              Mechanic Duty Status
-            </span>
-            <span
-              className={`text-xs font-black ${
-                isOnline ? "text-[#58BB87]" : "text-gray-400"
-              }`}
-            >
-              {isOnline ? "ONLINE • RECEIVING JOBS" : "OFFLINE • DUTY PAUSED"}
-            </span>
           </div>
 
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isOnline}
-            onClick={() => toggleActive(!isOnline)}
-            className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-              isOnline ? "bg-[#58BB87]" : "bg-gray-300"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
-                isOnline ? "translate-x-6" : "translate-x-0"
-              }`}
-            >
-              <Power
-                size={14}
-                className={isOnline ? "text-[#58BB87]" : "text-gray-400"}
-              />
-            </span>
-          </button>
+          {/* Card 2: Purchased Membership Details with View Button */}
+          <div className="bg-gradient-to-br from-emerald-50/70 via-white to-white rounded-3xl border border-emerald-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="h-11 w-11 rounded-2xl bg-emerald-100/80 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                  <ShieldCheck size={24} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
+                      Active Membership
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider">
+                      <Sparkles size={11} /> ACTIVE
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-gray-900 truncate mt-0.5">
+                    {mechanicProfile?.currentSubscription?.planName ||
+                      "Commercial Fleet Plan"}
+                  </h3>
+                  <div className="text-xs text-gray-500 font-medium">
+                    Duration: {mechanicProfile?.currentSubscription?.duration || "Monthly"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Validity and View Button */}
+            <div className="flex items-center justify-between pt-3 border-t border-emerald-100/80">
+              <div className="flex flex-col">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                  Plan Validity / Renewal
+                </span>
+                <span className="text-xs font-black text-gray-800">
+                  {mechanicProfile?.currentSubscription?.currentPeriodEnd
+                    ? `Valid until ${formatRenewalDate(mechanicProfile.currentSubscription.currentPeriodEnd)}`
+                    : "Auto-renewing active membership"}
+                </span>
+              </div>
+
+              <Link
+                href="/profile?tab=subscription"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-bold text-xs transition shadow-xs cursor-pointer"
+              >
+                <span>View</span>
+                <ArrowRight size={13} />
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* IF MECHANIC HAS NO ACTIVE PLAN: SHOW LOCKED TERMINAL + MEMBERSHIP PLANS SECTION */
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl border border-amber-200/90 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <div className="h-11 w-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+                <Lock size={22} className="animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-800">
+                    Mechanic Terminal (Locked)
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
+                    Plan Required
+                  </span>
+                </div>
+                <h3 className="text-sm sm:text-base font-bold text-gray-800 truncate">
+                  Duty Status Locked • Select a membership plan below to activate GPS & receive roadside jobs
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0 self-end md:self-center border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
+              <div className="flex flex-col items-end">
+                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                  Duty Switch
+                </span>
+                <span className="text-xs font-black text-amber-600">
+                  LOCKED
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled
+                onClick={() =>
+                  toast.error(
+                    "Please choose a membership plan below to unlock your duty status."
+                  )
+                }
+                className="relative inline-flex h-8 w-14 shrink-0 rounded-full border-2 border-transparent bg-gray-200 opacity-60 cursor-not-allowed"
+                title="Membership plan required to go online"
+              >
+                <span className="inline-block h-7 w-7 rounded-full bg-white shadow-md flex items-center justify-center text-gray-400">
+                  <Lock size={12} />
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Embedded Membership Plans */}
+          <HomeSubscriptionPlans
+            mechanicId={currentUId}
+            email={mechanicProfile?.email || user?.email || undefined}
+            userCountry={mechanicProfile?.country}
+          />
+        </div>
+      )}
 
       {/* 3. COMPACT STATS COUNTERS (Matching Flutter _compactDashboardItem) */}
       <div className="grid grid-cols-2 gap-4">

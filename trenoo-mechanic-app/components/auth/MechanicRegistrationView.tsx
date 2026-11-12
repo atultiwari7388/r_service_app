@@ -2,8 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
+import { Globe } from "lucide-react";
 import FormTextField from "@/components/auth/FormTextField";
 import { UseMechanicRegistrationReturn } from "@/lib/hooks/useMechanicRegistration";
+import { SUPPORTED_PLAN_COUNTRIES } from "@/types/subscription";
 
 export interface MechanicRegistrationViewProps {
   registrationState: UseMechanicRegistrationReturn;
@@ -214,15 +216,27 @@ export function MechanicRegistrationView({
               />
             </div>
             <div>
-              <FormTextField
-                id="reg-country"
-                hintText="Country*"
-                value={country}
-                onChange={setCountry}
-                icon="earth"
-                disabled={isLoading}
-                required
-              />
+              <div className="my-1.5 w-full">
+                <div className="relative flex items-center bg-white rounded-xl border border-gray-300 focus-within:border-[#F96176] focus-within:ring-1 focus-within:ring-[#F96176] transition shadow-xs">
+                  <div className="pl-3.5 pr-2 flex items-center justify-center text-[#F96176] shrink-0">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <select
+                    id="reg-country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    disabled={isLoading}
+                    required
+                    className="w-full py-3.5 pr-3 text-sm font-semibold text-gray-800 bg-transparent outline-none disabled:opacity-50 cursor-pointer"
+                  >
+                    {SUPPORTED_PLAN_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.code} - {c.name} ({c.currency})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 

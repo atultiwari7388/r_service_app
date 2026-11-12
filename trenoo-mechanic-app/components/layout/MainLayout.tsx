@@ -42,15 +42,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
     !!mechanic?.ownerId ||
     mechanic?.isTeamMember === true;
 
-  // Intercept unpaid mechanics attempting to access dashboard or workshop features
-  // Team members inherit active subscription from their owner
+  // Intercept unpaid mechanics attempting to access locked workshop features
+  // Allows access to Home (/) and Profile (/profile)
   useEffect(() => {
     if (!isLoading && user && mechanic) {
       if (!isMember && mechanic.isSubscriptionPurchase !== true) {
-        router.push(
-          `/choose-plan?mechanicId=${user.uid}&email=${encodeURIComponent(user.email || "")}`
-        );
-        return;
+        if (pathname !== "/" && pathname !== "/profile") {
+          toast.error("Active membership required. Please choose a plan on your dashboard.");
+          router.replace("/");
+          return;
+        }
       }
 
       // Member Access Gate: Team members can ONLY access Find Jobs and My Profile

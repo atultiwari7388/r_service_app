@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   User,
   Building,
@@ -120,9 +121,18 @@ export default function MechanicProfileView() {
     mechanicProfile?.isTeamMember === true;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<
     "details" | "subscription" | "languages" | "security" | "account"
   >("details");
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "subscription" || tabParam === "membership" || tabParam === "1") {
+      setActiveTab("subscription");
+    }
+  }, [searchParams]);
+
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
