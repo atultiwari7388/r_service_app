@@ -10,7 +10,7 @@ export type SubscriptionDuration =
   | string;
 
 export interface CountryPriceConfig {
-  countryCode: "USA" | "IN" | "MX" | "UK" | "AU" | string;
+  countryCode: "USA" | "CA" | "MX" | "UK" | "AU" | string;
   currency: string;
   symbol: string;
   price: number;
@@ -29,7 +29,7 @@ export interface SupportedCountryItem {
 
 export const SUPPORTED_PLAN_COUNTRIES: SupportedCountryItem[] = [
   { code: "USA", name: "United States", currency: "USD", symbol: "$", flag: "🇺🇸", defaultPrice: 49.99 },
-  { code: "IN", name: "India", currency: "INR", symbol: "₹", flag: "🇮🇳", defaultPrice: 3999 },
+  { code: "CA", name: "Canada", currency: "CAD", symbol: "C$", flag: "🇨🇦", defaultPrice: 59.99 },
   { code: "MX", name: "Mexico", currency: "MXN", symbol: "Mex$", flag: "🇲🇽", defaultPrice: 899 },
   { code: "UK", name: "United Kingdom", currency: "GBP", symbol: "£", flag: "🇬🇧", defaultPrice: 39.99 },
   { code: "AU", name: "Australia", currency: "AUD", symbol: "A$", flag: "🇦🇺", defaultPrice: 69.99 },
@@ -43,11 +43,12 @@ export const getCurrencySymbol = (currency?: string, countryCode?: string): stri
     (c) => c.currency === normCurr || c.code === normCountry
   );
   if (match) return match.symbol;
-  if (normCurr === "INR") return "₹";
+  if (normCurr === "CAD") return "C$";
   if (normCurr === "GBP") return "£";
   if (normCurr === "EUR") return "€";
   if (normCurr === "AUD") return "A$";
   if (normCurr === "MXN") return "Mex$";
+  if (normCurr === "INR") return "₹";
   return "$";
 };
 

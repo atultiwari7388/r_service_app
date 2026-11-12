@@ -76,6 +76,17 @@ export default function SubscriptionPlanModal({
   const [sortOrder, setSortOrder] = useState<string>("0");
 
   // Multi-Currency / Country-wise Pricing State
+  const buildDefaultCountryPrices = (): Record<
+    string,
+    { enabled: boolean; price: string; discountPrice: string }
+  > => {
+    const res: Record<string, { enabled: boolean; price: string; discountPrice: string }> = {};
+    SUPPORTED_PLAN_COUNTRIES.forEach((c) => {
+      res[c.code] = { enabled: c.code === "USA", price: "", discountPrice: "" };
+    });
+    return res;
+  };
+
   const [activeCountryTab, setActiveCountryTab] = useState<string>("USA");
   const [countryPrices, setCountryPrices] = useState<
     Record<
@@ -86,13 +97,7 @@ export default function SubscriptionPlanModal({
         discountPrice: string;
       }
     >
-  >({
-    USA: { enabled: true, price: "", discountPrice: "" },
-    IN: { enabled: false, price: "", discountPrice: "" },
-    MX: { enabled: false, price: "", discountPrice: "" },
-    UK: { enabled: false, price: "", discountPrice: "" },
-    AU: { enabled: false, price: "", discountPrice: "" },
-  });
+  >(buildDefaultCountryPrices);
 
   // Owner / Driver specific
   const [maxVehicles, setMaxVehicles] = useState<string>("5");
@@ -216,13 +221,7 @@ export default function SubscriptionPlanModal({
       setIsPopular(false);
       setSortOrder("0");
 
-      setCountryPrices({
-        USA: { enabled: true, price: "", discountPrice: "" },
-        IN: { enabled: false, price: "", discountPrice: "" },
-        MX: { enabled: false, price: "", discountPrice: "" },
-        UK: { enabled: false, price: "", discountPrice: "" },
-        AU: { enabled: false, price: "", discountPrice: "" },
-      });
+      setCountryPrices(buildDefaultCountryPrices());
       setActiveCountryTab("USA");
 
       if (activeType === "trenoops") {
@@ -644,7 +643,7 @@ export default function SubscriptionPlanModal({
                       </h4>
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Configure custom rates and discounts per country (USA, IN, MX, UK, AU)
+                      Configure custom rates and discounts per country ({SUPPORTED_PLAN_COUNTRIES.map((c) => c.code).join(", ")})
                     </p>
                   </div>
 
