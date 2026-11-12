@@ -45,7 +45,8 @@ class _FindMechanicState extends State<FindMechanic> {
             stream: FirebaseFirestore.instance
                 .collection('Users')
                 .doc((widget.controller.role == 'SubOwner' &&
-                        (FirebaseAuth.instance.currentUser?.uid.isNotEmpty ?? false))
+                        (FirebaseAuth.instance.currentUser?.uid.isNotEmpty ??
+                            false))
                     ? FirebaseAuth.instance.currentUser!.uid
                     : widget.currentUId)
                 .collection('Vehicles')
@@ -396,9 +397,8 @@ class _FindMechanicState extends State<FindMechanic> {
   void showServiceAndNetworkOptions(
       BuildContext context, DashboardController serviceController) {
     // Initialize filtered options sorted alphabetically
-    List<Map<String, dynamic>> sortedOptions =
-        List<Map<String, dynamic>>.from(
-            serviceController.allServiceAndNetworkOptions);
+    List<Map<String, dynamic>> sortedOptions = List<Map<String, dynamic>>.from(
+        serviceController.allServiceAndNetworkOptions);
     sortedOptions.sort((a, b) => (a['title'] ?? '')
         .toString()
         .toLowerCase()

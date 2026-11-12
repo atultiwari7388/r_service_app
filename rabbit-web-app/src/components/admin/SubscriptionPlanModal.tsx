@@ -779,8 +779,8 @@ export default function SubscriptionPlanModal({
                             <label className="block text-xs font-semibold text-gray-700 mb-1">
                               Regular Price ({activeCountry.currency}) <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                              <span className="absolute left-3.5 top-2.5 text-gray-500 font-bold text-sm">
+                            <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#F96176] focus-within:border-transparent bg-white px-3.5 py-2.5 transition">
+                              <span className="text-gray-500 font-bold text-sm select-none mr-2 shrink-0">
                                 {activeCountry.symbol}
                               </span>
                               <input
@@ -804,7 +804,7 @@ export default function SubscriptionPlanModal({
                                     : "49.99"
                                 }
                                 required
-                                className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-sm font-bold"
+                                className="w-full p-0 border-none outline-none focus:outline-none focus:ring-0 text-sm font-bold bg-transparent text-gray-900"
                               />
                             </div>
                           </div>
@@ -814,8 +814,8 @@ export default function SubscriptionPlanModal({
                             <label className="block text-xs font-semibold text-gray-700 mb-1">
                               Discounted / Promo Price ({activeCountry.currency})
                             </label>
-                            <div className="relative">
-                              <span className="absolute left-3.5 top-2.5 text-gray-500 font-bold text-sm">
+                            <div className="flex items-center rounded-xl border border-gray-300 focus-within:ring-2 focus-within:ring-[#F96176] focus-within:border-transparent bg-white px-3.5 py-2.5 transition">
+                              <span className="text-gray-500 font-bold text-sm select-none mr-2 shrink-0">
                                 {activeCountry.symbol}
                               </span>
                               <input
@@ -834,7 +834,7 @@ export default function SubscriptionPlanModal({
                                   }));
                                 }}
                                 placeholder="Optional promo price"
-                                className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-sm font-bold text-emerald-600"
+                                className="w-full p-0 border-none outline-none focus:outline-none focus:ring-0 text-sm font-bold bg-transparent text-emerald-600"
                               />
                             </div>
                           </div>

@@ -319,13 +319,13 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     ),
                   ),
                   SizedBox(height: 16.h),
-                  /*
+
                   // Commented out: Map place picker disabled (active only on Registration and Find Mechanic)
                   CustomButton(
                       color: kPrimary.withOpacity(0.8),
                       text: "Select Address From Map",
                       onPress: selectAddressFromMap),
-                  */
+
                   const Spacer(),
                   CustomButton(
                     color: kSecondary.withOpacity(0.8),
@@ -366,7 +366,8 @@ Future<String> getAddressFromLatLng(double lat, double lng) async {
   if (response.statusCode == 200) {
     final data = json.decode(response.body);
     if (data['results'] != null && data['results'].isNotEmpty) {
-      final formatted = data['results'][0]['formatted_address']?.toString() ?? 'Address not found';
+      final formatted = data['results'][0]['formatted_address']?.toString() ??
+          'Address not found';
       _reverseGeocodeCache[cacheKey] = formatted;
       return formatted;
     }
