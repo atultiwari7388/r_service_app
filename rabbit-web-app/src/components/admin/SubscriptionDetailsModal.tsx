@@ -23,7 +23,7 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
-import { SubscriptionPurchaseRecord } from "@/types/subscription";
+import { SubscriptionPurchaseRecord, getCurrencySymbol } from "@/types/subscription";
 
 interface SubscriptionDetailsModalProps {
   isOpen: boolean;
@@ -130,14 +130,14 @@ export default function SubscriptionDetailsModal({
                 Amount Paid
               </span>
               <div className="text-2xl font-black text-gray-900 tracking-tight">
-                ${subscriber.amountPaid?.toFixed(2)}{" "}
+                {getCurrencySymbol(subscriber.currency)}{subscriber.amountPaid?.toFixed(2)}{" "}
                 <span className="text-xs font-bold text-gray-500">
                   {subscriber.currency?.toUpperCase() || "USD"}
                 </span>
               </div>
               {subscriber.originalPrice && subscriber.originalPrice > subscriber.amountPaid && (
                 <span className="text-xs line-through text-gray-400">
-                  Regular ${subscriber.originalPrice.toFixed(2)}
+                  Regular {getCurrencySymbol(subscriber.currency)}{subscriber.originalPrice.toFixed(2)}
                 </span>
               )}
             </div>

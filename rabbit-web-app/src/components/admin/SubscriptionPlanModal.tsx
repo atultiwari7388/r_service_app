@@ -16,6 +16,7 @@ import {
   Layers,
   Sparkles,
   Info,
+  Globe,
 } from "lucide-react";
 import {
   collection,
@@ -26,7 +27,12 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import toast from "react-hot-toast";
-import { SubscriptionPlan, SubscriptionPlanType } from "@/types/subscription";
+import {
+  SubscriptionPlan,
+  SubscriptionPlanType,
+  SUPPORTED_PLAN_COUNTRIES,
+  CountryPriceConfig,
+} from "@/types/subscription";
 
 interface Props {
   isOpen: boolean;
@@ -68,6 +74,25 @@ export default function SubscriptionPlanModal({
   const [isActive, setIsActive] = useState(true);
   const [isPopular, setIsPopular] = useState(false);
   const [sortOrder, setSortOrder] = useState<string>("0");
+
+  // Multi-Currency / Country-wise Pricing State
+  const [activeCountryTab, setActiveCountryTab] = useState<string>("USA");
+  const [countryPrices, setCountryPrices] = useState<
+    Record<
+      string,
+      {
+        enabled: boolean;
+        price: string;
+        discountPrice: string;
+      }
+    >
+  >({
+    USA: { enabled: true, price: "", discountPrice: "" },
+    IN: { enabled: false, price: "", discountPrice: "" },
+    MX: { enabled: false, price: "", discountPrice: "" },
+    UK: { enabled: false, price: "", discountPrice: "" },
+    AU: { enabled: false, price: "", discountPrice: "" },
+  });
 
   // Owner / Driver specific
   const [maxVehicles, setMaxVehicles] = useState<string>("5");
@@ -136,6 +161,48 @@ export default function SubscriptionPlanModal({
 
       setFeatures(initialData.features || []);
       setTermsAndConditions(initialData.termsAndConditions || []);
+
+      // Country Prices initialization
+      const initialCP: Record<
+        string,
+        { enabled: boolean; price: string; discountPrice: string }
+      > = {};
+
+      SUPPORTED_PLAN_COUNTRIES.forEach((c) => {
+        const existing = initialData.countryPrices?.[c.code];
+        if (existing) {
+          initialCP[c.code] = {
+            enabled: existing.enabled !== false,
+            price: existing.price !== undefined ? String(existing.price) : "",
+            discountPrice:
+              existing.discountPrice !== undefined &&
+              existing.discountPrice !== null
+                ? String(existing.discountPrice)
+                : "",
+          };
+        } else if (
+          c.code === "USA" ||
+          (initialData.currency && c.currency === initialData.currency)
+        ) {
+          // Backward compatibility for plans saved with only base price
+          initialCP[c.code] = {
+            enabled: true,
+            price:
+              initialData.price !== undefined ? String(initialData.price) : "",
+            discountPrice:
+              initialData.discountPrice !== undefined &&
+              initialData.discountPrice !== null
+                ? String(initialData.discountPrice)
+                : "",
+          };
+        } else {
+          initialCP[c.code] = { enabled: false, price: "", discountPrice: "" };
+        }
+      });
+      setCountryPrices(initialCP);
+      const firstEnabled =
+        Object.keys(initialCP).find((k) => initialCP[k].enabled) || "USA";
+      setActiveCountryTab(firstEnabled);
     } else {
       // Default reset
       setName("");
@@ -148,6 +215,15 @@ export default function SubscriptionPlanModal({
       setIsActive(true);
       setIsPopular(false);
       setSortOrder("0");
+
+      setCountryPrices({
+        USA: { enabled: true, price: "", discountPrice: "" },
+        IN: { enabled: false, price: "", discountPrice: "" },
+        MX: { enabled: false, price: "", discountPrice: "" },
+        UK: { enabled: false, price: "", discountPrice: "" },
+        AU: { enabled: false, price: "", discountPrice: "" },
+      });
+      setActiveCountryTab("USA");
 
       if (activeType === "trenoops") {
         setIsUnlimitedVehicles(false);
@@ -220,23 +296,67 @@ export default function SubscriptionPlanModal({
       return;
     }
 
-    const parsedPrice = parseFloat(price);
-    if (isNaN(parsedPrice) || parsedPrice < 0) {
-      toast.error("Please enter a valid regular price");
+    // Validate Country-Wise Prices
+    const configuredCountries: Record<string, CountryPriceConfig> = {};
+    let hasAtLeastOneValidPrice = false;
+
+    for (const c of SUPPORTED_PLAN_COUNTRIES) {
+      const entry = countryPrices[c.code];
+      if (entry && entry.enabled) {
+        if (!entry.price || entry.price.trim() === "") {
+          toast.error(
+            `Please enter a price for enabled country: ${c.name} (${c.code})`
+          );
+          setActiveCountryTab(c.code);
+          return;
+        }
+        const p = parseFloat(entry.price);
+        if (isNaN(p) || p < 0) {
+          toast.error(`Please enter a valid price for ${c.name} (${c.code})`);
+          setActiveCountryTab(c.code);
+          return;
+        }
+
+        const d =
+          entry.discountPrice.trim() !== ""
+            ? parseFloat(entry.discountPrice)
+            : null;
+        if (d !== null && (isNaN(d) || d < 0)) {
+          toast.error(
+            `Please enter a valid discounted price for ${c.name} (${c.code})`
+          );
+          setActiveCountryTab(c.code);
+          return;
+        }
+        if (d !== null && d > p) {
+          toast.error(
+            `Discounted price cannot exceed regular price for ${c.name} (${c.code})`
+          );
+          setActiveCountryTab(c.code);
+          return;
+        }
+
+        configuredCountries[c.code] = {
+          countryCode: c.code,
+          currency: c.currency,
+          symbol: c.symbol,
+          price: p,
+          discountPrice: d,
+          enabled: true,
+        };
+        hasAtLeastOneValidPrice = true;
+      }
+    }
+
+    if (!hasAtLeastOneValidPrice) {
+      toast.error(
+        "Please enable and enter pricing for at least one country (e.g. USA)."
+      );
       return;
     }
 
-    const parsedDiscount =
-      discountPrice.trim() !== "" ? parseFloat(discountPrice) : null;
-    if (parsedDiscount !== null && (isNaN(parsedDiscount) || parsedDiscount < 0)) {
-      toast.error("Please enter a valid discounted price");
-      return;
-    }
-
-    if (parsedDiscount !== null && parsedDiscount > parsedPrice) {
-      toast.error("Discounted price cannot be greater than regular price");
-      return;
-    }
+    const baseEntry =
+      configuredCountries["USA"] || Object.values(configuredCountries)[0];
 
     const finalDuration =
       duration === "Custom" ? customDuration.trim() || "Monthly" : duration;
@@ -247,9 +367,10 @@ export default function SubscriptionPlanModal({
         name: name.trim(),
         type,
         duration: finalDuration,
-        price: parsedPrice,
-        discountPrice: parsedDiscount,
-        currency: currency.trim() || "USD",
+        price: baseEntry.price,
+        discountPrice: baseEntry.discountPrice ?? null,
+        currency: baseEntry.currency,
+        countryPrices: configuredCountries,
         description: description.trim(),
         isActive,
         isPopular,
@@ -510,61 +631,226 @@ export default function SubscriptionPlanModal({
                 )}
               </div>
 
-              {/* Currency */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Currency
-                </label>
-                <input
-                  type="text"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                  placeholder="USD"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-sm uppercase font-semibold"
-                />
-              </div>
+              {/* Multi-Currency Country-Wise Pricing Section */}
+              <div className="sm:col-span-2 bg-gradient-to-br from-slate-50 to-gray-50/70 rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-rose-100 text-[#F96176]">
+                        <Globe className="w-4 h-4" />
+                      </span>
+                      <h4 className="text-sm font-bold text-gray-900">
+                        Country-Wise Currency Pricing
+                      </h4>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Configure custom rates and discounts per country (USA, IN, MX, UK, AU)
+                    </p>
+                  </div>
 
-              {/* Regular Price */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Regular Price ({currency}) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-gray-400 font-semibold text-sm">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="49.99"
-                    required
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-sm font-bold"
-                  />
+                  {/* Summary badges */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {SUPPORTED_PLAN_COUNTRIES.map((c) => {
+                      const cp = countryPrices[c.code];
+                      const isSet = cp?.enabled && cp?.price;
+                      return (
+                        <span
+                          key={c.code}
+                          onClick={() => setActiveCountryTab(c.code)}
+                          className={`cursor-pointer px-2 py-0.5 rounded-md text-[11px] font-bold transition flex items-center gap-1 ${
+                            activeCountryTab === c.code
+                              ? "bg-[#F96176] text-white shadow-xs"
+                              : isSet
+                              ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                              : "bg-gray-200/70 text-gray-400 hover:bg-gray-200"
+                          }`}
+                          title={`Click to edit ${c.name} (${c.currency}) pricing`}
+                        >
+                          <span>{c.flag}</span>
+                          <span>{c.code}</span>
+                          {isSet && (
+                            <span className="text-[10px] opacity-90">
+                              {c.symbol}{cp.discountPrice || cp.price}
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Discount / Offer Price */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Discounted / Promo Price ({currency})
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-gray-400 font-semibold text-sm">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={discountPrice}
-                    onChange={(e) => setDiscountPrice(e.target.value)}
-                    placeholder="39.99 (optional)"
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-sm font-bold text-emerald-600"
-                  />
+                {/* Country Tabs */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {SUPPORTED_PLAN_COUNTRIES.map((c) => {
+                    const cp = countryPrices[c.code];
+                    const isSelected = activeCountryTab === c.code;
+                    const isConfigured = cp?.enabled && cp?.price;
+
+                    return (
+                      <button
+                        key={c.code}
+                        type="button"
+                        onClick={() => setActiveCountryTab(c.code)}
+                        className={`p-2.5 rounded-xl border-2 text-left transition flex flex-col justify-between ${
+                          isSelected
+                            ? "border-[#F96176] bg-white shadow-sm ring-2 ring-[#F96176]/15"
+                            : isConfigured
+                            ? "border-emerald-200 bg-white hover:border-emerald-300"
+                            : "border-gray-200 bg-gray-100/60 hover:bg-white hover:border-gray-300 opacity-70"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-lg">{c.flag}</span>
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              isConfigured
+                                ? "bg-emerald-500"
+                                : cp?.enabled
+                                ? "bg-amber-400"
+                                : "bg-gray-300"
+                            }`}
+                          />
+                        </div>
+                        <div className="mt-1">
+                          <div className="text-xs font-bold text-gray-900 leading-tight">
+                            {c.code} <span className="text-[10px] text-gray-500 font-normal">({c.currency})</span>
+                          </div>
+                          <div className="text-[11px] font-semibold text-gray-700 mt-0.5 truncate">
+                            {isConfigured ? `${c.symbol}${cp.discountPrice || cp.price}` : "Not set"}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {/* Active Country Config Card */}
+                {(() => {
+                  const activeCountry =
+                    SUPPORTED_PLAN_COUNTRIES.find((c) => c.code === activeCountryTab) ||
+                    SUPPORTED_PLAN_COUNTRIES[0];
+                  const cData = countryPrices[activeCountry.code] || {
+                    enabled: false,
+                    price: "",
+                    discountPrice: "",
+                  };
+
+                  return (
+                    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{activeCountry.flag}</span>
+                          <div>
+                            <span className="text-sm font-bold text-gray-900">
+                              {activeCountry.name} ({activeCountry.code})
+                            </span>
+                            <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                              Currency: {activeCountry.currency} ({activeCountry.symbol})
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Enable for Country Checkbox */}
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={cData.enabled}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setCountryPrices((prev) => ({
+                                ...prev,
+                                [activeCountry.code]: {
+                                  ...prev[activeCountry.code],
+                                  enabled: checked,
+                                },
+                              }));
+                            }}
+                            className="w-4 h-4 rounded text-[#F96176] focus:ring-[#F96176] border-gray-300"
+                          />
+                          <span className="text-xs font-bold text-gray-700">
+                            Enable Pricing
+                          </span>
+                        </label>
+                      </div>
+
+                      {cData.enabled ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                          {/* Regular Price */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              Regular Price ({activeCountry.currency}) <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-2.5 text-gray-500 font-bold text-sm">
+                                {activeCountry.symbol}
+                              </span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={cData.price}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCountryPrices((prev) => ({
+                                    ...prev,
+                                    [activeCountry.code]: {
+                                      ...prev[activeCountry.code],
+                                      price: val,
+                                    },
+                                  }));
+                                }}
+                                placeholder={
+                                  activeCountry.defaultPrice
+                                    ? String(activeCountry.defaultPrice)
+                                    : "49.99"
+                                }
+                                required
+                                className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-sm font-bold"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Discounted Price */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              Discounted / Promo Price ({activeCountry.currency})
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-2.5 text-gray-500 font-bold text-sm">
+                                {activeCountry.symbol}
+                              </span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={cData.discountPrice}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCountryPrices((prev) => ({
+                                    ...prev,
+                                    [activeCountry.code]: {
+                                      ...prev[activeCountry.code],
+                                      discountPrice: val,
+                                    },
+                                  }));
+                                }}
+                                placeholder="Optional promo price"
+                                className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-sm font-bold text-emerald-600"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-amber-50 rounded-lg border border-amber-200/80 text-amber-800 text-xs flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 shrink-0" />
+                          <span>
+                            Pricing for <strong>{activeCountry.name}</strong> is currently disabled. Check the box above to enable and set custom rates in {activeCountry.currency}.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Display Order */}

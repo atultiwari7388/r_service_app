@@ -37,9 +37,15 @@ import {
   Info,
   SlidersHorizontal,
   ExternalLink,
+  Globe,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { SubscriptionPlan, SubscriptionPlanType } from "@/types/subscription";
+import {
+  SubscriptionPlan,
+  SubscriptionPlanType,
+  SUPPORTED_PLAN_COUNTRIES,
+  getCurrencySymbol,
+} from "@/types/subscription";
 import SubscriptionPlanModal from "./SubscriptionPlanModal";
 
 interface Props {
@@ -63,6 +69,7 @@ export default function SubscriptionPlansManager({
     forcedType || "all"
   );
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [selectedCountryFilter, setSelectedCountryFilter] = useState<string>("ALL");
   const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
 
   // Modal State
@@ -173,6 +180,16 @@ export default function SubscriptionPlansManager({
       if (!forcedType && selectedTypeFilter !== "all") {
         if (plan.type !== selectedTypeFilter) return false;
       }
+      // Country / Currency filter
+      if (selectedCountryFilter !== "ALL") {
+        if (plan.countryPrices && Object.keys(plan.countryPrices).length > 0) {
+          if (!plan.countryPrices[selectedCountryFilter]?.enabled) return false;
+        } else if (selectedCountryFilter !== "USA") {
+          // Legacy plans without countryPrices only have USD (USA)
+          return false;
+        }
+      }
+
       // Status filter
       if (statusFilter === "active" && !plan.isActive) return false;
       if (statusFilter === "inactive" && plan.isActive) return false;
@@ -192,7 +209,7 @@ export default function SubscriptionPlansManager({
       }
       return true;
     });
-  }, [plans, forcedType, selectedTypeFilter, statusFilter, searchQuery]);
+  }, [plans, forcedType, selectedTypeFilter, selectedCountryFilter, statusFilter, searchQuery]);
 
   // Statistics
   const totalCount = plans.length;
@@ -364,6 +381,23 @@ export default function SubscriptionPlansManager({
             </div>
           )}
 
+          {/* Country / Currency Filter */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-xl px-2 py-1">
+            <Globe className="w-3.5 h-3.5 text-gray-500" />
+            <select
+              value={selectedCountryFilter}
+              onChange={(e) => setSelectedCountryFilter(e.target.value)}
+              className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none border-none cursor-pointer py-1"
+            >
+              <option value="ALL">🌐 Currency: Base / All</option>
+              {SUPPORTED_PLAN_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.code} ({c.currency} - {c.symbol})
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Status Filter */}
           <select
             value={statusFilter}
@@ -407,12 +441,34 @@ export default function SubscriptionPlansManager({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPlans.map((plan) => {
             const isOwner = plan.type === "trenoops";
+
+            // Resolve display price & currency based on selected country or fallback
+            const matchedCountryPrice =
+              selectedCountryFilter !== "ALL" && plan.countryPrices?.[selectedCountryFilter]?.enabled
+                ? plan.countryPrices[selectedCountryFilter]
+                : plan.countryPrices?.["USA"]?.enabled
+                ? plan.countryPrices["USA"]
+                : plan.countryPrices
+                ? Object.values(plan.countryPrices).find((c) => c.enabled)
+                : undefined;
+
+            const displayPrice = matchedCountryPrice ? matchedCountryPrice.price : plan.price;
+            const displayDiscountPrice = matchedCountryPrice
+              ? matchedCountryPrice.discountPrice
+              : plan.discountPrice;
+            const displaySymbol = matchedCountryPrice
+              ? matchedCountryPrice.symbol
+              : getCurrencySymbol(plan.currency);
+            const displayCurrency = matchedCountryPrice
+              ? matchedCountryPrice.currency
+              : plan.currency || "USD";
+
             const hasDiscount =
-              plan.discountPrice !== undefined &&
-              plan.discountPrice !== null &&
-              plan.discountPrice < plan.price;
+              displayDiscountPrice !== undefined &&
+              displayDiscountPrice !== null &&
+              displayDiscountPrice < displayPrice;
             const savingsPercent = hasDiscount
-              ? Math.round(((plan.price - (plan.discountPrice || 0)) / plan.price) * 100)
+              ? Math.round(((displayPrice - (displayDiscountPrice || 0)) / displayPrice) * 100)
               : 0;
 
             const termsOpen = expandedTerms[plan.id || ""] || false;
@@ -497,10 +553,10 @@ export default function SubscriptionPlansManager({
                       {hasDiscount ? (
                         <>
                           <span className="text-2xl font-black text-gray-900">
-                            ${plan.discountPrice?.toFixed(2)}
+                            {displaySymbol}{displayDiscountPrice?.toFixed(2)}
                           </span>
                           <span className="text-sm font-semibold text-gray-400 line-through">
-                            ${plan.price.toFixed(2)}
+                            {displaySymbol}{displayPrice.toFixed(2)}
                           </span>
                           <span className="ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
                             Save {savingsPercent}%
@@ -508,13 +564,44 @@ export default function SubscriptionPlansManager({
                         </>
                       ) : (
                         <span className="text-2xl font-black text-gray-900">
-                          ${plan.price.toFixed(2)}
+                          {displaySymbol}{displayPrice.toFixed(2)}
                         </span>
                       )}
                       <span className="text-xs font-semibold text-gray-500">
                         / {plan.duration}
                       </span>
+                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 bg-gray-200/80 text-gray-700 rounded ml-1">
+                        {displayCurrency}
+                      </span>
                     </div>
+
+                    {/* Multi-Currency Badges */}
+                    {plan.countryPrices && Object.keys(plan.countryPrices).length > 0 && (
+                      <div className="mt-2.5 pt-2 border-t border-gray-200/60 flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-semibold text-gray-400">Currencies:</span>
+                        {SUPPORTED_PLAN_COUNTRIES.map((c) => {
+                          const cp = plan.countryPrices?.[c.code];
+                          if (!cp || !cp.enabled) return null;
+                          const isSelected = selectedCountryFilter === c.code;
+                          return (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => setSelectedCountryFilter(c.code)}
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
+                                isSelected
+                                  ? "bg-[#F96176] text-white shadow-2xs"
+                                  : "bg-white border border-gray-200 text-gray-700 hover:border-gray-400"
+                              }`}
+                              title={`${c.name} (${c.currency}): ${cp.symbol}${cp.discountPrice || cp.price}`}
+                            >
+                              <span>{c.flag}</span>
+                              <span>{cp.symbol}{cp.discountPrice || cp.price}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Scope Badges */}
