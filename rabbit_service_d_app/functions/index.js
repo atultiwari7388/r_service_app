@@ -1551,8 +1551,21 @@ exports.sendNewMechanicNotification = functions.firestore
               },
               data: {
                 jobId: context.params.jobId,
-                // type: "new_job",
-                type: "default",
+                type: "new_job",
+              },
+              apns: {
+                payload: {
+                  aps: {
+                    sound: "new_job_sound.mp3",
+                    badge: 1,
+                  },
+                },
+              },
+              android: {
+                notification: {
+                  channelId: "rabbit_services_mechanic_new_job",
+                  sound: "new_job_sound",
+                },
               },
             };
 
@@ -1560,8 +1573,7 @@ exports.sendNewMechanicNotification = functions.firestore
             if (token) {
               notificationPromises.push(
                 admin.messaging().send({
-                  data: payload.data,
-                  notification: payload.notification,
+                  ...payload,
                   token: token,
                 })
               );
@@ -1856,8 +1868,21 @@ exports.sendAgainNewMechanicNotification = async (
             },
             data: {
               jobId: context.params.jobId,
-              // type: "new_job",
-              type: "default",
+              type: "new_job",
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: "new_job_sound.mp3",
+                  badge: 1,
+                },
+              },
+            },
+            android: {
+              notification: {
+                channelId: "rabbit_services_mechanic_new_job",
+                sound: "new_job_sound",
+              },
             },
           };
 
@@ -1868,8 +1893,7 @@ exports.sendAgainNewMechanicNotification = async (
           if (token) {
             notificationPromises.push(
               admin.messaging().send({
-                data: payload.data,
-                notification: payload.notification,
+                ...payload,
                 token: token,
               })
             );
@@ -2005,16 +2029,29 @@ exports.mechanicAcceptJobNotification = functions.firestore
         },
         data: {
           jobId: jobId,
-          type: "default_sound",
+          type: "offer_accepted",
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: "offer_accepted_sound.mp3",
+              badge: 1,
+            },
+          },
+        },
+        android: {
+          notification: {
+            channelId: "rabbit_services_driver_offer_accepted",
+            sound: "offer_accepted_sound",
+          },
         },
       };
 
       // Send notification to the user
       if (userToken) {
         await admin.messaging().send({
+          ...payload,
           token: userToken,
-          notification: payload.notification,
-          data: payload.data,
         });
 
         console.log(`Notification sent to user: ${userId} for job: ${jobId}`);
@@ -2074,14 +2111,27 @@ exports.userAcceptMechanicOfferNotification = functions.firestore
             jobId: jobId,
             type: "offer_accepted", // Added type field
           },
+          apns: {
+            payload: {
+              aps: {
+                sound: "offer_accepted_sound.mp3",
+                badge: 1,
+              },
+            },
+          },
+          android: {
+            notification: {
+              channelId: "rabbit_services_mechanic_offer_accepted",
+              sound: "offer_accepted_sound",
+            },
+          },
         };
 
         // Send notification to the mechanic
         if (mechanicToken) {
           await admin.messaging().send({
+            ...payload,
             token: mechanicToken,
-            notification: payload.notification,
-            data: payload.data,
           });
 
           console.log(
