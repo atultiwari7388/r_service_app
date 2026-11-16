@@ -11,6 +11,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  addDoc,
   collection,
   query,
   where,
@@ -148,6 +149,33 @@ export async function registerMechanic(
       created_at: now,
       updated_at: now,
     });
+
+    // Save initial company in Mechanics/{uid}/myCompanies subcollection
+    if (data.companyName?.trim()) {
+      await addDoc(collection(db, "Mechanics", user.uid, "myCompanies"), {
+        companyName: data.companyName.trim(),
+        dot: data.dot?.trim() || "",
+        mc: data.mc?.trim() || "",
+        nsc: data.nsc?.trim() || "",
+        cvor: data.cvor?.trim() || "",
+        nir: data.nir?.trim() || "",
+        cbsa: data.cbsa?.trim() || "",
+        rfc: data.rfc?.trim() || "",
+        ftp: data.ftp?.trim() || "",
+        voln: data.voln?.trim() || "",
+        abn: data.abn?.trim() || "",
+        hva: data.hva?.trim() || "",
+        address: data.address?.trim() || "",
+        city: data.city.trim(),
+        state: data.state.trim(),
+        country: data.country.trim(),
+        postalCode: data.postalCode?.trim() || "",
+        isDefault: true,
+        isActive: true,
+        created_at: now,
+        updated_at: now,
+      });
+    }
 
     // Send email verification link and sign out
     try {

@@ -21,6 +21,7 @@ import {
   Lock,
   LayoutDashboard,
   Wrench,
+  Building2,
 } from "lucide-react";
 import { SIDEBAR_MENU_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const MENU_ICONS: Record<string, React.ReactNode> = {
   jobs: <Briefcase size={18} />,
   "find-jobs": <Briefcase size={18} />,
   "my-services": <Wrench size={18} />,
+  "my-companies": <Building2 size={18} />,
   invoice: <FileText size={18} />,
   check: <CheckSquare size={18} />,
   inspections: <ClipboardCheck size={18} />,

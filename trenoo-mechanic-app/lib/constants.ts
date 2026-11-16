@@ -52,6 +52,12 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItem[] = [
     description: "Commercial repair capabilities and emergency specialties",
   },
   {
+    key: "my-companies",
+    label: "My Companies",
+    href: "/my-companies",
+    description: "Manage company profiles, active status, DOT/MC credentials",
+  },
+  {
     key: "invoice",
     label: "Invoice",
     href: "/invoice",
