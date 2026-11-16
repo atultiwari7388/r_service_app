@@ -61,7 +61,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         }
       }
 
-      // Member Access Gate: Team members can ONLY access Find Jobs and My Profile
+      // Member Access Gate: Team members can ONLY access Jobs and My Profile
       if (isMember) {
         const isRestricted = RESTRICTED_MEMBER_ROUTES.some((route) =>
           pathname.startsWith(route)
@@ -71,13 +71,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
           toast.error(
             "Access restricted: This section is available only to the Shop Owner."
           );
-          router.replace("/find-jobs");
+          router.replace("/jobs");
           return;
         }
 
-        // If member visits root '/', seamlessly route them to Find Jobs
+        // If member visits root '/', seamlessly route them to Jobs
         if (pathname === "/") {
-          router.replace("/find-jobs");
+          router.replace("/jobs");
         }
       }
     }
@@ -101,7 +101,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             >
               <Menu size={22} />
             </button>
-            <Link href={isMember ? "/find-jobs" : "/"} className="flex items-center">
+            <Link href={isMember ? "/jobs" : "/"} className="flex items-center">
               <Image
                 src="/assets/treno_mechanic_logo.png"
                 alt="Treno Mechanic"

@@ -87,6 +87,15 @@ export function useMechanicDashboard() {
   const [isLoadingJobs, setIsLoadingJobs] = useState<boolean>(true);
   const [cancelReasons, setCancelReasons] = useState<string[]>([]);
 
+  // Real-time 1-second ticker to invalidate & auto-hide jobs after 5 minutes (300s) matching Flutter
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Synchronize mechanic online status & saved location from Firestore profile
   useEffect(() => {
     if (mechanicProfile) {
@@ -348,10 +357,20 @@ export function useMechanicDashboard() {
   }, [mechanicProfile?.selected_services]);
 
   // Upcoming Jobs (Filtered according to Flutter dashboard_screen.dart rules)
+  // Strictly enforces:
+  // 1. Mechanic must have registered workshop services (selected_services)
+  // 2. Job's selectedService must match mechanic's registered services
+  // 3. Job is only visible for 5 minutes (300s) from creation time; auto-hidden afterwards
+  // 4. Excluded if mechanic already made an offer (status == 1)
+  // 5. Excluded if beyond nearby dispatch radius
   const upcomingJobs = useMemo(() => {
     if (!isOnline) return [];
 
-    // 1. Filter by status, offers, services, and distance
+    // Flutter dashboard_screen.dart lines 89-120:
+    // If mechanic has not selected any services yet, show 0 jobs until they add services!
+    if (mechanicServices.length === 0) return [];
+
+    // Filter by status, offers, services, and distance
     const isMember = mechanicProfile?.role === "member" || !!mechanicProfile?.ownerId;
     const allowDirect = mechanicProfile?.allowDirectJobAcceptance === true;
 
@@ -379,12 +398,30 @@ export function useMechanicDashboard() {
           }
         }
 
-        // Service match check (if mechanic has selected_services specified)
-        if (
-          mechanicServices.length > 0 &&
-          !mechanicServices.includes(job.selectedService)
-        ) {
+        // Flutter dashboard_screen.dart lines 278-286:
+        // Service match check: job's selectedService must be in mechanicServices
+        if (!mechanicServices.includes(job.selectedService)) {
           return false;
+        }
+
+        // Flutter dashboard_screen.dart lines 288-305:
+        // 5-MINUTE AUTO-HIDE: Hide the job if 5 minutes (300 seconds) have passed since creation!
+        let jobTimeMs = 0;
+        if (job.orderDate?.toMillis) {
+          jobTimeMs = job.orderDate.toMillis();
+        } else if (job.orderDate?.seconds) {
+          jobTimeMs = job.orderDate.seconds * 1000;
+        } else if (job.orderDate instanceof Date) {
+          jobTimeMs = job.orderDate.getTime();
+        } else if (typeof job.orderDate === "string") {
+          jobTimeMs = new Date(job.orderDate).getTime();
+        }
+
+        if (jobTimeMs > 0) {
+          const elapsedSeconds = Math.floor((currentTime - jobTimeMs) / 1000);
+          if (elapsedSeconds >= 300) {
+            return false;
+          }
         }
 
         // 2. NEARBY DISTANCE FILTERING (Exact Flutter logic from dashboard_screen.dart line 369-371)
@@ -444,6 +481,8 @@ export function useMechanicDashboard() {
     isOnline,
     currentUId,
     mechanicServices,
+    mechanicProfile,
+    currentTime,
     currentLat,
     currentLng,
     filterOnlyNearby,
@@ -481,70 +520,140 @@ export function useMechanicDashboard() {
       });
   }, [allJobs, currentUId, currentLat, currentLng]);
 
-  // Completed / Cancelled Jobs
+  // Completed / Cancelled Jobs (History)
+  // Strictly matches Flutter rabbit_shop_app history_screen.dart & completed_history_screen.dart
+  // A newly registered mechanic with no offers or assignments will see 0 jobs.
   const historyJobs = useMemo(() => {
-    if (!currentUId) {
-      return allJobs.filter((job) => job.status === 5 || job.status === -1);
-    }
+    if (!currentUId) return [];
 
     return allJobs.filter((job) => {
-      if (job.assignedMemberId === currentUId) {
-        return job.status === 5 || job.status === -1;
-      }
+      const isAssigned =
+        job.assignedMemberId === currentUId ||
+        job.mechanicId === currentUId ||
+        (job as any).mId === currentUId;
+
       const myOffer = job.mechanicsOffer?.find(
         (o) => o.mId === currentUId || o.assignedMemberId === currentUId
       );
-      if (!myOffer) return job.status === 5 || job.status === -1;
-      return (
-        myOffer.status === 5 ||
-        myOffer.status === -1 ||
-        job.status === 5 ||
-        job.status === -1
-      );
+
+      // Exclude completely if current mechanic has no offer and is not assigned
+      if (!isAssigned && !myOffer) return false;
+
+      // Direct assignment completed or cancelled
+      if (isAssigned && (job.status === 5 || job.status === -1)) {
+        return true;
+      }
+
+      // Check mechanic's offer
+      if (myOffer) {
+        // Direct offer completion or cancellation
+        if (myOffer.status === 5 || myOffer.status === -1) {
+          return true;
+        }
+
+        // If overall job is completed (5) and this mechanic was the accepted mechanic (status 2..5)
+        if (job.status === 5 && myOffer.status >= 2 && myOffer.status <= 5) {
+          return true;
+        }
+
+        // If overall job was cancelled (-1) and this mechanic was actively engaged
+        if (job.status === -1 && myOffer.status >= 1) {
+          return true;
+        }
+      }
+
+      return false;
     });
   }, [allJobs, currentUId]);
 
   // Distinct Completed Jobs (status == 5)
+  // Strictly matches Flutter completed_history_screen.dart: mechanicsOffer.any((offer) => offer['mId'] == currentUId)
   const completedJobs = useMemo(() => {
-    if (!currentUId) {
-      return allJobs.filter((job) => job.status === 5);
-    }
+    if (!currentUId) return [];
+
     return allJobs.filter((job) => {
-      const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
-      if (myOffer && myOffer.status === 5) return true;
-      return job.status === 5;
+      const isAssigned =
+        job.assignedMemberId === currentUId ||
+        job.mechanicId === currentUId ||
+        (job as any).mId === currentUId;
+
+      const myOffer = job.mechanicsOffer?.find(
+        (o) => o.mId === currentUId || o.assignedMemberId === currentUId
+      );
+
+      if (!isAssigned && !myOffer) return false;
+
+      if (isAssigned && job.status === 5) return true;
+
+      if (myOffer) {
+        if (myOffer.status === 5) return true;
+        if (job.status === 5 && myOffer.status >= 2 && myOffer.status <= 5) {
+          return true;
+        }
+      }
+
+      return false;
     });
   }, [allJobs, currentUId]);
 
   // Distinct Cancelled Jobs (status == -1)
+  // Strictly matches Flutter cancelled jobs logic where offer belongs to current mechanic
   const cancelledJobs = useMemo(() => {
-    if (!currentUId) {
-      return allJobs.filter((job) => job.status === -1);
-    }
+    if (!currentUId) return [];
+
     return allJobs.filter((job) => {
-      const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
-      if (myOffer && myOffer.status === -1) return true;
-      return job.status === -1;
+      const isAssigned =
+        job.assignedMemberId === currentUId ||
+        job.mechanicId === currentUId ||
+        (job as any).mId === currentUId;
+
+      const myOffer = job.mechanicsOffer?.find(
+        (o) => o.mId === currentUId || o.assignedMemberId === currentUId
+      );
+
+      if (!isAssigned && !myOffer) return false;
+
+      if (isAssigned && job.status === -1) return true;
+
+      if (myOffer) {
+        if (myOffer.status === -1) return true;
+        if (job.status === -1 && myOffer.status >= 1) return true;
+      }
+
+      return false;
     });
   }, [allJobs, currentUId]);
 
-  // Counters matching Flutter DashboardController
+  // Counters matching Flutter DashboardController (dashboard_controller.dart lines 92-97)
   const totalCompletedJobsCount = useMemo(() => {
-    if (!currentUId) return 0;
-    return allJobs.filter((job) => {
-      const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
-      return myOffer && myOffer.status === 5;
-    }).length;
-  }, [allJobs, currentUId]);
+    return completedJobs.length;
+  }, [completedJobs]);
 
   const ongoingJobsCount = useMemo(() => {
     return ongoingJobs.length;
   }, [ongoingJobs]);
 
-  // Total count of all new jobs in system vs nearby
+  // Total count of all new jobs in system vs nearby (within 5-minute active window)
   const totalNewJobsCount = useMemo(() => {
-    return allJobs.filter((j) => j.status === 0).length;
-  }, [allJobs]);
+    return allJobs.filter((j) => {
+      if (j.status !== 0) return false;
+      let jobTimeMs = 0;
+      if (j.orderDate?.toMillis) {
+        jobTimeMs = j.orderDate.toMillis();
+      } else if (j.orderDate?.seconds) {
+        jobTimeMs = j.orderDate.seconds * 1000;
+      } else if (j.orderDate instanceof Date) {
+        jobTimeMs = j.orderDate.getTime();
+      } else if (typeof j.orderDate === "string") {
+        jobTimeMs = new Date(j.orderDate).getTime();
+      }
+      if (jobTimeMs > 0) {
+        const elapsedSeconds = Math.floor((currentTime - jobTimeMs) / 1000);
+        if (elapsedSeconds >= 300) return false;
+      }
+      return true;
+    }).length;
+  }, [allJobs, currentTime]);
 
   // Submit Offer / "Interested" Action
   const submitOffer = async (params: SubmitOfferParams) => {

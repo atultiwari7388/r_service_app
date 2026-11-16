@@ -204,7 +204,7 @@ export default function ActiveWorkOrdersTable() {
           </div>
 
           <Link
-            href="/find-jobs"
+            href="/jobs"
             className="px-4 py-2 rounded-xl bg-[#F96176] text-white text-xs font-semibold hover:bg-[#e0485d] transition flex items-center gap-1.5 ml-auto shadow-xs"
           >
             <span>Full Jobs Board</span>

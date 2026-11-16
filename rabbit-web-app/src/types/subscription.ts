@@ -74,7 +74,7 @@ export interface MechanicPagePermission {
 
 export const MECHANIC_PAGES_LIST: MechanicPagePermission[] = [
   { key: "dashboard", label: "Dashboard", description: "Home terminal & active status", isCore: true },
-  { key: "find-jobs", label: "Find Jobs", description: "Highway repair leads & job board", isCore: true },
+  { key: "jobs", label: "Jobs", description: "Highway repair leads & job board", isCore: true },
   { key: "my-services", label: "My Services", description: "Workshop service capabilities", isCore: true },
   { key: "profile", label: "My Profile", description: "Technician credentials & workshop info", isCore: true },
   { key: "invoice", label: "Invoice & Billing", description: "Fleet invoicing & accounts receivable" },
@@ -85,7 +85,7 @@ export const MECHANIC_PAGES_LIST: MechanicPagePermission[] = [
   { key: "export", label: "Accounting Export", description: "QuickBooks & audit exports" },
 ];
 
-export const CORE_ROADSIDE_PAGES = ["dashboard", "find-jobs", "my-services", "profile"];
+export const CORE_ROADSIDE_PAGES = ["dashboard", "jobs", "my-services", "profile"];
 
 export interface CancellationPenaltyConfig {
   enabled: boolean;

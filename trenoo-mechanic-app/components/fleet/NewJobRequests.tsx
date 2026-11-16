@@ -313,13 +313,13 @@ export default function NewJobRequests() {
         )}
       </div>
 
-      {/* Footer Link to Find Jobs full table */}
+      {/* Footer Link to Jobs full table */}
       <div className="pt-2 text-center">
         <Link
-          href="/find-jobs"
+          href="/jobs"
           className="inline-flex items-center gap-2 text-xs font-bold text-[#F96176] hover:text-[#e0485d] transition-colors"
         >
-          <span>View all 27 fleet work orders in Find Jobs dispatch console</span>
+          <span>View all fleet work orders in Jobs dispatch console</span>
           <ArrowRight size={14} />
         </Link>
       </div>

@@ -231,20 +231,20 @@ export default function JobsBoardDirectory() {
         );
       case 1:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 text-xs font-semibold border border-teal-200">
             Offer Submitted
           </span>
         );
       case 2:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200">
             Driver Choosing Pay
           </span>
         );
       case 3:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-semibold border border-purple-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-800 text-xs font-semibold border border-orange-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
             En Route
           </span>
         );

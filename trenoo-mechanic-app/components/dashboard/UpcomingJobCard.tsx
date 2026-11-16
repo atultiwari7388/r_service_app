@@ -50,6 +50,7 @@ export default function UpcomingJobCard({
         setIsExpired(true);
       } else {
         setSecondsRemaining(remaining);
+        setIsExpired(false);
       }
     };
 
@@ -57,6 +58,12 @@ export default function UpcomingJobCard({
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, [job.orderDate]);
+
+  // Flutter rule (dashboard_screen.dart lines 288-305):
+  // If 5 minutes have elapsed, hide the job immediately so mechanic cannot submit expired quote
+  if (isExpired || secondsRemaining <= 0) {
+    return null;
+  }
 
   const formatTimer = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -164,23 +171,17 @@ export default function UpcomingJobCard({
             </div>
           </div>
 
-          {/* Date & Countdown Pill */}
+          {/* Date & Countdown Pill matching Flutter Time Remaining */}
           <div className="flex flex-col items-end shrink-0">
             <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-400">
               <Calendar size={12} />
               <span>{formattedDate}</span>
             </div>
 
-            {!isExpired ? (
-              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-rose-50 text-[#F96176] text-[11px] font-extrabold tracking-tight animate-pulse">
-                <Clock size={11} />
-                <span>Time: {formatTimer(secondsRemaining)}</span>
-              </span>
-            ) : (
-              <span className="text-[10px] font-bold text-gray-400 mt-1">
-                Dispatch Open
-              </span>
-            )}
+            <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200/80 text-[#F96176] text-[11px] font-black tracking-tight animate-pulse shadow-2xs">
+              <Clock size={12} />
+              <span>Time Remaining: {formatTimer(secondsRemaining)}</span>
+            </span>
           </div>
         </div>
 

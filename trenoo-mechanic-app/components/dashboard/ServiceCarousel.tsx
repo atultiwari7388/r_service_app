@@ -204,7 +204,7 @@ export default function ServiceCarousel() {
               {/* Explore Service CTA Button */}
               <div className="pt-2">
                 <Link
-                  href="/find-jobs"
+                  href="/jobs"
                   className="w-full py-2.5 px-4 rounded-xl bg-gray-50 hover:bg-[#F96176] text-gray-800 hover:text-white font-bold text-xs border border-gray-200 hover:border-[#F96176] transition-all flex items-center justify-center gap-1.5 shadow-2xs group/btn"
                 >
                   <span>Explore Service</span>

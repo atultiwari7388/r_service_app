@@ -63,6 +63,8 @@ export interface FirestoreJob {
   assignedMemberCity?: string;
   assignedMemberPhone?: string;
   ownerId?: string;
+  mechanicId?: string;
+  mId?: string;
   estimatedRepairMinutes?: number;
   activeJobStartedAt?: Timestamp | Date | any;
   handoverRequested?: boolean;

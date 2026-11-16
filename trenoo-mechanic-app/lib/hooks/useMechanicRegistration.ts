@@ -10,6 +10,16 @@ import {
 import { MechanicRegistrationData } from "@/types/auth";
 
 export interface UseMechanicRegistrationReturn {
+  // Category Selection (Roadside vs Registered Company)
+  mechanicCategory: "roadside" | "company";
+  setMechanicCategory: (v: "roadside" | "company") => void;
+
+  // Company Details (when mechanicCategory === "company")
+  companyName: string;
+  setCompanyName: (v: string) => void;
+  countryRegistrationFields: Record<string, string>;
+  setCountryRegistrationField: (key: string, value: string) => void;
+
   // Form fields
   name: string;
   setName: (v: string) => void;
@@ -59,6 +69,23 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function useMechanicRegistration(): UseMechanicRegistrationReturn {
   const router = useRouter();
+
+  // Category
+  const [mechanicCategory, setMechanicCategory] = useState<"roadside" | "company">("roadside");
+  const [companyName, setCompanyName] = useState("");
+  const [countryRegistrationFields, setCountryRegistrationFields] = useState<
+    Record<string, string>
+  >({});
+
+  const setCountryRegistrationField = useCallback(
+    (key: string, value: string) => {
+      setCountryRegistrationFields((prev) => ({
+        ...prev,
+        [key]: value,
+      }));
+    },
+    []
+  );
 
   const [name, setName] = useState("");
   const [workshopName, setWorkshopName] = useState("");
@@ -125,6 +152,10 @@ export function useMechanicRegistration(): UseMechanicRegistrationReturn {
   }, []);
 
   const validate = useCallback((): boolean => {
+    if (mechanicCategory === "company" && !companyName.trim()) {
+      toast.error("Please enter your company name");
+      return false;
+    }
     if (!name.trim()) {
       toast.error("Please enter your name");
       return false;
@@ -170,6 +201,8 @@ export function useMechanicRegistration(): UseMechanicRegistrationReturn {
 
     return true;
   }, [
+    mechanicCategory,
+    companyName,
     name,
     workshopName,
     cellPhone,
@@ -191,9 +224,12 @@ export function useMechanicRegistration(): UseMechanicRegistrationReturn {
 
       setIsLoading(true);
       try {
+        const isCompany = mechanicCategory === "company";
         const payload: MechanicRegistrationData = {
+          mechanicCategory,
           name: name.trim(),
           workshopName: workshopName.trim(),
+          companyName: isCompany ? companyName.trim() : "",
           cellPhone: cellPhone.trim(),
           telephone: telephone.trim(),
           email: email.trim(),
@@ -207,6 +243,18 @@ export function useMechanicRegistration(): UseMechanicRegistrationReturn {
           description: description.trim(),
           password,
           languages: selectedLanguages,
+          // Country registration numbers
+          dot: isCompany ? countryRegistrationFields.dot?.trim() || "" : "",
+          mc: isCompany ? countryRegistrationFields.mc?.trim() || "" : "",
+          nsc: isCompany ? countryRegistrationFields.nsc?.trim() || "" : "",
+          cvor: isCompany ? countryRegistrationFields.cvor?.trim() || "" : "",
+          nir: isCompany ? countryRegistrationFields.nir?.trim() || "" : "",
+          cbsa: isCompany ? countryRegistrationFields.cbsa?.trim() || "" : "",
+          rfc: isCompany ? countryRegistrationFields.rfc?.trim() || "" : "",
+          ftp: isCompany ? countryRegistrationFields.ftp?.trim() || "" : "",
+          voln: isCompany ? countryRegistrationFields.voln?.trim() || "" : "",
+          abn: isCompany ? countryRegistrationFields.abn?.trim() || "" : "",
+          hva: isCompany ? countryRegistrationFields.hva?.trim() || "" : "",
         };
 
         const result = await registerMechanic(payload);
@@ -233,6 +281,9 @@ export function useMechanicRegistration(): UseMechanicRegistrationReturn {
     },
     [
       validate,
+      mechanicCategory,
+      companyName,
+      countryRegistrationFields,
       name,
       workshopName,
       cellPhone,
@@ -253,6 +304,12 @@ export function useMechanicRegistration(): UseMechanicRegistrationReturn {
   );
 
   return {
+    mechanicCategory,
+    setMechanicCategory,
+    companyName,
+    setCompanyName,
+    countryRegistrationFields,
+    setCountryRegistrationField,
     name,
     setName,
     workshopName,

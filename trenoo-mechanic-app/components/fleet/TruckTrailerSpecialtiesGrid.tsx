@@ -26,7 +26,7 @@ export default function TruckTrailerSpecialtiesGrid() {
         "Clutch adjustment & replacement",
         "Differential & drive axle rebuilds",
       ],
-      link: "/find-jobs#semi-tractor",
+      link: "/jobs#semi-tractor",
     },
     {
       icon: <Layers size={28} className="text-[#F96176]" />,
@@ -39,7 +39,7 @@ export default function TruckTrailerSpecialtiesGrid() {
         "Kingpin & fifth-wheel plate inspection",
         "Landing gear & rear impact guard repair",
       ],
-      link: "/find-jobs#trailer",
+      link: "/jobs#trailer",
     },
     {
       icon: <Flame size={28} className="text-[#FF9900]" />,
@@ -52,7 +52,7 @@ export default function TruckTrailerSpecialtiesGrid() {
         "Microprocessor diagnostics & sensor probes",
         "Refrigerant leak detection & charging",
       ],
-      link: "/find-jobs#reefer",
+      link: "/jobs#reefer",
     },
     {
       icon: <ShieldCheck size={28} className="text-[#58BB87]" />,
@@ -78,7 +78,7 @@ export default function TruckTrailerSpecialtiesGrid() {
         "DEF quality & pump pressure verification",
         "EPA emission compliance signoff",
       ],
-      link: "/find-jobs#aftertreatment",
+      link: "/jobs#aftertreatment",
     },
     {
       icon: <Wrench size={28} className="text-gray-900" />,
@@ -91,7 +91,7 @@ export default function TruckTrailerSpecialtiesGrid() {
         "Grease chassis, slack adjusters & U-joints",
         "Tire pressure & tread depth audit",
       ],
-      link: "/find-jobs#pm-services",
+      link: "/jobs#pm-services",
     },
   ];
 

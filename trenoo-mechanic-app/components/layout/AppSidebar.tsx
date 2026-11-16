@@ -30,6 +30,7 @@ import toast from "react-hot-toast";
 
 // Map icons to the 7 menus
 const MENU_ICONS: Record<string, React.ReactNode> = {
+  jobs: <Briefcase size={18} />,
   "find-jobs": <Briefcase size={18} />,
   "my-services": <Wrench size={18} />,
   invoice: <FileText size={18} />,
@@ -59,9 +60,11 @@ export default function AppSidebar() {
     mechanic?.isSubscriptionPurchase === true ||
     (isMember && !!mechanic?.inheritedSubscriptionOwnerId);
 
-  // Filter menu items: Members ONLY see "Find Jobs", Owners see all 7 items
+  // Filter menu items: Members ONLY see "Jobs", Owners see all 7 items
   const menuItems = isMember
-    ? SIDEBAR_MENU_ITEMS.filter((item) => item.key === "find-jobs")
+    ? SIDEBAR_MENU_ITEMS.filter(
+        (item) => item.key === "jobs" || item.key === "find-jobs"
+      )
     : SIDEBAR_MENU_ITEMS;
 
   const isMenuLinkActive = (href: string) => {
@@ -104,7 +107,7 @@ export default function AppSidebar() {
           {/* Header with Treno Mechanic Logo */}
           <div className="px-4 py-3.5 border-b border-gray-100 flex items-center justify-between">
             <Link
-              href={isMember ? "/find-jobs" : "/"}
+              href={isMember ? "/jobs" : "/"}
               onClick={closeMobile}
               className="flex items-center group transition-transform hover:opacity-90"
             >
@@ -170,7 +173,34 @@ export default function AppSidebar() {
 
             {menuItems.map((item) => {
               const isActive = isMenuLinkActive(item.href);
-              const isLocked = !hasActivePlan;
+
+              // "my-services" page has NO restrictions and is always available for all plans & onboarding
+              const isMyServices =
+                item.key === "my-services" || item.href === "/my-services";
+
+              let isLocked = false;
+              if (isMyServices) {
+                // Always unlocked for all plans and onboarding
+                isLocked = false;
+              } else if (!hasActivePlan) {
+                isLocked = true;
+              } else if (mechanic?.currentSubscription) {
+                const sub = mechanic.currentSubscription;
+                if (
+                  sub.hasAllPagesAccess !== true &&
+                  Array.isArray(sub.allowedPages) &&
+                  sub.allowedPages.length > 0
+                ) {
+                  const isAllowed =
+                    sub.allowedPages.includes(item.key) ||
+                    sub.allowedPages.includes(item.key.replace("-", "_")) ||
+                    (item.key === "jobs" && sub.allowedPages.includes("find-jobs")) ||
+                    (item.key === "find-jobs" && sub.allowedPages.includes("jobs"));
+                  if (!isAllowed) {
+                    isLocked = true;
+                  }
+                }
+              }
 
               return (
                 <Link

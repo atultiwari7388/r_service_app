@@ -357,6 +357,7 @@ export default function MechanicDashboardView() {
             mechanicId={currentUId}
             email={mechanicProfile?.email || user?.email || undefined}
             userCountry={mechanicProfile?.country}
+            mechanicCategory={mechanicProfile?.mechanicCategory}
           />
         </div>
       )}
@@ -387,8 +388,11 @@ export default function MechanicDashboardView() {
         </div>
       )}
 
-      {/* 3. COMPACT STATS COUNTERS (Matching Flutter _compactDashboardItem) */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* 3. COMPACT STATS & JOBS OPERATIONS (Only shown when mechanic has an active subscription plan) */}
+      {hasActivePlan && (
+        <>
+          {/* Compact Stats Counters */}
+          <div className="grid grid-cols-2 gap-4">
         {/* Total Completed Jobs Card */}
         <div className="rounded-2xl p-4 sm:p-5 bg-white border border-gray-200 shadow-xs flex flex-col justify-between hover:border-gray-300 transition">
           <div className="flex items-center justify-between">
@@ -676,7 +680,7 @@ export default function MechanicDashboardView() {
                             Showing 6 latest ongoing jobs out of {filteredOngoing.length} total.
                           </span>
                           <Link
-                            href="/find-jobs?tab=ongoing"
+                            href="/jobs?tab=ongoing"
                             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white text-xs font-semibold transition shadow-xs"
                           >
                             <span>View All in Jobs Board</span>
@@ -730,7 +734,7 @@ export default function MechanicDashboardView() {
                             Showing 6 latest past jobs out of {filteredHistory.length} total.
                           </span>
                           <Link
-                            href="/find-jobs?tab=completed"
+                            href="/jobs?tab=completed"
                             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white text-xs font-semibold transition shadow-xs"
                           >
                             <span>View All in Jobs Board</span>
@@ -745,6 +749,8 @@ export default function MechanicDashboardView() {
             </>
           )}
         </div>
+      )}
+        </>
       )}
 
       {/* MODALS */}

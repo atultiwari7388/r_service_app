@@ -52,6 +52,20 @@ export interface MechanicProfile {
   currentActiveJobId?: string | null;
   activeJobStartedAt?: Timestamp | any | null;
   activeJobEstimatedMinutes?: number | null;
+  // Mechanic Category & Company Registration
+  mechanicCategory?: "roadside" | "company";
+  companyName?: string;
+  dot?: string;
+  mc?: string;
+  nsc?: string;
+  cvor?: string;
+  nir?: string;
+  cbsa?: string;
+  rfc?: string;
+  ftp?: string;
+  voln?: string;
+  abn?: string;
+  hva?: string;
 }
 
 export interface LoginCredentials {
@@ -78,8 +92,10 @@ export interface LoginResult {
 }
 
 export interface MechanicRegistrationData {
+  mechanicCategory: "roadside" | "company";
   name: string;
   workshopName: string;
+  companyName?: string;
   cellPhone: string;
   telephone?: string;
   email: string;
@@ -93,6 +109,18 @@ export interface MechanicRegistrationData {
   description?: string;
   password: string;
   languages: Record<string, boolean>;
+  // Country specific registration fields
+  dot?: string;
+  mc?: string;
+  nsc?: string;
+  cvor?: string;
+  nir?: string;
+  cbsa?: string;
+  rfc?: string;
+  ftp?: string;
+  voln?: string;
+  abn?: string;
+  hva?: string;
 }
 
 export interface RegistrationResult {

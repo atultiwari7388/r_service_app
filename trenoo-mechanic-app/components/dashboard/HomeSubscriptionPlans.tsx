@@ -18,18 +18,23 @@ import {
   SUPPORTED_PLAN_COUNTRIES,
   getCurrencySymbol,
 } from "@/types/subscription";
-import { fetchMechanicSubscriptionPlans } from "@/lib/services/subscriptionService";
+import {
+  fetchMechanicSubscriptionPlans,
+  purchaseMechanicPlan,
+} from "@/lib/services/subscriptionService";
 
 interface HomeSubscriptionPlansProps {
   mechanicId: string;
   email?: string;
   userCountry?: string;
+  mechanicCategory?: "roadside" | "company";
 }
 
 export default function HomeSubscriptionPlans({
   mechanicId,
   email,
   userCountry,
+  mechanicCategory,
 }: HomeSubscriptionPlansProps) {
   // Match userCountry to one of the 5 supported countries, or fallback to USA
   const initialCountryCode = (() => {
@@ -82,6 +87,25 @@ export default function HomeSubscriptionPlans({
     const chargePrice = isCountryEnabled ? cp.price : plan.price;
     const chargeDiscount = isCountryEnabled ? cp.discountPrice : plan.discountPrice;
     const chargeCurrency = isCountryEnabled ? activeCountry.currency : plan.currency || "USD";
+
+    // Direct activation for 100% free plans
+    if (plan.isFree || chargePrice === 0) {
+      setPurchasingPlanId(plan.id);
+      try {
+        const result = await purchaseMechanicPlan(mechanicId, plan);
+        if (result.success) {
+          toast.success(result.message || "Free plan activated successfully!");
+          window.location.reload();
+          return;
+        }
+      } catch (err: any) {
+        console.error("Free plan activation error:", err);
+        toast.error(err?.message || "Failed to activate free plan");
+      } finally {
+        setPurchasingPlanId(null);
+      }
+      return;
+    }
 
     setPurchasingPlanId(plan.id);
     try {
@@ -167,193 +191,256 @@ export default function HomeSubscriptionPlans({
             Loading membership plans for {activeCountry.name}...
           </p>
         </div>
-      ) : plans.length === 0 ? (
-        <div className="p-8 text-center bg-white rounded-2xl border border-gray-200 max-w-md mx-auto space-y-3">
-          <CreditCard className="w-10 h-10 text-gray-400 mx-auto" />
-          <p className="text-sm font-bold text-gray-700">No active plans found</p>
-          <button
-            onClick={loadPlans}
-            className="px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition"
-          >
-            Refresh Plans
-          </button>
-        </div>
-      ) : (
-        <div
-          className={`grid gap-6 items-stretch ${
-            plans.length === 1
-              ? "max-w-md mx-auto"
-              : plans.length === 2
-              ? "max-w-4xl mx-auto grid-cols-1 md:grid-cols-2"
-              : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-          }`}
-        >
-          {plans.map((plan) => {
-            // Resolve price for the selected country
-            const cp = plan.countryPrices?.[activeCountry.code];
-            const isCountryEnabled = cp?.enabled && cp?.price > 0;
+      ) : (() => {
+          const visiblePlans = plans.filter((plan) => {
+            if (!plan.isActive) return false;
+            if (
+              mechanicCategory &&
+              plan.mechanicCategory &&
+              plan.mechanicCategory !== "both"
+            ) {
+              if (plan.mechanicCategory !== mechanicCategory) {
+                return false;
+              }
+            }
+            return true;
+          });
 
-            const displayPrice = isCountryEnabled ? cp.price : plan.price;
-            const displayDiscount = isCountryEnabled
-              ? cp.discountPrice
-              : plan.discountPrice;
-            const symbol = isCountryEnabled
-              ? cp.symbol || activeCountry.symbol
-              : getCurrencySymbol(plan.currency);
-
-            const hasDiscount =
-              displayDiscount !== undefined &&
-              displayDiscount !== null &&
-              displayDiscount < displayPrice;
-
-            const finalPrice = hasDiscount ? displayDiscount : displayPrice;
-            const savingsPercent = hasDiscount
-              ? Math.round(((displayPrice - displayDiscount!) / displayPrice) * 100)
-              : 0;
-
-            const isPurchasing = purchasingPlanId === plan.id;
-
+          if (visiblePlans.length === 0) {
             return (
-              <div
-                key={plan.id}
-                className={`bg-white rounded-3xl border-2 shadow-xs transition-all duration-300 flex flex-col overflow-hidden relative ${
-                  plan.isPopular
-                    ? "border-[#58BB87] shadow-lg shadow-[#58BB87]/10 ring-2 ring-[#58BB87]/20"
-                    : "border-gray-200 hover:border-gray-300 hover:shadow-md"
-                }`}
-              >
-                {/* Popular Badge */}
-                {plan.isPopular && (
-                  <div className="bg-gradient-to-r from-[#58BB87] to-emerald-600 py-1.5 px-4 text-center text-[11px] font-black uppercase tracking-wider text-white flex items-center justify-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Recommended Plan</span>
-                  </div>
-                )}
+              <div className="p-8 text-center bg-white rounded-2xl border border-gray-200 max-w-md mx-auto space-y-3">
+                <CreditCard className="w-10 h-10 text-gray-400 mx-auto" />
+                <p className="text-sm font-bold text-gray-700">No active plans found for your category</p>
+                <button
+                  onClick={loadPlans}
+                  className="px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition"
+                >
+                  Refresh Plans
+                </button>
+              </div>
+            );
+          }
 
-                <div className="p-6 flex-1 flex flex-col justify-between space-y-6">
-                  <div>
-                    {/* Header */}
-                    <div className="mb-4">
-                      <span className="inline-block text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#58BB87] border border-emerald-200 mb-2">
-                        Mechanic & Shop Bay
-                      </span>
-                      <h3 className="text-xl font-black text-gray-900 tracking-tight">
-                        {plan.name}
-                      </h3>
-                      {plan.description && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                          {plan.description}
-                        </p>
-                      )}
-                    </div>
+          return (
+            <div
+              className={`grid gap-6 items-stretch ${
+                visiblePlans.length === 1
+                  ? "max-w-md mx-auto"
+                  : visiblePlans.length === 2
+                  ? "max-w-4xl mx-auto grid-cols-1 md:grid-cols-2"
+                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+              }`}
+            >
+              {visiblePlans.map((plan) => {
+                // Resolve price for the selected country
+                const cp = plan.countryPrices?.[activeCountry.code];
+                const isCountryEnabled = cp?.enabled && cp?.price > 0;
 
-                    {/* Price Block */}
-                    <div className="bg-gray-50/80 rounded-2xl p-4 border border-gray-200/80 mb-5">
-                      <div className="flex items-baseline gap-2">
-                        {hasDiscount ? (
+                const displayPrice = isCountryEnabled ? cp.price : plan.price;
+                const displayDiscount = isCountryEnabled
+                  ? cp.discountPrice
+                  : plan.discountPrice;
+                const symbol = isCountryEnabled
+                  ? cp.symbol || activeCountry.symbol
+                  : getCurrencySymbol(plan.currency);
+
+                const hasDiscount =
+                  displayDiscount !== undefined &&
+                  displayDiscount !== null &&
+                  displayDiscount < displayPrice;
+
+                const finalPrice = hasDiscount ? displayDiscount : displayPrice;
+                const isFreePlan = Boolean(plan.isFree) || finalPrice === 0;
+
+                const savingsPercent = hasDiscount
+                  ? Math.round(((displayPrice - displayDiscount!) / displayPrice) * 100)
+                  : 0;
+
+                const isPurchasing = purchasingPlanId === plan.id;
+
+                return (
+                  <div
+                    key={plan.id}
+                    className={`bg-white rounded-3xl border-2 shadow-xs transition-all duration-300 flex flex-col overflow-hidden relative ${
+                      plan.isPopular
+                        ? "border-[#58BB87] shadow-lg shadow-[#58BB87]/10 ring-2 ring-[#58BB87]/20"
+                        : "border-gray-200 hover:border-gray-300 hover:shadow-md"
+                    }`}
+                  >
+                    {/* Popular Badge */}
+                    {plan.isPopular && (
+                      <div className="bg-gradient-to-r from-[#58BB87] to-emerald-600 py-1.5 px-4 text-center text-[11px] font-black uppercase tracking-wider text-white flex items-center justify-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Recommended Plan</span>
+                      </div>
+                    )}
+
+                    <div className="p-6 flex-1 flex flex-col justify-between space-y-6">
+                      <div>
+                        {/* Header */}
+                        <div className="mb-4">
+                          <span className="inline-block text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#58BB87] border border-emerald-200 mb-2">
+                            {plan.mechanicCategory === "roadside"
+                              ? "Roadside Plan"
+                              : plan.mechanicCategory === "company"
+                              ? "Registered Company Plan"
+                              : "All Mechanics Plan"}
+                          </span>
+                          <h3 className="text-xl font-black text-gray-900 tracking-tight">
+                            {plan.name}
+                          </h3>
+                          {plan.description && (
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                              {plan.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Price Block */}
+                        <div className="bg-gray-50/80 rounded-2xl p-4 border border-gray-200/80 mb-5">
+                          {isFreePlan ? (
+                            <div>
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-black text-emerald-700 tracking-tight">
+                                  FREE
+                                </span>
+                                <span className="text-xs font-bold text-gray-500">
+                                  / {plan.duration}
+                                </span>
+                                <span className="ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 uppercase">
+                                  100% Free Plan
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-emerald-800 font-medium mt-1">
+                                No credit card required • Instant activation
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="flex items-baseline gap-2">
+                                {hasDiscount ? (
+                                  <>
+                                    <span className="text-3xl font-black text-gray-900 tracking-tight">
+                                      {symbol}
+                                      {finalPrice}
+                                    </span>
+                                    <span className="text-sm font-semibold text-gray-400 line-through">
+                                      {symbol}
+                                      {displayPrice}
+                                    </span>
+                                    <span className="ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                                      Save {savingsPercent}%
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-3xl font-black text-gray-900 tracking-tight">
+                                    {symbol}
+                                    {displayPrice}
+                                  </span>
+                                )}
+                                <span className="text-xs font-bold text-gray-500">
+                                  / {plan.duration}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-gray-400 font-medium mt-1">
+                                Billed in {activeCountry.currency} • Automatic Renewal
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Cancellation Policy Banner */}
+                        {plan.cancellationPenalty?.enabled && (
+                          <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 font-medium flex items-center gap-1.5 mb-4">
+                            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>
+                              Free cancellation within {plan.cancellationPenalty.gracePeriodMinutes} mins •{" "}
+                              {plan.cancellationPenalty.feeValue}
+                              {plan.cancellationPenalty.feeType === "percentage" ? "%" : symbol} penalty after
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Service & Bay Specifications */}
+                        <div className="grid grid-cols-2 gap-2 mb-5">
+                          <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-center">
+                            <span className="text-[10px] font-semibold text-gray-400 block uppercase">
+                              Shop Bays
+                            </span>
+                            <span className="text-xs font-extrabold text-gray-800">
+                              {plan.maxBays === -1 || plan.maxBays === undefined
+                                ? "Unlimited Bays"
+                                : `${plan.maxBays} Bays`}
+                            </span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-center">
+                            <span className="text-[10px] font-semibold text-gray-400 block uppercase">
+                              Coverage Radius
+                            </span>
+                            <span className="text-xs font-extrabold text-gray-800">
+                              {plan.serviceRadiusMiles === -1 ||
+                              plan.serviceRadiusMiles === undefined
+                                ? "Nationwide"
+                                : `${plan.serviceRadiusMiles} Miles`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Features List */}
+                        {plan.features && plan.features.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                              Included Privileges:
+                            </span>
+                            <ul className="space-y-1.5">
+                              {plan.features.slice(0, 5).map((f, i) => (
+                                <li
+                                  key={i}
+                                  className="text-xs text-gray-700 flex items-start gap-2"
+                                >
+                                  <Check className="w-3.5 h-3.5 text-[#58BB87] shrink-0 mt-0.5" />
+                                  <span>{f}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Purchase / Activation CTA */}
+                      <button
+                        type="button"
+                        onClick={() => handlePurchase(plan)}
+                        disabled={isPurchasing}
+                        className={`w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm tracking-wide transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+                          isFreePlan || plan.isPopular
+                            ? "bg-[#58BB87] hover:bg-[#48a674] text-white shadow-emerald-500/20"
+                            : "bg-[#F96176] hover:bg-[#e0485d] text-white shadow-rose-500/20"
+                        }`}
+                      >
+                        {isPurchasing ? (
                           <>
-                            <span className="text-3xl font-black text-gray-900 tracking-tight">
-                              {symbol}
-                              {finalPrice}
-                            </span>
-                            <span className="text-sm font-semibold text-gray-400 line-through">
-                              {symbol}
-                              {displayPrice}
-                            </span>
-                            <span className="ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                              Save {savingsPercent}%
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>
+                              {isFreePlan ? "Activating Plan..." : "Redirecting to Checkout..."}
                             </span>
                           </>
                         ) : (
-                          <span className="text-3xl font-black text-gray-900 tracking-tight">
-                            {symbol}
-                            {displayPrice}
-                          </span>
+                          <>
+                            <span>
+                              {isFreePlan ? "Activate Free Plan" : `Choose ${plan.name}`}
+                            </span>
+                            <ArrowRight className="w-4 h-4" />
+                          </>
                         )}
-                        <span className="text-xs font-bold text-gray-500">
-                          / {plan.duration}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-gray-400 font-medium mt-1">
-                        Billed in {activeCountry.currency} • Automatic Renewal
-                      </div>
+                      </button>
                     </div>
-
-                    {/* Service & Bay Specifications */}
-                    <div className="grid grid-cols-2 gap-2 mb-5">
-                      <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-center">
-                        <span className="text-[10px] font-semibold text-gray-400 block uppercase">
-                          Shop Bays
-                        </span>
-                        <span className="text-xs font-extrabold text-gray-800">
-                          {plan.maxBays === -1 || plan.maxBays === undefined
-                            ? "Unlimited Bays"
-                            : `${plan.maxBays} Bays`}
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-center">
-                        <span className="text-[10px] font-semibold text-gray-400 block uppercase">
-                          Coverage Radius
-                        </span>
-                        <span className="text-xs font-extrabold text-gray-800">
-                          {plan.serviceRadiusMiles === -1 ||
-                          plan.serviceRadiusMiles === undefined
-                            ? "Nationwide"
-                            : `${plan.serviceRadiusMiles} Miles`}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Features List */}
-                    {plan.features && plan.features.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
-                          Included Privileges:
-                        </span>
-                        <ul className="space-y-1.5">
-                          {plan.features.slice(0, 5).map((f, i) => (
-                            <li
-                              key={i}
-                              className="text-xs text-gray-700 flex items-start gap-2"
-                            >
-                              <Check className="w-3.5 h-3.5 text-[#58BB87] shrink-0 mt-0.5" />
-                              <span>{f}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                   </div>
-
-                  {/* Purchase CTA */}
-                  <button
-                    type="button"
-                    onClick={() => handlePurchase(plan)}
-                    disabled={isPurchasing}
-                    className={`w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm tracking-wide transition shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
-                      plan.isPopular
-                        ? "bg-[#58BB87] hover:bg-[#48a674] text-white shadow-emerald-500/20"
-                        : "bg-[#F96176] hover:bg-[#e0485d] text-white shadow-rose-500/20"
-                    }`}
-                  >
-                    {isPurchasing ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Redirecting to Checkout...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Choose {plan.name}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                );
+              })}
+            </div>
+          );
+        })()}
     </div>
   );
 }

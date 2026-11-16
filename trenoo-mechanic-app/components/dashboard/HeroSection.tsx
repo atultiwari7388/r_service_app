@@ -70,7 +70,7 @@ export default function HeroSection({
             </a>
 
             <Link
-              href="/find-jobs"
+              href="/jobs"
               className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-sm border border-gray-300/80 transition-colors"
             >
               <span>Dispatch Console</span>

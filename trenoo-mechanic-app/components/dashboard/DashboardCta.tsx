@@ -53,10 +53,10 @@ export default function DashboardCta() {
         </a>
 
         <Link
-          href="/find-jobs"
+          href="/jobs"
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-sm border border-gray-300/80 transition-colors"
         >
-          <span>Find Jobs Board</span>
+          <span>Jobs Board</span>
           <ArrowRight size={16} />
         </Link>
       </div>

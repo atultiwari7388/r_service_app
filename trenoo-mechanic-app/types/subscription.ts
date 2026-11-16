@@ -52,6 +52,50 @@ export const getCurrencySymbol = (currency?: string, countryCode?: string): stri
   return "$";
 };
 
+export type CommissionType = "percentage" | "flat";
+
+export interface ServiceCommissionConfig {
+  enabled: boolean;
+  type: CommissionType;
+  value: number; // e.g. 7 for 7% or 15 for $15 flat
+}
+
+export interface DefaultCommissionConfig {
+  type: CommissionType;
+  value: number;
+}
+
+export interface MechanicPagePermission {
+  key: string;
+  label: string;
+  description: string;
+  isCore?: boolean;
+}
+
+export const MECHANIC_PAGES_LIST: MechanicPagePermission[] = [
+  { key: "dashboard", label: "Dashboard", description: "Home terminal & active status", isCore: true },
+  { key: "jobs", label: "Jobs", description: "Highway repair leads & job board", isCore: true },
+  { key: "my-services", label: "My Services", description: "Workshop service capabilities", isCore: true },
+  { key: "profile", label: "My Profile", description: "Technician credentials & workshop info", isCore: true },
+  { key: "invoice", label: "Invoice & Billing", description: "Fleet invoicing & accounts receivable" },
+  { key: "check", label: "Vendor Checks", description: "Check registers & driver payouts" },
+  { key: "inspections", label: "DOT Inspections", description: "90-day BIT & trailer inspections" },
+  { key: "team", label: "Team Management", description: "Shop technician seats & bays" },
+  { key: "reports", label: "Reports & Analytics", description: "Performance & fleet turnaround" },
+  { key: "export", label: "Accounting Export", description: "QuickBooks & audit exports" },
+];
+
+export const CORE_ROADSIDE_PAGES = ["dashboard", "jobs", "my-services", "profile"];
+
+export interface CancellationPenaltyConfig {
+  enabled: boolean;
+  gracePeriodMinutes: number; // e.g. 3 minutes - free cancellation window
+  feeType: "percentage" | "flat"; // "%" percentage of estimated job, or "$" flat fee
+  feeValue: number; // e.g. 5 for 5% or 25 for $25 flat
+  penaltyRecipient?: "admin"; // Penalty goes directly to platform admin
+  description?: string;
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
@@ -67,6 +111,23 @@ export interface SubscriptionPlan {
   sortOrder?: number;
   features: string[];
   termsAndConditions: string[];
+
+  // Free plan toggle
+  isFree?: boolean;
+
+  // Mechanic category restriction
+  mechanicCategory?: "roadside" | "company" | "both";
+
+  // Per-job commission structure
+  defaultCommission?: DefaultCommissionConfig;
+  serviceCommissions?: Record<string, ServiceCommissionConfig>;
+
+  // Page access control (RBAC)
+  allowedPages?: string[];
+  hasAllPagesAccess?: boolean;
+
+  // Cancellation Penalty Policy
+  cancellationPenalty?: CancellationPenaltyConfig;
 
   // Mechanic specific fields
   maxBays?: number; // -1 for unlimited
@@ -104,6 +165,8 @@ export interface MechanicCurrentSubscription {
   serviceRadiusMiles?: number;
   priorityJobLeads?: boolean;
   directCarrierInvoicing?: boolean;
+  allowedPages?: string[];
+  hasAllPagesAccess?: boolean;
   features?: string[];
   termsAndConditions?: string[];
 }
@@ -130,6 +193,8 @@ export interface MechanicSubscriptionHistoryItem {
   serviceRadiusMiles?: number;
   priorityJobLeads?: boolean;
   directCarrierInvoicing?: boolean;
+  allowedPages?: string[];
+  hasAllPagesAccess?: boolean;
   features?: string[];
   termsAndConditions?: string[];
   createdAt?: any;

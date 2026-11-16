@@ -22,8 +22,8 @@ export default function HomePage() {
         mechanic.isTeamMember === true;
 
       if (isMember) {
-        // Members only have access to Find Jobs and My Profile
-        router.replace("/find-jobs");
+        // Members only have access to Jobs and My Profile
+        router.replace("/jobs");
         return;
       }
     }

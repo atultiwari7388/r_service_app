@@ -37,12 +37,12 @@ export interface SidebarMenuItem {
 }
 
 // Exactly 7 menus requested by user (NO submenus):
-// Find Jobs, Invoice, Check, Inspections, Team, Reports, Export
+// Jobs, My Services, Invoice, Check, Inspections, Team, Reports, Export
 export const SIDEBAR_MENU_ITEMS: SidebarMenuItem[] = [
   {
-    key: "find-jobs",
-    label: "Find Jobs",
-    href: "/find-jobs",
+    key: "jobs",
+    label: "Jobs",
+    href: "/jobs",
     description: "Commercial truck & trailer work orders and bay assignments",
   },
   {

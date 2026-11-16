@@ -79,7 +79,7 @@ export function useMechanicLogin(): UseMechanicLoginReturn {
               !!result.mechanicData?.ownerId ||
               result.mechanicData?.isTeamMember === true;
             setTimeout(() => {
-              router.push(isMember ? "/find-jobs" : "/");
+              router.push(isMember ? "/jobs" : "/");
             }, 600);
             return result;
 

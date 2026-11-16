@@ -114,7 +114,7 @@ export default function UpcomingJobs() {
           Showing 3 sample commercial requests
         </span>
         <Link
-          href="/find-jobs"
+          href="/jobs"
           className="inline-flex items-center gap-1.5 text-xs font-black text-[#F96176] hover:text-[#e0485d] transition-colors"
         >
           <span>Open Full Fleet Job Board</span>
