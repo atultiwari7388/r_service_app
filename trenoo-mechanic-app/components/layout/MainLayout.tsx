@@ -20,6 +20,8 @@ interface MainLayoutProps {
 
 const RESTRICTED_MEMBER_ROUTES = [
   "/team",
+  "/my-services",
+  "/services",
   "/invoice",
   "/check",
   "/inspections",
@@ -43,11 +45,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
     mechanic?.isTeamMember === true;
 
   // Intercept unpaid mechanics attempting to access locked workshop features
-  // Allows access to Home (/) and Profile (/profile)
+  // Allows access to Home (/), Profile (/profile), and Services (/my-services)
   useEffect(() => {
     if (!isLoading && user && mechanic) {
       if (!isMember && mechanic.isSubscriptionPurchase !== true) {
-        if (pathname !== "/" && pathname !== "/profile") {
+        if (
+          pathname !== "/" &&
+          pathname !== "/profile" &&
+          pathname !== "/my-services" &&
+          pathname !== "/services"
+        ) {
           toast.error("Active membership required. Please choose a plan on your dashboard.");
           router.replace("/");
           return;

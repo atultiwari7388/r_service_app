@@ -46,6 +46,12 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItem[] = [
     description: "Commercial truck & trailer work orders and bay assignments",
   },
   {
+    key: "my-services",
+    label: "My Services",
+    href: "/my-services",
+    description: "Commercial repair capabilities and emergency specialties",
+  },
+  {
     key: "invoice",
     label: "Invoice",
     href: "/invoice",

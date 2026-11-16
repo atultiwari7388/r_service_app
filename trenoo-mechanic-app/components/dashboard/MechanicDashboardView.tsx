@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Lock,
   Sparkles,
+  Wrench,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useMechanicDashboard } from "@/lib/hooks/useMechanicDashboard";
@@ -196,6 +197,19 @@ export default function MechanicDashboardView() {
                       ? currentAddress || "GPS Connected (Resolving Address...)"
                       : "Offline • Duty Paused (Toggle switch to activate GPS location)"}
                   </h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] font-semibold text-gray-500">
+                      {mechanicProfile?.selected_services?.length || 0} Services Active
+                    </span>
+                    <span className="text-gray-300">•</span>
+                    <Link
+                      href="/my-services"
+                      className="text-[11px] font-bold text-[#F96176] hover:underline flex items-center gap-1"
+                    >
+                      <span>Manage Services</span>
+                      <ArrowRight size={10} />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
@@ -344,6 +358,32 @@ export default function MechanicDashboardView() {
             email={mechanicProfile?.email || user?.email || undefined}
             userCountry={mechanicProfile?.country}
           />
+        </div>
+      )}
+
+      {/* Services Not Selected Warning Banner (Matching Flutter rabbit_shop_app) */}
+      {hasActivePlan && (!mechanicProfile?.selected_services || mechanicProfile.selected_services.length === 0) && (
+        <div className="bg-amber-50 border-2 border-amber-200 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <Wrench className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-amber-950">
+                You haven&apos;t selected any workshop services yet!
+              </h4>
+              <p className="text-xs text-amber-800/80 mt-0.5">
+                Select the breakdown and repair services your shop provides so fleets and drivers can match with your technicians.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/my-services"
+            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <span>Add Services</span>
+            <ArrowRight size={13} />
+          </Link>
         </div>
       )}
 

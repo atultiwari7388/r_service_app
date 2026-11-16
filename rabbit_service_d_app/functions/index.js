@@ -1572,12 +1572,27 @@ exports.sendNewMechanicNotification = functions.firestore
             const token = mechanicData.fcmToken;
             if (token) {
               notificationPromises.push(
-                admin.messaging().send({
-                  ...payload,
-                  token: token,
-                })
+                admin
+                  .messaging()
+                  .send({
+                    ...payload,
+                    token: token,
+                  })
+                  .then((messageId) => {
+                    console.log(
+                      `FCM accepted for mechanic ${mechanicDoc.id}: ${messageId}`
+                    );
+                  })
+                  .catch((err) => {
+                    console.error(
+                      `FCM FAILED for mechanic ${mechanicDoc.id} | code: ${
+                        err.code
+                      } | message: ${err.message} | token: ${String(
+                        token
+                      ).slice(0, 20)}...`
+                    );
+                  })
               );
-              console.log("Notification sent to mechanic:", mechanicData);
             } else {
               console.error("Invalid token for mechanic:", mechanicData);
             }
@@ -1892,13 +1907,28 @@ exports.sendAgainNewMechanicNotification = async (
 
           if (token) {
             notificationPromises.push(
-              admin.messaging().send({
-                ...payload,
-                token: token,
-              })
+              admin
+                .messaging()
+                .send({
+                  ...payload,
+                  token: token,
+                })
+                .then((messageId) => {
+                  console.log(
+                    `FCM accepted for mechanic ${mechanicDoc.id}: ${messageId}`
+                  );
+                })
+                .catch((err) => {
+                  console.error(
+                    `FCM FAILED for mechanic ${mechanicDoc.id} | code: ${
+                      err.code
+                    } | message: ${err.message} | token: ${String(token).slice(
+                      0,
+                      20
+                    )}...`
+                  );
+                })
             );
-
-            console.log("Notification sent to mechanic:", mechanicData);
           } else {
             console.error("Invalid token for mechanic:", mechanicData);
           }

@@ -27,6 +27,7 @@ import {
   CreditCard,
   RefreshCw,
   Clock,
+  Wrench,
 } from "lucide-react";
 import { useMechanicProfile } from "@/lib/hooks/useMechanicProfile";
 import Link from "next/link";
@@ -399,6 +400,19 @@ export default function MechanicProfileView() {
               <span className="w-2 h-2 rounded-full bg-[#58BB87] animate-pulse" />
             )}
           </button>
+        )}
+
+        {!isMember && (
+          <Link
+            href="/my-services"
+            className="flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50 cursor-pointer whitespace-nowrap"
+          >
+            <Wrench className="w-4 h-4 text-[#F96176]" />
+            <span>My Services</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 font-bold text-gray-600">
+              {mechanicProfile?.selected_services?.length || 0}
+            </span>
+          </Link>
         )}
 
         <button

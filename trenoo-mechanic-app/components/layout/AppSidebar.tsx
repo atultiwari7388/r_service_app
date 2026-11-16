@@ -20,6 +20,7 @@ import {
   X,
   Lock,
   LayoutDashboard,
+  Wrench,
 } from "lucide-react";
 import { SIDEBAR_MENU_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ import toast from "react-hot-toast";
 // Map icons to the 7 menus
 const MENU_ICONS: Record<string, React.ReactNode> = {
   "find-jobs": <Briefcase size={18} />,
+  "my-services": <Wrench size={18} />,
   invoice: <FileText size={18} />,
   check: <CheckSquare size={18} />,
   inspections: <ClipboardCheck size={18} />,
