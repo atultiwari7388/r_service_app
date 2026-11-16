@@ -58,6 +58,12 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItem[] = [
     description: "Manage company profiles, active status, DOT/MC credentials",
   },
   {
+    key: "my-vehicles",
+    label: "My Vehicles",
+    href: "/account/my-vehicles",
+    description: "Manage commercial repair rigs, service fleet, and trailer chassis",
+  },
+  {
     key: "invoice",
     label: "Invoice",
     href: "/invoice",
