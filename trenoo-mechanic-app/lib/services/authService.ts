@@ -146,6 +146,8 @@ export async function registerMechanic(
       fcmToken: null,
       selected_services: [],
       isSubscriptionPurchase: false,
+      role: "Owner",
+      teamMembers: [],
       created_at: now,
       updated_at: now,
     });

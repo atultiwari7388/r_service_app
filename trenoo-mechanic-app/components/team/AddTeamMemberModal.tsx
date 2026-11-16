@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   UserPlus,
@@ -15,9 +15,19 @@ import {
   EyeOff,
   Navigation,
   CheckCircle2,
+  Truck,
 } from "lucide-react";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
+import { db, functions } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContexts";
+import { Vehicle } from "@/types/vehicle";
 import toast from "react-hot-toast";
 import GooglePlacesInput, { SelectedPlaceData } from "./GooglePlacesInput";
 import { formatUSPhoneNumber } from "@/lib/utils";
@@ -45,6 +55,10 @@ export default function AddTeamMemberModal({
   onClose,
   onSuccess,
 }: AddTeamMemberModalProps) {
+  const auth = useAuth();
+  const currentUser = auth?.user;
+  const effectiveOwnerId = currentUser?.uid;
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +81,41 @@ export default function AddTeamMemberModal({
     "Tire Service",
   ]);
 
+  // Vehicle Fleet Assignment State
+  const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
+  const [assignedVehicles, setAssignedVehicles] = useState<string[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load workshop vehicles in real-time when modal is open
+  useEffect(() => {
+    if (!isOpen || !effectiveOwnerId) return;
+
+    setLoadingVehicles(true);
+    const vehiclesRef = collection(db, "Mechanics", effectiveOwnerId, "Vehicles");
+    const unsubscribe = onSnapshot(
+      vehiclesRef,
+      (snapshot) => {
+        const list: Vehicle[] = [];
+        snapshot.forEach((d) => {
+          list.push({ id: d.id, ...d.data() } as Vehicle);
+        });
+        // Sort vehicles by vehicleNumber
+        list.sort((a, b) =>
+          (a.vehicleNumber || "").localeCompare(b.vehicleNumber || "")
+        );
+        setAvailableVehicles(list);
+        setLoadingVehicles(false);
+      },
+      (err) => {
+        console.error("Error loading workshop vehicles:", err);
+        setLoadingVehicles(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [isOpen, effectiveOwnerId]);
 
   if (!isOpen) return null;
 
@@ -75,6 +123,22 @@ export default function AddTeamMemberModal({
     setSelectedServices((prev) =>
       prev.includes(item) ? prev.filter((s) => s !== item) : [...prev, item]
     );
+  };
+
+  const handleVehicleSelection = (vehicleId: string) => {
+    setAssignedVehicles((prev) =>
+      prev.includes(vehicleId)
+        ? prev.filter((id) => id !== vehicleId)
+        : [...prev, vehicleId]
+    );
+  };
+
+  const handleSelectAllVehicles = () => {
+    if (assignedVehicles.length === availableVehicles.length) {
+      setAssignedVehicles([]);
+    } else {
+      setAssignedVehicles(availableVehicles.map((v) => v.id));
+    }
   };
 
   const handlePlaceSelect = (data: SelectedPlaceData) => {
@@ -136,13 +200,51 @@ export default function AddTeamMemberModal({
         longitude: Number(longitude) || 0,
         perHCharge: Number(perHCharge) || 0,
         selectedServices,
+        selectedVehicles: assignedVehicles,
+        assignedVehicles: assignedVehicles,
         allowDirectJobAcceptance,
       });
 
+      const memberUid = result?.data?.memberUid;
+
       if (result?.data?.success) {
+        // Direct client-side sync to guarantee vehicle assignments in subcollection
+        if (memberUid && effectiveOwnerId && assignedVehicles.length > 0) {
+          const now = new Date();
+          for (const vId of assignedVehicles) {
+            const vData = availableVehicles.find((v) => v.id === vId);
+            if (vData) {
+              await updateDoc(
+                doc(db, "Mechanics", effectiveOwnerId, "Vehicles", vId),
+                {
+                  assignedTo: memberUid,
+                  assignedMemberName: trimmedName,
+                  assigned_at: now,
+                }
+              ).catch(() => {});
+
+              await setDoc(
+                doc(db, "Mechanics", memberUid, "Vehicles", vId),
+                {
+                  ...vData,
+                  assignedTo: memberUid,
+                  assignedMemberName: trimmedName,
+                  assigned_at: now,
+                },
+                { merge: true }
+              ).catch(() => {});
+            }
+          }
+
+          await updateDoc(doc(db, "Mechanics", memberUid), {
+            assignedVehicles: assignedVehicles,
+          }).catch(() => {});
+        }
+
         toast.success(`Technician ${trimmedName} created successfully!`);
         onClose();
         if (onSuccess) onSuccess();
+
         // Reset state
         setName("");
         setEmail("");
@@ -150,6 +252,7 @@ export default function AddTeamMemberModal({
         setCellPhone("");
         setPlaceQuery("");
         setFormattedAddress("");
+        setAssignedVehicles([]);
       } else {
         toast.error(result?.data?.message || "Failed to create team member");
       }
@@ -175,7 +278,7 @@ export default function AddTeamMemberModal({
                 Add Team Technician
               </h2>
               <p className="text-xs text-gray-500">
-                Create US technician profile with exact GPS coordinates for proximity dispatch.
+                Create technician profile with assigned workshop fleet vehicles.
               </p>
             </div>
           </div>
@@ -265,7 +368,7 @@ export default function AddTeamMemberModal({
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -365,6 +468,94 @@ export default function AddTeamMemberModal({
                 );
               })}
             </div>
+          </div>
+
+          {/* Vehicle Assignment Section (matching rabbit-web-app style) */}
+          <div className="space-y-3 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                <Truck className="w-4 h-4 text-[#F96176]" />
+                Assign Vehicles (Optional)
+              </label>
+              {availableVehicles.length > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-gray-500">
+                    {assignedVehicles.length} of {availableVehicles.length} selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllVehicles}
+                    className="font-bold text-[#F96176] hover:text-[#e0485d] transition cursor-pointer"
+                  >
+                    {assignedVehicles.length === availableVehicles.length
+                      ? "Deselect All"
+                      : "Select All"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {loadingVehicles ? (
+              <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 text-center">
+                <div className="w-5 h-5 border-2 border-[#F96176] border-t-transparent rounded-full animate-spin mx-auto mb-1.5" />
+                <span className="text-xs text-gray-500">Loading workshop fleet vehicles...</span>
+              </div>
+            ) : availableVehicles.length === 0 ? (
+              <div className="p-4 rounded-2xl border border-dashed border-gray-200 bg-slate-50/60 text-xs text-gray-500 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center shrink-0">
+                  <Truck className="w-4 h-4" />
+                </div>
+                <span>
+                  No vehicles currently registered in your workshop fleet. You can assign vehicles anytime later after adding them in <b>My Vehicles</b>.
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-2 border border-gray-200 rounded-2xl p-3 max-h-56 overflow-y-auto bg-slate-50/40">
+                {availableVehicles.map((vehicle) => {
+                  const isSelected = assignedVehicles.includes(vehicle.id);
+                  return (
+                    <label
+                      key={vehicle.id}
+                      className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition ${
+                        isSelected
+                          ? "bg-rose-50/70 border-[#F96176] shadow-xs"
+                          : "bg-white border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleVehicleSelection(vehicle.id)}
+                          className="w-4 h-4 rounded text-[#F96176] accent-[#F96176] cursor-pointer"
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-gray-900">
+                              Unit #{vehicle.vehicleNumber}
+                            </span>
+                            {vehicle.vehicleType && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-700">
+                                {vehicle.vehicleType}
+                              </span>
+                            )}
+                            {vehicle.assignedMemberName && !isSelected && (
+                              <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                Assigned to: {vehicle.assignedMemberName}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                            {vehicle.companyName || "Workshop"} {vehicle.licensePlate ? `• Plate: ${vehicle.licensePlate}` : ""} {vehicle.vin ? `• VIN: ${vehicle.vin.slice(-6)}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <Truck className={`w-4 h-4 shrink-0 ${isSelected ? "text-[#F96176]" : "text-gray-400"}`} />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Autonomous Direct-Accept Dispatch Mode */}

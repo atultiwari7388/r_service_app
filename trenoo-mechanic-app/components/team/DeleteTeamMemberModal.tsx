@@ -3,7 +3,9 @@
 import React, { useState } from "react";
 import { AlertTriangle, Trash2, X } from "lucide-react";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
+import { functions, db } from "@/lib/firebase";
+import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import { useAuth } from "@/contexts/AuthContexts";
 import toast from "react-hot-toast";
 import { MechanicProfile } from "@/types/auth";
 
@@ -20,6 +22,8 @@ export default function DeleteTeamMemberModal({
   member,
   onSuccess,
 }: DeleteTeamMemberModalProps) {
+  const auth = useAuth();
+  const currentUser = auth?.user;
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (!isOpen || !member) return null;
@@ -34,6 +38,29 @@ export default function DeleteTeamMemberModal({
       });
 
       if (result?.data?.success) {
+        // Also cleanup vehicle assignments on client side
+        if (currentUser?.uid && member.uid) {
+          try {
+            const vQuery = query(
+              collection(db, "Mechanics", currentUser.uid, "Vehicles"),
+              where("assignedTo", "==", member.uid)
+            );
+            const vSnap = await getDocs(vQuery);
+            for (const vDoc of vSnap.docs) {
+              await updateDoc(
+                doc(db, "Mechanics", currentUser.uid, "Vehicles", vDoc.id),
+                {
+                  assignedTo: null,
+                  assignedMemberName: null,
+                  assigned_at: null,
+                }
+              ).catch(() => {});
+            }
+          } catch (cleanupErr) {
+            console.warn("Vehicle unassignment cleanup notice:", cleanupErr);
+          }
+        }
+
         toast.success(`Member ${member.name || member.userName} removed successfully`);
         onClose();
         if (onSuccess) onSuccess();

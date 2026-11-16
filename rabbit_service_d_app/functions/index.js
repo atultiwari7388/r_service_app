@@ -412,6 +412,8 @@ exports.createMechanicTeamMember = functions.https.onCall(
       country,
       perHCharge,
       selectedServices,
+      selectedVehicles,
+      assignedVehicles,
       allowDirectJobAcceptance = false,
     } = data;
 
@@ -488,6 +490,11 @@ exports.createMechanicTeamMember = functions.https.onCall(
         isSubscriptionPurchase: true,
         inheritedSubscriptionOwnerId: ownerUid,
         allowDirectJobAcceptance: Boolean(allowDirectJobAcceptance),
+        assignedVehicles: Array.isArray(selectedVehicles)
+          ? selectedVehicles
+          : Array.isArray(assignedVehicles)
+          ? assignedVehicles
+          : [],
 
         // Performance stats
         rating: 5.0,
@@ -511,6 +518,44 @@ exports.createMechanicTeamMember = functions.https.onCall(
         teamMembers: admin.firestore.FieldValue.arrayUnion(userRecord.uid),
         updated_at: now,
       });
+
+      // 6. Handle Vehicle assignments
+      const vehicleIds = Array.isArray(selectedVehicles)
+        ? selectedVehicles
+        : Array.isArray(assignedVehicles)
+        ? assignedVehicles
+        : [];
+
+      for (const vId of vehicleIds) {
+        if (!vId) continue;
+        try {
+          const vRef = ownerDocRef.collection("Vehicles").doc(vId);
+          const vSnap = await vRef.get();
+          if (vSnap.exists) {
+            const vData = vSnap.data();
+            await vRef.update({
+              assignedTo: userRecord.uid,
+              assignedMemberName: cleanName,
+              assigned_at: now,
+              updatedAt: now,
+            });
+            await db
+              .collection("Mechanics")
+              .doc(userRecord.uid)
+              .collection("Vehicles")
+              .doc(vId)
+              .set({
+                ...vData,
+                assignedTo: userRecord.uid,
+                assignedMemberName: cleanName,
+                assigned_at: now,
+                updatedAt: now,
+              });
+          }
+        } catch (vErr) {
+          console.error(`Error assigning vehicle ${vId}:`, vErr);
+        }
+      }
 
       return {
         success: true,
@@ -581,7 +626,7 @@ exports.deleteMechanicTeamMember = functions.https.onCall(
       // 2. Delete member document from Firestore
       await memberRef.delete();
 
-      // 3. Remove from Owner's teamMembers array
+      // 3. Remove from Owner's teamMembers array and unassign vehicles
       await db
         .collection("Mechanics")
         .doc(ownerUid)
@@ -589,6 +634,25 @@ exports.deleteMechanicTeamMember = functions.https.onCall(
           teamMembers: admin.firestore.FieldValue.arrayRemove(memberUid),
           updated_at: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+      // Clear vehicle assignments on Owner's vehicles
+      const assignedVehiclesSnap = await db
+        .collection("Mechanics")
+        .doc(ownerUid)
+        .collection("Vehicles")
+        .where("assignedTo", "==", memberUid)
+        .get();
+
+      const batch = db.batch();
+      assignedVehiclesSnap.forEach((vDoc) => {
+        batch.update(vDoc.ref, {
+          assignedTo: admin.firestore.FieldValue.delete(),
+          assignedMemberName: admin.firestore.FieldValue.delete(),
+          assigned_at: admin.firestore.FieldValue.delete(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+      await batch.commit();
 
       return {
         success: true,
@@ -628,6 +692,8 @@ exports.updateMechanicTeamMember = functions.https.onCall(
       postalCode,
       perHCharge,
       selectedServices,
+      selectedVehicles,
+      assignedVehicles,
       allowDirectJobAcceptance,
       isEnabled,
       active,
@@ -687,6 +753,50 @@ exports.updateMechanicTeamMember = functions.https.onCall(
           latitude: data.latitude,
           longitude: data.longitude,
         };
+      }
+
+      if (selectedVehicles !== undefined || assignedVehicles !== undefined) {
+        const newVehicleIds = Array.isArray(selectedVehicles)
+          ? selectedVehicles
+          : Array.isArray(assignedVehicles)
+          ? assignedVehicles
+          : [];
+        updateData.assignedVehicles = newVehicleIds;
+
+        const ownerDocRef = db.collection("Mechanics").doc(ownerUid);
+        const now = admin.firestore.FieldValue.serverTimestamp();
+
+        // Update assigned vehicles
+        for (const vId of newVehicleIds) {
+          if (!vId) continue;
+          try {
+            const vRef = ownerDocRef.collection("Vehicles").doc(vId);
+            const vSnap = await vRef.get();
+            if (vSnap.exists) {
+              const vData = vSnap.data();
+              await vRef.update({
+                assignedTo: memberUid,
+                assignedMemberName:
+                  name || memberSnap.data().userName || "Technician",
+                assigned_at: now,
+                updatedAt: now,
+              });
+              await memberRef
+                .collection("Vehicles")
+                .doc(vId)
+                .set({
+                  ...vData,
+                  assignedTo: memberUid,
+                  assignedMemberName:
+                    name || memberSnap.data().userName || "Technician",
+                  assigned_at: now,
+                  updatedAt: now,
+                });
+            }
+          } catch (vErr) {
+            console.error(`Error updating assigned vehicle ${vId}:`, vErr);
+          }
+        }
       }
 
       await memberRef.update(updateData);
@@ -1621,6 +1731,7 @@ exports.sendNewMechanicNotification = functions.firestore
 
 exports.autoCancelUnacceptedJobs = functions.pubsub
   .schedule("every 1 minutes")
+  .timeZone("America/Los_Angeles")
   .onRun(async (context) => {
     try {
       const fiveMinutesAgo = admin.firestore.Timestamp.now().toDate();

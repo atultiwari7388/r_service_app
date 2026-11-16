@@ -20,6 +20,9 @@ export interface Vehicle {
   createdAt?: Timestamp | Date | any;
   updatedAt?: Timestamp | Date | any;
   isAssignedToOther?: boolean;
+  assignedTo?: string;
+  assignedMemberName?: string;
+  assigned_at?: Timestamp | Date | any;
   sharingPending?: boolean;
   sharedWith?: {
     borrowerId?: string;

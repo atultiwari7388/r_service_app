@@ -14,11 +14,22 @@ import {
   EyeOff,
   Navigation,
   CheckCircle2,
+  Truck,
 } from "lucide-react";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
+import { db, functions } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContexts";
 import toast from "react-hot-toast";
 import { MechanicProfile } from "@/types/auth";
+import { Vehicle } from "@/types/vehicle";
 import GooglePlacesInput, { SelectedPlaceData } from "./GooglePlacesInput";
 import { formatUSPhoneNumber } from "@/lib/utils";
 
@@ -47,6 +58,10 @@ export default function EditTeamMemberModal({
   member,
   onSuccess,
 }: EditTeamMemberModalProps) {
+  const auth = useAuth();
+  const currentUser = auth?.user;
+  const effectiveOwnerId = currentUser?.uid;
+
   const [name, setName] = useState("");
   const [cellPhone, setCellPhone] = useState("");
 
@@ -66,7 +81,41 @@ export default function EditTeamMemberModal({
   const [active, setActive] = useState(true);
   const [isEnabled, setIsEnabled] = useState(true);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+
+  // Vehicles assignment state
+  const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
+  const [assignedVehicles, setAssignedVehicles] = useState<string[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load workshop vehicles
+  useEffect(() => {
+    if (!isOpen || !effectiveOwnerId) return;
+
+    setLoadingVehicles(true);
+    const vehiclesRef = collection(db, "Mechanics", effectiveOwnerId, "Vehicles");
+    const unsubscribe = onSnapshot(
+      vehiclesRef,
+      (snapshot) => {
+        const list: Vehicle[] = [];
+        snapshot.forEach((d) => {
+          list.push({ id: d.id, ...d.data() } as Vehicle);
+        });
+        list.sort((a, b) =>
+          (a.vehicleNumber || "").localeCompare(b.vehicleNumber || "")
+        );
+        setAvailableVehicles(list);
+        setLoadingVehicles(false);
+      },
+      (err) => {
+        console.error("Error loading vehicles:", err);
+        setLoadingVehicles(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [isOpen, effectiveOwnerId]);
 
   useEffect(() => {
     if (member) {
@@ -93,8 +142,25 @@ export default function EditTeamMemberModal({
       setIsEnabled(member.isEnabled ?? true);
       setSelectedServices(member.selected_services || []);
       setNewPassword("");
+
+      // Initialize assigned vehicles from member data
+      const initialVehicles = Array.isArray(member.assignedVehicles)
+        ? [...member.assignedVehicles]
+        : [];
+      setAssignedVehicles(initialVehicles);
     }
   }, [member]);
+
+  // When availableVehicles are loaded, also merge vehicles that have assignedTo == member.uid
+  useEffect(() => {
+    if (member && availableVehicles.length > 0) {
+      const fromVehicles = availableVehicles
+        .filter((v) => v.assignedTo === member.uid)
+        .map((v) => v.id);
+
+      setAssignedVehicles((prev) => Array.from(new Set([...prev, ...fromVehicles])));
+    }
+  }, [member, availableVehicles]);
 
   if (!isOpen || !member) return null;
 
@@ -102,6 +168,22 @@ export default function EditTeamMemberModal({
     setSelectedServices((prev) =>
       prev.includes(item) ? prev.filter((s) => s !== item) : [...prev, item]
     );
+  };
+
+  const handleVehicleSelection = (vehicleId: string) => {
+    setAssignedVehicles((prev) =>
+      prev.includes(vehicleId)
+        ? prev.filter((id) => id !== vehicleId)
+        : [...prev, vehicleId]
+    );
+  };
+
+  const handleSelectAllVehicles = () => {
+    if (assignedVehicles.length === availableVehicles.length) {
+      setAssignedVehicles([]);
+    } else {
+      setAssignedVehicles(availableVehicles.map((v) => v.id));
+    }
   };
 
   const handlePlaceSelect = (data: SelectedPlaceData) => {
@@ -150,11 +232,66 @@ export default function EditTeamMemberModal({
         longitude: Number(longitude) || 0,
         perHCharge: Number(perHCharge) || 0,
         selectedServices,
+        selectedVehicles: assignedVehicles,
+        assignedVehicles: assignedVehicles,
         allowDirectJobAcceptance,
         isEnabled,
         active,
         newPassword: newPassword ? newPassword.trim() : null,
       });
+
+      // Client-side synchronization for assigned vehicles
+      if (effectiveOwnerId && member.uid) {
+        const now = new Date();
+
+        // 1. Process all available vehicles
+        for (const v of availableVehicles) {
+          const isNowAssigned = assignedVehicles.includes(v.id);
+          const wasAssigned = v.assignedTo === member.uid || (member.assignedVehicles || []).includes(v.id);
+
+          if (isNowAssigned && !wasAssigned) {
+            // Newly assigned
+            await updateDoc(
+              doc(db, "Mechanics", effectiveOwnerId, "Vehicles", v.id),
+              {
+                assignedTo: member.uid,
+                assignedMemberName: name.trim(),
+                assigned_at: now,
+              }
+            ).catch(() => {});
+
+            await setDoc(
+              doc(db, "Mechanics", member.uid, "Vehicles", v.id),
+              {
+                ...v,
+                assignedTo: member.uid,
+                assignedMemberName: name.trim(),
+                assigned_at: now,
+              },
+              { merge: true }
+            ).catch(() => {});
+          } else if (!isNowAssigned && wasAssigned) {
+            // Unassigned
+            await updateDoc(
+              doc(db, "Mechanics", effectiveOwnerId, "Vehicles", v.id),
+              {
+                assignedTo: null,
+                assignedMemberName: null,
+                assigned_at: null,
+              }
+            ).catch(() => {});
+
+            await deleteDoc(
+              doc(db, "Mechanics", member.uid, "Vehicles", v.id)
+            ).catch(() => {});
+          }
+        }
+
+        // Update member document assignedVehicles field
+        await updateDoc(doc(db, "Mechanics", member.uid), {
+          assignedVehicles: assignedVehicles,
+        }).catch(() => {});
+      }
 
       if (result?.data?.success) {
         toast.success(`Updated ${name.trim()} successfully!`);
@@ -182,10 +319,10 @@ export default function EditTeamMemberModal({
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-                Edit Team Member
+                Edit Team Technician
               </h2>
               <p className="text-xs text-gray-500">
-                Update US credentials, operating base territory, and GPS coordinates.
+                Update credentials, dispatch base, and fleet vehicle assignments.
               </p>
             </div>
           </div>
@@ -200,7 +337,13 @@ export default function EditTeamMemberModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 max-h-[75vh] overflow-y-auto">
+          {/* Identity & Contact */}
           <div className="space-y-4">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#58BB87]" />
+              Technician Credentials & Contact
+            </h3>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
@@ -209,15 +352,16 @@ export default function EditTeamMemberModal({
                 <input
                   type="text"
                   required
+                  placeholder="Technician Full Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#F96176] transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#58BB87] focus:ring-2 focus:ring-[#58BB87]/20 transition"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  US Mobile Number <span className="text-rose-500">*</span>
+                  Phone Number <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -227,7 +371,7 @@ export default function EditTeamMemberModal({
                     placeholder="(555) 234-5678"
                     value={cellPhone}
                     onChange={handlePhoneChange}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#F96176] transition"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#58BB87] focus:ring-2 focus:ring-[#58BB87]/20 transition"
                   />
                 </div>
               </div>
@@ -236,33 +380,33 @@ export default function EditTeamMemberModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Email (Read-only)
+                  Account Email (Fixed Login)
                 </label>
                 <input
                   type="email"
                   disabled
                   value={member.email || ""}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 text-sm cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 text-sm cursor-not-allowed"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Reset Password (Leave blank to keep current)
+                  Update Password (Leave blank to keep unchanged)
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter new password"
+                    placeholder="New password (min 6 chars)"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#F96176] transition"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#58BB87] focus:ring-2 focus:ring-[#58BB87]/20 transition"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -285,13 +429,14 @@ export default function EditTeamMemberModal({
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Update US City, State, or Address
+                Search US City, State, or Station Address <span className="text-rose-500">*</span>
               </label>
               <GooglePlacesInput
                 value={placeQuery}
                 onChange={setPlaceQuery}
                 onPlaceSelect={handlePlaceSelect}
-                placeholder="e.g. Dallas, TX or Chicago, IL"
+                placeholder="e.g. Dallas, TX or 1200 Main St, Chicago, IL"
+                required
               />
             </div>
 
@@ -299,7 +444,7 @@ export default function EditTeamMemberModal({
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-gray-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
                 <span className="text-gray-400 block text-[11px]">Base City:</span>
-                <span className="font-bold text-gray-900">{baseCity || "—"}</span>
+                <span className="font-bold text-gray-900">{baseCity || "Not selected"}</span>
               </div>
               <div>
                 <span className="text-gray-400 block text-[11px]">State / Zip:</span>
@@ -319,22 +464,23 @@ export default function EditTeamMemberModal({
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Hourly Rate ($/hr)
+                Hourly Billing Rate ($/hr)
               </label>
               <div className="relative max-w-xs">
                 <DollarSign className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="number"
                   min="0"
+                  placeholder="55"
                   value={perHCharge}
                   onChange={(e) => setPerHCharge(Number(e.target.value))}
-                  className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#F96176] transition"
+                  className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#58BB87] transition"
                 />
               </div>
             </div>
           </div>
 
-          {/* Specialties */}
+          {/* Specialties & Services */}
           <div className="space-y-3 pt-4 border-t border-gray-100">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
               <Wrench className="w-4 h-4 text-[#58BB87]" />
@@ -362,7 +508,100 @@ export default function EditTeamMemberModal({
             </div>
           </div>
 
-          {/* Autonomous Direct Accept Toggle */}
+          {/* Vehicle Fleet Assignment Section */}
+          <div className="space-y-3 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                <Truck className="w-4 h-4 text-[#F96176]" />
+                Assign Vehicles (Optional)
+              </label>
+              {availableVehicles.length > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-gray-500">
+                    {assignedVehicles.length} of {availableVehicles.length} selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllVehicles}
+                    className="font-bold text-[#F96176] hover:text-[#e0485d] transition cursor-pointer"
+                  >
+                    {assignedVehicles.length === availableVehicles.length
+                      ? "Deselect All"
+                      : "Select All"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {loadingVehicles ? (
+              <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 text-center">
+                <div className="w-5 h-5 border-2 border-[#58BB87] border-t-transparent rounded-full animate-spin mx-auto mb-1.5" />
+                <span className="text-xs text-gray-500">Loading workshop vehicles...</span>
+              </div>
+            ) : availableVehicles.length === 0 ? (
+              <div className="p-4 rounded-2xl border border-dashed border-gray-200 bg-slate-50/60 text-xs text-gray-500 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center shrink-0">
+                  <Truck className="w-4 h-4" />
+                </div>
+                <span>
+                  No vehicles currently registered in your workshop fleet. You can add vehicles anytime in <b>My Vehicles</b>.
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-2 border border-gray-200 rounded-2xl p-3 max-h-56 overflow-y-auto bg-slate-50/40">
+                {availableVehicles.map((vehicle) => {
+                  const isSelected = assignedVehicles.includes(vehicle.id);
+                  const isAssignedToOther =
+                    vehicle.assignedTo &&
+                    vehicle.assignedTo !== member.uid &&
+                    vehicle.assignedMemberName;
+
+                  return (
+                    <label
+                      key={vehicle.id}
+                      className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition ${
+                        isSelected
+                          ? "bg-rose-50/70 border-[#F96176] shadow-xs"
+                          : "bg-white border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleVehicleSelection(vehicle.id)}
+                          className="w-4 h-4 rounded text-[#F96176] accent-[#F96176] cursor-pointer"
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-gray-900">
+                              Unit #{vehicle.vehicleNumber}
+                            </span>
+                            {vehicle.vehicleType && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-700">
+                                {vehicle.vehicleType}
+                              </span>
+                            )}
+                            {isAssignedToOther && !isSelected && (
+                              <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                Currently assigned: {vehicle.assignedMemberName}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                            {vehicle.companyName || "Workshop"} {vehicle.licensePlate ? `• Plate: ${vehicle.licensePlate}` : ""} {vehicle.vin ? `• VIN: ${vehicle.vin.slice(-6)}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <Truck className={`w-4 h-4 shrink-0 ${isSelected ? "text-[#F96176]" : "text-gray-400"}`} />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Autonomous Direct Accept Toggle & Status */}
           <div className="pt-4 border-t border-gray-100 space-y-4">
             <div className="p-4 rounded-2xl bg-slate-50 border border-gray-200 flex items-center justify-between gap-4">
               <div>

@@ -38,7 +38,7 @@ export interface MechanicProfile {
     longitude?: number;
   };
   // Team Management & Dispatch Engine Fields
-  role?: "owner" | "member";
+  role?: "owner" | "member" | "Owner" | "Member" | string;
   ownerId?: string;
   isTeamMember?: boolean;
   baseCity?: string;
@@ -46,6 +46,7 @@ export interface MechanicProfile {
   allowDirectJobAcceptance?: boolean;
   inheritedSubscriptionOwnerId?: string;
   teamMembers?: string[];
+  assignedVehicles?: string[];
   rating?: number;
   totalReviewsCount?: number;
   totalCompletedJobs?: number;

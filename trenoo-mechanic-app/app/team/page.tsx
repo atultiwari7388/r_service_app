@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Building2,
   RefreshCw,
+  Truck,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
@@ -29,9 +30,9 @@ import {
   query,
   where,
   onSnapshot,
-  orderBy,
 } from "firebase/firestore";
 import { MechanicProfile } from "@/types/auth";
+import { Vehicle } from "@/types/vehicle";
 import AddTeamMemberModal from "@/components/team/AddTeamMemberModal";
 import EditTeamMemberModal from "@/components/team/EditTeamMemberModal";
 import DeleteTeamMemberModal from "@/components/team/DeleteTeamMemberModal";
@@ -44,6 +45,7 @@ export default function TeamPage() {
   const currentMechanic = auth?.mechanicProfile;
 
   const [members, setMembers] = useState<MechanicProfile[]>([]);
+  const [workshopVehicles, setWorkshopVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCityFilter, setSelectedCityFilter] = useState("All");
@@ -97,6 +99,28 @@ export default function TeamPage() {
     return () => unsubscribe();
   }, [currentUser?.uid]);
 
+  // Subscribe in real-time to this owner's workshop fleet vehicles
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    const vehiclesRef = collection(db, "Mechanics", currentUser.uid, "Vehicles");
+    const unsubscribe = onSnapshot(
+      vehiclesRef,
+      (snapshot) => {
+        const list: Vehicle[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as Vehicle);
+        });
+        setWorkshopVehicles(list);
+      },
+      (error) => {
+        console.error("Error listening to vehicles:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentUser?.uid]);
+
   // Extract unique operating cities
   const operatingCities = Array.from(
     new Set(
@@ -134,7 +158,6 @@ export default function TeamPage() {
   const directDispatchCount = members.filter(
     (m) => m.allowDirectJobAcceptance === true
   ).length;
-  const busyCount = members.filter((m) => !!m.currentActiveJobId).length;
 
   return (
     <MainLayout>
@@ -150,7 +173,7 @@ export default function TeamPage() {
               Team & Field Dispatch
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Add and manage your technicians across Dallas, Houston, Chicago, Atlanta, and US territories. Each member logs in without purchasing their own plan.
+              Add and manage your technicians and assign workshop fleet vehicles. Each member logs in directly with assigned units without purchasing a plan.
             </p>
           </div>
 
@@ -165,7 +188,7 @@ export default function TeamPage() {
           </div>
         </div>
 
-        {/* KPI Cards */}
+        {/* KPI Cards (No Blue/Purple Colors) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-xs flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-rose-50 text-[#F96176] flex items-center justify-center font-bold">
@@ -188,7 +211,7 @@ export default function TeamPage() {
           </div>
 
           <div className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
               <MapPin className="w-6 h-6" />
             </div>
             <div>
@@ -198,12 +221,12 @@ export default function TeamPage() {
           </div>
 
           <div className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#58BB87] flex items-center justify-center font-bold">
               <Radio className="w-6 h-6" />
             </div>
             <div>
               <span className="text-xs font-semibold text-gray-400">Direct Accept</span>
-              <p className="text-xl sm:text-2xl font-extrabold text-purple-600">{directDispatchCount}</p>
+              <p className="text-xl sm:text-2xl font-extrabold text-[#58BB87]">{directDispatchCount}</p>
             </div>
           </div>
         </div>
@@ -322,6 +345,14 @@ export default function TeamPage() {
               const reviews = member.totalReviewsCount || 0;
               const rate = member.perHourCharge || (member as any).perHCharge || 45;
 
+              // Find vehicles assigned to this member
+              const memberAssignedVehicles = workshopVehicles.filter(
+                (v) =>
+                  v.assignedTo === member.uid ||
+                  (Array.isArray(member.assignedVehicles) &&
+                    member.assignedVehicles.includes(v.id))
+              );
+
               return (
                 <div
                   key={member.uid}
@@ -412,13 +443,41 @@ export default function TeamPage() {
                         <span
                           className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                             isDirectAccept
-                              ? "bg-purple-50 text-purple-700 border border-purple-200"
+                              ? "bg-[#EAF8F1] text-[#58BB87] border border-emerald-200"
                               : "bg-slate-100 text-slate-600"
                           }`}
                         >
                           {isDirectAccept ? "Autonomous Direct" : "Owner Dispatched"}
                         </span>
                       </div>
+                    </div>
+
+                    {/* Assigned Vehicles Section */}
+                    <div className="pt-3 border-t border-gray-100 text-xs">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-gray-400 flex items-center gap-1.5 font-medium">
+                          <Truck className="w-3.5 h-3.5 text-[#F96176]" /> Assigned Vehicles:
+                        </span>
+                        <span className="text-[11px] font-bold text-gray-700">
+                          {memberAssignedVehicles.length} {memberAssignedVehicles.length === 1 ? "unit" : "units"}
+                        </span>
+                      </div>
+                      {memberAssignedVehicles.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {memberAssignedVehicles.map((v) => (
+                            <span
+                              key={v.id}
+                              className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 text-[#F96176] border border-rose-100 flex items-center gap-1"
+                              title={`${v.companyName || "Workshop"} ${v.licensePlate ? `• Plate: ${v.licensePlate}` : ""}`}
+                            >
+                              <Truck className="w-2.5 h-2.5" />
+                              <span>#{v.vehicleNumber}</span>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-gray-400 italic">No vehicle assigned</span>
+                      )}
                     </div>
 
                     {/* Specialties Tags */}
