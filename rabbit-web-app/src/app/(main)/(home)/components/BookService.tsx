@@ -1741,7 +1741,7 @@ const BookingSection: React.FC = () => {
         icon: <FaChrome className="text-2xl" />,
         text: "Access Web Dashboard",
         color: "bg-[#F96176] hover:bg-[#e95067]",
-        link: "https://www.rabbitmechanic.com/",
+        link: "https://www.trenoops.com/",
         isBookDemo: false,
       },
     ],
@@ -1958,7 +1958,9 @@ const BookingSection: React.FC = () => {
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 shadow-2xs max-w-full overflow-hidden">
                         <div className="flex items-start justify-between gap-2 min-w-0">
                           <div className="flex items-start gap-2 min-w-0 flex-1">
-                            <span className="text-base mt-0.5 shrink-0">🔒</span>
+                            <span className="text-base mt-0.5 shrink-0">
+                              🔒
+                            </span>
                             <div className="min-w-0 flex-1">
                               <span className="font-bold">
                                 Location blocked in Chrome:
@@ -2047,7 +2049,10 @@ const BookingSection: React.FC = () => {
                         )}
                       </button>
 
-                      <Link href="/add-location?redirect=/find-mechanic" className="shrink-0">
+                      <Link
+                        href="/add-location?redirect=/find-mechanic"
+                        className="shrink-0"
+                      >
                         <button
                           type="button"
                           className="bg-[#F96176] text-white text-2xl rounded-md hover:bg-[#eb929e] px-3.5 h-14 flex items-center justify-center cursor-pointer"
