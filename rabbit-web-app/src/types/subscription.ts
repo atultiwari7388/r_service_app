@@ -52,6 +52,50 @@ export const getCurrencySymbol = (currency?: string, countryCode?: string): stri
   return "$";
 };
 
+export type CommissionType = "percentage" | "flat";
+
+export interface ServiceCommissionConfig {
+  enabled: boolean;
+  type: CommissionType;
+  value: number; // e.g. 7 for 7% or 15 for $15 flat
+}
+
+export interface DefaultCommissionConfig {
+  type: CommissionType;
+  value: number;
+}
+
+export interface MechanicPagePermission {
+  key: string;
+  label: string;
+  description: string;
+  isCore?: boolean;
+}
+
+export const MECHANIC_PAGES_LIST: MechanicPagePermission[] = [
+  { key: "dashboard", label: "Dashboard", description: "Home terminal & active status", isCore: true },
+  { key: "find-jobs", label: "Find Jobs", description: "Highway repair leads & job board", isCore: true },
+  { key: "my-services", label: "My Services", description: "Workshop service capabilities", isCore: true },
+  { key: "profile", label: "My Profile", description: "Technician credentials & workshop info", isCore: true },
+  { key: "invoice", label: "Invoice & Billing", description: "Fleet invoicing & accounts receivable" },
+  { key: "check", label: "Vendor Checks", description: "Check registers & driver payouts" },
+  { key: "inspections", label: "DOT Inspections", description: "90-day BIT & trailer inspections" },
+  { key: "team", label: "Team Management", description: "Shop technician seats & bays" },
+  { key: "reports", label: "Reports & Analytics", description: "Performance & fleet turnaround" },
+  { key: "export", label: "Accounting Export", description: "QuickBooks & audit exports" },
+];
+
+export const CORE_ROADSIDE_PAGES = ["dashboard", "find-jobs", "my-services", "profile"];
+
+export interface CancellationPenaltyConfig {
+  enabled: boolean;
+  gracePeriodMinutes: number; // e.g. 3 minutes - free cancellation window
+  feeType: "percentage" | "flat"; // "%" percentage of estimated job, or "$" flat fee
+  feeValue: number; // e.g. 5 for 5% or 25 for $25 flat
+  penaltyRecipient?: "admin"; // Penalty goes directly to platform admin
+  description?: string;
+}
+
 export interface SubscriptionPlan {
   id?: string;
   name: string;
@@ -61,6 +105,9 @@ export interface SubscriptionPlan {
   price: number;
   discountPrice?: number | null;
   currency: string; // Base currency, e.g. "USD"
+
+  // Free Tier Option
+  isFree?: boolean;
 
   // Multi-Currency / Country-Wise Pricing
   countryPrices?: Record<string, CountryPriceConfig>;
@@ -78,10 +125,22 @@ export interface SubscriptionPlan {
   trailerLimit?: number; // allowed trailers (-1 for unlimited)
 
   // Mechanics specific fields (type: "treno_mechanic")
+  mechanicCategory?: "roadside" | "company"; // Roadside mechanic vs Registered company
   maxBays?: number; // number of service bays (-1 for unlimited)
   serviceRadiusMiles?: number; // service coverage radius in miles (-1 for unlimited)
   priorityJobLeads?: boolean; // priority roadside & workshop repair leads
   directCarrierInvoicing?: boolean; // in-app direct carrier invoicing
+
+  // Commission configuration (per job on selected services)
+  defaultCommission?: DefaultCommissionConfig;
+  serviceCommissions?: Record<string, ServiceCommissionConfig>;
+
+  // Page RBAC Access Permissions
+  allowedPages?: string[]; // e.g. ["dashboard", "find-jobs", "my-services", "profile"]
+  hasAllPagesAccess?: boolean; // true for company registered plans (all current + future pages)
+
+  // Job Cancellation Penalty Policy
+  cancellationPenalty?: CancellationPenaltyConfig;
 
   createdAt?: any;
   updatedAt?: any;

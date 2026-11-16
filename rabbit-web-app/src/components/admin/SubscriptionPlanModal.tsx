@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   Plus,
@@ -17,12 +17,28 @@ import {
   Sparkles,
   Info,
   Globe,
+  Percent,
+  Lock,
+  Unlock,
+  Building2,
+  Car,
+  Search,
+  Check,
+  RotateCcw,
+  Gift,
+  Shield,
+  Briefcase,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import {
   collection,
   doc,
   addDoc,
   updateDoc,
+  getDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -32,6 +48,11 @@ import {
   SubscriptionPlanType,
   SUPPORTED_PLAN_COUNTRIES,
   CountryPriceConfig,
+  CommissionType,
+  ServiceCommissionConfig,
+  MECHANIC_PAGES_LIST,
+  CORE_ROADSIDE_PAGES,
+  CancellationPenaltyConfig,
 } from "@/types/subscription";
 
 interface Props {
@@ -50,6 +71,24 @@ const DURATION_PRESETS = [
   "Yearly",
   "Weekly",
   "Lifetime",
+];
+
+const DEFAULT_SERVICES_FALLBACK = [
+  { title: "Tire Repair & Replacement" },
+  { title: "Brake System & Air Brakes" },
+  { title: "Engine Diagnostics & Repair" },
+  { title: "Battery, Jump Start & Electrical" },
+  { title: "Mobile Welding & Fabrication" },
+  { title: "Hydraulic Hose Repair" },
+  { title: "DEF & Fuel Delivery" },
+  { title: "Transmission & Drivetrain" },
+  { title: "DOT Inspections & PM Service" },
+  { title: "Lockout & Cabin Services" },
+  { title: "Oil Change & Lube" },
+  { title: "AC & Heating Repair" },
+  { title: "Cooling System & Radiator" },
+  { title: "Exhaust & Emissions System" },
+  { title: "Suspension & Steering" },
 ];
 
 export default function SubscriptionPlanModal({
@@ -74,6 +113,9 @@ export default function SubscriptionPlanModal({
   const [isActive, setIsActive] = useState(true);
   const [isPopular, setIsPopular] = useState(false);
   const [sortOrder, setSortOrder] = useState<string>("0");
+
+  // Free Tier Option
+  const [isFree, setIsFree] = useState(false);
 
   // Multi-Currency / Country-wise Pricing State
   const buildDefaultCountryPrices = (): Record<
@@ -107,12 +149,35 @@ export default function SubscriptionPlanModal({
   const [isUnlimitedVehicles, setIsUnlimitedVehicles] = useState(false);
 
   // Mechanic specific
+  const [mechanicCategory, setMechanicCategory] = useState<"roadside" | "company">("roadside");
   const [maxBays, setMaxBays] = useState<string>("2");
   const [isUnlimitedBays, setIsUnlimitedBays] = useState(false);
   const [serviceRadiusMiles, setServiceRadiusMiles] = useState<string>("50");
   const [isUnlimitedRadius, setIsUnlimitedRadius] = useState(false);
   const [priorityJobLeads, setPriorityJobLeads] = useState(true);
   const [directCarrierInvoicing, setDirectCarrierInvoicing] = useState(true);
+
+  // Commission Config (Per-Job on Selected Services)
+  const [defaultCommissionType, setDefaultCommissionType] = useState<CommissionType>("percentage");
+  const [defaultCommissionValue, setDefaultCommissionValue] = useState<string>("7");
+  const [serviceCommissions, setServiceCommissions] = useState<
+    Record<string, { enabled: boolean; type: CommissionType; value: string }>
+  >({});
+  const [showServiceCustomization, setShowServiceCustomization] = useState(false);
+  const [serviceSearchQuery, setServiceSearchQuery] = useState("");
+  const [availableServices, setAvailableServices] = useState<Array<{ title: string; price_type?: number; price?: string }>>(
+    DEFAULT_SERVICES_FALLBACK
+  );
+
+  // RBAC Page Permissions
+  const [allowedPages, setAllowedPages] = useState<string[]>([...CORE_ROADSIDE_PAGES]);
+  const [hasAllPagesAccess, setHasAllPagesAccess] = useState<boolean>(false);
+
+  // Cancellation Penalty Policy
+  const [penaltyEnabled, setPenaltyEnabled] = useState(false);
+  const [gracePeriodMinutes, setGracePeriodMinutes] = useState<string>("3");
+  const [penaltyFeeType, setPenaltyFeeType] = useState<"percentage" | "flat">("percentage");
+  const [penaltyFeeValue, setPenaltyFeeValue] = useState<string>("5");
 
   // Features list
   const [features, setFeatures] = useState<string[]>([]);
@@ -121,6 +186,28 @@ export default function SubscriptionPlanModal({
   // Terms and Conditions list
   const [termsAndConditions, setTermsAndConditions] = useState<string[]>([]);
   const [newTerm, setNewTerm] = useState("");
+
+  // Fetch dynamic services list from Firestore metadata/servicesList
+  useEffect(() => {
+    let isMounted = true;
+    const fetchServices = async () => {
+      try {
+        const snap = await getDoc(doc(db, "metadata", "servicesList"));
+        if (snap.exists() && Array.isArray(snap.data()?.data)) {
+          const list = snap.data().data.filter((s: any) => s && s.title);
+          if (isMounted && list.length > 0) {
+            setAvailableServices(list);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading servicesList in SubscriptionPlanModal:", err);
+      }
+    };
+    fetchServices();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const activeType = lockType ? defaultType : (initialData?.type || defaultType);
@@ -147,6 +234,9 @@ export default function SubscriptionPlanModal({
       setIsPopular(initialData.isPopular ?? false);
       setSortOrder(initialData.sortOrder !== undefined ? String(initialData.sortOrder) : "0");
 
+      // Free Tier
+      setIsFree(initialData.isFree ?? false);
+
       // Owner fields
       setIsUnlimitedVehicles(initialData.maxVehicles === -1);
       setMaxVehicles(initialData.maxVehicles === -1 ? "" : String(initialData.maxVehicles ?? 5));
@@ -155,6 +245,8 @@ export default function SubscriptionPlanModal({
       setTrailerLimit(initialData.trailerLimit === -1 ? "" : String(initialData.trailerLimit ?? 5));
 
       // Mechanic fields
+      const cat = initialData.mechanicCategory || "roadside";
+      setMechanicCategory(cat);
       setIsUnlimitedBays(initialData.maxBays === -1);
       setMaxBays(initialData.maxBays === -1 ? "" : String(initialData.maxBays ?? 2));
       setIsUnlimitedRadius(initialData.serviceRadiusMiles === -1);
@@ -163,6 +255,66 @@ export default function SubscriptionPlanModal({
       );
       setPriorityJobLeads(initialData.priorityJobLeads ?? true);
       setDirectCarrierInvoicing(initialData.directCarrierInvoicing ?? true);
+
+      // Commission fields
+      if (initialData.defaultCommission) {
+        setDefaultCommissionType(initialData.defaultCommission.type || "percentage");
+        setDefaultCommissionValue(
+          initialData.defaultCommission.value !== undefined
+            ? String(initialData.defaultCommission.value)
+            : "7"
+        );
+      } else {
+        setDefaultCommissionType("percentage");
+        setDefaultCommissionValue("7");
+      }
+
+      if (initialData.serviceCommissions) {
+        const scMap: Record<string, { enabled: boolean; type: CommissionType; value: string }> = {};
+        Object.entries(initialData.serviceCommissions).forEach(([srvTitle, cfg]) => {
+          scMap[srvTitle] = {
+            enabled: cfg.enabled !== false,
+            type: cfg.type || "percentage",
+            value: cfg.value !== undefined ? String(cfg.value) : "7",
+          };
+        });
+        setServiceCommissions(scMap);
+      } else {
+        setServiceCommissions({});
+      }
+
+      // Page Permissions
+      setHasAllPagesAccess(
+        initialData.hasAllPagesAccess ?? (cat === "company")
+      );
+      setAllowedPages(
+        initialData.allowedPages && initialData.allowedPages.length > 0
+          ? initialData.allowedPages
+          : cat === "company"
+          ? MECHANIC_PAGES_LIST.map((p) => p.key)
+          : [...CORE_ROADSIDE_PAGES]
+      );
+
+      // Cancellation Penalty Policy
+      if (initialData.cancellationPenalty) {
+        setPenaltyEnabled(initialData.cancellationPenalty.enabled ?? false);
+        setGracePeriodMinutes(
+          initialData.cancellationPenalty.gracePeriodMinutes !== undefined
+            ? String(initialData.cancellationPenalty.gracePeriodMinutes)
+            : "3"
+        );
+        setPenaltyFeeType(initialData.cancellationPenalty.feeType || "percentage");
+        setPenaltyFeeValue(
+          initialData.cancellationPenalty.feeValue !== undefined
+            ? String(initialData.cancellationPenalty.feeValue)
+            : "5"
+        );
+      } else {
+        setPenaltyEnabled(false);
+        setGracePeriodMinutes("3");
+        setPenaltyFeeType("percentage");
+        setPenaltyFeeValue("5");
+      }
 
       setFeatures(initialData.features || []);
       setTermsAndConditions(initialData.termsAndConditions || []);
@@ -220,6 +372,7 @@ export default function SubscriptionPlanModal({
       setIsActive(true);
       setIsPopular(false);
       setSortOrder("0");
+      setIsFree(false);
 
       setCountryPrices(buildDefaultCountryPrices());
       setActiveCountryTab("USA");
@@ -242,12 +395,23 @@ export default function SubscriptionPlanModal({
           "Fleet limits apply strictly to active registered units.",
         ]);
       } else {
+        setMechanicCategory("roadside");
         setIsUnlimitedBays(false);
         setMaxBays("3");
         setIsUnlimitedRadius(false);
         setServiceRadiusMiles("50");
         setPriorityJobLeads(true);
         setDirectCarrierInvoicing(true);
+        setDefaultCommissionType("percentage");
+        setDefaultCommissionValue("7");
+        setServiceCommissions({});
+        setAllowedPages([...CORE_ROADSIDE_PAGES]);
+        setHasAllPagesAccess(false);
+        setPenaltyEnabled(false);
+        setGracePeriodMinutes("3");
+        setPenaltyFeeType("percentage");
+        setPenaltyFeeValue("5");
+
         setFeatures([
           "Priority Roadside Emergency Job Broadcasts",
           "Direct Fleet & Carrier Billing Invoicing",
@@ -263,7 +427,12 @@ export default function SubscriptionPlanModal({
     }
   }, [initialData, defaultType, lockType, isOpen]);
 
-  if (!isOpen) return null;
+  // Filtered services for search (unconditionally at top level)
+  const filteredServices = useMemo(() => {
+    if (!serviceSearchQuery.trim()) return availableServices;
+    const q = serviceSearchQuery.toLowerCase();
+    return availableServices.filter((s) => s.title.toLowerCase().includes(q));
+  }, [availableServices, serviceSearchQuery]);
 
   // Add Feature
   const handleAddFeature = () => {
@@ -287,6 +456,88 @@ export default function SubscriptionPlanModal({
     setTermsAndConditions(termsAndConditions.filter((_, i) => i !== idx));
   };
 
+  // Toggle Free Tier
+  const handleToggleFree = (free: boolean) => {
+    setIsFree(free);
+    if (free && type === "treno_mechanic" && mechanicCategory === "roadside") {
+      setAllowedPages([...CORE_ROADSIDE_PAGES]);
+      setHasAllPagesAccess(false);
+    }
+  };
+
+  // Mechanic Category Switch
+  const handleCategoryChange = (cat: "roadside" | "company") => {
+    setMechanicCategory(cat);
+    if (cat === "roadside") {
+      setAllowedPages([...CORE_ROADSIDE_PAGES]);
+      setHasAllPagesAccess(false);
+    } else {
+      setAllowedPages(MECHANIC_PAGES_LIST.map((p) => p.key));
+      setHasAllPagesAccess(true);
+    }
+  };
+
+  // Apply default commission to all available services
+  const handleApplyDefaultCommissionToAll = () => {
+    const updated: Record<
+      string,
+      { enabled: boolean; type: CommissionType; value: string }
+    > = {};
+    availableServices.forEach((s) => {
+      updated[s.title] = {
+        enabled: true,
+        type: defaultCommissionType,
+        value: defaultCommissionValue,
+      };
+    });
+    setServiceCommissions(updated);
+    toast.success(
+      `Applied default ${defaultCommissionValue}${
+        defaultCommissionType === "percentage" ? "%" : "$"
+      } commission to all ${availableServices.length} services`
+    );
+  };
+
+  // Update specific service commission override
+  const handleServiceCommissionChange = (
+    serviceTitle: string,
+    patch: Partial<{ enabled: boolean; type: CommissionType; value: string }>
+  ) => {
+    setServiceCommissions((prev) => {
+      const existing = prev[serviceTitle] || {
+        enabled: true,
+        type: defaultCommissionType,
+        value: defaultCommissionValue,
+      };
+      return {
+        ...prev,
+        [serviceTitle]: {
+          ...existing,
+          ...patch,
+        },
+      };
+    });
+  };
+
+  // Reset service commission override back to default
+  const handleResetServiceCommission = (serviceTitle: string) => {
+    setServiceCommissions((prev) => {
+      const next = { ...prev };
+      delete next[serviceTitle];
+      return next;
+    });
+  };
+
+  // Toggle individual page permission
+  const handleTogglePage = (pageKey: string) => {
+    if (allowedPages.includes(pageKey)) {
+      setAllowedPages(allowedPages.filter((k) => k !== pageKey));
+      setHasAllPagesAccess(false);
+    } else {
+      setAllowedPages([...allowedPages, pageKey]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -299,59 +550,74 @@ export default function SubscriptionPlanModal({
     const configuredCountries: Record<string, CountryPriceConfig> = {};
     let hasAtLeastOneValidPrice = false;
 
-    for (const c of SUPPORTED_PLAN_COUNTRIES) {
-      const entry = countryPrices[c.code];
-      if (entry && entry.enabled) {
-        if (!entry.price || entry.price.trim() === "") {
-          toast.error(
-            `Please enter a price for enabled country: ${c.name} (${c.code})`
-          );
-          setActiveCountryTab(c.code);
-          return;
-        }
-        const p = parseFloat(entry.price);
-        if (isNaN(p) || p < 0) {
-          toast.error(`Please enter a valid price for ${c.name} (${c.code})`);
-          setActiveCountryTab(c.code);
-          return;
-        }
-
-        const d =
-          entry.discountPrice.trim() !== ""
-            ? parseFloat(entry.discountPrice)
-            : null;
-        if (d !== null && (isNaN(d) || d < 0)) {
-          toast.error(
-            `Please enter a valid discounted price for ${c.name} (${c.code})`
-          );
-          setActiveCountryTab(c.code);
-          return;
-        }
-        if (d !== null && d > p) {
-          toast.error(
-            `Discounted price cannot exceed regular price for ${c.name} (${c.code})`
-          );
-          setActiveCountryTab(c.code);
-          return;
-        }
-
+    if (isFree) {
+      // For Free plans, automatically configure 0 price across enabled/all countries
+      SUPPORTED_PLAN_COUNTRIES.forEach((c) => {
         configuredCountries[c.code] = {
           countryCode: c.code,
           currency: c.currency,
           symbol: c.symbol,
-          price: p,
-          discountPrice: d,
+          price: 0,
+          discountPrice: null,
           enabled: true,
         };
-        hasAtLeastOneValidPrice = true;
-      }
-    }
+      });
+      hasAtLeastOneValidPrice = true;
+    } else {
+      for (const c of SUPPORTED_PLAN_COUNTRIES) {
+        const entry = countryPrices[c.code];
+        if (entry && entry.enabled) {
+          if (!entry.price || entry.price.trim() === "") {
+            toast.error(
+              `Please enter a price for enabled country: ${c.name} (${c.code})`
+            );
+            setActiveCountryTab(c.code);
+            return;
+          }
+          const p = parseFloat(entry.price);
+          if (isNaN(p) || p < 0) {
+            toast.error(`Please enter a valid price for ${c.name} (${c.code})`);
+            setActiveCountryTab(c.code);
+            return;
+          }
 
-    if (!hasAtLeastOneValidPrice) {
-      toast.error(
-        "Please enable and enter pricing for at least one country (e.g. USA)."
-      );
-      return;
+          const d =
+            entry.discountPrice.trim() !== ""
+              ? parseFloat(entry.discountPrice)
+              : null;
+          if (d !== null && (isNaN(d) || d < 0)) {
+            toast.error(
+              `Please enter a valid discounted price for ${c.name} (${c.code})`
+            );
+            setActiveCountryTab(c.code);
+            return;
+          }
+          if (d !== null && d > p) {
+            toast.error(
+              `Discounted price cannot exceed regular price for ${c.name} (${c.code})`
+            );
+            setActiveCountryTab(c.code);
+            return;
+          }
+
+          configuredCountries[c.code] = {
+            countryCode: c.code,
+            currency: c.currency,
+            symbol: c.symbol,
+            price: p,
+            discountPrice: d,
+            enabled: true,
+          };
+          hasAtLeastOneValidPrice = true;
+        }
+      }
+
+      if (!hasAtLeastOneValidPrice) {
+        toast.error(
+          "Please enable and enter pricing for at least one country (e.g. USA)."
+        );
+        return;
+      }
     }
 
     const baseEntry =
@@ -366,11 +632,12 @@ export default function SubscriptionPlanModal({
         name: name.trim(),
         type,
         duration: finalDuration,
-        price: baseEntry.price,
-        discountPrice: baseEntry.discountPrice ?? null,
+        price: isFree ? 0 : baseEntry.price,
+        discountPrice: isFree ? null : baseEntry.discountPrice ?? null,
         currency: baseEntry.currency,
         countryPrices: configuredCountries,
         description: description.trim(),
+        isFree,
         isActive,
         isPopular,
         sortOrder: parseInt(sortOrder, 10) || 0,
@@ -391,13 +658,47 @@ export default function SubscriptionPlanModal({
           ? -1
           : parseInt(trailerLimit, 10) || 0;
       } else {
+        payload.mechanicCategory = mechanicCategory;
         payload.maxBays = isUnlimitedBays ? -1 : parseInt(maxBays, 10) || 1;
         payload.serviceRadiusMiles = isUnlimitedRadius
           ? -1
           : parseInt(serviceRadiusMiles, 10) || 25;
         payload.priorityJobLeads = priorityJobLeads;
         payload.directCarrierInvoicing = directCarrierInvoicing;
+
+        // Save Commission configuration
+        const defCommVal = parseFloat(defaultCommissionValue);
+        payload.defaultCommission = {
+          type: defaultCommissionType,
+          value: isNaN(defCommVal) ? 0 : defCommVal,
+        };
+
+        const cleanServiceCommissions: Record<string, ServiceCommissionConfig> = {};
+        Object.entries(serviceCommissions).forEach(([srvTitle, cfg]) => {
+          const val = parseFloat(cfg.value);
+          cleanServiceCommissions[srvTitle] = {
+            enabled: cfg.enabled,
+            type: cfg.type,
+            value: isNaN(val) ? 0 : val,
+          };
+        });
+        payload.serviceCommissions = cleanServiceCommissions;
+
+        // Save Page RBAC Access Permissions
+        payload.allowedPages = allowedPages;
+        payload.hasAllPagesAccess = hasAllPagesAccess;
       }
+
+      // Save Cancellation Penalty Policy (Applies to both Driver/Owner & Mechanic plans, goes to Admin)
+      const graceMin = parseInt(gracePeriodMinutes, 10);
+      const feeVal = parseFloat(penaltyFeeValue);
+      payload.cancellationPenalty = {
+        enabled: penaltyEnabled,
+        gracePeriodMinutes: isNaN(graceMin) || graceMin < 0 ? 3 : graceMin,
+        feeType: penaltyFeeType,
+        feeValue: isNaN(feeVal) || feeVal < 0 ? 0 : feeVal,
+        penaltyRecipient: "admin",
+      };
 
       if (initialData?.id) {
         // Update existing plan
@@ -422,6 +723,8 @@ export default function SubscriptionPlanModal({
       setLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
@@ -630,8 +933,65 @@ export default function SubscriptionPlanModal({
                 )}
               </div>
 
+              {/* Free Tier Option Toggle */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Pricing Tier
+                </label>
+                <div
+                  onClick={() => handleToggleFree(!isFree)}
+                  className={`px-3.5 py-2.5 rounded-xl border-2 transition flex items-center justify-between cursor-pointer select-none ${
+                    isFree
+                      ? "bg-emerald-50/90 border-[#58BB87] shadow-xs"
+                      : "bg-white border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Gift
+                      className={`w-4 h-4 ${
+                        isFree ? "text-[#58BB87]" : "text-gray-400"
+                      }`}
+                    />
+                    <span
+                      className={`text-xs font-bold ${
+                        isFree ? "text-emerald-950" : "text-gray-700"
+                      }`}
+                    >
+                      {isFree ? "100% Free Plan ($0.00)" : "Paid Subscription"}
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isFree}
+                    onChange={(e) => handleToggleFree(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#58BB87] focus:ring-[#58BB87] cursor-pointer"
+                  />
+                </div>
+              </div>
+
               {/* Multi-Currency Country-Wise Pricing Section */}
               <div className="sm:col-span-2 bg-gradient-to-br from-slate-50 to-gray-50/70 rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs space-y-4">
+                {isFree ? (
+                  <div className="bg-emerald-50/90 border-2 border-dashed border-[#58BB87]/50 rounded-xl p-5 text-center space-y-2">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 text-[#58BB87] shadow-xs">
+                      <Gift className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-sm font-black text-emerald-950 uppercase tracking-wide">
+                      100% Free Plan Tier Active
+                    </h4>
+                    <p className="text-xs text-emerald-800 max-w-md mx-auto">
+                      All regional prices are set to $0.00 across all 5 countries (USA, Canada, Mexico, UK, Australia). Users subscribing to this plan will not be charged.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFree(false)}
+                      className="mt-2 text-xs font-bold text-[#58BB87] hover:text-emerald-800 underline cursor-pointer"
+                    >
+                      Switch back to Paid Subscription with Country-Wise Pricing
+                    </button>
+                  </div>
+                ) : (
+                  <>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200 pb-3">
                   <div>
                     <div className="flex items-center gap-2">
@@ -850,6 +1210,8 @@ export default function SubscriptionPlanModal({
                     </div>
                   );
                 })()}
+                  </>
+                )}
               </div>
 
               {/* Display Order */}
@@ -992,13 +1354,92 @@ export default function SubscriptionPlanModal({
 
           {/* Conditional Scope: Mechanics Specific Settings */}
           {type === "treno_mechanic" && (
-            <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/80 space-y-4">
+            <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/80 space-y-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#58BB87] flex items-center gap-2">
                   <Wrench className="w-4 h-4" /> Mechanic & Workshop Scope
                 </h3>
               </div>
 
+              {/* Mechanic Plan Category: Roadside vs Registered Company */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
+                  Plan Scope & Category <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Roadside Mechanic Card */}
+                  <div
+                    onClick={() => handleCategoryChange("roadside")}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition flex items-start gap-3 select-none ${
+                      mechanicCategory === "roadside"
+                        ? "border-amber-500 bg-amber-50/80 shadow-xs ring-1 ring-amber-500"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
+                    }`}
+                  >
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                        mechanicCategory === "roadside"
+                          ? "bg-amber-500 text-white shadow-xs"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      <Car className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-gray-900">
+                          Roadside Mechanic
+                        </span>
+                        {mechanicCategory === "roadside" && (
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                        Independent mobile breakdown techs. Restricted to 4 core pages (Dashboard, Find Jobs, My Services, Profile).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Registered Company Mechanic Card */}
+                  <div
+                    onClick={() => handleCategoryChange("company")}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition flex items-start gap-3 select-none ${
+                      mechanicCategory === "company"
+                        ? "border-gray-900 bg-gray-50/90 shadow-xs ring-1 ring-gray-900"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
+                    }`}
+                  >
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                        mechanicCategory === "company"
+                          ? "bg-gray-900 text-white shadow-xs"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-gray-900">
+                          Registered Company
+                        </span>
+                        {mechanicCategory === "company" && (
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-gray-900 text-white">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                        Full-service repair garage & fleet workshop. Unlocks all 10 platform modules + all future modules automatically.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Bays & Radius */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Max Bays */}
                 <div>
@@ -1006,7 +1447,7 @@ export default function SubscriptionPlanModal({
                     <label className="text-xs font-semibold text-gray-700">
                       Service Bays / Workstations
                     </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-gray-600">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-gray-600 select-none">
                       <input
                         type="checkbox"
                         checked={isUnlimitedBays}
@@ -1032,7 +1473,7 @@ export default function SubscriptionPlanModal({
                     <label className="text-xs font-semibold text-gray-700">
                       Service Radius (Miles)
                     </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-gray-600">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-gray-600 select-none">
                       <input
                         type="checkbox"
                         checked={isUnlimitedRadius}
@@ -1055,7 +1496,7 @@ export default function SubscriptionPlanModal({
 
               {/* Additional Mechanic Toggles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <label className="flex items-center gap-2 p-2.5 rounded-lg border border-emerald-200 bg-white cursor-pointer">
+                <label className="flex items-center gap-2 p-2.5 rounded-lg border border-emerald-200 bg-white cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={priorityJobLeads}
@@ -1067,7 +1508,7 @@ export default function SubscriptionPlanModal({
                   </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2.5 rounded-lg border border-emerald-200 bg-white cursor-pointer">
+                <label className="flex items-center gap-2 p-2.5 rounded-lg border border-emerald-200 bg-white cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={directCarrierInvoicing}
@@ -1079,8 +1520,477 @@ export default function SubscriptionPlanModal({
                   </div>
                 </label>
               </div>
+
+              {/* Per-Job Commission Section */}
+              <div className="bg-white rounded-xl p-4 border border-emerald-200/90 shadow-xs space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#58BB87] flex items-center justify-center shrink-0">
+                      <Percent className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                        Per-Job Commission (Selected Services)
+                      </h4>
+                      <p className="text-[11px] text-gray-500">
+                        Set platform commission per roadside / repair job lead
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleApplyDefaultCommissionToAll}
+                    className="text-xs font-bold text-[#58BB87] hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Apply Default to All
+                  </button>
+                </div>
+
+                {/* Default Commission Control */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Default Commission Type
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDefaultCommissionType("percentage")}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          defaultCommissionType === "percentage"
+                            ? "bg-[#58BB87] text-white border-[#58BB87] shadow-xs"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                        }`}
+                      >
+                        <Percent className="w-3.5 h-3.5" /> Percentage (%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDefaultCommissionType("flat")}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          defaultCommissionType === "flat"
+                            ? "bg-[#58BB87] text-white border-[#58BB87] shadow-xs"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                        }`}
+                      >
+                        <DollarSign className="w-3.5 h-3.5" /> Flat Fee ($)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Default Commission Rate / Amount
+                    </label>
+                    <div className="flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-[#58BB87]">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={defaultCommissionValue}
+                        onChange={(e) => setDefaultCommissionValue(e.target.value)}
+                        placeholder={
+                          defaultCommissionType === "percentage" ? "e.g. 7" : "e.g. 20"
+                        }
+                        className="w-full text-sm font-bold text-gray-900 focus:outline-none"
+                      />
+                      <span className="text-xs font-bold text-gray-500 shrink-0 ml-1">
+                        {defaultCommissionType === "percentage" ? "% per job" : "flat / job"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Collapsible Per-Service Customization */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowServiceCustomization(!showServiceCustomization)}
+                    className="w-full flex items-center justify-between text-xs font-bold text-gray-700 bg-gray-50 hover:bg-gray-100 p-2.5 rounded-lg border border-gray-200 transition cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-gray-500" />
+                      Customize Commission per Specific Service ({availableServices.length} Services available)
+                    </span>
+                    {showServiceCustomization ? (
+                      <ChevronUp className="w-4 h-4 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                    )}
+                  </button>
+
+                  {showServiceCustomization && (
+                    <div className="mt-2.5 p-3 rounded-lg border border-gray-200 bg-white space-y-3">
+                      {/* Search */}
+                      <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={serviceSearchQuery}
+                          onChange={(e) => setServiceSearchQuery(e.target.value)}
+                          placeholder="Search services (e.g. Tire, Brake, Welding, Oil)..."
+                          className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#58BB87]"
+                        />
+                      </div>
+
+                      {/* Services List Table */}
+                      <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 border border-gray-200 rounded-lg">
+                        {filteredServices.map((srv) => {
+                          const cfg = serviceCommissions[srv.title];
+                          const isEnabled = cfg ? cfg.enabled : true;
+                          const currentType = cfg ? cfg.type : defaultCommissionType;
+                          const currentVal = cfg ? cfg.value : defaultCommissionValue;
+                          const isCustomized = !!cfg;
+
+                          return (
+                            <div
+                              key={srv.title}
+                              className="p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-gray-50 transition text-xs"
+                            >
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={isEnabled}
+                                  onChange={(e) =>
+                                    handleServiceCommissionChange(srv.title, {
+                                      enabled: e.target.checked,
+                                    })
+                                  }
+                                  className="w-4 h-4 rounded text-[#58BB87] focus:ring-[#58BB87] cursor-pointer"
+                                />
+                                <span
+                                  className={`font-semibold truncate ${
+                                    isEnabled
+                                      ? "text-gray-900"
+                                      : "text-gray-400 line-through"
+                                  }`}
+                                >
+                                  {srv.title}
+                                </span>
+                                {isCustomized && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 shrink-0">
+                                    Custom
+                                  </span>
+                                )}
+                              </div>
+
+                              {isEnabled && (
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <select
+                                    value={currentType}
+                                    onChange={(e) =>
+                                      handleServiceCommissionChange(srv.title, {
+                                        type: e.target.value as CommissionType,
+                                      })
+                                    }
+                                    className="text-xs font-semibold px-2 py-1 rounded border border-gray-300 bg-white"
+                                  >
+                                    <option value="percentage">% Percent</option>
+                                    <option value="flat">$ Flat</option>
+                                  </select>
+
+                                  <div className="flex items-center border border-gray-300 rounded px-2 py-1 w-20 bg-white">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.5"
+                                      value={currentVal}
+                                      onChange={(e) =>
+                                        handleServiceCommissionChange(srv.title, {
+                                          value: e.target.value,
+                                        })
+                                      }
+                                      className="w-full text-xs font-bold text-gray-900 focus:outline-none"
+                                    />
+                                    <span className="text-[10px] text-gray-500 font-bold ml-0.5">
+                                      {currentType === "percentage" ? "%" : "$"}
+                                    </span>
+                                  </div>
+
+                                  {isCustomized && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleResetServiceCommission(srv.title)
+                                      }
+                                      className="text-[11px] text-gray-400 hover:text-red-500 p-1 cursor-pointer"
+                                      title="Reset to default rate"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Page Access RBAC Section */}
+              <div className="bg-white rounded-xl p-4 border border-emerald-200/90 shadow-xs space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#58BB87] flex items-center justify-center shrink-0">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                        Page Access Permissions (Web & App)
+                      </h4>
+                      <p className="text-[11px] text-gray-500">
+                        Select which platform pages are unlocked for this plan
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quick Presets */}
+                  <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAllowedPages([...CORE_ROADSIDE_PAGES]);
+                        setHasAllPagesAccess(false);
+                      }}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition cursor-pointer"
+                    >
+                      Roadside Preset (4 Pages)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAllowedPages(MECHANIC_PAGES_LIST.map((p) => p.key));
+                        setHasAllPagesAccess(true);
+                      }}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-gray-900 text-white border border-gray-900 hover:bg-gray-800 transition cursor-pointer"
+                    >
+                      Full Access (All Pages)
+                    </button>
+                  </div>
+                </div>
+
+                {/* All Current + Future Pages Switch */}
+                <label className="flex items-center justify-between p-3 rounded-lg bg-emerald-50/70 border border-emerald-200 cursor-pointer select-none">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-[#58BB87] shrink-0" />
+                    <div>
+                      <span className="text-xs font-bold text-gray-900">
+                        Include all future pages & modules automatically
+                      </span>
+                      <p className="text-[11px] text-gray-600">
+                        When new features or pages are released, mechanics with this plan get automatic access without plan edits.
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={hasAllPagesAccess}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setHasAllPagesAccess(checked);
+                      if (checked) {
+                        setAllowedPages(MECHANIC_PAGES_LIST.map((p) => p.key));
+                      }
+                    }}
+                    className="w-4 h-4 rounded text-[#58BB87] focus:ring-[#58BB87] ml-2 cursor-pointer"
+                  />
+                </label>
+
+                {/* Page Checkboxes Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {MECHANIC_PAGES_LIST.map((p) => {
+                    const isChecked = allowedPages.includes(p.key) || hasAllPagesAccess;
+                    const isCore = p.isCore;
+
+                    return (
+                      <label
+                        key={p.key}
+                        className={`flex items-start gap-2.5 p-2.5 rounded-lg border transition cursor-pointer select-none ${
+                          isChecked
+                            ? "bg-emerald-50/60 border-emerald-300 shadow-2xs"
+                            : "bg-white border-gray-200 hover:border-gray-300 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={hasAllPagesAccess}
+                          onChange={() => handleTogglePage(p.key)}
+                          className="w-4 h-4 rounded text-[#58BB87] focus:ring-[#58BB87] mt-0.5 shrink-0 cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-gray-900 truncate">
+                              {p.label}
+                            </span>
+                            {isCore && (
+                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
+                                Core
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-500 truncate">
+                            {p.description}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
+
+          {/* Job Cancellation Penalty Policy Section (Applies to both Driver/Owner & Mechanic plans, goes to Admin) */}
+          <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-xs space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                    Job Cancellation Penalty & Grace Period (Admin Revenue)
+                  </h4>
+                  <p className="text-[11px] text-gray-500">
+                    {type === "trenoops"
+                      ? "Penalty fee charged if driver/carrier cancels after technician accepts the dispatch"
+                      : "Penalty fee charged if mechanic cancels an accepted service job"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Enable / Disable Penalty Switch */}
+              <label className="flex items-center gap-2 cursor-pointer select-none self-start sm:self-auto">
+                <input
+                  type="checkbox"
+                  checked={penaltyEnabled}
+                  onChange={(e) => setPenaltyEnabled(e.target.checked)}
+                  className="w-4 h-4 rounded text-[#58BB87] focus:ring-[#58BB87]"
+                />
+                <span className="text-xs font-bold text-gray-800">
+                  Enable Penalty Policy
+                </span>
+              </label>
+            </div>
+
+            {penaltyEnabled ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Grace Period Window in Minutes */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Free Grace Window (Minutes) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-[#58BB87]">
+                      <Clock className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0" />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={gracePeriodMinutes}
+                        onChange={(e) => setGracePeriodMinutes(e.target.value)}
+                        placeholder="e.g. 3"
+                        className="w-full text-xs font-bold text-gray-900 focus:outline-none"
+                      />
+                      <span className="text-[11px] font-semibold text-gray-500 ml-1 shrink-0">
+                        min
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Cancellation within this window has <strong>$0 penalty</strong>.
+                    </p>
+                  </div>
+
+                  {/* Penalty Fee Type */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Penalty Fee Type
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPenaltyFeeType("percentage")}
+                        className={`py-2 px-2.5 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
+                          penaltyFeeType === "percentage"
+                            ? "bg-[#58BB87] text-white border-[#58BB87] shadow-xs"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                        }`}
+                      >
+                        <Percent className="w-3 h-3" /> Percent (%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPenaltyFeeType("flat")}
+                        className={`py-2 px-2.5 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
+                          penaltyFeeType === "flat"
+                            ? "bg-[#58BB87] text-white border-[#58BB87] shadow-xs"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                        }`}
+                      >
+                        <DollarSign className="w-3 h-3" /> Flat ($)
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Percentage of estimated job or flat dollar fee.
+                    </p>
+                  </div>
+
+                  {/* Penalty Amount / Value */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Penalty Amount / Rate <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-[#58BB87]">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={penaltyFeeValue}
+                        onChange={(e) => setPenaltyFeeValue(e.target.value)}
+                        placeholder={penaltyFeeType === "percentage" ? "e.g. 5" : "e.g. 25"}
+                        className="w-full text-xs font-bold text-gray-900 focus:outline-none"
+                      />
+                      <span className="text-[11px] font-bold text-gray-500 ml-1 shrink-0">
+                        {penaltyFeeType === "percentage" ? "% per cancel" : "$ flat"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Charged if cancelled after grace window.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live Rule Preview Summary Banner */}
+                <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/90 text-xs text-amber-950 flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <span className="font-bold text-amber-900">Active Rule Summary: </span>
+                    {type === "trenoops" ? (
+                      <>
+                        Driver gets a <strong>{gracePeriodMinutes || "3"}-minute free grace window</strong> after mechanic accepts. If cancelled after {gracePeriodMinutes || "3"} minutes, a <strong>{penaltyFeeValue || "0"}{penaltyFeeType === "percentage" ? "%" : "$"} penalty fee</strong> is charged to the driver and <strong>goes directly to Platform Admin revenue</strong>.
+                      </>
+                    ) : (
+                      <>
+                        Mechanic gets a <strong>{gracePeriodMinutes || "3"}-minute free grace window</strong> after accepting the dispatch. If cancelled after {gracePeriodMinutes || "3"} minutes, a <strong>{penaltyFeeValue || "0"}{penaltyFeeType === "percentage" ? "%" : "$"} penalty fee</strong> is charged to the mechanic and <strong>goes directly to Platform Admin revenue</strong>.
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-500 flex items-center gap-2">
+                <Info className="w-4 h-4 shrink-0 text-gray-400" />
+                <span>
+                  Cancellation penalty is disabled for this plan. Cancellations occur with zero penalty.
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Features List */}
           <div className="space-y-3">

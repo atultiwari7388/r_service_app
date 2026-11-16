@@ -38,6 +38,12 @@ import {
   SlidersHorizontal,
   ExternalLink,
   Globe,
+  Gift,
+  Percent,
+  Shield,
+  Building2,
+  Car,
+  Clock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -499,23 +505,52 @@ export default function SubscriptionPlansManager({
                 <div className="p-5 border-b border-gray-100 flex-1">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                          isOwner
-                            ? "bg-rose-50 text-[#F96176] border border-rose-200"
-                            : "bg-emerald-50 text-[#58BB87] border border-emerald-200"
-                        }`}
-                      >
-                        {isOwner ? (
-                          <>
-                            <Truck className="w-3 h-3" /> Owners & Drivers
-                          </>
-                        ) : (
-                          <>
-                            <Wrench className="w-3 h-3" /> Mechanics & Shops
-                          </>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                            isOwner
+                              ? "bg-rose-50 text-[#F96176] border border-rose-200"
+                              : "bg-emerald-50 text-[#58BB87] border border-emerald-200"
+                          }`}
+                        >
+                          {isOwner ? (
+                            <>
+                              <Truck className="w-3 h-3" /> Owners & Drivers
+                            </>
+                          ) : (
+                            <>
+                              <Wrench className="w-3 h-3" /> Mechanics & Shops
+                            </>
+                          )}
+                        </span>
+
+                        {plan.isFree && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <Gift className="w-3 h-3" /> 100% Free
+                          </span>
                         )}
-                      </span>
+
+                        {!isOwner && plan.mechanicCategory && (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                              plan.mechanicCategory === "company"
+                                ? "bg-gray-900 text-white border border-gray-800"
+                                : "bg-amber-100 text-amber-800 border border-amber-200"
+                            }`}
+                          >
+                            {plan.mechanicCategory === "company" ? (
+                              <>
+                                <Building2 className="w-3 h-3" /> Company Garage
+                              </>
+                            ) : (
+                              <>
+                                <Car className="w-3 h-3" /> Roadside Tech
+                              </>
+                            )}
+                          </span>
+                        )}
+                      </div>
+
                       <h3 className="text-lg font-black text-gray-900 mt-2">
                         {plan.name}
                       </h3>
@@ -550,7 +585,19 @@ export default function SubscriptionPlansManager({
                   {/* Pricing Box */}
                   <div className="bg-gray-50/90 rounded-xl p-3.5 border border-gray-200/70 mb-4">
                     <div className="flex items-baseline gap-2">
-                      {hasDiscount ? (
+                      {plan.isFree ? (
+                        <>
+                          <span className="text-2xl font-black text-emerald-700">
+                            FREE
+                          </span>
+                          <span className="text-xs font-semibold text-gray-500">
+                            / {plan.duration}
+                          </span>
+                          <span className="ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                            $0.00 / Free Tier
+                          </span>
+                        </>
+                      ) : hasDiscount ? (
                         <>
                           <span className="text-2xl font-black text-gray-900">
                             {displaySymbol}{displayDiscountPrice?.toFixed(2)}
@@ -567,41 +614,54 @@ export default function SubscriptionPlansManager({
                           {displaySymbol}{displayPrice.toFixed(2)}
                         </span>
                       )}
-                      <span className="text-xs font-semibold text-gray-500">
-                        / {plan.duration}
-                      </span>
-                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 bg-gray-200/80 text-gray-700 rounded ml-1">
-                        {displayCurrency}
-                      </span>
+                      {!plan.isFree && (
+                        <>
+                          <span className="text-xs font-semibold text-gray-500">
+                            / {plan.duration}
+                          </span>
+                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 bg-gray-200/80 text-gray-700 rounded ml-1">
+                            {displayCurrency}
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     {/* Multi-Currency Badges */}
-                    {plan.countryPrices && Object.keys(plan.countryPrices).length > 0 && (
-                      <div className="mt-2.5 pt-2 border-t border-gray-200/60 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[10px] font-semibold text-gray-400">Currencies:</span>
-                        {SUPPORTED_PLAN_COUNTRIES.map((c) => {
-                          const cp = plan.countryPrices?.[c.code];
-                          if (!cp || !cp.enabled) return null;
-                          const isSelected = selectedCountryFilter === c.code;
-                          return (
-                            <button
-                              key={c.code}
-                              type="button"
-                              onClick={() => setSelectedCountryFilter(c.code)}
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
-                                isSelected
-                                  ? "bg-[#F96176] text-white shadow-2xs"
-                                  : "bg-white border border-gray-200 text-gray-700 hover:border-gray-400"
-                              }`}
-                              title={`${c.name} (${c.currency}): ${cp.symbol}${cp.discountPrice || cp.price}`}
-                            >
-                              <span>{c.flag}</span>
-                              <span>{cp.symbol}{cp.discountPrice || cp.price}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {!plan.isFree &&
+                      plan.countryPrices &&
+                      Object.keys(plan.countryPrices).length > 0 && (
+                        <div className="mt-2.5 pt-2 border-t border-gray-200/60 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] font-semibold text-gray-400">
+                            Currencies:
+                          </span>
+                          {SUPPORTED_PLAN_COUNTRIES.map((c) => {
+                            const cp = plan.countryPrices?.[c.code];
+                            if (!cp || !cp.enabled) return null;
+                            const isSelected = selectedCountryFilter === c.code;
+                            return (
+                              <button
+                                key={c.code}
+                                type="button"
+                                onClick={() => setSelectedCountryFilter(c.code)}
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
+                                  isSelected
+                                    ? "bg-[#F96176] text-white shadow-2xs"
+                                    : "bg-white border border-gray-200 text-gray-700 hover:border-gray-400"
+                                }`}
+                                title={`${c.name} (${c.currency}): ${
+                                  cp.symbol
+                                }${cp.discountPrice || cp.price}`}
+                              >
+                                <span>{c.flag}</span>
+                                <span>
+                                  {cp.symbol}
+                                  {cp.discountPrice || cp.price}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                   </div>
 
                   {/* Scope Badges */}
@@ -635,9 +695,39 @@ export default function SubscriptionPlansManager({
                           </span>
                         </div>
                       )}
+
+                      {/* Cancellation Penalty Policy for Owners/Drivers */}
+                      {plan.cancellationPenalty?.enabled && (
+                        <div className="flex items-center justify-between text-xs pt-1.5 border-t border-rose-100/80">
+                          <span className="font-semibold text-gray-600 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-600" /> Cancel Policy:
+                          </span>
+                          <span className="font-bold text-gray-900 text-[11px]">
+                            Free &le; {plan.cancellationPenalty.gracePeriodMinutes || 3}m &bull; Late: {plan.cancellationPenalty.feeValue}
+                            {plan.cancellationPenalty.feeType === "percentage" ? "%" : "$"} (to Admin)
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-1.5 text-xs text-gray-700 bg-emerald-50/40 p-3 rounded-xl border border-emerald-100/80 mb-4">
+                      {/* Mechanic Category */}
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-gray-600">Category:</span>
+                        <span
+                          className={`font-bold text-[11px] px-2 py-0.5 rounded-full ${
+                            plan.mechanicCategory === "company"
+                              ? "bg-gray-900 text-white"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {plan.mechanicCategory === "company"
+                            ? "Registered Company"
+                            : "Roadside Mechanic"}
+                        </span>
+                      </div>
+
+                      {/* Service Bays */}
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-gray-600">Service Bays:</span>
                         <span className="font-extrabold text-gray-900">
@@ -646,6 +736,8 @@ export default function SubscriptionPlansManager({
                             : `${plan.maxBays} Bays`}
                         </span>
                       </div>
+
+                      {/* Service Radius */}
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-gray-600">Radius:</span>
                         <span className="font-bold text-[#58BB87]">
@@ -655,6 +747,53 @@ export default function SubscriptionPlansManager({
                             : `${plan.serviceRadiusMiles} Miles`}
                         </span>
                       </div>
+
+                      {/* Job Commission */}
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-gray-600">Per-Job Comm.:</span>
+                        <span className="font-bold text-gray-900 text-[11px] flex items-center gap-1">
+                          <Percent className="w-3 h-3 text-[#58BB87]" />
+                          {plan.defaultCommission
+                            ? `${plan.defaultCommission.value}${
+                                plan.defaultCommission.type === "percentage" ? "%" : "$"
+                              }`
+                            : "7%"}
+                          {plan.serviceCommissions &&
+                            Object.keys(plan.serviceCommissions).length > 0 && (
+                              <span className="text-[10px] text-gray-500 font-normal">
+                                ({Object.keys(plan.serviceCommissions).length} custom)
+                              </span>
+                            )}
+                        </span>
+                      </div>
+
+                      {/* Page Access */}
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-gray-600">Pages Access:</span>
+                        <span
+                          className={`font-bold text-[11px] ${
+                            plan.hasAllPagesAccess ? "text-gray-900 font-extrabold" : "text-emerald-700"
+                          }`}
+                        >
+                          {plan.hasAllPagesAccess
+                            ? "All Pages (Unlimited)"
+                            : `${plan.allowedPages?.length || 4} Core Pages`}
+                        </span>
+                      </div>
+
+                      {/* Cancellation Penalty Policy */}
+                      {plan.cancellationPenalty?.enabled && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-gray-600 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-600" /> Cancel Policy:
+                          </span>
+                          <span className="font-bold text-gray-900 text-[11px]">
+                            Free &le; {plan.cancellationPenalty.gracePeriodMinutes || 3}m &bull; Late: {plan.cancellationPenalty.feeValue}
+                            {plan.cancellationPenalty.feeType === "percentage" ? "%" : "$"} (to Admin)
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-3 text-[11px] text-gray-600 border-t border-emerald-100/80 pt-1.5">
                         <span
                           className={`font-semibold ${
