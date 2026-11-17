@@ -65,6 +65,8 @@ interface Props {
 }
 
 const DURATION_PRESETS = [
+  "Daily",
+  "2 Days",
   "Monthly",
   "Quarterly",
   "Semi-Annually",

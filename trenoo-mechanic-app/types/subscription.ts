@@ -1,6 +1,8 @@
 export type SubscriptionPlanType = "trenoops" | "treno_mechanic";
 
 export type SubscriptionDuration =
+  | "Daily"
+  | "2 Days"
   | "Monthly"
   | "Quarterly"
   | "Semi-Annually"

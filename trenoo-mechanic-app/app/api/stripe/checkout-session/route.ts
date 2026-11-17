@@ -18,6 +18,10 @@ function mapDurationToStripeInterval(durationStr: string): {
 } {
   const normalized = (durationStr || "").toLowerCase().trim();
 
+  if (normalized.includes("day") || normalized.includes("daily")) {
+    const isTwo = normalized.includes("2");
+    return { interval: "day", interval_count: isTwo ? 2 : 1 };
+  }
   if (normalized.includes("year") || normalized.includes("annual")) {
     return { interval: "year", interval_count: 1 };
   }
