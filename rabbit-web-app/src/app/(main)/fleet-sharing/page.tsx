@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import {
@@ -39,6 +40,7 @@ import {
   FiInbox,
   FiArrowUpRight,
   FiArrowDownLeft,
+  FiInfo,
 } from "react-icons/fi";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
@@ -123,6 +125,162 @@ export interface ShareHistoryEvent {
   performedByEmail?: string;
 }
 
+// ==========================================
+// HUMAN-FRIENDLY HELPERS & TOOLTIP COMPONENT
+// ==========================================
+
+function HeaderWithInfo({
+  title,
+  tooltip,
+  className,
+}: {
+  title: string;
+  tooltip: string;
+  className?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [coords, setCoords] = useState<{
+    top: number;
+    left: number;
+    arrowLeft: number;
+    placement: "top" | "bottom";
+  }>({ top: 0, left: 0, arrowLeft: 0, placement: "top" });
+
+  const triggerRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const updatePosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const tooltipWidth = 240;
+    const viewportWidth = window.innerWidth;
+
+    // Determine horizontal center
+    const triggerCenter = rect.left + rect.width / 2;
+
+    // Clamp tooltip center so it never gets cut off on left or right edges
+    const minCenter = tooltipWidth / 2 + 12;
+    const maxCenter = viewportWidth - tooltipWidth / 2 - 12;
+    const clampedCenter = Math.max(
+      minCenter,
+      Math.min(maxCenter, triggerCenter)
+    );
+
+    // Arrow relative offset to tooltip center
+    const arrowOffset = triggerCenter - clampedCenter;
+
+    // If near viewport top (< 90px), show underneath, otherwise show above
+    const placeBelow = rect.top < 90;
+
+    setCoords({
+      top: placeBelow ? rect.bottom + 8 : rect.top - 8,
+      left: clampedCenter,
+      arrowLeft: arrowOffset,
+      placement: placeBelow ? "bottom" : "top",
+    });
+  };
+
+  const show = () => {
+    updatePosition();
+    setIsOpen(true);
+  };
+
+  const hide = () => {
+    setIsOpen(false);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleDismiss = () => setIsOpen(false);
+    window.addEventListener("scroll", handleDismiss, true);
+    window.addEventListener("resize", handleDismiss);
+    return () => {
+      window.removeEventListener("scroll", handleDismiss, true);
+      window.removeEventListener("resize", handleDismiss);
+    };
+  }, [isOpen]);
+
+  return (
+    <span
+      ref={triggerRef}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (isOpen) hide();
+        else show();
+      }}
+      className={`inline-flex items-center gap-1.5 group cursor-help select-none ${
+        className || ""
+      }`}
+    >
+      <span>{title}</span>
+      <span className="p-0.5 rounded-full text-gray-400 group-hover:text-gray-700 transition-colors">
+        <FiInfo className="text-xs" />
+      </span>
+
+      {/* Floating Tooltip rendered directly into document.body to overlap above tables & prevent overflow clipping */}
+      {mounted &&
+        isOpen &&
+        createPortal(
+          <div
+            role="tooltip"
+            style={{
+              position: "fixed",
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              transform:
+                coords.placement === "top"
+                  ? "translate(-50%, -100%)"
+                  : "translate(-50%, 0)",
+            }}
+            className="z-[99999] w-60 p-2.5 rounded-xl bg-gray-900/95 backdrop-blur-xs text-white text-[11px] font-normal normal-case leading-relaxed shadow-2xl border border-gray-700 pointer-events-none text-center animate-in fade-in zoom-in-95 duration-150"
+          >
+            {tooltip}
+            {/* Arrow pointer */}
+            <span
+              style={{
+                left: `calc(50% + ${coords.arrowLeft}px)`,
+              }}
+              className={`absolute -translate-x-1/2 w-2 h-2 bg-gray-900 border-gray-700 transform rotate-45 ${
+                coords.placement === "top"
+                  ? "bottom-[-5px] border-r border-b"
+                  : "top-[-5px] border-l border-t"
+              }`}
+            />
+          </div>,
+          document.body
+        )}
+    </span>
+  );
+}
+
+function formatCreatedDate(createdAt: any, fallbackDate?: string): string {
+  if (!createdAt && fallbackDate) return fallbackDate;
+  if (!createdAt) return "N/A";
+  try {
+    if (createdAt?.toDate && typeof createdAt.toDate === "function") {
+      return format(createdAt.toDate(), "MM/dd/yyyy");
+    }
+    if (createdAt?.seconds) {
+      return format(new Date(createdAt.seconds * 1000), "MM/dd/yyyy");
+    }
+    if (createdAt instanceof Date) {
+      return format(createdAt, "MM/dd/yyyy");
+    }
+    if (typeof createdAt === "string" && !isNaN(Date.parse(createdAt))) {
+      return format(new Date(createdAt), "MM/dd/yyyy");
+    }
+  } catch (err) {
+    // fallback
+  }
+  return fallbackDate || "N/A";
+}
+
 export default function FleetSharingPage() {
   const auth = useAuth();
   const user = auth?.user;
@@ -137,12 +295,24 @@ export default function FleetSharingPage() {
   const [myVehicles, setMyVehicles] = useState<LocalFleetVehicle[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Navigation & Search
+  // Navigation, Tabs & Search
   const [activeTab, setActiveTab] = useState<
-    "lent" | "borrowed" | "requests" | "history"
-  >("lent");
+    "shared_by_me" | "shared_with_me" | "history"
+  >("shared_by_me");
+  const [activeSubTab, setActiveSubTab] = useState<
+    "approved" | "pending" | "all" | "completed" | "rejected"
+  >("approved");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+
+  // Pagination (20 items per page)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 20;
+
+  // Reset page when tab, subtab, search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, activeSubTab, searchQuery, statusFilter]);
 
   // Modals
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
@@ -436,12 +606,65 @@ export default function FleetSharingPage() {
     return fleetShares.filter((s) => s.status === "pending").length;
   }, [fleetShares]);
 
+  // Sub-tab Counts for UI
+  const approvedLentCount = useMemo(() => {
+    return fleetShares.filter(
+      (s) => s.lenderId === effectiveUserId && s.status === "active"
+    ).length;
+  }, [fleetShares, effectiveUserId]);
+
+  const pendingLentCount = useMemo(() => {
+    return fleetShares.filter(
+      (s) => s.lenderId === effectiveUserId && s.status === "pending"
+    ).length;
+  }, [fleetShares, effectiveUserId]);
+
+  const approvedBorrowedCount = useMemo(() => {
+    return fleetShares.filter(
+      (s) =>
+        (s.borrowerId === effectiveUserId ||
+          s.borrowerEmail?.toLowerCase() === user?.email?.toLowerCase()) &&
+        s.status === "active"
+    ).length;
+  }, [fleetShares, effectiveUserId, user?.email]);
+
+  const pendingBorrowedCount = useMemo(() => {
+    return fleetShares.filter(
+      (s) =>
+        (s.borrowerId === effectiveUserId ||
+          s.borrowerEmail?.toLowerCase() === user?.email?.toLowerCase()) &&
+        s.status === "pending"
+    ).length;
+  }, [fleetShares, effectiveUserId, user?.email]);
+
+  const historyReturnedCount = useMemo(() => {
+    return fleetShares.filter(
+      (s) =>
+        (s.lenderId === effectiveUserId ||
+          s.borrowerId === effectiveUserId ||
+          s.borrowerEmail?.toLowerCase() === user?.email?.toLowerCase()) &&
+        s.status === "completed"
+    ).length;
+  }, [fleetShares, effectiveUserId, user?.email]);
+
+  const historyRejectedCount = useMemo(() => {
+    return fleetShares.filter(
+      (s) =>
+        (s.lenderId === effectiveUserId ||
+          s.borrowerId === effectiveUserId ||
+          s.borrowerEmail?.toLowerCase() === user?.email?.toLowerCase()) &&
+        (s.status === "rejected" || s.status === "cancelled")
+    ).length;
+  }, [fleetShares, effectiveUserId, user?.email]);
+
+  const historyAllCount = historyReturnedCount + historyRejectedCount;
+
   // Available vehicles for lending (not currently lent out or pending)
   const availableVehiclesForOffer = useMemo(() => {
     return myVehicles.filter((v) => !v.isAssignedToOther && !v.sharingPending);
   }, [myVehicles]);
 
-  // Filtered List based on Active Tab
+  // Filtered List based on Active Tab & Subtab
   const filteredShares = useMemo(() => {
     return fleetShares.filter((share) => {
       const isLender = share.lenderId === effectiveUserId;
@@ -449,24 +672,52 @@ export default function FleetSharingPage() {
         share.borrowerId === effectiveUserId ||
         share.borrowerEmail?.toLowerCase() === user?.email?.toLowerCase();
 
-      // Tab filter
-      if (activeTab === "lent") {
-        if (!isLender || share.status === "completed") return false;
-      } else if (activeTab === "borrowed") {
-        if (!isBorrower || share.status === "completed") return false;
-      } else if (activeTab === "requests") {
-        if (share.status !== "pending") return false;
-      } else if (activeTab === "history") {
+      // Main tab filter
+      if (activeTab === "shared_by_me") {
+        if (!isLender) return false;
         if (
-          share.status !== "completed" &&
-          share.status !== "rejected" &&
-          share.status !== "cancelled"
+          share.status === "completed" ||
+          share.status === "rejected" ||
+          share.status === "cancelled"
         ) {
           return false;
         }
+        if (activeSubTab === "approved" && share.status !== "active")
+          return false;
+        if (activeSubTab === "pending" && share.status !== "pending")
+          return false;
+      } else if (activeTab === "shared_with_me") {
+        if (!isBorrower) return false;
+        if (
+          share.status === "completed" ||
+          share.status === "rejected" ||
+          share.status === "cancelled"
+        ) {
+          return false;
+        }
+        if (activeSubTab === "approved" && share.status !== "active")
+          return false;
+        if (activeSubTab === "pending" && share.status !== "pending")
+          return false;
+      } else if (activeTab === "history") {
+        if (!isLender && !isBorrower) return false;
+        const isHistory =
+          share.status === "completed" ||
+          share.status === "rejected" ||
+          share.status === "cancelled";
+        if (!isHistory) return false;
+
+        if (activeSubTab === "completed" && share.status !== "completed")
+          return false;
+        if (
+          activeSubTab === "rejected" &&
+          share.status !== "rejected" &&
+          share.status !== "cancelled"
+        )
+          return false;
       }
 
-      // Status dropdown filter
+      // Status dropdown filter (if user selected something specific)
       if (statusFilter !== "All") {
         if (share.status.toLowerCase() !== statusFilter.toLowerCase()) {
           return false;
@@ -479,10 +730,20 @@ export default function FleetSharingPage() {
         const matchCode = share.shareCode.toLowerCase().includes(q);
         const matchLender =
           share.lenderName.toLowerCase().includes(q) ||
-          share.lenderEmail.toLowerCase().includes(q);
+          share.lenderEmail.toLowerCase().includes(q) ||
+          Boolean(
+            share.lenderCompanyName &&
+              share.lenderCompanyName.toLowerCase().includes(q)
+          );
         const matchBorrower =
-          share.borrowerName?.toLowerCase().includes(q) ||
-          share.borrowerEmail.toLowerCase().includes(q);
+          Boolean(
+            share.borrowerName && share.borrowerName.toLowerCase().includes(q)
+          ) ||
+          share.borrowerEmail.toLowerCase().includes(q) ||
+          Boolean(
+            share.borrowerCompanyName &&
+              share.borrowerCompanyName.toLowerCase().includes(q)
+          );
         const matchVeh = share.vehicles.some((v) =>
           v.vehicleNumber.toLowerCase().includes(q)
         );
@@ -496,11 +757,22 @@ export default function FleetSharingPage() {
   }, [
     fleetShares,
     activeTab,
+    activeSubTab,
     statusFilter,
     searchQuery,
     effectiveUserId,
     user?.email,
   ]);
+
+  // Pagination (20 items per page)
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredShares.length / itemsPerPage)
+  );
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedShares = useMemo(() => {
+    return filteredShares.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredShares, startIndex, itemsPerPage]);
 
   // ==========================================
   // ACTION HANDLERS
@@ -1132,11 +1404,15 @@ export default function FleetSharingPage() {
       const vehIds =
         shareToReturn.vehicles?.map((v) => v.vehicleId).filter(Boolean) || [];
       if (vehIds.length > 0 && shareToReturn.lenderId) {
-        await syncVehicleSharingStatusAcrossTeam(shareToReturn.lenderId, vehIds, {
-          isAssignedToOther: false,
-          sharingPending: false,
-          sharedWith: deleteField(),
-        });
+        await syncVehicleSharingStatusAcrossTeam(
+          shareToReturn.lenderId,
+          vehIds,
+          {
+            isAssignedToOther: false,
+            sharingPending: false,
+            sharedWith: deleteField(),
+          }
+        );
       }
 
       // Mark assigned vehicles in carriersVehicles as completed
@@ -1183,31 +1459,32 @@ export default function FleetSharingPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-                  Fleet Sharing
-                </h1>
+                <HeaderWithInfo
+                  title="Fleet Sharing"
+                  tooltip="Share your extra trucks and trailers with trusted partner companies, or request units from other carriers when you need capacity."
+                  className="text-2xl font-black text-gray-900 tracking-tight"
+                />
                 <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-rose-100 text-rose-700">
-                  Inter-Fleet Network
+                  Partner Network
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Lend underutilized vehicles to other fleet owners or borrow
-                partner equipment with strict mileage protection & service
-                record access.
+                Share your extra vehicles with other companies, or request extra
+                vehicles from partners when you need capacity.
               </p>
             </div>
 
             <div className="flex items-center flex-wrap gap-2.5">
-              {/* Request Equipment Button */}
+              {/* Request Vehicles Button */}
               <button
                 onClick={() => setIsRequestModalOpen(true)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-800 border border-gray-200 text-xs font-bold rounded-xl transition cursor-pointer shadow-xs active:scale-95"
               >
                 <FiInbox className="text-sm text-gray-600" />
-                <span>Request Equipment</span>
+                <span>Request Vehicles</span>
               </button>
 
-              {/* Share / Lend Out Vehicles Button */}
+              {/* Share My Vehicles Button */}
               <button
                 onClick={() => setIsOfferModalOpen(true)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm hover:shadow-md active:scale-95"
@@ -1223,11 +1500,14 @@ export default function FleetSharingPage() {
       <div className="w-full max-w-[1750px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         {/* KPI Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Card 1: Lent Out */}
+          {/* Card 1: Shared by Me */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-xs transition hover:shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-rose-700">
-                Lent To Partners
+                <HeaderWithInfo
+                  title="Shared by Me"
+                  tooltip="Vehicles from your fleet that you have shared with other carriers or dispatchers."
+                />
               </span>
               <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shadow-xs">
                 <FiArrowUpRight className="text-base" />
@@ -1238,17 +1518,19 @@ export default function FleetSharingPage() {
                 {activeLentVehiclesCount}
               </p>
               <p className="text-[11px] text-gray-500 font-medium mt-1">
-                Your units operating under partner care (`isAssignedToOther:
-                true`)
+                Your vehicles currently active with other carriers
               </p>
             </div>
           </div>
 
-          {/* Card 2: Borrowed In */}
+          {/* Card 2: Shared with Me */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-xs transition hover:shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-indigo-700">
-                Borrowed In Fleet
+                <HeaderWithInfo
+                  title="Shared with Me"
+                  tooltip="Vehicles from other companies that are currently in your fleet to use."
+                />
               </span>
               <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs">
                 <FiArrowDownLeft className="text-base" />
@@ -1259,16 +1541,19 @@ export default function FleetSharingPage() {
                 {activeBorrowedVehiclesCount}
               </p>
               <p className="text-[11px] text-gray-500 font-medium mt-1">
-                Partner equipment in your operations (Service Records only)
+                Partner vehicles currently operating in your fleet
               </p>
             </div>
           </div>
 
-          {/* Card 3: Pending Inquiries */}
+          {/* Card 3: Pending Requests */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-xs transition hover:shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
-                Pending Actions
+                <HeaderWithInfo
+                  title="Pending Requests"
+                  tooltip="Vehicle sharing or borrowing requests waiting for your approval or partner's response."
+                />
               </span>
               <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
                 <FiClock className="text-base" />
@@ -1279,123 +1564,191 @@ export default function FleetSharingPage() {
                 {pendingRequestsCount}
               </p>
               <p className="text-[11px] text-amber-700/90 font-medium mt-1">
-                Awaiting partner response or your review
+                Waiting for approval or response
               </p>
             </div>
           </div>
         </div>
 
         {/* Tab Controls & Search Filter */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-xs">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            {/* Tabs */}
-            <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl">
+        <div className="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4 shadow-xs space-y-3">
+          {/* Main Tabs Row */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            {/* 3 Main Tabs: Shared by Me, Shared with Me, History */}
+            <div className="flex items-center gap-1.5 bg-gray-100/90 p-1.5 rounded-2xl overflow-x-auto no-scrollbar">
               <button
                 onClick={() => {
-                  setActiveTab("lent");
-                  setStatusFilter("All");
+                  setActiveTab("shared_by_me");
+                  setActiveSubTab("approved");
                 }}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition ${
-                  activeTab === "lent"
-                    ? "bg-white text-gray-900 shadow-xs"
-                    : "text-gray-500 hover:text-gray-800"
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  activeTab === "shared_by_me"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 }`}
               >
-                Lent Out (
-                {
-                  fleetShares.filter(
-                    (s) =>
-                      s.lenderId === effectiveUserId && s.status !== "completed"
-                  ).length
-                }
-                )
+                <span>Shared by Me</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    activeTab === "shared_by_me"
+                      ? "bg-rose-50 text-rose-600"
+                      : "bg-gray-200/80 text-gray-600"
+                  }`}
+                >
+                  {approvedLentCount + pendingLentCount}
+                </span>
               </button>
 
               <button
                 onClick={() => {
-                  setActiveTab("borrowed");
-                  setStatusFilter("All");
+                  setActiveTab("shared_with_me");
+                  setActiveSubTab("approved");
                 }}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition ${
-                  activeTab === "borrowed"
-                    ? "bg-white text-gray-900 shadow-xs"
-                    : "text-gray-500 hover:text-gray-800"
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  activeTab === "shared_with_me"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 }`}
               >
-                Borrowed (
-                {
-                  fleetShares.filter(
-                    (s) =>
-                      (s.borrowerId === effectiveUserId ||
-                        s.borrowerEmail?.toLowerCase() ===
-                          user?.email?.toLowerCase()) &&
-                      s.status !== "completed"
-                  ).length
-                }
-                )
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveTab("requests");
-                  setStatusFilter("All");
-                }}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition relative ${
-                  activeTab === "requests"
-                    ? "bg-white text-gray-900 shadow-xs"
-                    : "text-gray-500 hover:text-gray-800"
-                }`}
-              >
-                Pending Requests
-                {pendingRequestsCount > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-bold">
-                    {pendingRequestsCount}
-                  </span>
-                )}
+                <span>Shared with Me</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    activeTab === "shared_with_me"
+                      ? "bg-indigo-50 text-indigo-600"
+                      : "bg-gray-200/80 text-gray-600"
+                  }`}
+                >
+                  {approvedBorrowedCount + pendingBorrowedCount}
+                </span>
               </button>
 
               <button
                 onClick={() => {
                   setActiveTab("history");
-                  setStatusFilter("All");
+                  setActiveSubTab("all");
                 }}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                   activeTab === "history"
-                    ? "bg-white text-gray-900 shadow-xs"
-                    : "text-gray-500 hover:text-gray-800"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                 }`}
               >
-                History & Audits
+                <span>History</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    activeTab === "history"
+                      ? "bg-gray-100 text-gray-800"
+                      : "bg-gray-200/80 text-gray-600"
+                  }`}
+                >
+                  {historyAllCount}
+                </span>
               </button>
             </div>
 
             {/* Search Input */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 sm:w-72">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
-                <input
-                  type="text"
-                  placeholder="Search code, partner, vehicle..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
-                />
-              </div>
-
-              {activeTab !== "requests" && (
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="text-xs py-2 px-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176] text-gray-700"
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed / Returned</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              )}
+            <div className="relative flex-1 sm:w-80">
+              <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+              <input
+                type="text"
+                placeholder="Search Request ID, partner, or vehicle..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+              />
             </div>
+          </div>
+
+          {/* Sub-Tabs Row */}
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mr-1">
+              Status:
+            </span>
+
+            {activeTab === "shared_by_me" && (
+              <>
+                <button
+                  onClick={() => setActiveSubTab("approved")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    activeSubTab === "approved"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
+                      : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  Approved ({approvedLentCount})
+                </button>
+                <button
+                  onClick={() => setActiveSubTab("pending")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    activeSubTab === "pending"
+                      ? "bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs"
+                      : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  Pending ({pendingLentCount})
+                </button>
+              </>
+            )}
+
+            {activeTab === "shared_with_me" && (
+              <>
+                <button
+                  onClick={() => setActiveSubTab("approved")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    activeSubTab === "approved"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
+                      : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  Approved ({approvedBorrowedCount})
+                </button>
+                <button
+                  onClick={() => setActiveSubTab("pending")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    activeSubTab === "pending"
+                      ? "bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs"
+                      : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  Pending ({pendingBorrowedCount})
+                </button>
+              </>
+            )}
+
+            {activeTab === "history" && (
+              <>
+                <button
+                  onClick={() => setActiveSubTab("all")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    activeSubTab === "all"
+                      ? "bg-gray-100 text-gray-900 border border-gray-300 shadow-2xs"
+                      : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  All ({historyAllCount})
+                </button>
+                <button
+                  onClick={() => setActiveSubTab("completed")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    activeSubTab === "completed"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
+                      : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  Returned ({historyReturnedCount})
+                </button>
+                <button
+                  onClick={() => setActiveSubTab("rejected")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    activeSubTab === "rejected"
+                      ? "bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs"
+                      : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  Rejected / Cancelled ({historyRejectedCount})
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -1404,7 +1757,7 @@ export default function FleetSharingPage() {
           {isLoading ? (
             <div className="p-16 text-center text-xs text-gray-500">
               <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-              Loading fleet shares...
+              Loading vehicle shares...
             </div>
           ) : filteredShares.length === 0 ? (
             <div className="p-16 text-center">
@@ -1412,31 +1765,72 @@ export default function FleetSharingPage() {
                 <FiTruck />
               </div>
               <h3 className="text-base font-bold text-gray-800">
-                No Fleet Sharing Records
+                No Records Found
               </h3>
               <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                {activeTab === "requests"
-                  ? "No pending requests found."
-                  : activeTab === "lent"
-                  ? "You haven't lent out any vehicles yet. Tap 'Share My Vehicles' to assign units to a partner carrier."
-                  : "No active borrowed partner equipment in your fleet."}
+                {activeTab === "shared_by_me"
+                  ? activeSubTab === "approved"
+                    ? "You do not have any active vehicles shared with other carriers right now. Tap 'Share My Vehicles' to share units."
+                    : "No pending share requests waiting for response."
+                  : activeTab === "shared_with_me"
+                  ? activeSubTab === "approved"
+                    ? "No vehicles from other carriers are currently operating in your fleet."
+                    : "No pending requests waiting for approval."
+                  : "No past vehicle sharing history found."}
               </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Agreement Code</th>
-                    <th className="py-3.5 px-4">Partner Party</th>
-                    <th className="py-3.5 px-4">Equipment Units</th>
-                    <th className="py-3.5 px-4">Duration & Dates</th>
-                    <th className="py-3.5 px-4">Status</th>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                    <th className="py-3.5 px-4">
+                      <HeaderWithInfo
+                        title="Request ID"
+                        tooltip="Unique reference number for this vehicle sharing request."
+                      />
+                    </th>
+                    <th className="py-3.5 px-4">
+                      <HeaderWithInfo
+                        title={
+                          activeTab === "shared_by_me"
+                            ? "Dispatcher Name"
+                            : activeTab === "shared_with_me"
+                            ? "Carrier Name"
+                            : "Partner Name"
+                        }
+                        tooltip={
+                          activeTab === "shared_by_me"
+                            ? "The dispatcher, driver, or partner company who received your vehicles."
+                            : activeTab === "shared_with_me"
+                            ? "The vehicle owner or carrier company who provided these vehicles to you."
+                            : "The partner carrier or dispatcher involved in this record."
+                        }
+                      />
+                    </th>
+                    <th className="py-3.5 px-4">
+                      <HeaderWithInfo
+                        title="Vehicles"
+                        tooltip="The trucks and trailers assigned to this sharing request."
+                      />
+                    </th>
+                    <th className="py-3.5 px-4">
+                      <HeaderWithInfo
+                        title="Created"
+                        tooltip="The date this vehicle sharing request was created."
+                      />
+                    </th>
+                    <th className="py-3.5 px-4">
+                      <HeaderWithInfo
+                        title="Status"
+                        tooltip="Current state of the vehicle share: Active (in use), Pending (waiting for response), or Completed (returned)."
+                      />
+                    </th>
                     <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
-                  {filteredShares.map((item) => {
+                  {paginatedShares.map((item) => {
                     const isLender = item.lenderId === effectiveUserId;
                     const isBorrower =
                       item.borrowerId === effectiveUserId ||
@@ -1451,19 +1845,17 @@ export default function FleetSharingPage() {
                         key={item.id}
                         className="hover:bg-gray-50/70 transition-colors"
                       >
-                        {/* Share Code */}
+                        {/* Request ID */}
                         <td className="py-4 px-4 font-mono">
                           <div className="font-bold text-rose-600">
                             {item.shareCode}
                           </div>
                           <div className="text-[10px] text-gray-400 font-sans mt-0.5">
-                            {isLender
-                              ? "↑ Lent by My Fleet"
-                              : "↓ Borrowed in Fleet"}
+                            {isLender ? "↑ Shared by You" : "↓ Shared with You"}
                           </div>
                         </td>
 
-                        {/* Partner */}
+                        {/* Dispatcher / Carrier Name */}
                         <td className="py-4 px-4">
                           <div className="font-bold text-gray-900">
                             {isLender
@@ -1480,7 +1872,7 @@ export default function FleetSharingPage() {
                           </div>
                         </td>
 
-                        {/* Equipment */}
+                        {/* Vehicles */}
                         <td className="py-4 px-4">
                           {item.type === "borrow_request" &&
                           item.vehicles.length === 0 ? (
@@ -1490,15 +1882,19 @@ export default function FleetSharingPage() {
                                 Trucks, {item.requestedCounts?.trailers || 0}{" "}
                                 Trailers
                               </span>
-                              <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">
-                                {item.description}
-                              </div>
+                              {item.description && (
+                                <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">
+                                  {item.description}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div>
                               <span className="font-bold text-gray-900">
                                 {item.vehicles.length}{" "}
-                                {item.vehicles.length === 1 ? "Unit" : "Units"}
+                                {item.vehicles.length === 1
+                                  ? "Vehicle"
+                                  : "Vehicles"}
                               </span>
                               <div className="text-[11px] text-gray-500 mt-1 flex flex-wrap gap-1">
                                 {item.vehicles.map((v) => (
@@ -1514,12 +1910,16 @@ export default function FleetSharingPage() {
                           )}
                         </td>
 
-                        {/* Duration */}
+                        {/* Created & Duration */}
                         <td className="py-4 px-4">
-                          <div className="font-medium text-gray-800">
-                            {item.startDate} &rarr;{" "}
-                            {item.expectedEndDate || "Open"}
+                          <div className="font-semibold text-gray-900">
+                            {formatCreatedDate(item.createdAt, item.startDate)}
                           </div>
+                          {item.expectedEndDate && (
+                            <div className="text-[10px] text-gray-500 mt-0.5">
+                              Return by: {item.expectedEndDate}
+                            </div>
+                          )}
                           {item.actualEndDate && (
                             <div className="text-[10px] text-emerald-600 font-semibold mt-0.5">
                               Returned on {item.actualEndDate}
@@ -1549,6 +1949,11 @@ export default function FleetSharingPage() {
                           {item.status === "rejected" && (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                               Declined
+                            </span>
+                          )}
+                          {item.status === "cancelled" && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                              Cancelled
                             </span>
                           )}
                         </td>
@@ -1602,19 +2007,21 @@ export default function FleetSharingPage() {
                             {isActive && (
                               <button
                                 onClick={() => handleOpenReturnModal(item)}
-                                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                               >
                                 <FiRotateCcw className="text-xs" />
-                                {isLender
-                                  ? "Recall / Reclaim"
-                                  : "Return to Owner"}
+                                <span>
+                                  {isLender
+                                    ? "Recall / Reclaim"
+                                    : "Return to Owner"}
+                                </span>
                               </button>
                             )}
 
                             {/* Detail Drawer Trigger */}
                             <button
                               onClick={() => setSelectedShareForDetail(item)}
-                              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition cursor-pointer"
                               title="View Details & History"
                             >
                               <FiEye className="text-base" />
@@ -1626,6 +2033,51 @@ export default function FleetSharingPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination Controls (20 items per page) */}
+          {filteredShares.length > 0 && (
+            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
+              <div>
+                Showing{" "}
+                <span className="font-bold text-gray-900">
+                  {startIndex + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-bold text-gray-900">
+                  {Math.min(startIndex + itemsPerPage, filteredShares.length)}
+                </span>{" "}
+                of{" "}
+                <span className="font-bold text-gray-900">
+                  {filteredShares.length}
+                </span>{" "}
+                records
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs transition cursor-pointer"
+                >
+                  Previous
+                </button>
+
+                <span className="px-3 py-1 font-semibold text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-xs transition cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1640,15 +2092,15 @@ export default function FleetSharingPage() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
               <div>
                 <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
-                  Vehicles Allocation
+                  Share Vehicles
                 </span>
                 <h2 className="text-xl font-black text-gray-900 mt-0.5">
-                  Assign Vehicles to Partner Owner
+                  Share Vehicles with Another Company
                 </h2>
               </div>
               <button
                 onClick={() => setIsOfferModalOpen(false)}
-                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition"
+                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition cursor-pointer"
               >
                 <FiX className="text-lg" />
               </button>
@@ -1658,19 +2110,19 @@ export default function FleetSharingPage() {
               {/* Partner Email */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Other Owner Email Address *
+                  Recipient's Email Address *
                 </label>
                 <input
                   type="email"
                   required
-                  placeholder="demo@transport.com"
+                  placeholder="partner@transport.com"
                   value={offerBorrowerEmail}
                   onChange={(e) => setOfferBorrowerEmail(e.target.value)}
                   className="w-full p-3 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
-                  The partner owner will receive an instant notification & email
-                  to accept this equipment share.
+                  Enter the email of the carrier, owner, or dispatcher you want
+                  to share vehicles with.
                 </p>
               </div>
 
@@ -1678,18 +2130,19 @@ export default function FleetSharingPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-xs font-bold text-gray-700">
-                    Select Vehicles to Assign ({offerSelectedVehicleIds.length}{" "}
+                    Choose Vehicles to Share ({offerSelectedVehicleIds.length}{" "}
                     Selected)
                   </label>
                   <span className="text-[11px] text-gray-500">
-                    Available: {availableVehiclesForOffer.length} units
+                    Available in your fleet: {availableVehiclesForOffer.length}{" "}
+                    vehicles
                   </span>
                 </div>
 
                 {availableVehiclesForOffer.length === 0 ? (
                   <div className="p-6 rounded-2xl bg-gray-50 text-center text-xs text-gray-500 border border-gray-200">
-                    No vehicles available. All vehicles in your fleet are either
-                    already lent out or pending.
+                    No vehicles available to share right now. All vehicles in
+                    your fleet are either already shared or pending.
                   </div>
                 ) : (
                   <div className="border border-gray-200 rounded-2xl p-2 max-h-52 overflow-y-auto divide-y divide-gray-100 bg-gray-50/50">
@@ -1736,42 +2189,30 @@ export default function FleetSharingPage() {
                 )}
               </div>
 
-              {/* Purpose / Load Note (Estimated duration commented out) */}
+              {/* Message to Partner / Owner */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Purpose / Load Note (Optional)
+                  Message to Recipient (Optional)
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Interstate load support..."
+                  placeholder="e.g. Please check tire pressure before long trips, available for regional loads..."
                   value={offerDescription}
                   onChange={(e) => setOfferDescription(e.target.value)}
                   className="w-full p-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
                 />
               </div>
 
-              {/* Estimated duration commented out per user request:
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Estimated Duration (Days)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={offerDurationDays}
-                  onChange={(e) => setOfferDurationDays(e.target.value)}
-                  className="w-full p-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
-                />
-              </div> */}
-
               {/* Notice */}
               <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2.5">
                 <FiAlertCircle className="text-base text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <strong>Master Mileage Protection:</strong> While assigned to
-                  the second owner, they can add maintenance & expense records,
-                  but <strong>cannot update vehicle miles</strong>. Master
-                  odometer integrity remains preserved.
+                  <strong>Mileage & Odometer Safety:</strong> While shared, the
+                  borrower can add maintenance and fuel/expense records, but{" "}
+                  <strong>
+                    cannot alter your vehicle's master odometer miles
+                  </strong>
+                  .
                 </div>
               </div>
 
@@ -1779,7 +2220,7 @@ export default function FleetSharingPage() {
                 <button
                   type="button"
                   onClick={() => setIsOfferModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1788,9 +2229,9 @@ export default function FleetSharingPage() {
                   disabled={
                     isSubmitting || availableVehiclesForOffer.length === 0
                   }
-                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#F96176] hover:bg-[#e04f63] text-white shadow-sm transition active:scale-95 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#F96176] hover:bg-[#e04f63] text-white shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? "Dispatching..." : "Send Share Offer"}
+                  {isSubmitting ? "Sending..." : "Send Vehicle Share Request"}
                 </button>
               </div>
             </form>
@@ -1807,15 +2248,15 @@ export default function FleetSharingPage() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
               <div>
                 <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
-                  Vehicle Request
+                  Borrow Vehicles
                 </span>
                 <h2 className="text-xl font-black text-gray-900 mt-0.5">
-                  Vehicle Request from Other Owner
+                  Request Vehicles from Another Owner
                 </h2>
               </div>
               <button
                 onClick={() => setIsRequestModalOpen(false)}
-                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition"
+                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition cursor-pointer"
               >
                 <FiX className="text-lg" />
               </button>
@@ -1824,19 +2265,19 @@ export default function FleetSharingPage() {
             <form onSubmit={handleCreateRequest} className="space-y-6">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Carrier Email Address *
+                  Owner's Email Address *
                 </label>
                 <input
                   type="email"
                   required
-                  placeholder="demo@transport.com"
+                  placeholder="owner@truckingcompany.com"
                   value={reqLenderEmail}
                   onChange={(e) => setReqLenderEmail(e.target.value)}
                   className="w-full p-3 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
-                  The carrier will receive an instant in-app & push
-                  notification in Trenoops to review your request.
+                  We will notify the owner so they can review and approve your
+                  request.
                 </p>
               </div>
 
@@ -1868,27 +2309,13 @@ export default function FleetSharingPage() {
                 </div>
               </div>
 
-              {/* Estimated Days Required commented out per user request:
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Estimated Days Required
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={reqDurationDays}
-                  onChange={(e) => setReqDurationDays(e.target.value)}
-                  className="w-full p-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
-                />
-              </div> */}
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Description / Operational Need (Optional)
+                  Message to Owner (Optional)
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="Describe your load, routes, dates, and driver arrangements..."
+                  placeholder="Tell the owner why you need the vehicles, your expected routes, dates, or driver arrangements..."
                   value={reqDescription}
                   onChange={(e) => setReqDescription(e.target.value)}
                   className="w-full p-3 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176]"
@@ -1899,16 +2326,16 @@ export default function FleetSharingPage() {
                 <button
                   type="button"
                   onClick={() => setIsRequestModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#F96176] hover:bg-[#e04f63] text-white shadow-sm transition active:scale-95 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#F96176] hover:bg-[#e04f63] text-white shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Vehicle Request"}
+                  {isSubmitting ? "Submitting..." : "Send Request to Owner"}
                 </button>
               </div>
             </form>
@@ -1925,7 +2352,7 @@ export default function FleetSharingPage() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
               <div>
                 <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-                  Fulfill Equipment Request &bull; {shareToFulfill.shareCode}
+                  Fulfill Vehicle Request &bull; {shareToFulfill.shareCode}
                 </span>
                 <h2 className="text-xl font-black text-gray-900 mt-0.5">
                   Assign Vehicles to Partner
@@ -1967,7 +2394,7 @@ export default function FleetSharingPage() {
 
               {shareToFulfill.description && (
                 <div className="text-indigo-900/90 pt-1">
-                  <strong>Need / Load Notes: </strong>
+                  <strong>Message / Need: </strong>
                   <span>{shareToFulfill.description}</span>
                 </div>
               )}
@@ -2047,11 +2474,11 @@ export default function FleetSharingPage() {
               {/* Lease Terms & Agreement Notes */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Sharing Agreement Terms / Allocation Notes (Optional)
+                  Sharing Agreement Terms / Notes (Optional)
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Standard equipment allocation for designated freight route..."
+                  placeholder="e.g. Any special instructions or allocation notes for the driver..."
                   value={fulfillNotes}
                   onChange={(e) => setFulfillNotes(e.target.value)}
                   className="w-full p-2.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -2106,7 +2533,7 @@ export default function FleetSharingPage() {
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
               <h3 className="text-base font-black text-gray-900">
-                Return & Restore Fleet Vehicles
+                Return Vehicles to Owner
               </h3>
               <button
                 onClick={() => setIsReturnModalOpen(false)}
@@ -2117,15 +2544,14 @@ export default function FleetSharingPage() {
             </div>
 
             <p className="text-xs text-gray-600 mb-4">
-              Are you sure you want to complete this share agreement (
+              Are you sure you want to complete this sharing agreement (
               <strong>{shareToReturn.shareCode}</strong>)? All assigned vehicles
-              will be returned to normal fleet status (`isAssignedToOther:
-              false`).
+              will be returned to their normal fleet status.
             </p>
 
             <div className="space-y-3 mb-5">
               <label className="block text-xs font-bold text-gray-700">
-                Final Return Notes / Condition Check (Optional)
+                Return Notes / Vehicle Condition (Optional)
               </label>
               <textarea
                 rows={2}
@@ -2148,7 +2574,7 @@ export default function FleetSharingPage() {
                 disabled={isSubmitting}
                 className="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition"
               >
-                {isSubmitting ? "Returning..." : "Confirm Return & Restore"}
+                {isSubmitting ? "Returning..." : "Confirm Return"}
               </button>
             </div>
           </div>
@@ -2164,7 +2590,7 @@ export default function FleetSharingPage() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
               <div>
                 <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
-                  Agreement Details & History
+                  Request Details & History
                 </span>
                 <h2 className="text-xl font-black text-gray-900 mt-0.5">
                   {selectedShareForDetail.shareCode}
@@ -2182,11 +2608,11 @@ export default function FleetSharingPage() {
               {/* Partner Card */}
               <div className="border border-gray-200 rounded-2xl p-4">
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                  Agreement Parties
+                  Parties Involved
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-gray-400">Lender (Owner):</span>
+                    <span className="text-gray-400">Shared by (Owner):</span>
                     <div className="font-bold text-gray-900 mt-0.5">
                       {selectedShareForDetail.lenderCompanyName ||
                         selectedShareForDetail.lenderName}
@@ -2196,7 +2622,9 @@ export default function FleetSharingPage() {
                     </div>
                   </div>
                   <div>
-                    <span className="text-gray-400">Borrower (Partner):</span>
+                    <span className="text-gray-400">
+                      Shared with (Carrier / Dispatcher):
+                    </span>
                     <div className="font-bold text-gray-900 mt-0.5">
                       {selectedShareForDetail.borrowerCompanyName ||
                         selectedShareForDetail.borrowerName ||
@@ -2213,7 +2641,7 @@ export default function FleetSharingPage() {
               {selectedShareForDetail.vehicles.length > 0 && (
                 <div className="border border-gray-200 rounded-2xl p-4">
                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                    Assigned Units ({selectedShareForDetail.vehicles.length})
+                    Assigned Vehicles ({selectedShareForDetail.vehicles.length})
                   </div>
                   <div className="space-y-2">
                     {selectedShareForDetail.vehicles.map((v) => (
@@ -2249,7 +2677,7 @@ export default function FleetSharingPage() {
                 </div>
                 {selectedShareForDetail.description && (
                   <div className="py-1">
-                    <span className="text-gray-500">Description:</span>
+                    <span className="text-gray-500">Message / Notes:</span>
                     <p className="font-medium text-gray-800 mt-0.5">
                       {selectedShareForDetail.description}
                     </p>
@@ -2257,7 +2685,7 @@ export default function FleetSharingPage() {
                 )}
                 {selectedShareForDetail.leaseTerms && (
                   <div className="py-1">
-                    <span className="text-gray-500">Lease Terms:</span>
+                    <span className="text-gray-500">Terms / Conditions:</span>
                     <p className="font-medium text-gray-800 mt-0.5">
                       {selectedShareForDetail.leaseTerms}
                     </p>
@@ -2276,7 +2704,7 @@ export default function FleetSharingPage() {
               {/* Timeline Audit Events */}
               <div className="border border-gray-200 rounded-2xl p-4">
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">
-                  Audit History Events
+                  Activity & Status History
                 </div>
                 {shareHistory.length === 0 ? (
                   <div className="text-[11px] text-gray-400">
