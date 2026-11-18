@@ -4955,89 +4955,90 @@ export default function RecordsPage() {
 
   return userData?.isView ? (
     <div className="flex flex-col justify-center items-center p-3 sm:p-4 md:p-6 bg-gray-100 gap-4 sm:gap-6 w-full max-w-full overflow-hidden">
-      {/* Vehicle Scope Toggle: My Vehicles vs Carrier Vehicles */}
-      <div className="flex flex-col sm:flex-row items-center justify-between w-full max-w-7xl gap-3 px-2">
-        <VehicleScopeSelector
-          value={vehicleScope}
-          onChange={(newScope) => {
-            setVehicleScope(newScope);
-            setSelectedVehicle("");
-            setSelectedVehicleData(null);
-            setFilterVehicle("");
-          }}
-          carrierCount={carrierVehicles.length}
-        />
+      {/* Unified Toolbar: Vehicle Scope Selector + Action Buttons in One Line */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full bg-white p-3 sm:p-3.5 rounded-2xl shadow-xs border border-gray-200">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          {/* Vehicle Scope Toggle: My Vehicles vs Carrier Vehicles */}
+          <VehicleScopeSelector
+            value={vehicleScope}
+            onChange={(newScope) => {
+              setVehicleScope(newScope);
+              setSelectedVehicle("");
+              setSelectedVehicleData(null);
+              setFilterVehicle("");
+            }}
+            carrierCount={carrierVehicles.length}
+            size="sm"
+          />
+
+          <div className="h-6 w-px bg-gray-200 hidden sm:block mx-1" />
+
+          {/** Add Record */}
+          <button
+            onClick={handleOpenAddRecord}
+            className="bg-[#F96176] text-white px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+          >
+            <IoMdAdd className="text-base" /> Add Record
+          </button>
+
+          {/** Add mile */}
+          <button
+            onClick={() =>
+              userData?.isView || userData?.isAdd
+                ? setShowAddMiles(true)
+                : toast.error("You don't have permission to add miles/hours.")
+            }
+            className="bg-[#8B5CF6] text-white px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#7C3AED] transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+          >
+            <IoMdAdd className="text-base" /> Add Miles/Hours
+          </button>
+
+          {/** Search Functionality */}
+          <button
+            onClick={() => handleSearchFilterOpen()}
+            className="bg-[#58BB87] text-white px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#48a374] transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+          >
+            Search <BiFilter className="text-base" />
+          </button>
+
+          {/** Print pdf */}
+          <button
+            onClick={handlePrint}
+            className="bg-[#F96176] text-white px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+          >
+            <FaPrint className="text-xs" /> Print
+          </button>
+
+          {/** Import Record Excel */}
+          <Link href="/import-record" passHref>
+            <button className="bg-[#10B981] text-white px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#059669] transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap">
+              <FaFileImport className="text-xs" /> Import Excel
+            </button>
+          </Link>
+
+          {/** Download All Records */}
+          <button
+            onClick={downloadAllRecords}
+            className="bg-[#10B981] text-white px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#059669] transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+          >
+            <FaDownload className="text-xs" /> Download All
+          </button>
+
+          {/** Export Data (Vehicle-Wise & Service-Wise) */}
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="bg-[#F96176] text-white px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+          >
+            <FaFileExport className="text-xs" /> Export Data
+          </button>
+        </div>
+
         {vehicleScope === "carrier" && (
-          <div className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-xs">
+          <div className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-xs shrink-0 self-start sm:self-auto">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Active Fleet Sharing Carrier Records ({carrierRecords.length})
+            Carrier Records ({carrierRecords.length})
           </div>
         )}
-      </div>
-
-      {/* Button Container */}
-      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full">
-        {/** Add Record */}
-
-        <button
-          onClick={handleOpenAddRecord}
-          className="bg-[#F96176] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95"
-        >
-          <IoMdAdd className="text-base sm:text-lg" /> Add Record
-        </button>
-
-        {/** Add mile */}
-
-        <button
-          onClick={() =>
-            userData?.isView || userData?.isAdd
-              ? setShowAddMiles(true)
-              : toast.error("You don't have permission to add miles/hours.")
-          }
-          className="bg-[#8B5CF6] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#7C3AED] transition shadow-xs cursor-pointer active:scale-95"
-        >
-          <IoMdAdd className="text-base sm:text-lg" /> Add Miles/Hours
-        </button>
-
-        {/** Search Functionality */}
-
-        <button
-          onClick={() => handleSearchFilterOpen()}
-          className="bg-[#58BB87] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#48a374] transition shadow-xs cursor-pointer active:scale-95"
-        >
-          Search <BiFilter className="text-base sm:text-lg" />
-        </button>
-
-        {/** Print pdf */}
-        <button
-          onClick={handlePrint}
-          className="bg-[#F96176] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95"
-        >
-          <FaPrint className="text-xs sm:text-sm" /> Print
-        </button>
-
-        {/** Import Record Excel */}
-        <Link href="/import-record" passHref>
-          <button className="bg-[#10B981] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#059669] transition shadow-xs cursor-pointer active:scale-95">
-            <FaFileImport className="text-xs sm:text-sm" /> Import Excel
-          </button>
-        </Link>
-
-        {/** Download All Records */}
-        <button
-          onClick={downloadAllRecords}
-          className="bg-[#10B981] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#059669] transition shadow-xs cursor-pointer active:scale-95"
-        >
-          <FaDownload className="text-xs sm:text-sm" /> Download All
-        </button>
-
-        {/** Export Data (Vehicle-Wise & Service-Wise) */}
-        <button
-          onClick={() => setShowExportModal(true)}
-          className="bg-[#F96176] text-white px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg flex items-center gap-1.5 sm:gap-2 hover:bg-[#e14a60] transition shadow-xs cursor-pointer active:scale-95"
-        >
-          <FaFileExport className="text-xs sm:text-sm" /> Export Data
-        </button>
       </div>
 
       {userRole === "SubOwner" && (
