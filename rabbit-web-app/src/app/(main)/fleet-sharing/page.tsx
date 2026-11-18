@@ -281,6 +281,43 @@ function formatCreatedDate(createdAt: any, fallbackDate?: string): string {
   return fallbackDate || "N/A";
 }
 
+function humanizeText(text?: string): string {
+  if (!text) return "";
+  let clean = text
+    .replace(/equipment borrow request\.?/gi, "Request for partner vehicles.")
+    .replace(/equipment borrowing\.?/gi, "fleet sharing.")
+    .replace(/borrow request\.?/gi, "vehicle sharing request.")
+    .replace(
+      /borrower cannot update master odometer readings\.?/gi,
+      "partner cannot change master odometer miles."
+    )
+    .replace(/\bborrower\b/gi, "partner")
+    .replace(/\bborrowing\b/gi, "sharing")
+    .replace(/\bborrow\b/gi, "request")
+    .trim();
+  if (!clean) return "";
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+function formatHistoryAction(action?: string): string {
+  if (!action) return "Update Recorded";
+  const mapped: Record<string, string> = {
+    CREATE_OFFER: "Created Share Offer",
+    CREATE_BORROW_REQUEST: "Created Vehicle Request",
+    CREATE_REQUEST: "Created Vehicle Request",
+    ACCEPT_OFFER: "Accepted Share Offer",
+    FULFILL_REQUEST: "Assigned Vehicles to Request",
+    REJECT_OFFER: "Declined Request",
+    REJECT_REQUEST: "Declined Request",
+    CANCEL_OFFER: "Cancelled Request",
+    CANCEL_REQUEST: "Cancelled Request",
+    RETURN_FLEET: "Returned Vehicles to Owner",
+    RECALL_FLEET: "Recalled Vehicles",
+  };
+  if (mapped[action]) return mapped[action];
+  return humanizeText(action.replace(/_/g, " "));
+}
+
 export default function FleetSharingPage() {
   const auth = useAuth();
   const user = auth?.user;
@@ -998,10 +1035,10 @@ export default function FleetSharingPage() {
         borrowerName: borrowerOwner.name,
         borrowerCompanyName: borrowerOwner.companyName,
         vehicles: selectedVehicles,
-        description: offerDescription.trim() || "Equipment sharing allocation.",
+        description: offerDescription.trim() || "Vehicle sharing allocation.",
         leaseTerms:
           offerLeaseTerms.trim() ||
-          "Standard inter-fleet sharing agreement. Borrower cannot update master odometer readings.",
+          "Standard inter-fleet sharing agreement. Partner can record trips and maintenance, but master odometer is protected.",
         startDate: format(new Date(), "yyyy-MM-dd"),
         expectedEndDate: format(
           new Date(Date.now() + Number(offerDurationDays || 30) * 86400000),
@@ -1115,7 +1152,7 @@ export default function FleetSharingPage() {
           trailers: Number(reqTrailerCount) || 0,
         },
         vehicles: [],
-        description: reqDescription.trim() || "Equipment borrow request.",
+        description: reqDescription.trim() || "Vehicle capacity request.",
         startDate: format(new Date(), "yyyy-MM-dd"),
         expectedEndDate: format(
           new Date(Date.now() + Number(reqDurationDays || 30) * 86400000),
@@ -1129,7 +1166,7 @@ export default function FleetSharingPage() {
       await addDoc(collection(db, "fleet_shares"), shareDocData);
 
       toast.success(
-        `Equipment request ${shareCode} submitted to ${lenderOwner.name} (${lenderOwner.email})!`
+        `Vehicle request ${shareCode} submitted to ${lenderOwner.name} (${lenderOwner.email})!`
       );
       setIsRequestModalOpen(false);
 
@@ -2208,7 +2245,7 @@ export default function FleetSharingPage() {
                 <FiAlertCircle className="text-base text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <strong>Mileage & Odometer Safety:</strong> While shared, the
-                  borrower can add maintenance and fuel/expense records, but{" "}
+                  partner carrier can add maintenance and fuel/expense records, but{" "}
                   <strong>
                     cannot alter your vehicle's master odometer miles
                   </strong>
@@ -2248,7 +2285,7 @@ export default function FleetSharingPage() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
               <div>
                 <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
-                  Borrow Vehicles
+                  Request Vehicles
                 </span>
                 <h2 className="text-xl font-black text-gray-900 mt-0.5">
                   Request Vehicles from Another Owner
@@ -2589,16 +2626,41 @@ export default function FleetSharingPage() {
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
               <div>
-                <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
-                  Request Details & History
-                </span>
-                <h2 className="text-xl font-black text-gray-900 mt-0.5">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
+                    {selectedShareForDetail.type === "borrow_request"
+                      ? "Vehicle Request"
+                      : "Vehicle Share"}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold capitalize ${
+                      selectedShareForDetail.status === "active"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : selectedShareForDetail.status === "pending"
+                        ? "bg-amber-50 text-amber-700 border border-amber-200"
+                        : "bg-gray-100 text-gray-700 border border-gray-200"
+                    }`}
+                  >
+                    {selectedShareForDetail.status === "active"
+                      ? "Active (Shared)"
+                      : selectedShareForDetail.status === "pending"
+                      ? "Pending Response"
+                      : selectedShareForDetail.status === "completed"
+                      ? "Completed (Returned)"
+                      : selectedShareForDetail.status === "rejected"
+                      ? "Declined"
+                      : selectedShareForDetail.status === "cancelled"
+                      ? "Cancelled"
+                      : selectedShareForDetail.status}
+                  </span>
+                </div>
+                <h2 className="text-xl font-black text-gray-900">
                   {selectedShareForDetail.shareCode}
                 </h2>
               </div>
               <button
                 onClick={() => setSelectedShareForDetail(null)}
-                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition"
+                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition cursor-pointer"
               >
                 <FiX className="text-lg" />
               </button>
@@ -2607,38 +2669,45 @@ export default function FleetSharingPage() {
             <div className="space-y-4 text-xs">
               {/* Partner Card */}
               <div className="border border-gray-200 rounded-2xl p-4">
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
                   Parties Involved
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
-                    <span className="text-gray-400">Shared by (Owner):</span>
+                    <span className="text-gray-400 font-medium">
+                      {selectedShareForDetail.type === "borrow_request"
+                        ? "Vehicle Owner (Provider):"
+                        : "Shared by (Owner):"}
+                    </span>
                     <div className="font-bold text-gray-900 mt-0.5">
                       {selectedShareForDetail.lenderCompanyName ||
-                        selectedShareForDetail.lenderName}
+                        selectedShareForDetail.lenderName ||
+                        "Vehicle Owner"}
                     </div>
-                    <div className="text-[11px] text-gray-500">
+                    <div className="text-[11px] text-gray-500 mt-0.5">
                       {selectedShareForDetail.lenderEmail}
                     </div>
                   </div>
                   <div>
-                    <span className="text-gray-400">
-                      Shared with (Carrier / Dispatcher):
+                    <span className="text-gray-400 font-medium">
+                      {selectedShareForDetail.type === "borrow_request"
+                        ? "Requested by (Partner):"
+                        : "Shared with (Partner):"}
                     </span>
                     <div className="font-bold text-gray-900 mt-0.5">
                       {selectedShareForDetail.borrowerCompanyName ||
                         selectedShareForDetail.borrowerName ||
-                        "Pending Assignment"}
+                        "Partner Company"}
                     </div>
-                    <div className="text-[11px] text-gray-500">
+                    <div className="text-[11px] text-gray-500 mt-0.5">
                       {selectedShareForDetail.borrowerEmail}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Equipment list */}
-              {selectedShareForDetail.vehicles.length > 0 && (
+              {/* Equipment list or Requested Units */}
+              {selectedShareForDetail.vehicles.length > 0 ? (
                 <div className="border border-gray-200 rounded-2xl p-4">
                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
                     Assigned Vehicles ({selectedShareForDetail.vehicles.length})
@@ -2664,30 +2733,52 @@ export default function FleetSharingPage() {
                     ))}
                   </div>
                 </div>
+              ) : (
+                <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50/50">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    Vehicles Requested
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold text-xs flex items-center gap-1.5">
+                      🚛 {selectedShareForDetail.requestedCounts?.trucks || 0}{" "}
+                      Truck(s) Needed
+                    </span>
+                    <span className="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold text-xs flex items-center gap-1.5">
+                      📦 {selectedShareForDetail.requestedCounts?.trailers || 0}{" "}
+                      Trailer(s) Needed
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-2">
+                    No vehicles assigned yet. Waiting for the vehicle owner to
+                    review and assign units from their fleet.
+                  </p>
+                </div>
               )}
 
               {/* Terms & Notes */}
-              <div className="border border-gray-200 rounded-2xl p-4 space-y-2">
+              <div className="border border-gray-200 rounded-2xl p-4 space-y-2.5">
                 <div className="flex justify-between py-1 border-b border-gray-100">
-                  <span className="text-gray-500">Dates:</span>
+                  <span className="text-gray-500">Duration & Dates:</span>
                   <span className="font-semibold text-gray-900">
                     {selectedShareForDetail.startDate} &rarr;{" "}
                     {selectedShareForDetail.expectedEndDate || "Open"}
                   </span>
                 </div>
                 {selectedShareForDetail.description && (
-                  <div className="py-1">
+                  <div className="py-1 border-b border-gray-100">
                     <span className="text-gray-500">Message / Notes:</span>
                     <p className="font-medium text-gray-800 mt-0.5">
-                      {selectedShareForDetail.description}
+                      {humanizeText(selectedShareForDetail.description)}
                     </p>
                   </div>
                 )}
                 {selectedShareForDetail.leaseTerms && (
-                  <div className="py-1">
-                    <span className="text-gray-500">Terms / Conditions:</span>
+                  <div className="py-1 border-b border-gray-100">
+                    <span className="text-gray-500">
+                      Sharing Terms & Mileage Protection:
+                    </span>
                     <p className="font-medium text-gray-800 mt-0.5">
-                      {selectedShareForDetail.leaseTerms}
+                      {humanizeText(selectedShareForDetail.leaseTerms)}
                     </p>
                   </div>
                 )}
@@ -2695,7 +2786,7 @@ export default function FleetSharingPage() {
                   <div className="py-1">
                     <span className="text-gray-500">Return Notes:</span>
                     <p className="font-medium text-emerald-800 mt-0.5">
-                      {selectedShareForDetail.returnNotes}
+                      {humanizeText(selectedShareForDetail.returnNotes)}
                     </p>
                   </div>
                 )}
@@ -2720,11 +2811,11 @@ export default function FleetSharingPage() {
                         <div className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0"></div>
                         <div>
                           <div className="font-bold text-gray-800">
-                            {h.action}
+                            {formatHistoryAction(h.action)}
                           </div>
                           {h.notes && (
                             <div className="text-gray-600 mt-0.5">
-                              {h.notes}
+                              {humanizeText(h.notes)}
                             </div>
                           )}
                           {h.timestamp && (
