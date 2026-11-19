@@ -202,7 +202,7 @@ export default function ViewMemberProfile() {
               <h2 className="text-2xl font-bold text-gray-900 mb-1">
                 {memberData.userName}
               </h2>
-              <p className="text-gray-600">Co-Owner</p>
+              <p className="text-gray-600">{memberData.role}</p>
             </div>
           </div>
         </div>
