@@ -121,10 +121,14 @@ export interface SubscriptionPlan {
   termsAndConditions: string[];
 
   // Owners / Drivers specific fields (type: "trenoops")
-  maxVehicles?: number; // total vehicles included (-1 for unlimited)
+  minVehicles?: number; // minimum vehicles in fleet tier range (e.g. 3 for "3 TO 5")
+  maxVehicles?: number; // total vehicles included (-1 for unlimited, e.g. 5 for "3 TO 5")
   vehicleTypeScope?: "both" | "truck_only" | "trailer_only" | "all"; // Scope
   truckLimit?: number; // allowed trucks (-1 for unlimited)
   trailerLimit?: number; // allowed trailers (-1 for unlimited)
+  fleetTierId?: string; // e.g. "1-to-1", "3-to-5", "11-to-20"
+  fleetTierLabel?: string; // e.g. "3 TO 5"
+  discountCoupon?: string; // e.g. "TRENO50" | "TRENO100"
 
   // Mechanics specific fields (type: "treno_mechanic")
   mechanicCategory?: "roadside" | "company"; // Roadside mechanic vs Registered company

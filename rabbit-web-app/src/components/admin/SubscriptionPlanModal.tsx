@@ -54,6 +54,11 @@ import {
   CORE_ROADSIDE_PAGES,
   CancellationPenaltyConfig,
 } from "@/types/subscription";
+import {
+  FLEET_PRICING_TIERS,
+  FleetTierPricing,
+  getFleetTierDefaults,
+} from "@/types/fleetPricingSheet";
 
 interface Props {
   isOpen: boolean;
@@ -62,6 +67,11 @@ interface Props {
   initialData?: SubscriptionPlan | null;
   defaultType?: SubscriptionPlanType;
   lockType?: boolean;
+  initialFleetTier?: {
+    tierId: string;
+    scope: "truck_only" | "trailer_only" | "both";
+    duration: "Monthly" | "Yearly";
+  } | null;
 }
 
 const DURATION_PRESETS = [
@@ -100,6 +110,7 @@ export default function SubscriptionPlanModal({
   initialData,
   defaultType = "trenoops",
   lockType = false,
+  initialFleetTier = null,
 }: Props) {
   const [loading, setLoading] = useState(false);
 
@@ -143,12 +154,18 @@ export default function SubscriptionPlanModal({
     >
   >(buildDefaultCountryPrices);
 
-  // Owner / Driver specific
-  const [maxVehicles, setMaxVehicles] = useState<string>("5");
-  const [vehicleTypeScope, setVehicleTypeScope] = useState<"both" | "truck_only" | "trailer_only" | "all">("both");
-  const [truckLimit, setTruckLimit] = useState<string>("5");
-  const [trailerLimit, setTrailerLimit] = useState<string>("5");
+  // Owner / Driver specific & Fleet Rate Card Presets
+  const [minVehicles, setMinVehicles] = useState<string>("1");
+  const [maxVehicles, setMaxVehicles] = useState<string>("1");
+  const [vehicleTypeScope, setVehicleTypeScope] = useState<"both" | "truck_only" | "trailer_only" | "all">("truck_only");
+  const [truckLimit, setTruckLimit] = useState<string>("1");
+  const [trailerLimit, setTrailerLimit] = useState<string>("0");
   const [isUnlimitedVehicles, setIsUnlimitedVehicles] = useState(false);
+  const [selectedFleetTierId, setSelectedFleetTierId] = useState<string>("1-to-1");
+  const [selectedFleetTierLabel, setSelectedFleetTierLabel] = useState<string>("1 TO 1");
+  const [fleetVehicleFocus, setFleetVehicleFocus] = useState<"truck_only" | "trailer_only" | "both">("truck_only");
+  const [applyYearlyPromo, setApplyYearlyPromo] = useState<boolean>(true);
+  const [discountCoupon, setDiscountCoupon] = useState<string>("");
 
   // Mechanic specific
   const [mechanicCategory, setMechanicCategory] = useState<"roadside" | "company">("roadside");
@@ -211,6 +228,93 @@ export default function SubscriptionPlanModal({
     };
   }, []);
 
+  // Apply Fleet Tier Preset from the official rate card
+  const applyFleetTierPreset = (
+    tierId: string,
+    overrideScope?: "truck_only" | "trailer_only" | "both",
+    overrideDuration?: "Monthly" | "Yearly" | string,
+    overrideApplyPromo?: boolean
+  ) => {
+    const targetScope = overrideScope || fleetVehicleFocus;
+    const targetDuration = overrideDuration || duration || "Monthly";
+    const promoActive =
+      overrideApplyPromo !== undefined ? overrideApplyPromo : applyYearlyPromo;
+
+    const defaults = getFleetTierDefaults({
+      tierId,
+      scope: targetScope,
+      duration: targetDuration,
+      applyCoupon: promoActive,
+    });
+
+    setSelectedFleetTierId(defaults.fleetTierId);
+    setSelectedFleetTierLabel(defaults.fleetTierLabel);
+    setFleetVehicleFocus(defaults.vehicleTypeScope);
+    setVehicleTypeScope(defaults.vehicleTypeScope);
+    setMinVehicles(String(defaults.minVehicles));
+    setMaxVehicles(String(defaults.maxVehicles));
+    setTruckLimit(String(defaults.truckLimit));
+    setTrailerLimit(String(defaults.trailerLimit));
+    setIsUnlimitedVehicles(false);
+    setDiscountCoupon(defaults.discountCoupon || "");
+
+    if (defaults.duration && DURATION_PRESETS.includes(defaults.duration)) {
+      setDuration(defaults.duration);
+    }
+
+    setPrice(String(defaults.price));
+    setDiscountPrice(
+      defaults.discountPrice !== null && defaults.discountPrice !== undefined
+        ? String(defaults.discountPrice)
+        : ""
+    );
+
+    // Update USA country price and proportional country prices
+    setCountryPrices((prev) => {
+      const next = { ...prev };
+      next["USA"] = {
+        enabled: true,
+        price: String(defaults.price),
+        discountPrice:
+          defaults.discountPrice !== null && defaults.discountPrice !== undefined
+            ? String(defaults.discountPrice)
+            : "",
+      };
+      SUPPORTED_PLAN_COUNTRIES.forEach((c) => {
+        if (c.code !== "USA" && next[c.code]?.enabled) {
+          let mult = 1.0;
+          if (c.code === "CA") mult = 1.35;
+          if (c.code === "MX") mult = 18.0;
+          if (c.code === "UK") mult = 0.8;
+          if (c.code === "AU") mult = 1.5;
+          const cp = Math.round(defaults.price * mult);
+          const cd = defaults.discountPrice
+            ? Math.round(defaults.discountPrice * mult)
+            : null;
+          next[c.code] = {
+            enabled: true,
+            price: String(cp),
+            discountPrice: cd !== null ? String(cd) : "",
+          };
+        }
+      });
+      return next;
+    });
+
+    if (!name || name.includes("Subscription (") || name.includes("Fleet")) {
+      setName(defaults.name);
+    }
+    if (!description || description.includes("Standard fleet plan")) {
+      setDescription(defaults.description);
+    }
+
+    toast.success(
+      `Applied ${defaults.fleetTierLabel}: Price set to $${defaults.price}${
+        defaults.discountPrice ? ` (Discount: $${defaults.discountPrice})` : ""
+      }. All fields are editable.`
+    );
+  };
+
   useEffect(() => {
     const activeType = lockType ? defaultType : (initialData?.type || defaultType);
     setType(activeType);
@@ -241,10 +345,25 @@ export default function SubscriptionPlanModal({
 
       // Owner fields
       setIsUnlimitedVehicles(initialData.maxVehicles === -1);
+      setMinVehicles(
+        initialData.minVehicles !== undefined
+          ? String(initialData.minVehicles)
+          : "1"
+      );
       setMaxVehicles(initialData.maxVehicles === -1 ? "" : String(initialData.maxVehicles ?? 5));
       setVehicleTypeScope(initialData.vehicleTypeScope || "both");
       setTruckLimit(initialData.truckLimit === -1 ? "" : String(initialData.truckLimit ?? 5));
       setTrailerLimit(initialData.trailerLimit === -1 ? "" : String(initialData.trailerLimit ?? 5));
+      setSelectedFleetTierId(initialData.fleetTierId || "");
+      setSelectedFleetTierLabel(initialData.fleetTierLabel || "");
+      setDiscountCoupon(initialData.discountCoupon || "");
+      if (
+        initialData.vehicleTypeScope === "trailer_only" ||
+        initialData.vehicleTypeScope === "truck_only" ||
+        initialData.vehicleTypeScope === "both"
+      ) {
+        setFleetVehicleFocus(initialData.vehicleTypeScope);
+      }
 
       // Mechanic fields
       const cat = initialData.mechanicCategory || "roadside";
@@ -380,22 +499,48 @@ export default function SubscriptionPlanModal({
       setActiveCountryTab("USA");
 
       if (activeType === "trenoops") {
-        setIsUnlimitedVehicles(false);
-        setMaxVehicles("5");
-        setVehicleTypeScope("both");
-        setTruckLimit("5");
-        setTrailerLimit("5");
-        setFeatures([
-          "Full Fleet Health & Diagnostic Management",
-          "Automated PM Service Reminders",
-          "Direct Mechanic Dispatch Network",
-          "Digital Maintenance Work Orders",
-        ]);
-        setTermsAndConditions([
-          "Subscription renews automatically at selected duration interval.",
-          "Cancellation must be submitted 24 hours prior to billing cycle.",
-          "Fleet limits apply strictly to active registered units.",
-        ]);
+        if (initialFleetTier) {
+          applyFleetTierPreset(
+            initialFleetTier.tierId,
+            initialFleetTier.scope,
+            initialFleetTier.duration
+          );
+        } else {
+          // Default to Tier 1 (1 TO 1) Truck Plan from the official rate card
+          const defaults = getFleetTierDefaults({
+            tierId: "1-to-1",
+            scope: "truck_only",
+            duration: "Monthly",
+            applyCoupon: true,
+          });
+          setName(defaults.name);
+          setDescription(defaults.description);
+          setDuration(defaults.duration);
+          setMinVehicles(String(defaults.minVehicles));
+          setMaxVehicles(String(defaults.maxVehicles));
+          setVehicleTypeScope(defaults.vehicleTypeScope);
+          setTruckLimit(String(defaults.truckLimit));
+          setTrailerLimit(String(defaults.trailerLimit));
+          setSelectedFleetTierId(defaults.fleetTierId);
+          setSelectedFleetTierLabel(defaults.fleetTierLabel);
+          setFleetVehicleFocus(defaults.vehicleTypeScope);
+          setPrice(String(defaults.price));
+          setDiscountPrice("");
+          setCountryPrices((prev) => ({
+            ...prev,
+            USA: {
+              enabled: true,
+              price: String(defaults.price),
+              discountPrice: "",
+            },
+          }));
+          setFeatures(defaults.features);
+          setTermsAndConditions([
+            "Subscription renews automatically at selected duration interval.",
+            "Cancellation must be submitted 24 hours prior to billing cycle.",
+            "Fleet limits apply strictly to active registered commercial units.",
+          ]);
+        }
       } else {
         setMechanicCategory("roadside");
         setIsUnlimitedBays(false);
@@ -649,6 +794,12 @@ export default function SubscriptionPlanModal({
       };
 
       if (type === "trenoops") {
+        if (!isUnlimitedVehicles && minVehicles) {
+          const parsedMin = parseInt(minVehicles, 10);
+          if (!isNaN(parsedMin)) {
+            payload.minVehicles = parsedMin;
+          }
+        }
         payload.maxVehicles = isUnlimitedVehicles
           ? -1
           : parseInt(maxVehicles, 10) || 1;
@@ -659,6 +810,15 @@ export default function SubscriptionPlanModal({
         payload.trailerLimit = isUnlimitedVehicles
           ? -1
           : parseInt(trailerLimit, 10) || 0;
+        if (selectedFleetTierId) {
+          payload.fleetTierId = selectedFleetTierId;
+        }
+        if (selectedFleetTierLabel) {
+          payload.fleetTierLabel = selectedFleetTierLabel;
+        }
+        if (discountCoupon && discountCoupon.trim()) {
+          payload.discountCoupon = discountCoupon.trim();
+        }
       } else {
         payload.mechanicCategory = mechanicCategory;
         payload.maxBays = isUnlimitedBays ? -1 : parseInt(maxBays, 10) || 1;
@@ -702,15 +862,38 @@ export default function SubscriptionPlanModal({
         penaltyRecipient: "admin",
       };
 
+      // Recursively strip out any undefined fields so Firestore addDoc/updateDoc never fails
+      const sanitizeData = (obj: any): any => {
+        if (Array.isArray(obj)) {
+          return obj.map(sanitizeData);
+        } else if (
+          obj !== null &&
+          typeof obj === "object" &&
+          !(obj instanceof Date) &&
+          typeof (obj as any).isEqual !== "function"
+        ) {
+          const clean: Record<string, any> = {};
+          Object.entries(obj).forEach(([key, val]) => {
+            if (val !== undefined) {
+              clean[key] = sanitizeData(val);
+            }
+          });
+          return clean;
+        }
+        return obj;
+      };
+
+      const sanitizedPayload = sanitizeData(payload);
+
       if (initialData?.id) {
         // Update existing plan
         const planRef = doc(db, "subscriptionPlans", initialData.id);
-        await updateDoc(planRef, payload);
+        await updateDoc(planRef, sanitizedPayload);
         toast.success(`Plan "${name}" updated successfully!`);
       } else {
         // Create new plan
         await addDoc(collection(db, "subscriptionPlans"), {
-          ...payload,
+          ...sanitizedPayload,
           createdAt: serverTimestamp(),
         });
         toast.success(`Plan "${name}" created successfully!`);
@@ -1261,95 +1444,342 @@ export default function SubscriptionPlanModal({
 
           {/* Conditional Scope: Owners / Drivers Specific Settings */}
           {type === "trenoops" && (
-            <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-200/80 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#F96176] flex items-center gap-2">
-                  <Truck className="w-4 h-4" /> Owner & Driver Fleet Limits
-                </h3>
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={isUnlimitedVehicles}
-                    onChange={(e) => setIsUnlimitedVehicles(e.target.checked)}
-                    className="w-4 h-4 rounded text-[#F96176] focus:ring-[#F96176]"
-                  />
-                  Unlimited Vehicles
-                </label>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Max Vehicles Total */}
+            <div className="bg-rose-50/40 p-5 rounded-2xl border border-rose-200 space-y-5">
+              {/* Header with Title */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rose-100">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Max Total Vehicles
-                  </label>
-                  <input
-                    type="number"
-                    disabled={isUnlimitedVehicles}
-                    value={isUnlimitedVehicles ? "" : maxVehicles}
-                    onChange={(e) => setMaxVehicles(e.target.value)}
-                    placeholder={isUnlimitedVehicles ? "Unlimited" : "e.g. 10"}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold"
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center text-[#F96176]">
+                      <Truck className="w-4 h-4" />
+                    </span>
+                    <h3 className="text-sm font-bold text-gray-900">
+                      Fleet Tiers & Pricing Presets
+                    </h3>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Select a fleet tier below to automatically pre-fill default pricing & vehicle limits. All fields remain fully editable.
+                  </p>
                 </div>
 
-                {/* Truck Limit */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Truck Limit
+                <div className="flex items-center gap-2 shrink-0">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700 ml-1">
+                    <input
+                      type="checkbox"
+                      checked={isUnlimitedVehicles}
+                      onChange={(e) => setIsUnlimitedVehicles(e.target.checked)}
+                      className="w-4 h-4 rounded text-[#F96176] focus:ring-[#F96176]"
+                    />
+                    Unlimited Fleet
                   </label>
-                  <input
-                    type="number"
-                    disabled={isUnlimitedVehicles}
-                    value={isUnlimitedVehicles ? "" : truckLimit}
-                    onChange={(e) => setTruckLimit(e.target.value)}
-                    placeholder={isUnlimitedVehicles ? "Unlimited" : "e.g. 5"}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold"
-                  />
-                </div>
-
-                {/* Trailer Limit */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Trailer Limit
-                  </label>
-                  <input
-                    type="number"
-                    disabled={isUnlimitedVehicles}
-                    value={isUnlimitedVehicles ? "" : trailerLimit}
-                    onChange={(e) => setTrailerLimit(e.target.value)}
-                    placeholder={isUnlimitedVehicles ? "Unlimited" : "e.g. 5"}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold"
-                  />
                 </div>
               </div>
 
-              {/* Vehicle Scope Selection */}
+              {/* Rate Card Preset Filters: Focus (Truck / Trailer / Both) & Yearly Promo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white/80 rounded-xl border border-rose-100">
+                {/* Vehicle Focus selector */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    Vehicle Category Focus
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: "truck_only", label: "Trucks Rate" },
+                      { id: "trailer_only", label: "Trailers Rate" },
+                      { id: "both", label: "Combined" },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          const nextFocus = f.id as "truck_only" | "trailer_only" | "both";
+                          setFleetVehicleFocus(nextFocus);
+                          if (selectedFleetTierId) {
+                            applyFleetTierPreset(selectedFleetTierId, nextFocus);
+                          }
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-center border ${
+                          fleetVehicleFocus === f.id
+                            ? "bg-[#F96176] text-white border-[#F96176] shadow-xs"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Duration & Promo Toggle */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-gray-700">
+                      Duration & Coupon Promo
+                    </label>
+                    {duration === "Yearly" && (
+                      <span className="text-[10px] font-bold text-[#58BB87] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        TRENO50 (50% Off Available)
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDuration("Monthly");
+                          if (selectedFleetTierId) {
+                            applyFleetTierPreset(selectedFleetTierId, fleetVehicleFocus, "Monthly", false);
+                          }
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-center border ${
+                          duration === "Monthly"
+                            ? "bg-gray-900 text-white border-gray-900 shadow-xs"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        Monthly Billing
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDuration("Yearly");
+                          if (selectedFleetTierId) {
+                            applyFleetTierPreset(selectedFleetTierId, fleetVehicleFocus, "Yearly", applyYearlyPromo);
+                          }
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-center border ${
+                          duration === "Yearly"
+                            ? "bg-gray-900 text-white border-gray-900 shadow-xs"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        Yearly Billing
+                      </button>
+                    </div>
+
+                    {duration === "Yearly" && (
+                      <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200 cursor-pointer text-xs font-bold text-[#58BB87] shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={applyYearlyPromo}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setApplyYearlyPromo(checked);
+                            if (selectedFleetTierId) {
+                              applyFleetTierPreset(selectedFleetTierId, fleetVehicleFocus, "Yearly", checked);
+                            }
+                          }}
+                          className="w-3.5 h-3.5 rounded text-[#58BB87] focus:ring-[#58BB87]"
+                        />
+                        TRENO50 (-50%)
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 10 Fleet Tier Preset Pills / Grid */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Vehicle Type Scope
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { id: "both", label: "Truck & Trailer" },
-                    { id: "truck_only", label: "Truck Only" },
-                    { id: "trailer_only", label: "Trailer Only" },
-                    { id: "all", label: "All Fleet Units" },
-                  ].map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setVehicleTypeScope(s.id as any)}
-                      className={`px-3 py-2 rounded-lg text-xs font-bold transition text-center border ${
-                        vehicleTypeScope === s.id
-                          ? "bg-[#F96176] text-white border-[#F96176] shadow-xs"
-                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-gray-800 uppercase tracking-wide">
+                    Select Fleet Tier (Pre-fills Default Matrix Price)
+                  </label>
+                  {selectedFleetTierLabel && (
+                    <span className="text-xs font-bold text-[#F96176]">
+                      Selected: Tier {selectedFleetTierLabel}
+                    </span>
+                  )}
                 </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {FLEET_PRICING_TIERS.map((tier) => {
+                    const isSelected = selectedFleetTierId === tier.tierId;
+                    const isYearly = duration === "Yearly";
+                    const priceDisplay =
+                      isYearly
+                        ? fleetVehicleFocus === "trailer_only"
+                          ? applyYearlyPromo
+                            ? `$${tier.discountedYearlyTrailerPrice}/yr`
+                            : `$${tier.yearlyTrailerPrice}/yr`
+                          : applyYearlyPromo
+                          ? `$${tier.discountedYearlyTruckPrice}/yr`
+                          : `$${tier.yearlyTruckPrice}/yr`
+                        : fleetVehicleFocus === "trailer_only"
+                        ? `$${tier.monthlyTrailerPrice}/mo`
+                        : `$${tier.monthlyTruckPrice}/mo`;
+
+                    return (
+                      <button
+                        key={tier.tierId}
+                        type="button"
+                        onClick={() => applyFleetTierPreset(tier.tierId)}
+                        className={`p-2.5 rounded-xl border text-left transition relative flex flex-col justify-between ${
+                          isSelected
+                            ? "bg-rose-50/90 border-[#F96176] ring-2 ring-[#F96176]/30 shadow-xs"
+                            : "bg-white border-gray-200 hover:border-rose-200 hover:bg-rose-50/20"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-xs font-black tracking-tight ${
+                              isSelected ? "text-[#F96176]" : "text-gray-900"
+                            }`}
+                          >
+                            {tier.label}
+                          </span>
+                          {isSelected && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#F96176]" />
+                          )}
+                        </div>
+                        <div className="mt-1">
+                          <div className="text-[11px] font-bold text-gray-900">
+                            {priceDisplay}
+                          </div>
+                          <div className="text-[10px] text-gray-500">
+                            {tier.minVehicles === tier.maxVehicles
+                              ? `${tier.minVehicles} Unit`
+                              : `${tier.minVehicles}-${tier.maxVehicles} Units`}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Editable Fleet Limit Values */}
+              <div className="p-3.5 bg-white rounded-xl border border-rose-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                    Fleet Unit Limits (Editable by Admin)
+                  </h4>
+                  <span className="text-[11px] text-gray-500">
+                    Pre-filled from selected tier, you can customize anytime
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* Min Vehicles */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Min Vehicles
+                    </label>
+                    <input
+                      type="number"
+                      value={minVehicles}
+                      onChange={(e) => setMinVehicles(e.target.value)}
+                      placeholder="e.g. 1"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm font-semibold"
+                    />
+                  </div>
+
+                  {/* Max Vehicles Total */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Max Total Vehicles
+                    </label>
+                    <input
+                      type="number"
+                      disabled={isUnlimitedVehicles}
+                      value={isUnlimitedVehicles ? "" : maxVehicles}
+                      onChange={(e) => setMaxVehicles(e.target.value)}
+                      placeholder={isUnlimitedVehicles ? "Unlimited" : "e.g. 10"}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold"
+                    />
+                  </div>
+
+                  {/* Truck Limit */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Truck Limit
+                    </label>
+                    <input
+                      type="number"
+                      disabled={isUnlimitedVehicles}
+                      value={isUnlimitedVehicles ? "" : truckLimit}
+                      onChange={(e) => setTruckLimit(e.target.value)}
+                      placeholder={isUnlimitedVehicles ? "Unlimited" : "e.g. 5"}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold"
+                    />
+                  </div>
+
+                  {/* Trailer Limit */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Trailer Limit
+                    </label>
+                    <input
+                      type="number"
+                      disabled={isUnlimitedVehicles}
+                      value={isUnlimitedVehicles ? "" : trailerLimit}
+                      onChange={(e) => setTrailerLimit(e.target.value)}
+                      placeholder={isUnlimitedVehicles ? "Unlimited" : "e.g. 5"}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold"
+                    />
+                  </div>
+                </div>
+
+                {/* Vehicle Scope Selection & Discount Coupon code */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Vehicle Type Scope
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      {[
+                        { id: "both", label: "Truck & Trailer" },
+                        { id: "truck_only", label: "Truck Only" },
+                        { id: "trailer_only", label: "Trailer Only" },
+                        { id: "all", label: "All Fleet Units" },
+                      ].map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setVehicleTypeScope(s.id as any)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-center border ${
+                            vehicleTypeScope === s.id
+                              ? "bg-[#F96176] text-white border-[#F96176] shadow-xs"
+                              : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Discount Coupon Code (Optional)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={discountCoupon}
+                        onChange={(e) => setDiscountCoupon(e.target.value.toUpperCase())}
+                        placeholder="e.g. TRENO50 or TRENO100"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm font-semibold uppercase tracking-wider"
+                      />
+                      {discountCoupon && (
+                        <button
+                          type="button"
+                          onClick={() => setDiscountCoupon("")}
+                          className="px-2.5 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-red-600 border border-gray-200 hover:border-red-200 transition"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informational Hint */}
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                <span>
+                  <strong>Admin Tip:</strong> When you click any fleet tier, standard spreadsheet prices are populated in the Country Pricing (USA) table above. You can freely overwrite price, discount price, or fleet limits at any time before saving.
+                </span>
               </div>
             </div>
           )}

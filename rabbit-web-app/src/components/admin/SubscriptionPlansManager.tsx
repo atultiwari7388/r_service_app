@@ -253,7 +253,7 @@ export default function SubscriptionPlansManager({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={fetchPlans}
             disabled={refreshing}
@@ -667,12 +667,20 @@ export default function SubscriptionPlansManager({
                   {/* Scope Badges */}
                   {isOwner ? (
                     <div className="space-y-1.5 text-xs text-gray-700 bg-rose-50/40 p-3 rounded-xl border border-rose-100/80 mb-4">
+                      {plan.fleetTierLabel && (
+                        <div className="flex items-center justify-between pb-1.5 mb-1 border-b border-rose-100/80">
+                          <span className="font-semibold text-gray-600">Tier:</span>
+                          <span className="px-2 py-0.5 rounded-md font-black text-[11px] bg-rose-100 text-[#F96176] border border-rose-200">
+                            Tier {plan.fleetTierLabel}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-600">Max Vehicles:</span>
+                        <span className="font-semibold text-gray-600">Fleet Range:</span>
                         <span className="font-extrabold text-gray-900">
                           {plan.maxVehicles === -1 || plan.maxVehicles === undefined
-                            ? "Unlimited"
-                            : `${plan.maxVehicles} Vehicles`}
+                            ? "Unlimited Fleet"
+                            : `${plan.minVehicles !== undefined ? plan.minVehicles : 1} - ${plan.maxVehicles} Vehicles`}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -692,6 +700,14 @@ export default function SubscriptionPlansManager({
                             <b>
                               {plan.trailerLimit === -1 ? "Unlimited" : plan.trailerLimit}
                             </b>
+                          </span>
+                        </div>
+                      )}
+                      {plan.discountCoupon && (
+                        <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-rose-100/80">
+                          <span className="font-semibold text-gray-600">Discount Coupon:</span>
+                          <span className="font-mono font-bold text-[#58BB87] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            {plan.discountCoupon}
                           </span>
                         </div>
                       )}
