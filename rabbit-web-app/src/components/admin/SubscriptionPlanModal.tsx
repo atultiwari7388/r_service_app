@@ -32,6 +32,7 @@ import {
   ChevronUp,
   Clock,
   AlertTriangle,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   collection,
@@ -53,12 +54,11 @@ import {
   MECHANIC_PAGES_LIST,
   CORE_ROADSIDE_PAGES,
   CancellationPenaltyConfig,
+  FleetVehicleTier,
+  GlobalVehiclePricingConfig,
+  DEFAULT_GLOBAL_VEHICLE_PRICING,
 } from "@/types/subscription";
-import {
-  FLEET_PRICING_TIERS,
-  FleetTierPricing,
-  getFleetTierDefaults,
-} from "@/types/fleetPricingSheet";
+import GlobalVehiclePricingModal from "./GlobalVehiclePricingModal";
 
 interface Props {
   isOpen: boolean;
@@ -67,12 +67,9 @@ interface Props {
   initialData?: SubscriptionPlan | null;
   defaultType?: SubscriptionPlanType;
   lockType?: boolean;
-  initialFleetTier?: {
-    tierId: string;
-    scope: "truck_only" | "trailer_only" | "both";
-    duration: "Monthly" | "Yearly";
-  } | null;
 }
+
+const VEHICLE_RANGE_OPTIONS = Array.from({ length: 300 }, (_, i) => i + 1);
 
 const DURATION_PRESETS = [
   "Daily",
@@ -110,7 +107,6 @@ export default function SubscriptionPlanModal({
   initialData,
   defaultType = "trenoops",
   lockType = false,
-  initialFleetTier = null,
 }: Props) {
   const [loading, setLoading] = useState(false);
 
@@ -154,18 +150,35 @@ export default function SubscriptionPlanModal({
     >
   >(buildDefaultCountryPrices);
 
-  // Owner / Driver specific & Fleet Rate Card Presets
+  // Global Vehicle Pricing configuration state (Method 2)
+  const [globalPricing, setGlobalPricing] = useState<GlobalVehiclePricingConfig>(
+    DEFAULT_GLOBAL_VEHICLE_PRICING
+  );
+  const [isGlobalPricingModalOpen, setIsGlobalPricingModalOpen] = useState(false);
+
+  // Owner / Driver Dynamic Vehicle Slabs (type: "trenoops")
+  const [fleetVehicleTiers, setFleetVehicleTiers] = useState<FleetVehicleTier[]>([
+    {
+      id: "tier-1",
+      fromVehicles: 1,
+      toVehicles: 2,
+      maxTrucks: 1,
+      maxTrailers: 1,
+      truckRate: 10,
+      trailerRate: 6,
+      trucksSubtotal: 10,
+      trailersSubtotal: 6,
+      subtotal: 16,
+      discountPrice: 13,
+      finalPrice: 13,
+    },
+  ]);
   const [minVehicles, setMinVehicles] = useState<string>("1");
-  const [maxVehicles, setMaxVehicles] = useState<string>("1");
-  const [vehicleTypeScope, setVehicleTypeScope] = useState<"both" | "truck_only" | "trailer_only" | "all">("truck_only");
-  const [truckLimit, setTruckLimit] = useState<string>("1");
-  const [trailerLimit, setTrailerLimit] = useState<string>("0");
+  const [maxVehicles, setMaxVehicles] = useState<string>("2");
+  const [vehicleTypeScope, setVehicleTypeScope] = useState<"both" | "truck_only" | "trailer_only" | "all">("both");
+  const [truckLimit, setTruckLimit] = useState<string>("2");
+  const [trailerLimit, setTrailerLimit] = useState<string>("2");
   const [isUnlimitedVehicles, setIsUnlimitedVehicles] = useState(false);
-  const [selectedFleetTierId, setSelectedFleetTierId] = useState<string>("1-to-1");
-  const [selectedFleetTierLabel, setSelectedFleetTierLabel] = useState<string>("1 TO 1");
-  const [fleetVehicleFocus, setFleetVehicleFocus] = useState<"truck_only" | "trailer_only" | "both">("truck_only");
-  const [applyYearlyPromo, setApplyYearlyPromo] = useState<boolean>(true);
-  const [discountCoupon, setDiscountCoupon] = useState<string>("");
 
   // Mechanic specific
   const [mechanicCategory, setMechanicCategory] = useState<"roadside" | "company">("roadside");
@@ -222,75 +235,110 @@ export default function SubscriptionPlanModal({
         console.error("Error loading servicesList in SubscriptionPlanModal:", err);
       }
     };
+
+    const fetchGlobalPricing = async () => {
+      try {
+        const snap = await getDoc(doc(db, "appSettings", "globalVehiclePricing"));
+        if (snap.exists() && isMounted) {
+          const data = snap.data() as GlobalVehiclePricingConfig;
+          const mergedConfig: GlobalVehiclePricingConfig = {
+            ...DEFAULT_GLOBAL_VEHICLE_PRICING,
+            ...data,
+            currencyMultipliers: {
+              ...DEFAULT_GLOBAL_VEHICLE_PRICING.currencyMultipliers,
+              ...(data.currencyMultipliers || {}),
+            },
+          };
+          setGlobalPricing(mergedConfig);
+
+          const liveTruckRate = mergedConfig.truckPriceUSD || 10;
+          const liveTrailerRate = mergedConfig.trailerPriceUSD || 6;
+
+          // If this is a new plan creation (or initialData has no custom fleetVehicleTiers)
+          if (!initialData || !initialData.fleetVehicleTiers || initialData.fleetVehicleTiers.length === 0) {
+            setFleetVehicleTiers((prev) => {
+              const updated = prev.map((t) => {
+                const trkCount = t.maxTrucks || 1;
+                const trlCount = t.maxTrailers || 1;
+                const trkSub = trkCount * liveTruckRate;
+                const trlSub = trlCount * liveTrailerRate;
+                const sub = trkSub + trlSub;
+                const finalP =
+                  t.discountPrice !== null &&
+                  t.discountPrice !== undefined &&
+                  t.discountPrice > 0
+                    ? t.discountPrice
+                    : sub;
+                return {
+                  ...t,
+                  truckRate: liveTruckRate,
+                  trailerRate: liveTrailerRate,
+                  trucksSubtotal: trkSub,
+                  trailersSubtotal: trlSub,
+                  subtotal: sub,
+                  finalPrice: finalP,
+                };
+              });
+
+              syncCountryPricesFromTiers(updated, mergedConfig);
+              return updated;
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error loading globalVehiclePricing:", err);
+      }
+    };
+
     fetchServices();
+    if (isOpen) {
+      fetchGlobalPricing();
+    }
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isOpen]);
 
-  // Apply Fleet Tier Preset from the official rate card
-  const applyFleetTierPreset = (
-    tierId: string,
-    overrideScope?: "truck_only" | "trailer_only" | "both",
-    overrideDuration?: "Monthly" | "Yearly" | string,
-    overrideApplyPromo?: boolean
+  // Auto-calculate and synchronize country-wise currencies from base tier
+  const syncCountryPricesFromTiers = (
+    tiersToSync?: FleetVehicleTier[],
+    overrideConfig?: GlobalVehiclePricingConfig
   ) => {
-    const targetScope = overrideScope || fleetVehicleFocus;
-    const targetDuration = overrideDuration || duration || "Monthly";
-    const promoActive =
-      overrideApplyPromo !== undefined ? overrideApplyPromo : applyYearlyPromo;
+    const list = tiersToSync || fleetVehicleTiers;
+    if (!list || list.length === 0) return;
+    const base = list[0];
+    const baseSubtotal = base.subtotal;
+    const baseDiscount =
+      base.discountPrice !== null && base.discountPrice !== undefined && base.discountPrice > 0
+        ? base.discountPrice
+        : null;
 
-    const defaults = getFleetTierDefaults({
-      tierId,
-      scope: targetScope,
-      duration: targetDuration,
-      applyCoupon: promoActive,
-    });
+    setPrice(String(baseSubtotal));
+    setDiscountPrice(baseDiscount !== null ? String(baseDiscount) : "");
 
-    setSelectedFleetTierId(defaults.fleetTierId);
-    setSelectedFleetTierLabel(defaults.fleetTierLabel);
-    setFleetVehicleFocus(defaults.vehicleTypeScope);
-    setVehicleTypeScope(defaults.vehicleTypeScope);
-    setMinVehicles(String(defaults.minVehicles));
-    setMaxVehicles(String(defaults.maxVehicles));
-    setTruckLimit(String(defaults.truckLimit));
-    setTrailerLimit(String(defaults.trailerLimit));
-    setIsUnlimitedVehicles(false);
-    setDiscountCoupon(defaults.discountCoupon || "");
+    const activeConfig = overrideConfig || globalPricing;
+    const multipliers =
+      activeConfig.currencyMultipliers ||
+      DEFAULT_GLOBAL_VEHICLE_PRICING.currencyMultipliers ||
+      {};
 
-    if (defaults.duration && DURATION_PRESETS.includes(defaults.duration)) {
-      setDuration(defaults.duration);
-    }
-
-    setPrice(String(defaults.price));
-    setDiscountPrice(
-      defaults.discountPrice !== null && defaults.discountPrice !== undefined
-        ? String(defaults.discountPrice)
-        : ""
-    );
-
-    // Update USA country price and proportional country prices
     setCountryPrices((prev) => {
       const next = { ...prev };
       next["USA"] = {
         enabled: true,
-        price: String(defaults.price),
-        discountPrice:
-          defaults.discountPrice !== null && defaults.discountPrice !== undefined
-            ? String(defaults.discountPrice)
-            : "",
+        price: String(baseSubtotal),
+        discountPrice: baseDiscount !== null ? String(baseDiscount) : "",
       };
+
       SUPPORTED_PLAN_COUNTRIES.forEach((c) => {
         if (c.code !== "USA" && next[c.code]?.enabled) {
           let mult = 1.0;
-          if (c.code === "CA") mult = 1.35;
-          if (c.code === "MX") mult = 18.0;
-          if (c.code === "UK") mult = 0.8;
-          if (c.code === "AU") mult = 1.5;
-          const cp = Math.round(defaults.price * mult);
-          const cd = defaults.discountPrice
-            ? Math.round(defaults.discountPrice * mult)
-            : null;
+          if (c.code === "CA") mult = multipliers.CAD ?? 1.35;
+          if (c.code === "MX") mult = multipliers.MXN ?? 18.0;
+          if (c.code === "UK") mult = multipliers.GBP ?? 0.8;
+          if (c.code === "AU") mult = multipliers.AUD ?? 1.5;
+          const cp = Math.round(baseSubtotal * mult);
+          const cd = baseDiscount !== null ? Math.round(baseDiscount * mult) : null;
           next[c.code] = {
             enabled: true,
             price: String(cp),
@@ -300,19 +348,165 @@ export default function SubscriptionPlanModal({
       });
       return next;
     });
+  };
 
-    if (!name || name.includes("Subscription (") || name.includes("Fleet")) {
-      setName(defaults.name);
-    }
-    if (!description || description.includes("Standard fleet plan")) {
-      setDescription(defaults.description);
-    }
+  // Add a new dynamic vehicle slab row (Method 2)
+  const handleAddTier = () => {
+    const last = fleetVehicleTiers[fleetVehicleTiers.length - 1];
+    const nextFrom = last ? Math.min(300, last.toVehicles + 1) : 1;
+    const nextTo = Math.min(300, nextFrom + 2);
+    const span = Math.max(1, nextTo - nextFrom + 1);
+    const defaultTrucks = Math.max(1, Math.floor(span / 2));
+    const defaultTrailers = Math.max(1, span - defaultTrucks);
+    const truckRate = last ? last.truckRate : (globalPricing.truckPriceUSD || 10);
+    const trailerRate = last ? last.trailerRate : (globalPricing.trailerPriceUSD || 6);
+    const trucksSubtotal = defaultTrucks * truckRate;
+    const trailersSubtotal = defaultTrailers * trailerRate;
+    const subtotal = trucksSubtotal + trailersSubtotal;
 
-    toast.success(
-      `Applied ${defaults.fleetTierLabel}: Price set to $${defaults.price}${
-        defaults.discountPrice ? ` (Discount: $${defaults.discountPrice})` : ""
-      }. All fields are editable.`
-    );
+    const newTier: FleetVehicleTier = {
+      id: `tier-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      fromVehicles: nextFrom,
+      toVehicles: nextTo,
+      maxTrucks: defaultTrucks,
+      maxTrailers: defaultTrailers,
+      truckRate,
+      trailerRate,
+      trucksSubtotal,
+      trailersSubtotal,
+      subtotal,
+      discountPrice: null,
+      finalPrice: subtotal,
+    };
+    setFleetVehicleTiers((prev) => [...prev, newTier]);
+  };
+
+  // Update a vehicle slab's values (Method 2)
+  const handleUpdateTier = (
+    index: number,
+    field: keyof FleetVehicleTier,
+    value: any
+  ) => {
+    setFleetVehicleTiers((prev) => {
+      const copy = [...prev];
+      const item = { ...copy[index] };
+
+      if (field === "fromVehicles" || field === "toVehicles") {
+        const numVal = parseInt(value, 10) || 1;
+        item[field] = numVal;
+        if (field === "fromVehicles" && item.toVehicles < numVal) {
+          item.toVehicles = numVal;
+        }
+
+        // Auto-cap maxTrucks and maxTrailers if toVehicles decreased
+        const currentLimit = item.toVehicles || 300;
+        if (item.maxTrucks > currentLimit) {
+          item.maxTrucks = currentLimit;
+        }
+        if (item.maxTrailers > currentLimit) {
+          item.maxTrailers = currentLimit;
+        }
+        if ((item.maxTrucks || 0) + (item.maxTrailers || 0) > currentLimit) {
+          const half = Math.max(1, Math.floor(currentLimit / 2));
+          item.maxTrucks = half;
+          item.maxTrailers = Math.max(0, currentLimit - half);
+        }
+
+        const curTruckRate = item.truckRate > 0 ? item.truckRate : (globalPricing.truckPriceUSD || 10);
+        const curTrailerRate = item.trailerRate > 0 ? item.trailerRate : (globalPricing.trailerPriceUSD || 6);
+        item.truckRate = curTruckRate;
+        item.trailerRate = curTrailerRate;
+        item.trucksSubtotal = (item.maxTrucks || 0) * curTruckRate;
+        item.trailersSubtotal = (item.maxTrailers || 0) * curTrailerRate;
+        item.subtotal = item.trucksSubtotal + item.trailersSubtotal;
+        item.finalPrice =
+          item.discountPrice !== null &&
+          item.discountPrice !== undefined &&
+          item.discountPrice > 0
+            ? item.discountPrice
+            : item.subtotal;
+      } else if (field === "maxTrucks" || field === "maxTrailers") {
+        const rawVal = Math.max(0, parseInt(value, 10) || 0);
+        const maxLimit = item.toVehicles || 300;
+        let numVal = rawVal;
+
+        if (rawVal > maxLimit) {
+          numVal = maxLimit;
+          toast.error(`Max allowed for this slab is ${maxLimit} vehicles. Automatically capped.`);
+        }
+
+        item[field] = numVal;
+        const curTrucks = field === "maxTrucks" ? numVal : (item.maxTrucks || 0);
+        const curTrailers = field === "maxTrailers" ? numVal : (item.maxTrailers || 0);
+
+        if (curTrucks + curTrailers > maxLimit) {
+          toast.error(
+            `Total units (${curTrucks} trucks + ${curTrailers} trailers = ${curTrucks + curTrailers}) exceed slab capacity of ${maxLimit} vehicles!`
+          );
+        }
+
+        const curTruckRate = item.truckRate > 0 ? item.truckRate : (globalPricing.truckPriceUSD || 10);
+        const curTrailerRate = item.trailerRate > 0 ? item.trailerRate : (globalPricing.trailerPriceUSD || 6);
+        item.truckRate = curTruckRate;
+        item.trailerRate = curTrailerRate;
+        item.trucksSubtotal = curTrucks * curTruckRate;
+        item.trailersSubtotal = curTrailers * curTrailerRate;
+        item.subtotal = item.trucksSubtotal + item.trailersSubtotal;
+        item.finalPrice =
+          item.discountPrice !== null &&
+          item.discountPrice !== undefined &&
+          item.discountPrice > 0
+            ? item.discountPrice
+            : item.subtotal;
+      } else if (field === "truckRate" || field === "trailerRate") {
+        const numVal = Math.max(0, parseFloat(value) || 0);
+        item[field] = numVal;
+        const curTrucks = item.maxTrucks || 0;
+        const curTrailers = item.maxTrailers || 0;
+        const curTruckRate = field === "truckRate" ? numVal : (item.truckRate || 0);
+        const curTrailerRate = field === "trailerRate" ? numVal : (item.trailerRate || 0);
+        item.trucksSubtotal = curTrucks * curTruckRate;
+        item.trailersSubtotal = curTrailers * curTrailerRate;
+        item.subtotal = item.trucksSubtotal + item.trailersSubtotal;
+        item.finalPrice =
+          item.discountPrice !== null &&
+          item.discountPrice !== undefined &&
+          item.discountPrice > 0
+            ? item.discountPrice
+            : item.subtotal;
+      } else if (field === "discountPrice") {
+        const valStr = String(value).trim();
+        if (valStr === "") {
+          item.discountPrice = null;
+          item.finalPrice = item.subtotal;
+        } else {
+          const numVal = Math.max(0, parseFloat(valStr) || 0);
+          item.discountPrice = numVal;
+          item.finalPrice = numVal;
+        }
+      }
+
+      copy[index] = item;
+
+      // If updating the first slab, auto-sync the country prices
+      if (index === 0) {
+        syncCountryPricesFromTiers(copy);
+      }
+
+      return copy;
+    });
+  };
+
+  // Remove a vehicle slab
+  const handleRemoveTier = (index: number) => {
+    if (fleetVehicleTiers.length <= 1) return;
+    setFleetVehicleTiers((prev) => {
+      const next = prev.filter((_, idx) => idx !== index);
+      if (index === 0 && next.length > 0) {
+        syncCountryPricesFromTiers(next);
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -350,19 +544,61 @@ export default function SubscriptionPlanModal({
           ? String(initialData.minVehicles)
           : "1"
       );
-      setMaxVehicles(initialData.maxVehicles === -1 ? "" : String(initialData.maxVehicles ?? 5));
+      setMaxVehicles(initialData.maxVehicles === -1 ? "" : String(initialData.maxVehicles ?? 2));
       setVehicleTypeScope(initialData.vehicleTypeScope || "both");
-      setTruckLimit(initialData.truckLimit === -1 ? "" : String(initialData.truckLimit ?? 5));
-      setTrailerLimit(initialData.trailerLimit === -1 ? "" : String(initialData.trailerLimit ?? 5));
-      setSelectedFleetTierId(initialData.fleetTierId || "");
-      setSelectedFleetTierLabel(initialData.fleetTierLabel || "");
-      setDiscountCoupon(initialData.discountCoupon || "");
-      if (
-        initialData.vehicleTypeScope === "trailer_only" ||
-        initialData.vehicleTypeScope === "truck_only" ||
-        initialData.vehicleTypeScope === "both"
-      ) {
-        setFleetVehicleFocus(initialData.vehicleTypeScope);
+
+      if (initialData.fleetVehicleTiers && initialData.fleetVehicleTiers.length > 0) {
+        const normalized: FleetVehicleTier[] = initialData.fleetVehicleTiers.map((t, idx) => {
+          const tTrucks = t.maxTrucks !== undefined ? t.maxTrucks : 1;
+          const tTrailers = t.maxTrailers !== undefined ? t.maxTrailers : 1;
+          const tTruckRate = t.truckRate !== undefined ? t.truckRate : (globalPricing.truckPriceUSD || 10);
+          const tTrailerRate = t.trailerRate !== undefined ? t.trailerRate : (globalPricing.trailerPriceUSD || 6);
+          const tTrucksSub = t.trucksSubtotal !== undefined ? t.trucksSubtotal : tTrucks * tTruckRate;
+          const tTrailersSub = t.trailersSubtotal !== undefined ? t.trailersSubtotal : tTrailers * tTrailerRate;
+          const sub = t.subtotal !== undefined ? t.subtotal : tTrucksSub + tTrailersSub;
+          const disc = t.discountPrice !== undefined && t.discountPrice !== null ? t.discountPrice : null;
+          const fin = disc !== null && disc > 0 ? disc : sub;
+          return {
+            id: t.id || `tier-${idx + 1}`,
+            fromVehicles: t.fromVehicles || 1,
+            toVehicles: t.toVehicles || 2,
+            maxTrucks: tTrucks,
+            maxTrailers: tTrailers,
+            truckRate: tTruckRate,
+            trailerRate: tTrailerRate,
+            trucksSubtotal: tTrucksSub,
+            trailersSubtotal: tTrailersSub,
+            subtotal: sub,
+            discountPrice: disc,
+            finalPrice: fin,
+          };
+        });
+        setFleetVehicleTiers(normalized);
+      } else if (activeType === "trenoops") {
+        const tRate = globalPricing.truckPriceUSD || 10;
+        const trRate = globalPricing.trailerPriceUSD || 6;
+        const initialTrucks = 1;
+        const initialTrailers = 1;
+        const sub = initialTrucks * tRate + initialTrailers * trRate;
+        setFleetVehicleTiers([
+          {
+            id: "tier-1",
+            fromVehicles: initialData.minVehicles || 1,
+            toVehicles:
+              initialData.maxVehicles && initialData.maxVehicles > 0
+                ? initialData.maxVehicles
+                : 2,
+            maxTrucks: initialTrucks,
+            maxTrailers: initialTrailers,
+            truckRate: tRate,
+            trailerRate: trRate,
+            trucksSubtotal: initialTrucks * tRate,
+            trailersSubtotal: initialTrailers * trRate,
+            subtotal: sub,
+            discountPrice: initialData.discountPrice ?? 13,
+            finalPrice: initialData.discountPrice ?? sub,
+          },
+        ]);
       }
 
       // Mechanic fields
@@ -499,48 +735,52 @@ export default function SubscriptionPlanModal({
       setActiveCountryTab("USA");
 
       if (activeType === "trenoops") {
-        if (initialFleetTier) {
-          applyFleetTierPreset(
-            initialFleetTier.tierId,
-            initialFleetTier.scope,
-            initialFleetTier.duration
-          );
-        } else {
-          // Default to Tier 1 (1 TO 1) Truck Plan from the official rate card
-          const defaults = getFleetTierDefaults({
-            tierId: "1-to-1",
-            scope: "truck_only",
-            duration: "Monthly",
-            applyCoupon: true,
-          });
-          setName(defaults.name);
-          setDescription(defaults.description);
-          setDuration(defaults.duration);
-          setMinVehicles(String(defaults.minVehicles));
-          setMaxVehicles(String(defaults.maxVehicles));
-          setVehicleTypeScope(defaults.vehicleTypeScope);
-          setTruckLimit(String(defaults.truckLimit));
-          setTrailerLimit(String(defaults.trailerLimit));
-          setSelectedFleetTierId(defaults.fleetTierId);
-          setSelectedFleetTierLabel(defaults.fleetTierLabel);
-          setFleetVehicleFocus(defaults.vehicleTypeScope);
-          setPrice(String(defaults.price));
-          setDiscountPrice("");
-          setCountryPrices((prev) => ({
-            ...prev,
-            USA: {
-              enabled: true,
-              price: String(defaults.price),
-              discountPrice: "",
-            },
-          }));
-          setFeatures(defaults.features);
-          setTermsAndConditions([
-            "Subscription renews automatically at selected duration interval.",
-            "Cancellation must be submitted 24 hours prior to billing cycle.",
-            "Fleet limits apply strictly to active registered commercial units.",
-          ]);
-        }
+        const tRate = globalPricing.truckPriceUSD || 10;
+        const trRate = globalPricing.trailerPriceUSD || 6;
+        const initTrucks = 1;
+        const initTrailers = 1;
+        const tSub = initTrucks * tRate;
+        const trSub = initTrailers * trRate;
+        const totalSub = tSub + trSub;
+        const initialTiers: FleetVehicleTier[] = [
+          {
+            id: "tier-1",
+            fromVehicles: 1,
+            toVehicles: 2,
+            maxTrucks: initTrucks,
+            maxTrailers: initTrailers,
+            truckRate: tRate,
+            trailerRate: trRate,
+            trucksSubtotal: tSub,
+            trailersSubtotal: trSub,
+            subtotal: totalSub,
+            discountPrice: null,
+            finalPrice: totalSub,
+          },
+        ];
+        setFleetVehicleTiers(initialTiers);
+        setName("Owner-Operator & Fleet Plan");
+        setDescription(
+          "Custom fleet coverage for motor carriers, owner-operators and dispatch fleets."
+        );
+        setDuration("Monthly");
+        setMinVehicles("1");
+        setMaxVehicles("2");
+        setVehicleTypeScope("both");
+        setPrice(String(totalSub));
+        setDiscountPrice("");
+        syncCountryPricesFromTiers(initialTiers);
+        setFeatures([
+          "Full 24/7 Roadside & Workshop Dispatch Access",
+          "Dedicated Fleet Management Dashboard",
+          "Real-time Job Tracking & GPS Routing",
+          "Priority Technician Dispatch",
+        ]);
+        setTermsAndConditions([
+          "Subscription renews automatically at selected billing interval.",
+          "Fleet limits apply strictly to active registered commercial units.",
+          "Cancellation must be submitted 24 hours prior to billing cycle.",
+        ]);
       } else {
         setMechanicCategory("roadside");
         setIsUnlimitedBays(false);
@@ -794,31 +1034,41 @@ export default function SubscriptionPlanModal({
       };
 
       if (type === "trenoops") {
-        if (!isUnlimitedVehicles && minVehicles) {
-          const parsedMin = parseInt(minVehicles, 10);
-          if (!isNaN(parsedMin)) {
-            payload.minVehicles = parsedMin;
+        for (let i = 0; i < fleetVehicleTiers.length; i++) {
+          const tier = fleetVehicleTiers[i];
+          const trk = tier.maxTrucks || 0;
+          const trl = tier.maxTrailers || 0;
+          const totalUnits = trk + trl;
+          if (trk > tier.toVehicles) {
+            toast.error(
+              `Slab ${tier.fromVehicles}-${tier.toVehicles}: Max Trucks (${trk}) cannot exceed slab limit of ${tier.toVehicles} vehicles.`
+            );
+            return;
+          }
+          if (trl > tier.toVehicles) {
+            toast.error(
+              `Slab ${tier.fromVehicles}-${tier.toVehicles}: Max Trailers (${trl}) cannot exceed slab limit of ${tier.toVehicles} vehicles.`
+            );
+            return;
+          }
+          if (totalUnits > tier.toVehicles) {
+            toast.error(
+              `Slab ${tier.fromVehicles}-${tier.toVehicles}: Total Trucks + Trailers (${totalUnits}) exceeds slab limit of ${tier.toVehicles} vehicles.`
+            );
+            return;
           }
         }
-        payload.maxVehicles = isUnlimitedVehicles
+
+        payload.fleetVehicleTiers = fleetVehicleTiers;
+        const sortedMin = fleetVehicleTiers[0]?.fromVehicles || 1;
+        const sortedMax = isUnlimitedVehicles
           ? -1
-          : parseInt(maxVehicles, 10) || 1;
+          : fleetVehicleTiers[fleetVehicleTiers.length - 1]?.toVehicles || 300;
+        payload.minVehicles = sortedMin;
+        payload.maxVehicles = sortedMax;
         payload.vehicleTypeScope = vehicleTypeScope;
-        payload.truckLimit = isUnlimitedVehicles
-          ? -1
-          : parseInt(truckLimit, 10) || 0;
-        payload.trailerLimit = isUnlimitedVehicles
-          ? -1
-          : parseInt(trailerLimit, 10) || 0;
-        if (selectedFleetTierId) {
-          payload.fleetTierId = selectedFleetTierId;
-        }
-        if (selectedFleetTierLabel) {
-          payload.fleetTierLabel = selectedFleetTierLabel;
-        }
-        if (discountCoupon && discountCoupon.trim()) {
-          payload.discountCoupon = discountCoupon.trim();
-        }
+        payload.truckLimit = isUnlimitedVehicles ? -1 : sortedMax;
+        payload.trailerLimit = isUnlimitedVehicles ? -1 : sortedMax;
       } else {
         payload.mechanicCategory = mechanicCategory;
         payload.maxBays = isUnlimitedBays ? -1 : parseInt(maxBays, 10) || 1;
@@ -913,7 +1163,7 @@ export default function SubscriptionPlanModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-gray-100 my-8 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-5xl xl:max-w-6xl bg-white rounded-2xl shadow-2xl border border-gray-100 my-8 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-rose-50/50 via-white to-emerald-50/30">
           <div className="flex items-center gap-3">
@@ -1445,341 +1695,337 @@ export default function SubscriptionPlanModal({
           {/* Conditional Scope: Owners / Drivers Specific Settings */}
           {type === "trenoops" && (
             <div className="bg-rose-50/40 p-5 rounded-2xl border border-rose-200 space-y-5">
-              {/* Header with Title */}
+              {/* Header with Title and Add Button */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rose-100">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center text-[#F96176]">
+                    <span className="w-8 h-8 rounded-xl bg-rose-100 flex items-center justify-center text-[#F96176]">
                       <Truck className="w-4 h-4" />
                     </span>
-                    <h3 className="text-sm font-bold text-gray-900">
-                      Fleet Tiers & Pricing Presets
-                    </h3>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Select a fleet tier below to automatically pre-fill default pricing & vehicle limits. All fields remain fully editable.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700 ml-1">
-                    <input
-                      type="checkbox"
-                      checked={isUnlimitedVehicles}
-                      onChange={(e) => setIsUnlimitedVehicles(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#F96176] focus:ring-[#F96176]"
-                    />
-                    Unlimited Fleet
-                  </label>
-                </div>
-              </div>
-
-              {/* Rate Card Preset Filters: Focus (Truck / Trailer / Both) & Yearly Promo */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white/80 rounded-xl border border-rose-100">
-                {/* Vehicle Focus selector */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    Vehicle Category Focus
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { id: "truck_only", label: "Trucks Rate" },
-                      { id: "trailer_only", label: "Trailers Rate" },
-                      { id: "both", label: "Combined" },
-                    ].map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => {
-                          const nextFocus = f.id as "truck_only" | "trailer_only" | "both";
-                          setFleetVehicleFocus(nextFocus);
-                          if (selectedFleetTierId) {
-                            applyFleetTierPreset(selectedFleetTierId, nextFocus);
-                          }
-                        }}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-center border ${
-                          fleetVehicleFocus === f.id
-                            ? "bg-[#F96176] text-white border-[#F96176] shadow-xs"
-                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Duration & Promo Toggle */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold text-gray-700">
-                      Duration & Coupon Promo
-                    </label>
-                    {duration === "Yearly" && (
-                      <span className="text-[10px] font-bold text-[#58BB87] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        TRENO50 (50% Off Available)
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 grid grid-cols-2 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDuration("Monthly");
-                          if (selectedFleetTierId) {
-                            applyFleetTierPreset(selectedFleetTierId, fleetVehicleFocus, "Monthly", false);
-                          }
-                        }}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-center border ${
-                          duration === "Monthly"
-                            ? "bg-gray-900 text-white border-gray-900 shadow-xs"
-                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        Monthly Billing
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDuration("Yearly");
-                          if (selectedFleetTierId) {
-                            applyFleetTierPreset(selectedFleetTierId, fleetVehicleFocus, "Yearly", applyYearlyPromo);
-                          }
-                        }}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-center border ${
-                          duration === "Yearly"
-                            ? "bg-gray-900 text-white border-gray-900 shadow-xs"
-                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        Yearly Billing
-                      </button>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">
+                        Vehicle Slabs & Fleet Pricing
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Set custom From-To vehicle brackets. Subtotal is auto-calculated (Truck + Trailer) with optional Discounted Price.
+                      </p>
                     </div>
-
-                    {duration === "Yearly" && (
-                      <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200 cursor-pointer text-xs font-bold text-[#58BB87] shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={applyYearlyPromo}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setApplyYearlyPromo(checked);
-                            if (selectedFleetTierId) {
-                              applyFleetTierPreset(selectedFleetTierId, fleetVehicleFocus, "Yearly", checked);
-                            }
-                          }}
-                          className="w-3.5 h-3.5 rounded text-[#58BB87] focus:ring-[#58BB87]"
-                        />
-                        TRENO50 (-50%)
-                      </label>
-                    )}
                   </div>
                 </div>
-              </div>
 
-              {/* 10 Fleet Tier Preset Pills / Grid */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-gray-800 uppercase tracking-wide">
-                    Select Fleet Tier (Pre-fills Default Matrix Price)
-                  </label>
-                  {selectedFleetTierLabel && (
-                    <span className="text-xs font-bold text-[#F96176]">
-                      Selected: Tier {selectedFleetTierLabel}
-                    </span>
-                  )}
-                </div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => syncCountryPricesFromTiers()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white text-gray-700 border border-gray-200 hover:border-[#58BB87] hover:text-[#58BB87] shadow-xs transition"
+                    title="Auto-calculate CA, MX, UK, AU from Base USD"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-[#58BB87]" />
+                    Auto-Calculate Currencies
+                  </button>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {FLEET_PRICING_TIERS.map((tier) => {
-                    const isSelected = selectedFleetTierId === tier.tierId;
-                    const isYearly = duration === "Yearly";
-                    const priceDisplay =
-                      isYearly
-                        ? fleetVehicleFocus === "trailer_only"
-                          ? applyYearlyPromo
-                            ? `$${tier.discountedYearlyTrailerPrice}/yr`
-                            : `$${tier.yearlyTrailerPrice}/yr`
-                          : applyYearlyPromo
-                          ? `$${tier.discountedYearlyTruckPrice}/yr`
-                          : `$${tier.yearlyTruckPrice}/yr`
-                        : fleetVehicleFocus === "trailer_only"
-                        ? `$${tier.monthlyTrailerPrice}/mo`
-                        : `$${tier.monthlyTruckPrice}/mo`;
-
-                    return (
-                      <button
-                        key={tier.tierId}
-                        type="button"
-                        onClick={() => applyFleetTierPreset(tier.tierId)}
-                        className={`p-2.5 rounded-xl border text-left transition relative flex flex-col justify-between ${
-                          isSelected
-                            ? "bg-rose-50/90 border-[#F96176] ring-2 ring-[#F96176]/30 shadow-xs"
-                            : "bg-white border-gray-200 hover:border-rose-200 hover:bg-rose-50/20"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span
-                            className={`text-xs font-black tracking-tight ${
-                              isSelected ? "text-[#F96176]" : "text-gray-900"
-                            }`}
-                          >
-                            {tier.label}
-                          </span>
-                          {isSelected && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#F96176]" />
-                          )}
-                        </div>
-                        <div className="mt-1">
-                          <div className="text-[11px] font-bold text-gray-900">
-                            {priceDisplay}
-                          </div>
-                          <div className="text-[10px] text-gray-500">
-                            {tier.minVehicles === tier.maxVehicles
-                              ? `${tier.minVehicles} Unit`
-                              : `${tier.minVehicles}-${tier.maxVehicles} Units`}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                  <button
+                    type="button"
+                    onClick={handleAddTier}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#F96176] text-white hover:bg-[#e04f63] shadow-md shadow-[#F96176]/25 transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Vehicle Slab
+                  </button>
                 </div>
               </div>
 
-              {/* Editable Fleet Limit Values */}
-              <div className="p-3.5 bg-white rounded-xl border border-rose-100 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                    Fleet Unit Limits (Editable by Admin)
-                  </h4>
-                  <span className="text-[11px] text-gray-500">
-                    Pre-filled from selected tier, you can customize anytime
+              {/* Global Vehicle Baseline Banner (Method 2) */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-rose-50/80 rounded-xl border border-rose-200/80">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#F96176] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900 flex items-center gap-2">
+                      <span>Global Baseline Rates:</span>
+                      <span className="font-extrabold text-[#F96176] font-mono">
+                        ${globalPricing.truckPriceUSD || 10}/truck
+                      </span>
+                      <span className="text-gray-400">·</span>
+                      <span className="font-extrabold text-[#58BB87] font-mono">
+                        ${globalPricing.trailerPriceUSD || 6}/trailer
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      Standard unit rates auto-populate below. You can customize per slab or update global rates.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsGlobalPricingModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:text-[#F96176] shadow-2xs transition shrink-0"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#F96176]" />
+                  <span>Edit Global Rates</span>
+                </button>
+              </div>
+
+              {/* Dynamic Vehicle Slabs Table */}
+              <div className="overflow-x-auto bg-white rounded-xl border border-rose-100 shadow-2xs">
+                <table className="w-full text-left border-collapse min-w-[950px]">
+                  <thead>
+                    <tr className="bg-rose-50/70 text-[11px] font-extrabold text-gray-700 uppercase tracking-wider border-b border-rose-100">
+                      <th className="py-2.5 px-3 w-28">From (Units)</th>
+                      <th className="py-2.5 px-3 w-28">To (Units)</th>
+                      <th className="py-2.5 px-2.5 w-24">Max Trucks</th>
+                      <th className="py-2.5 px-2.5 w-24">Max Trailers</th>
+                      <th className="py-2.5 px-2.5 w-28">Truck Rate ($)</th>
+                      <th className="py-2.5 px-2.5 w-28">Trailer Rate ($)</th>
+                      <th className="py-2.5 px-3 text-center">Subtotal (Auto)</th>
+                      <th className="py-2.5 px-3">Discounted Price ($)</th>
+                      <th className="py-2.5 px-3 text-center">Final Payable</th>
+                      <th className="py-2.5 px-2 w-10 text-center"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-xs">
+                    {fleetVehicleTiers.map((tier, idx) => {
+                      const hasDiscount =
+                        tier.discountPrice !== null &&
+                        tier.discountPrice !== undefined &&
+                        tier.discountPrice > 0 &&
+                        tier.discountPrice < tier.subtotal;
+                      const savings = hasDiscount ? tier.subtotal - (tier.discountPrice || 0) : 0;
+                      const savingsPct = hasDiscount
+                        ? Math.round((savings / tier.subtotal) * 100)
+                        : 0;
+
+                      return (
+                        <tr
+                          key={tier.id || idx}
+                          className="hover:bg-rose-50/20 transition-colors"
+                        >
+                          {/* From Dropdown (1 to 300) */}
+                          <td className="py-2.5 px-3">
+                            <select
+                              value={tier.fromVehicles}
+                              onChange={(e) =>
+                                handleUpdateTier(idx, "fromVehicles", e.target.value)
+                              }
+                              className="w-full px-2 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-800 focus:ring-1 focus:ring-[#F96176]"
+                            >
+                              {VEHICLE_RANGE_OPTIONS.map((num) => (
+                                <option key={num} value={num}>
+                                  {num} {num === 1 ? "Unit" : "Units"}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+
+                          {/* To Dropdown (1 to 300) */}
+                          <td className="py-2.5 px-3">
+                            <select
+                              value={tier.toVehicles}
+                              onChange={(e) =>
+                                handleUpdateTier(idx, "toVehicles", e.target.value)
+                              }
+                              className="w-full px-2 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-800 focus:ring-1 focus:ring-[#F96176]"
+                            >
+                              {VEHICLE_RANGE_OPTIONS.map((num) => (
+                                <option key={num} value={num}>
+                                  {num} {num === 1 ? "Unit" : "Units"}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+
+                          {/* Max Trucks Allowed */}
+                          <td className="py-2.5 px-2.5">
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min="0"
+                                max={tier.toVehicles}
+                                value={tier.maxTrucks === 0 ? "" : tier.maxTrucks}
+                                onChange={(e) =>
+                                  handleUpdateTier(idx, "maxTrucks", e.target.value)
+                                }
+                                placeholder="0"
+                                className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold text-gray-900 focus:ring-1 ${
+                                  (tier.maxTrucks || 0) + (tier.maxTrailers || 0) > tier.toVehicles
+                                    ? "border-red-400 bg-red-50/30 focus:ring-red-400"
+                                    : "border-gray-300 focus:ring-[#F96176]"
+                                }`}
+                              />
+                              <span className="block text-[10px] text-gray-400 mt-0.5 font-medium">
+                                Max {tier.toVehicles}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Max Trailers Allowed */}
+                          <td className="py-2.5 px-2.5">
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min="0"
+                                max={tier.toVehicles}
+                                value={tier.maxTrailers === 0 ? "" : tier.maxTrailers}
+                                onChange={(e) =>
+                                  handleUpdateTier(idx, "maxTrailers", e.target.value)
+                                }
+                                placeholder="0"
+                                className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold text-gray-900 focus:ring-1 ${
+                                  (tier.maxTrucks || 0) + (tier.maxTrailers || 0) > tier.toVehicles
+                                    ? "border-red-400 bg-red-50/30 focus:ring-red-400"
+                                    : "border-gray-300 focus:ring-[#F96176]"
+                                }`}
+                              />
+                              {(tier.maxTrucks || 0) + (tier.maxTrailers || 0) > tier.toVehicles ? (
+                                <span className="block text-[10px] font-bold text-red-600 mt-0.5 whitespace-nowrap">
+                                  Total &gt; {tier.toVehicles}
+                                </span>
+                              ) : (
+                                <span className="block text-[10px] text-gray-400 mt-0.5 font-medium">
+                                  Max {tier.toVehicles}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Truck Rate ($) */}
+                          <td className="py-2.5 px-2.5">
+                            <div className="relative">
+                              <span className="absolute left-2 top-1.5 text-xs text-gray-400 font-bold">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={tier.truckRate === 0 ? "" : tier.truckRate}
+                                onChange={(e) =>
+                                  handleUpdateTier(idx, "truckRate", e.target.value)
+                                }
+                                placeholder="0"
+                                className="w-full pl-5 pr-1.5 py-1.5 rounded-lg border border-gray-300 text-xs font-bold text-gray-900 focus:ring-1 focus:ring-[#F96176]"
+                              />
+                            </div>
+                          </td>
+
+                          {/* Trailer Rate ($) */}
+                          <td className="py-2.5 px-2.5">
+                            <div className="relative">
+                              <span className="absolute left-2 top-1.5 text-xs text-gray-400 font-bold">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={tier.trailerRate === 0 ? "" : tier.trailerRate}
+                                onChange={(e) =>
+                                  handleUpdateTier(idx, "trailerRate", e.target.value)
+                                }
+                                placeholder="0"
+                                className="w-full pl-5 pr-1.5 py-1.5 rounded-lg border border-gray-300 text-xs font-bold text-gray-900 focus:ring-1 focus:ring-[#F96176]"
+                              />
+                            </div>
+                          </td>
+
+                          {/* Subtotal (Auto Calculated) */}
+                          <td className="py-2.5 px-3 text-center">
+                            <div>
+                              <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-gray-800 font-mono font-bold text-xs">
+                                ${tier.subtotal.toFixed(2)}
+                              </span>
+                              <p className="text-[10px] text-gray-500 font-mono mt-0.5">
+                                {tier.maxTrucks}×${tier.truckRate} + {tier.maxTrailers}×${tier.trailerRate}
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* Discounted Price ($) */}
+                          <td className="py-2.5 px-3">
+                            <div className="space-y-1">
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1.5 text-xs text-gray-400 font-bold">$</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  value={
+                                    tier.discountPrice !== null &&
+                                    tier.discountPrice !== undefined
+                                      ? tier.discountPrice
+                                      : ""
+                                  }
+                                  onChange={(e) =>
+                                    handleUpdateTier(idx, "discountPrice", e.target.value)
+                                  }
+                                  placeholder="e.g. 13"
+                                  className="w-full pl-6 pr-2 py-1.5 rounded-lg border border-gray-300 text-xs font-bold text-gray-900 focus:ring-1 focus:ring-[#58BB87]"
+                                />
+                              </div>
+                              {hasDiscount && (
+                                <span className="inline-block text-[10px] font-bold text-[#58BB87] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                  Save ${savings.toFixed(2)} ({savingsPct}% off)
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Final Total Amount */}
+                          <td className="py-2.5 px-3 text-center">
+                            <span className="inline-block px-3 py-1 rounded-lg bg-emerald-50 text-[#58BB87] border border-emerald-200 font-black text-xs shadow-2xs">
+                              ${tier.finalPrice.toFixed(2)}
+                            </span>
+                          </td>
+
+                          {/* Delete Button */}
+                          <td className="py-2.5 px-2 text-center">
+                            {fleetVehicleTiers.length > 1 ? (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTier(idx)}
+                                className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-rose-50 transition"
+                                title="Delete this slab"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <span className="text-gray-300 text-xs">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Helpful Tip & Overview */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-white/80 border border-rose-100 text-xs text-gray-600">
+                <div className="flex items-center gap-1.5">
+                  <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    <strong>Calculation:</strong> Subtotal = (Max Trucks × Truck Rate) + (Max Trailers × Trailer Rate). When Discounted Price is specified, final payable reflects the discount.
                   </span>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {/* Min Vehicles */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Min Vehicles
-                    </label>
-                    <input
-                      type="number"
-                      value={minVehicles}
-                      onChange={(e) => setMinVehicles(e.target.value)}
-                      placeholder="e.g. 1"
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm font-semibold"
-                    />
-                  </div>
-
-                  {/* Max Vehicles Total */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Max Total Vehicles
-                    </label>
-                    <input
-                      type="number"
-                      disabled={isUnlimitedVehicles}
-                      value={isUnlimitedVehicles ? "" : maxVehicles}
-                      onChange={(e) => setMaxVehicles(e.target.value)}
-                      placeholder={isUnlimitedVehicles ? "Unlimited" : "e.g. 10"}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold"
-                    />
-                  </div>
-
-                  {/* Truck Limit */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Truck Limit
-                    </label>
-                    <input
-                      type="number"
-                      disabled={isUnlimitedVehicles}
-                      value={isUnlimitedVehicles ? "" : truckLimit}
-                      onChange={(e) => setTruckLimit(e.target.value)}
-                      placeholder={isUnlimitedVehicles ? "Unlimited" : "e.g. 5"}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold"
-                    />
-                  </div>
-
-                  {/* Trailer Limit */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Trailer Limit
-                    </label>
-                    <input
-                      type="number"
-                      disabled={isUnlimitedVehicles}
-                      value={isUnlimitedVehicles ? "" : trailerLimit}
-                      onChange={(e) => setTrailerLimit(e.target.value)}
-                      placeholder={isUnlimitedVehicles ? "Unlimited" : "e.g. 5"}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold"
-                    />
-                  </div>
-                </div>
-
-                {/* Vehicle Scope Selection & Discount Coupon code */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Vehicle Type Scope
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                      {[
-                        { id: "both", label: "Truck & Trailer" },
-                        { id: "truck_only", label: "Truck Only" },
-                        { id: "trailer_only", label: "Trailer Only" },
-                        { id: "all", label: "All Fleet Units" },
-                      ].map((s) => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => setVehicleTypeScope(s.id as any)}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition text-center border ${
-                            vehicleTypeScope === s.id
-                              ? "bg-[#F96176] text-white border-[#F96176] shadow-xs"
-                              : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Discount Coupon Code (Optional)
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={discountCoupon}
-                        onChange={(e) => setDiscountCoupon(e.target.value.toUpperCase())}
-                        placeholder="e.g. TRENO50 or TRENO100"
-                        className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm font-semibold uppercase tracking-wider"
-                      />
-                      {discountCoupon && (
-                        <button
-                          type="button"
-                          onClick={() => setDiscountCoupon("")}
-                          className="px-2.5 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-red-600 border border-gray-200 hover:border-red-200 transition"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2 font-mono font-bold text-[11px] text-gray-700 shrink-0">
+                  <span className="px-2 py-0.5 rounded bg-rose-50 text-[#F96176] border border-rose-200">
+                    {fleetVehicleTiers.length} Slabs Configured
+                  </span>
+                  <span>
+                    Range: {fleetVehicleTiers[0]?.fromVehicles || 1} to{" "}
+                    {fleetVehicleTiers[fleetVehicleTiers.length - 1]?.toVehicles || 300} Units
+                  </span>
                 </div>
               </div>
 
-              {/* Informational Hint */}
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-                <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-                <span>
-                  <strong>Admin Tip:</strong> When you click any fleet tier, standard spreadsheet prices are populated in the Country Pricing (USA) table above. You can freely overwrite price, discount price, or fleet limits at any time before saving.
-                </span>
+              {/* Unlimited Checkbox */}
+              <div className="flex items-center justify-end pt-2 border-t border-rose-100">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={isUnlimitedVehicles}
+                    onChange={(e) => setIsUnlimitedVehicles(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#F96176] focus:ring-[#F96176]"
+                  />
+                  <span>Unlimited Fleet (Disables upper limit restriction)</span>
+                </label>
               </div>
             </div>
           )}
@@ -2567,6 +2813,42 @@ export default function SubscriptionPlanModal({
           </div>
         </form>
       </div>
+
+      {/* Global Vehicle Base Pricing Modal (Method 2) */}
+      <GlobalVehiclePricingModal
+        isOpen={isGlobalPricingModalOpen}
+        onClose={() => setIsGlobalPricingModalOpen(false)}
+        onUpdated={(updatedConfig) => {
+          setGlobalPricing(updatedConfig);
+          const newTruckRate = updatedConfig.truckPriceUSD;
+          const newTrailerRate = updatedConfig.trailerPriceUSD;
+          setFleetVehicleTiers((prev) => {
+            const updated = prev.map((t) => {
+              const tTrucks = t.maxTrucks || 1;
+              const tTrailers = t.maxTrailers || 1;
+              const tTrucksSub = tTrucks * newTruckRate;
+              const tTrailersSub = tTrailers * newTrailerRate;
+              const tSub = tTrucksSub + tTrailersSub;
+              return {
+                ...t,
+                truckRate: newTruckRate,
+                trailerRate: newTrailerRate,
+                trucksSubtotal: tTrucksSub,
+                trailersSubtotal: tTrailersSub,
+                subtotal: tSub,
+                finalPrice:
+                  t.discountPrice !== null &&
+                  t.discountPrice !== undefined &&
+                  t.discountPrice > 0
+                    ? t.discountPrice
+                    : tSub,
+              };
+            });
+            syncCountryPricesFromTiers(updated, updatedConfig);
+            return updated;
+          });
+        }}
+      />
     </div>
   );
 }

@@ -53,6 +53,7 @@ import {
   getCurrencySymbol,
 } from "@/types/subscription";
 import SubscriptionPlanModal from "./SubscriptionPlanModal";
+import GlobalVehiclePricingModal from "./GlobalVehiclePricingModal";
 
 interface Props {
   forcedType?: SubscriptionPlanType;
@@ -81,6 +82,7 @@ export default function SubscriptionPlansManager({
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
+  const [isGlobalPricingOpen, setIsGlobalPricingOpen] = useState(false);
 
   const fetchPlans = async () => {
     try {
@@ -253,7 +255,7 @@ export default function SubscriptionPlansManager({
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={fetchPlans}
             disabled={refreshing}
@@ -262,6 +264,18 @@ export default function SubscriptionPlansManager({
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </button>
+
+          {(forcedType === "trenoops" || !forcedType) && (
+            <button
+              type="button"
+              onClick={() => setIsGlobalPricingOpen(true)}
+              className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50/70 text-[#F96176] hover:bg-rose-100/80 hover:border-rose-300 font-bold text-sm transition flex items-center gap-2 shadow-xs"
+              title="Configure platform-wide unit rates for 1 Truck & 1 Trailer"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>Global Unit Pricing</span>
+            </button>
+          )}
 
           <button
             onClick={handleCreateNew}
@@ -667,22 +681,61 @@ export default function SubscriptionPlansManager({
                   {/* Scope Badges */}
                   {isOwner ? (
                     <div className="space-y-1.5 text-xs text-gray-700 bg-rose-50/40 p-3 rounded-xl border border-rose-100/80 mb-4">
-                      {plan.fleetTierLabel && (
-                        <div className="flex items-center justify-between pb-1.5 mb-1 border-b border-rose-100/80">
-                          <span className="font-semibold text-gray-600">Tier:</span>
-                          <span className="px-2 py-0.5 rounded-md font-black text-[11px] bg-rose-100 text-[#F96176] border border-rose-200">
-                            Tier {plan.fleetTierLabel}
-                          </span>
+                      {plan.fleetVehicleTiers && plan.fleetVehicleTiers.length > 0 ? (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
+                            <span>Vehicle Slabs ({plan.fleetVehicleTiers.length}):</span>
+                            <span className="text-[#F96176] font-mono">
+                              {plan.fleetVehicleTiers[0]?.fromVehicles} -{" "}
+                              {plan.fleetVehicleTiers[plan.fleetVehicleTiers.length - 1]?.toVehicles} Units
+                            </span>
+                          </div>
+                          <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
+                            {plan.fleetVehicleTiers.map((t, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between p-1.5 bg-white rounded-lg border border-rose-100 text-[11px]"
+                              >
+                                <span className="font-extrabold text-gray-900">
+                                  {t.fromVehicles} - {t.toVehicles} Units
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-gray-400 font-medium">
+                                    T:${t.truckRate} + Tr:${t.trailerRate}
+                                  </span>
+                                  {t.discountPrice && t.discountPrice < t.subtotal && (
+                                    <span className="text-gray-400 line-through text-[10px]">
+                                      ${t.subtotal}
+                                    </span>
+                                  )}
+                                  <span className="font-black text-[#58BB87]">
+                                    ${t.finalPrice}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
+                      ) : (
+                        <>
+                          {plan.fleetTierLabel && (
+                            <div className="flex items-center justify-between pb-1.5 mb-1 border-b border-rose-100/80">
+                              <span className="font-semibold text-gray-600">Tier:</span>
+                              <span className="px-2 py-0.5 rounded-md font-black text-[11px] bg-rose-100 text-[#F96176] border border-rose-200">
+                                Tier {plan.fleetTierLabel}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-gray-600">Fleet Range:</span>
+                            <span className="font-extrabold text-gray-900">
+                              {plan.maxVehicles === -1 || plan.maxVehicles === undefined
+                                ? "Unlimited Fleet"
+                                : `${plan.minVehicles !== undefined ? plan.minVehicles : 1} - ${plan.maxVehicles} Vehicles`}
+                            </span>
+                          </div>
+                        </>
                       )}
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-600">Fleet Range:</span>
-                        <span className="font-extrabold text-gray-900">
-                          {plan.maxVehicles === -1 || plan.maxVehicles === undefined
-                            ? "Unlimited Fleet"
-                            : `${plan.minVehicles !== undefined ? plan.minVehicles : 1} - ${plan.maxVehicles} Vehicles`}
-                        </span>
-                      </div>
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-gray-600">Scope:</span>
                         <span className="font-bold text-[#F96176] uppercase text-[11px]">
@@ -700,14 +753,6 @@ export default function SubscriptionPlansManager({
                             <b>
                               {plan.trailerLimit === -1 ? "Unlimited" : plan.trailerLimit}
                             </b>
-                          </span>
-                        </div>
-                      )}
-                      {plan.discountCoupon && (
-                        <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-rose-100/80">
-                          <span className="font-semibold text-gray-600">Discount Coupon:</span>
-                          <span className="font-mono font-bold text-[#58BB87] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                            {plan.discountCoupon}
                           </span>
                         </div>
                       )}
@@ -935,6 +980,12 @@ export default function SubscriptionPlansManager({
         initialData={editingPlan}
         defaultType={forcedType || "trenoops"}
         lockType={!!forcedType}
+      />
+
+      {/* Global Vehicle Base Pricing Modal (Method 2) */}
+      <GlobalVehiclePricingModal
+        isOpen={isGlobalPricingOpen}
+        onClose={() => setIsGlobalPricingOpen(false)}
       />
     </div>
   );

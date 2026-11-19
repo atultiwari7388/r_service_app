@@ -98,6 +98,45 @@ export interface CancellationPenaltyConfig {
   description?: string;
 }
 
+export interface GlobalVehiclePricingConfig {
+  truckPriceUSD: number; // default: 10
+  trailerPriceUSD: number; // default: 6
+  currencyMultipliers?: {
+    CAD?: number;
+    MXN?: number;
+    GBP?: number;
+    AUD?: number;
+  };
+  updatedAt?: any;
+  updatedBy?: string;
+}
+
+export const DEFAULT_GLOBAL_VEHICLE_PRICING: GlobalVehiclePricingConfig = {
+  truckPriceUSD: 10,
+  trailerPriceUSD: 6,
+  currencyMultipliers: {
+    CAD: 1.35,
+    MXN: 18.0,
+    GBP: 0.8,
+    AUD: 1.5,
+  },
+};
+
+export interface FleetVehicleTier {
+  id: string; // unique row id
+  fromVehicles: number; // 1 to 300
+  toVehicles: number; // 1 to 300
+  maxTrucks: number; // allowed trucks in this slab (e.g. 1)
+  maxTrailers: number; // allowed trailers in this slab (e.g. 1)
+  truckRate: number; // unit rate per truck (e.g. 10)
+  trailerRate: number; // unit rate per trailer (e.g. 6)
+  trucksSubtotal: number; // maxTrucks * truckRate
+  trailersSubtotal: number; // maxTrailers * trailerRate
+  subtotal: number; // trucksSubtotal + trailersSubtotal
+  discountPrice?: number | null; // discounted final price (e.g. 13)
+  finalPrice: number; // discountPrice && discountPrice > 0 ? discountPrice : subtotal
+}
+
 export interface SubscriptionPlan {
   id?: string;
   name: string;
@@ -121,6 +160,7 @@ export interface SubscriptionPlan {
   termsAndConditions: string[];
 
   // Owners / Drivers specific fields (type: "trenoops")
+  fleetVehicleTiers?: FleetVehicleTier[]; // Dynamic vehicle slabs (e.g. 1-2, 3-5, 6-10)
   minVehicles?: number; // minimum vehicles in fleet tier range (e.g. 3 for "3 TO 5")
   maxVehicles?: number; // total vehicles included (-1 for unlimited, e.g. 5 for "3 TO 5")
   vehicleTypeScope?: "both" | "truck_only" | "trailer_only" | "all"; // Scope
