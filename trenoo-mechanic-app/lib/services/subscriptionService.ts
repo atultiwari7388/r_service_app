@@ -54,6 +54,8 @@ export async function fetchMechanicSubscriptionPlans(): Promise<SubscriptionPlan
       plans.push({
         id: docSnap.id,
         name: data.name || "Mechanic Plan",
+        buttonName: data.buttonName || data.btnName || "Purchase Plan",
+        btnName: data.btnName || data.buttonName || "Purchase Plan",
         type: data.type || "treno_mechanic",
         description: data.description || "",
         duration: data.duration || "Monthly",
