@@ -29,7 +29,8 @@ import { db, functions } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
 import { Vehicle } from "@/types/vehicle";
 import toast from "react-hot-toast";
-import GooglePlacesInput, { SelectedPlaceData } from "./GooglePlacesInput";
+// GOOGLE PLACES API AUTOCOMPLETE (COMMENTED OUT TO AVOID HIGH API CHARGES)
+// import GooglePlacesInput, { SelectedPlaceData } from "./GooglePlacesInput";
 import { formatUSPhoneNumber } from "@/lib/utils";
 
 interface AddTeamMemberModalProps {
@@ -141,14 +142,15 @@ export default function AddTeamMemberModal({
     }
   };
 
-  const handlePlaceSelect = (data: SelectedPlaceData) => {
-    setBaseCity(data.city);
-    setBaseState(data.state);
-    setFormattedAddress(data.formattedAddress);
-    setPostalCode(data.postalCode);
-    setLatitude(data.latitude);
-    setLongitude(data.longitude);
-  };
+  // Google Places select handler (commented out to avoid API usage charges)
+  // const handlePlaceSelect = (data: SelectedPlaceData) => {
+  //   setBaseCity(data.city);
+  //   setBaseState(data.state);
+  //   setFormattedAddress(data.formattedAddress);
+  //   setPostalCode(data.postalCode);
+  //   setLatitude(data.latitude);
+  //   setLongitude(data.longitude);
+  // };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatUSPhoneNumber(e.target.value);
@@ -377,18 +379,20 @@ export default function AddTeamMemberModal({
             </div>
           </div>
 
-          {/* Operating Base Location via Google Places */}
+          {/* Operating Base Location (Manual Address) */}
           <div className="space-y-4 pt-4 border-t border-gray-100">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-[#F96176]" />
-                Operating Base & GPS Geolocation (Google Places)
+                Operating Base & Address
               </h3>
-              <span className="text-[11px] text-[#58BB87] font-semibold flex items-center gap-1">
-                <Navigation size={12} /> Auto Lat/Lng
+              <span className="text-[11px] text-gray-500 font-medium">
+                USA Territory
               </span>
             </div>
 
+            {/* GOOGLE PLACES AUTOCOMPLETE (COMMENTED OUT TO AVOID API BILLING CHARGES) */}
+            {/*
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                 Search US City, State, or Station Address <span className="text-rose-500">*</span>
@@ -401,26 +405,94 @@ export default function AddTeamMemberModal({
                 required
               />
             </div>
+            */}
 
-            {/* Resolved GPS Territory Card */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-gray-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            {/* Manual Street Address */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Street Address <span className="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 1200 Main St, Suite 400"
+                value={formattedAddress}
+                onChange={(e) => setFormattedAddress(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]/20 transition"
+              />
+            </div>
+
+            {/* City, State, Zip */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <span className="text-gray-400 block text-[11px]">Base City:</span>
-                <span className="font-bold text-gray-900">{baseCity || "Not selected"}</span>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Base City <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Dallas"
+                  value={baseCity}
+                  onChange={(e) => setBaseCity(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]/20 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  State <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. TX"
+                  value={baseState}
+                  onChange={(e) => setBaseState(e.target.value.toUpperCase())}
+                  maxLength={2}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]/20 transition uppercase"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  ZIP / Postal Code
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 75201"
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]/20 transition"
+                />
+              </div>
+            </div>
+
+            {/* Optional GPS Coordinates */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                  Latitude <span className="text-gray-400 font-normal">(Optional GPS)</span>
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="e.g. 32.7767"
+                  value={latitude !== undefined ? latitude : ""}
+                  onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#F96176] transition font-mono"
+                />
               </div>
               <div>
-                <span className="text-gray-400 block text-[11px]">State / Zip:</span>
-                <span className="font-bold text-gray-900">
-                  {baseState || "—"} {postalCode ? `(${postalCode})` : ""}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400 block text-[11px]">Latitude:</span>
-                <span className="font-mono text-gray-700">{latitude ? latitude.toFixed(4) : "—"}</span>
-              </div>
-              <div>
-                <span className="text-gray-400 block text-[11px]">Longitude:</span>
-                <span className="font-mono text-gray-700">{longitude ? longitude.toFixed(4) : "—"}</span>
+                <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                  Longitude <span className="text-gray-400 font-normal">(Optional GPS)</span>
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="e.g. -96.7970"
+                  value={longitude !== undefined ? longitude : ""}
+                  onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#F96176] transition font-mono"
+                />
               </div>
             </div>
 
