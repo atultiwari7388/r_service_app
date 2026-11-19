@@ -468,7 +468,7 @@ export default function ChoosePlanView() {
                           </>
                         ) : (
                           <>
-                            <span>Purchase Plan</span>
+                            <span>{plan.btnName || plan.buttonName || "Purchase Plan"}</span>
                             <ArrowRight className="w-4 h-4" />
                           </>
                         )}

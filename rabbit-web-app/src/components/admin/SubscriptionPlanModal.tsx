@@ -113,6 +113,7 @@ export default function SubscriptionPlanModal({
   // Form State
   const [type, setType] = useState<SubscriptionPlanType>(defaultType);
   const [name, setName] = useState("");
+  const [buttonName, setButtonName] = useState("Purchase Plan");
   const [duration, setDuration] = useState("Monthly");
   const [customDuration, setCustomDuration] = useState("");
   const [price, setPrice] = useState<string>("");
@@ -515,6 +516,7 @@ export default function SubscriptionPlanModal({
 
     if (initialData) {
       setName(initialData.name || "");
+      setButtonName(initialData.buttonName || initialData.btnName || "Purchase Plan");
       if (DURATION_PRESETS.includes(initialData.duration)) {
         setDuration(initialData.duration);
         setCustomDuration("");
@@ -720,6 +722,7 @@ export default function SubscriptionPlanModal({
     } else {
       // Default reset
       setName("");
+      setButtonName("Purchase Plan");
       setDuration("Monthly");
       setCustomDuration("");
       setPrice("");
@@ -1017,6 +1020,8 @@ export default function SubscriptionPlanModal({
     try {
       const payload: Partial<SubscriptionPlan> = {
         name: name.trim(),
+        buttonName: buttonName.trim() || "Purchase Plan",
+        btnName: buttonName.trim() || "Purchase Plan",
         type,
         duration: finalDuration,
         price: isFree ? 0 : baseEntry.price,
@@ -1308,7 +1313,7 @@ export default function SubscriptionPlanModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Plan Name */}
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-1">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Plan Name <span className="text-red-500">*</span>
                 </label>
@@ -1318,11 +1323,25 @@ export default function SubscriptionPlanModal({
                   onChange={(e) => setName(e.target.value)}
                   placeholder={
                     type === "trenoops"
-                      ? "e.g., Starter Fleet, Owner-Operator Pro, Enterprise"
+                      ? "e.g., Starter Fleet, Owner-Operator Pro"
                       : "e.g., Mobile Tech, Workshop Pro, Master Station"
                   }
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] text-sm font-medium"
+                />
+              </div>
+
+              {/* Button Name (CTA Label for Frontend) */}
+              <div className="sm:col-span-1">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Button Name (CTA on Frontend)
+                </label>
+                <input
+                  type="text"
+                  value={buttonName}
+                  onChange={(e) => setButtonName(e.target.value)}
+                  placeholder="e.g., Purchase Plan, Get Started, Subscribe Now"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#58BB87] text-sm font-medium"
                 />
               </div>
 

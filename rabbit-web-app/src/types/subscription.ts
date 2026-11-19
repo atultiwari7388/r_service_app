@@ -150,6 +150,10 @@ export interface SubscriptionPlan {
   // Free Tier Option
   isFree?: boolean;
 
+  // Custom CTA button label on frontend (e.g. "Purchase Plan", "Subscribe Now", "Get Started")
+  buttonName?: string;
+  btnName?: string;
+
   // Multi-Currency / Country-Wise Pricing
   countryPrices?: Record<string, CountryPriceConfig>;
 

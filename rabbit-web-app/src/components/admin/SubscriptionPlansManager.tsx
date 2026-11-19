@@ -939,8 +939,12 @@ export default function SubscriptionPlansManager({
 
                 {/* Card Footer Actions */}
                 <div className="p-4 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between gap-2">
-                  <div className="text-[10px] text-gray-400 font-medium truncate">
-                    Sort: {plan.sortOrder ?? 0}
+                  <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium truncate">
+                    <span>Sort: {plan.sortOrder ?? 0}</span>
+                    <span className="text-gray-300">•</span>
+                    <span className="inline-flex items-center gap-1 font-mono text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                      CTA: &quot;{plan.btnName || plan.buttonName || "Purchase Plan"}&quot;
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-2">

@@ -117,6 +117,10 @@ export interface SubscriptionPlan {
   // Free plan toggle
   isFree?: boolean;
 
+  // Custom CTA button label on frontend (e.g. "Purchase Plan", "Subscribe Now", "Get Started")
+  buttonName?: string;
+  btnName?: string;
+
   // Mechanic category restriction
   mechanicCategory?: "roadside" | "company" | "both";
 
