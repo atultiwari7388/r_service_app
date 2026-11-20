@@ -19,6 +19,7 @@ import {
   CreditCard,
   Truck,
   Sparkles,
+  Inbox,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
 
@@ -77,6 +78,12 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    name: "Custom Plan Requests",
+    href: "/admin/custom-plan-requests",
+    icon: Inbox,
+    description: "Fleet inquiries & quote dispatch",
+  },
+  {
     name: "Subscribers",
     href: "/admin/subscribers",
     icon: Sparkles,
@@ -117,6 +124,9 @@ export default function AdminSidebar() {
       return true;
     }
     if (href === "/admin/subscription-plans" && pathname === "/admin/subscription-plans") {
+      return true;
+    }
+    if (href === "/admin/custom-plan-requests" && pathname?.startsWith("/admin/custom-plan-requests")) {
       return true;
     }
     if (href === "/admin/subscribers" && pathname?.startsWith("/admin/subscribers")) {

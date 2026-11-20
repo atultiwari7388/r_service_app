@@ -22,7 +22,12 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { auth } from "@/lib/firebase";
-import { signOut, sendEmailVerification, onAuthStateChanged, User } from "firebase/auth";
+import {
+  signOut,
+  sendEmailVerification,
+  onAuthStateChanged,
+  User,
+} from "firebase/auth";
 import { SubscriptionPlan } from "@/types/subscription";
 import {
   fetchMechanicSubscriptionPlans,
@@ -47,7 +52,9 @@ export default function ChoosePlanView() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasingPlanId, setPurchasingPlanId] = useState<string | null>(null);
-  const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
+  const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>(
+    {}
+  );
 
   // Sync auth state and resolve mechanicId/email
   useEffect(() => {
@@ -81,9 +88,12 @@ export default function ChoosePlanView() {
   // Check for cancellation from Stripe
   useEffect(() => {
     if (searchParams.get("cancelled")) {
-      toast.error("Payment session was cancelled. You can select a plan whenever you are ready.", {
-        duration: 4000,
-      });
+      toast.error(
+        "Payment session was cancelled. You can select a plan whenever you are ready.",
+        {
+          duration: 4000,
+        }
+      );
     }
   }, [searchParams]);
 
@@ -96,7 +106,9 @@ export default function ChoosePlanView() {
 
   const handlePurchase = async (plan: SubscriptionPlan) => {
     if (!effectiveMechanicId) {
-      toast.error("Account information missing. Please log in or register again.");
+      toast.error(
+        "Account information missing. Please log in or register again."
+      );
       router.push("/login");
       return;
     }
@@ -172,7 +184,10 @@ export default function ChoosePlanView() {
             {currentUser ? (
               <div className="flex items-center gap-3">
                 <span className="hidden sm:inline-block text-gray-500 font-medium">
-                  Signed in: <b className="text-gray-800">{currentUser.email || effectiveEmail}</b>
+                  Signed in:{" "}
+                  <b className="text-gray-800">
+                    {currentUser.email || effectiveEmail}
+                  </b>
                 </span>
                 <button
                   type="button"
@@ -190,7 +205,8 @@ export default function ChoosePlanView() {
               <>
                 {effectiveEmail && (
                   <span className="hidden sm:inline-block text-gray-500 font-medium">
-                    Registered: <b className="text-gray-800">{effectiveEmail}</b>
+                    Registered:{" "}
+                    <b className="text-gray-800">{effectiveEmail}</b>
                   </span>
                 )}
                 <Link
@@ -219,14 +235,17 @@ export default function ChoosePlanView() {
           </h1>
 
           <p className="mt-3 text-sm text-gray-600 leading-relaxed">
-            Select a tailored membership plan to activate your mechanic station, access roadside job broadcasts, and enable direct fleet customer billing.
+            Select a tailored membership plan to activate your mechanic station,
+            access roadside job broadcasts, and enable direct fleet customer
+            billing.
           </p>
 
           {!effectiveMechanicId && (
             <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
               <span>
-                Please register or sign in first to attach a subscription plan to your mechanic profile.
+                Please register or sign in first to attach a subscription plan
+                to your mechanic profile.
               </span>
             </div>
           )}
@@ -251,12 +270,13 @@ export default function ChoosePlanView() {
                 No Plans Available At This Time
               </h3>
               <p className="text-xs text-gray-500 mt-1">
-                Please contact support or try again shortly. Administrators are currently setting up the pricing catalog.
+                Please contact support or try again shortly. Administrators are
+                currently setting up the pricing catalog.
               </p>
             </div>
             <button
               onClick={loadPlans}
-              className="px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition inline-flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-[#58BB87] text-white text-xs font-bold hover:bg-[#48a776] transition inline-flex items-center gap-1.5"
             >
               <RefreshCw className="w-3.5 h-3.5" /> Refresh
             </button>
@@ -280,7 +300,8 @@ export default function ChoosePlanView() {
 
               const savingsPercent = hasDiscount
                 ? Math.round(
-                    ((plan.price - (plan.discountPrice || 0)) / plan.price) * 100
+                    ((plan.price - (plan.discountPrice || 0)) / plan.price) *
+                      100
                   )
                 : 0;
 
@@ -419,35 +440,37 @@ export default function ChoosePlanView() {
                     )}
 
                     {/* Terms and Conditions Accordion */}
-                    {plan.termsAndConditions && plan.termsAndConditions.length > 0 && (
-                      <div className="border-t border-gray-100 pt-3 mb-6">
-                        <button
-                          type="button"
-                          onClick={() => toggleTerms(plan.id)}
-                          className="w-full flex items-center justify-between text-[11px] font-bold text-gray-500 hover:text-gray-800 transition py-1"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
-                            Terms & Conditions ({plan.termsAndConditions.length})
-                          </span>
-                          {termsOpen ? (
-                            <ChevronUp className="w-3.5 h-3.5" />
-                          ) : (
-                            <ChevronDown className="w-3.5 h-3.5" />
-                          )}
-                        </button>
+                    {plan.termsAndConditions &&
+                      plan.termsAndConditions.length > 0 && (
+                        <div className="border-t border-gray-100 pt-3 mb-6">
+                          <button
+                            type="button"
+                            onClick={() => toggleTerms(plan.id)}
+                            className="w-full flex items-center justify-between text-[11px] font-bold text-gray-500 hover:text-gray-800 transition py-1"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
+                              Terms & Conditions (
+                              {plan.termsAndConditions.length})
+                            </span>
+                            {termsOpen ? (
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            )}
+                          </button>
 
-                        {termsOpen && (
-                          <ul className="mt-2 space-y-1 pl-4 border-l-2 border-emerald-200 text-[11px] text-gray-600">
-                            {plan.termsAndConditions.map((term, tIdx) => (
-                              <li key={tIdx} className="list-disc">
-                                {term}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    )}
+                          {termsOpen && (
+                            <ul className="mt-2 space-y-1 pl-4 border-l-2 border-emerald-200 text-[11px] text-gray-600">
+                              {plan.termsAndConditions.map((term, tIdx) => (
+                                <li key={tIdx} className="list-disc">
+                                  {term}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
 
                     {/* Action Button */}
                     <div className="mt-auto">
@@ -458,7 +481,7 @@ export default function ChoosePlanView() {
                         className={`w-full py-3.5 rounded-2xl font-bold text-sm text-white shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                           plan.isPopular
                             ? "bg-[#58BB87] hover:bg-[#48a875] shadow-[#58BB87]/25"
-                            : "bg-gray-900 hover:bg-black shadow-gray-900/20"
+                            : "bg-[#F96176] hover:bg-[#e04f63] shadow-[#F96176]/20"
                         }`}
                       >
                         {isPurchasing ? (
@@ -468,7 +491,11 @@ export default function ChoosePlanView() {
                           </>
                         ) : (
                           <>
-                            <span>{plan.btnName || plan.buttonName || "Purchase Plan"}</span>
+                            <span>
+                              {plan.btnName ||
+                                plan.buttonName ||
+                                "Purchase Plan"}
+                            </span>
                             <ArrowRight className="w-4 h-4" />
                           </>
                         )}
@@ -485,7 +512,8 @@ export default function ChoosePlanView() {
         <div className="mt-12 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
           <span>
-            Secure setup. Subscriptions renew per selected duration. You can manage or upgrade your plan anytime from your account settings.
+            Secure setup. Subscriptions renew per selected duration. You can
+            manage or upgrade your plan anytime from your account settings.
           </span>
         </div>
       </main>

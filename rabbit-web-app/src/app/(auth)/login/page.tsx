@@ -14,6 +14,7 @@ import { auth, db } from "../../../lib/firebase";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContexts";
 import { LoginFormValues } from "@/types/types";
+import { isAllowedAdminEmail, isSubscriptionBypassedEmail } from "@/lib/adminConfig";
 
 interface AuthErrorPayload {
   code?: string;
@@ -57,17 +58,25 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  const { user } = useAuth() || { user: null };
+  const { user, isSubscriptionActive, isOwner } = useAuth() || {
+    user: null,
+    isSubscriptionActive: false,
+    isOwner: false,
+  };
 
   useEffect(() => {
     if (user) {
       if (user.phoneNumber || user.isAnonymous) {
         router.push("/my-jobs");
       } else if (user.emailVerified) {
-        router.push("/records");
+        if (!isSubscriptionActive) {
+          router.push("/choose-plan");
+        } else {
+          router.push("/records");
+        }
       }
     }
-  }, [router, user]);
+  }, [router, user, isOwner, isSubscriptionActive]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -163,7 +172,18 @@ const Login: React.FC = () => {
             if (userData.active === true && userData.status === "active") {
               toast.dismiss();
               toast.success("Login Successful");
-              router.push("/records");
+
+              const isBypassed =
+                isSubscriptionBypassedEmail(user.email) ||
+                isSubscriptionBypassedEmail(email);
+              const hasActiveSub =
+                userData.isSubscriptionPurchase === true || isBypassed;
+
+              if (!hasActiveSub) {
+                router.push("/choose-plan");
+              } else {
+                router.push("/records");
+              }
             } else if (userData.status === "deactivated") {
               const deactMsg =
                 "Your account is deactivated. Please contact your office.";

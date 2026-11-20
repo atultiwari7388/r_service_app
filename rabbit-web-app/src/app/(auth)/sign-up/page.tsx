@@ -368,7 +368,7 @@ const Signup: React.FC = () => {
       !formValues.email.trim() ||
       !formValues.phoneNumber.trim() ||
       !formValues.password ||
-      !formValues.numberOfVehicles ||
+      // !formValues.numberOfVehicles || (Vehicle package selection moved to post-signup plan purchase flow)
       !formValues.companyName.trim() ||
       !formValues.address.trim() ||
       !formValues.city.trim() ||
@@ -480,7 +480,7 @@ const Signup: React.FC = () => {
         socialSecurity: "",
         perMileCharge: "",
         companyName: formValues.companyName.trim(),
-        vehicleRange: formValues.numberOfVehicles,
+        vehicleRange: formValues.numberOfVehicles || "",
         profilePicture:
           "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
         wallet: 0,
@@ -759,8 +759,8 @@ const Signup: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Number of Vehicles */}
-                <div>
+                {/* Number of Vehicles (Commented out: package/range selection moved to post-signup plan purchase flow) */}
+                {/* <div>
                   <label
                     htmlFor="numberOfVehicles"
                     className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
@@ -777,7 +777,6 @@ const Signup: React.FC = () => {
                       value={formValues.numberOfVehicles}
                       onChange={handleChange}
                       className="block w-full pl-10 pr-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-                      required
                     >
                       <option value="">Select vehicle range</option>
                       {vehicleOptions.map((option) => (
@@ -787,7 +786,7 @@ const Signup: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
 
@@ -899,45 +898,29 @@ const Signup: React.FC = () => {
                   </div>
                 ))}
 
-                {/* Street Address with Google Places Autocomplete */}
+                {/* Street Address (Manual Input) */}
                 <div className="sm:col-span-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <label
-                      htmlFor="address"
-                      className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
-                    >
-                      Street Address *
-                    </label>
-                    {isLoaded && (
-                      <span className="text-[10px] text-gray-400 font-normal flex items-center gap-1">
-                        <FaMapMarkerAlt className="text-[#F96176]" /> Powered by
-                        Google Places
-                      </span>
-                    )}
-                  </div>
-                  {isLoaded ? (
-                    <AddressAutocompleteInput
+                  <label
+                    htmlFor="address"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1"
+                  >
+                    Street Address *
+                  </label>
+                  <div className="relative rounded-lg shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                      <FaMapMarkerAlt className="text-sm" />
+                    </div>
+                    <input
+                      type="text"
+                      id="address"
+                      name="address"
+                      placeholder="123 Logistics Parkway"
                       value={formValues.address}
                       onChange={handleChange}
-                      onAddressSelect={handleAddressSelect}
+                      className="block w-full pl-10 pr-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
+                      required
                     />
-                  ) : (
-                    <div className="relative rounded-lg shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                        <FaMapMarkerAlt className="text-sm" />
-                      </div>
-                      <input
-                        type="text"
-                        id="address"
-                        name="address"
-                        placeholder="123 Logistics Parkway"
-                        value={formValues.address}
-                        onChange={handleChange}
-                        className="block w-full pl-10 pr-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-                        required
-                      />
-                    </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* City */}

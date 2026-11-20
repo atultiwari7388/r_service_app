@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import { OwnerCurrentSubscription } from "./subscription";
 
 export interface LocationLatLng {
   latitude: number;
@@ -73,6 +74,8 @@ export interface ProfileValues {
   isOwner: boolean;
   isGuest?: boolean;
   isAnonymous?: boolean;
+  isSubscriptionPurchase?: boolean;
+  currentSubscription?: OwnerCurrentSubscription;
 }
 
 /** Services */

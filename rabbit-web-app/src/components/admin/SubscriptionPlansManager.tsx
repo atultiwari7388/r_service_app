@@ -237,7 +237,7 @@ export default function SubscriptionPlansManager({
                   ? "bg-[#F96176] shadow-[#F96176]/25"
                   : forcedType === "treno_mechanic"
                   ? "bg-[#58BB87] shadow-[#58BB87]/25"
-                  : "bg-gray-900 shadow-gray-900/25"
+                  : "bg-[#F96176] shadow-[#F96176]/25"
               }`}
             >
               {forcedType === "trenoops" ? (
@@ -265,7 +265,17 @@ export default function SubscriptionPlansManager({
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </button>
 
-          {(forcedType === "trenoops" || !forcedType) && (
+          <Link
+            href="/admin/custom-plan-requests"
+            className="px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50/70 text-[#F96176] hover:bg-rose-100 font-bold text-xs transition flex items-center gap-1.5 shadow-2xs"
+            title="View incoming customer requests for custom fleet plans"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Custom Plan Requests</span>
+          </Link>
+
+          {/* Global Unit Pricing option commented out as rates are manually defined per slab package */}
+          {/* {(forcedType === "trenoops" || !forcedType) && (
             <button
               type="button"
               onClick={() => setIsGlobalPricingOpen(true)}
@@ -275,7 +285,7 @@ export default function SubscriptionPlansManager({
               <SlidersHorizontal className="w-4 h-4" />
               <span>Global Unit Pricing</span>
             </button>
-          )}
+          )} */}
 
           <button
             onClick={handleCreateNew}
@@ -548,7 +558,7 @@ export default function SubscriptionPlansManager({
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
                               plan.mechanicCategory === "company"
-                                ? "bg-gray-900 text-white border border-gray-800"
+                                ? "bg-[#58BB87] text-white border border-[#48a776]"
                                 : "bg-amber-100 text-amber-800 border border-amber-200"
                             }`}
                           >
@@ -597,7 +607,13 @@ export default function SubscriptionPlansManager({
                   )}
 
                   {/* Pricing Box */}
-                  <div className="bg-gray-50/90 rounded-xl p-3.5 border border-gray-200/70 mb-4">
+                  <div
+                    className={`rounded-2xl p-4 border mb-4 ${
+                      isOwner
+                        ? "bg-rose-50/50 border-rose-100/90"
+                        : "bg-emerald-50/50 border-emerald-100/90"
+                    }`}
+                  >
                     <div className="flex items-baseline gap-2">
                       {plan.isFree ? (
                         <>
@@ -633,7 +649,13 @@ export default function SubscriptionPlansManager({
                           <span className="text-xs font-semibold text-gray-500">
                             / {plan.duration}
                           </span>
-                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 bg-gray-200/80 text-gray-700 rounded ml-1">
+                          <span
+                            className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ml-1 ${
+                              isOwner
+                                ? "bg-rose-100 text-[#F96176]"
+                                : "bg-emerald-100 text-[#58BB87]"
+                            }`}
+                          >
                             {displayCurrency}
                           </span>
                         </>
@@ -681,7 +703,40 @@ export default function SubscriptionPlansManager({
                   {/* Scope Badges */}
                   {isOwner ? (
                     <div className="space-y-1.5 text-xs text-gray-700 bg-rose-50/40 p-3 rounded-xl border border-rose-100/80 mb-4">
-                      {plan.fleetVehicleTiers && plan.fleetVehicleTiers.length > 0 ? (
+                      {plan.packageVehicleSlabs && plan.packageVehicleSlabs.length > 0 ? (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
+                            <span>Package Slabs ({plan.packageVehicleSlabs.length}):</span>
+                            <span className="text-[#F96176] font-mono">
+                              {plan.packageVehicleSlabs[0]?.fromUnit} -{" "}
+                              {plan.packageVehicleSlabs[plan.packageVehicleSlabs.length - 1]?.toUnit} Units
+                            </span>
+                          </div>
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                            {plan.packageVehicleSlabs.map((s, idx) => {
+                              const effTruckM = s.truckMonthlyDiscount && s.truckMonthlyDiscount > 0 ? s.truckMonthlyDiscount : s.truckMonthlyRate;
+                              const effTrailerM = s.trailerMonthlyDiscount && s.trailerMonthlyDiscount > 0 ? s.trailerMonthlyDiscount : s.trailerMonthlyRate;
+                              return (
+                                <div
+                                  key={idx}
+                                  className="p-2 bg-white rounded-lg border border-rose-100 text-[11px] space-y-1"
+                                >
+                                  <div className="flex items-center justify-between font-extrabold text-gray-900">
+                                    <span>{s.fromUnit} - {s.toUnit} Units</span>
+                                    <span className="text-[#58BB87] font-bold text-[10px]">
+                                      Max: ${(effTruckM + effTrailerM)}/mo
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] text-gray-500 font-mono">
+                                    <span>Truck: ${effTruckM}/mo</span>
+                                    <span>Trailer: ${effTrailerM}/mo</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : plan.fleetVehicleTiers && plan.fleetVehicleTiers.length > 0 ? (
                         <div className="space-y-1.5 pt-1">
                           <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
                             <span>Vehicle Slabs ({plan.fleetVehicleTiers.length}):</span>
@@ -778,7 +833,7 @@ export default function SubscriptionPlansManager({
                         <span
                           className={`font-bold text-[11px] px-2 py-0.5 rounded-full ${
                             plan.mechanicCategory === "company"
-                              ? "bg-gray-900 text-white"
+                              ? "bg-[#58BB87] text-white"
                               : "bg-amber-100 text-amber-800"
                           }`}
                         >
@@ -938,11 +993,23 @@ export default function SubscriptionPlansManager({
                 </div>
 
                 {/* Card Footer Actions */}
-                <div className="p-4 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between gap-2">
+                <div
+                  className={`p-4 border-t flex items-center justify-between gap-2 ${
+                    isOwner
+                      ? "bg-rose-50/30 border-rose-100/60"
+                      : "bg-emerald-50/30 border-emerald-100/60"
+                  }`}
+                >
                   <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium truncate">
                     <span>Sort: {plan.sortOrder ?? 0}</span>
                     <span className="text-gray-300">•</span>
-                    <span className="inline-flex items-center gap-1 font-mono text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                    <span
+                      className={`inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded border ${
+                        isOwner
+                          ? "text-[#F96176] bg-rose-50 border-rose-200"
+                          : "text-[#58BB87] bg-emerald-50 border-emerald-200"
+                      }`}
+                    >
                       CTA: &quot;{plan.btnName || plan.buttonName || "Purchase Plan"}&quot;
                     </span>
                   </div>
@@ -951,7 +1018,11 @@ export default function SubscriptionPlansManager({
                     <button
                       type="button"
                       onClick={() => handleEdit(plan)}
-                      className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition flex items-center gap-1.5 shadow-2xs"
+                      className={`px-3 py-1.5 rounded-lg border bg-white text-xs font-bold transition flex items-center gap-1.5 shadow-2xs ${
+                        isOwner
+                          ? "border-rose-200 text-gray-700 hover:text-[#F96176] hover:border-[#F96176] hover:bg-rose-50/40"
+                          : "border-emerald-200 text-gray-700 hover:text-[#58BB87] hover:border-[#58BB87] hover:bg-emerald-50/40"
+                      }`}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                       <span>Edit</span>
@@ -986,11 +1057,11 @@ export default function SubscriptionPlansManager({
         lockType={!!forcedType}
       />
 
-      {/* Global Vehicle Base Pricing Modal (Method 2) */}
-      <GlobalVehiclePricingModal
+      {/* Global Vehicle Base Pricing Modal commented out */}
+      {/* <GlobalVehiclePricingModal
         isOpen={isGlobalPricingOpen}
         onClose={() => setIsGlobalPricingOpen(false)}
-      />
+      /> */}
     </div>
   );
 }

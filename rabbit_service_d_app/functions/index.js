@@ -2701,3 +2701,86 @@ exports.onJobRatedOrCompletedTrigger = functions.firestore
 
     return null;
   });
+
+/**
+ * Triggered whenever a customer requests a custom fleet pricing package.
+ * Stored in `vehicleCustomPlanRequests/{requestId}`
+ * Sends alert notification to Admin and logs the lead.
+ */
+exports.onCustomFleetPlanRequestCreated = functions.firestore
+  .document("vehicleCustomPlanRequests/{requestId}")
+  .onCreate(async (snap, context) => {
+    const data = snap.data();
+    if (!data) return null;
+
+    const requestId = context.params.requestId;
+    console.log(
+      `[onCustomFleetPlanRequestCreated] New custom plan request: ${requestId}`,
+      data
+    );
+
+    try {
+      const adminEmail =
+        process.env.DEMO_NOTIFICATION_EMAIL ||
+        process.env.EMAIL_USER ||
+        "regalapp7@gmail.com";
+
+      const mailOptions = {
+        from: `"TrenoOps Fleet Alerts" <${process.env.EMAIL_USER}>`,
+        replyTo: data.userEmail,
+        to: adminEmail,
+        subject: `🚚 New Enterprise Fleet Plan Request: ${data.companyName} (${data.totalUnits} Units)`,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #1e293b;">
+            <h2 style="color: #F96176;">New Custom Fleet Plan Request</h2>
+            <p>A carrier has requested a custom enterprise pricing package outside pre-set slabs.</p>
+            <table style="width: 100%; max-width: 500px; border-collapse: collapse; margin: 16px 0;">
+              <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0;">Company:</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${
+                data.companyName
+              }</td></tr>
+              <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0;">Contact Email:</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${
+                data.userEmail
+              }</td></tr>
+              <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0;">Phone:</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${
+                data.contactNumber
+              }</td></tr>
+              <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0;">Country:</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${
+                data.country
+              }</td></tr>
+              <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0;">Requested Fleet:</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0; color: #F96176; font-weight: bold;">${
+                data.totalUnits
+              } Units (${data.requestedTrucks} Trucks + ${
+          data.requestedTrailers
+        } Trailers)</td></tr>
+              <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0;">Billing Preference:</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${
+                data.preferredBilling
+              }</td></tr>
+              ${
+                data.notes
+                  ? `<tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e2e8f0;">Notes:</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${data.notes}</td></tr>`
+                  : ""
+              }
+            </table>
+            <p style="font-size: 13px; color: #64748b;">
+              You can review this request, generate a quote, or dispatch a Stripe payment link in the Admin Console at:
+              <br /><strong>/admin/custom-plan-requests</strong>
+            </p>
+          </div>
+        `,
+      };
+
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+        await transporter.sendMail(mailOptions);
+        console.log(
+          `[onCustomFleetPlanRequestCreated] Admin email dispatched to ${adminEmail}`
+        );
+      }
+    } catch (err) {
+      console.error(
+        "[onCustomFleetPlanRequestCreated] Error sending email alert:",
+        err
+      );
+    }
+
+    return null;
+  });

@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   History,
   Share2,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
 import { isAllowedAdminEmail } from "@/lib/adminConfig";
@@ -83,7 +84,11 @@ interface NavCategory {
 export default function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth() || { user: null };
+  const auth = useAuth();
+  const { user, logout } = auth || { user: null };
+  const isSubscriptionActive = auth?.isSubscriptionActive ?? false;
+  const isOwner = auth?.isOwner ?? false;
+  const isTeamMember = auth?.isTeamMember ?? false;
   const [userData, setUserData] = useState<UserData | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [effectiveUserId, setEffectiveUserId] = useState("");
@@ -93,6 +98,7 @@ export default function AppSidebar() {
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isAdminUser = Boolean(user && isAllowedAdminEmail(user.email));
+  const isLockedFeature = !isSubscriptionActive && !isAdminUser;
 
   // Fetch User Data
   useEffect(() => {
@@ -415,6 +421,15 @@ export default function AppSidebar() {
                 {cat.href ? (
                   <Link
                     href={cat.href}
+                    onClick={(e) => {
+                      if (isLockedFeature && cat.href !== "/") {
+                        e.preventDefault();
+                        toast.error(
+                          "Active subscription required to access this feature. Please choose a plan."
+                        );
+                        router.push("/choose-plan");
+                      }
+                    }}
                     className={clsx(
                       "group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
                       isActive
@@ -423,10 +438,23 @@ export default function AppSidebar() {
                     )}
                   >
                     {cat.icon}
+                    {isLockedFeature && cat.key !== "home" && (
+                      <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-white shadow-sm ring-2 ring-[#0B132B]">
+                        <Lock size={8} />
+                      </span>
+                    )}
                   </Link>
                 ) : (
                   <button
                     type="button"
+                    onClick={() => {
+                      if (isLockedFeature && !hasSubItems) {
+                        toast.error(
+                          "Active subscription required to access this feature. Please choose a plan."
+                        );
+                        router.push("/choose-plan");
+                      }
+                    }}
                     className={clsx(
                       "group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
                       isActive
@@ -435,6 +463,11 @@ export default function AppSidebar() {
                     )}
                   >
                     {cat.icon}
+                    {isLockedFeature && cat.key !== "home" && (
+                      <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-white shadow-sm ring-2 ring-[#0B132B]">
+                        <Lock size={8} />
+                      </span>
+                    )}
                   </button>
                 )}
 
@@ -460,13 +493,29 @@ export default function AppSidebar() {
                         const isSubActive =
                           pathname === sub.href ||
                           pathname.startsWith(sub.href + "/");
+                        const isItemLocked =
+                          isLockedFeature &&
+                          sub.href !== "/" &&
+                          sub.href !== "/choose-plan";
+
                         return (
                           <Link
                             key={sub.href}
                             href={sub.href}
+                            onClick={(e) => {
+                              if (isItemLocked) {
+                                e.preventDefault();
+                                toast.error(
+                                  "Active subscription required to access this feature. Please choose a plan."
+                                );
+                                router.push("/choose-plan");
+                              }
+                            }}
                             className={clsx(
-                              "flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors",
-                              isSubActive
+                              "flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors relative",
+                              isItemLocked
+                                ? "text-gray-400 hover:text-amber-400 cursor-not-allowed hover:bg-[#1C2541]"
+                                : isSubActive
                                 ? "bg-[#F96176] text-white font-medium"
                                 : "text-gray-300 hover:bg-[#1C2541] hover:text-white"
                             )}
@@ -474,13 +523,20 @@ export default function AppSidebar() {
                             {sub.icon && (
                               <span
                                 className={clsx(
-                                  isSubActive ? "text-white" : "text-gray-400"
+                                  isSubActive
+                                    ? "text-white"
+                                    : isItemLocked
+                                    ? "text-gray-500"
+                                    : "text-gray-400"
                                 )}
                               >
                                 {sub.icon}
                               </span>
                             )}
-                            <span>{sub.label}</span>
+                            <span className="truncate flex-1">{sub.label}</span>
+                            {isItemLocked && (
+                              <Lock size={12} className="text-amber-400 shrink-0" />
+                            )}
                           </Link>
                         );
                       })}
@@ -601,6 +657,16 @@ export default function AppSidebar() {
                   <Building size={16} />
                   <span>My Companies</span>
                 </Link>
+                {(userData?.role === "Owner" || userData?.role === "owner") && (
+                  <Link
+                    href="/choose-plan"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-sm text-[#58BB87] hover:bg-[#1C2541] rounded-lg transition-colors font-medium"
+                  >
+                    <CreditCard size={16} />
+                    <span>Membership Plan</span>
+                  </Link>
+                )}
                 <Link
                   href="/account/ratings"
                   onClick={() => setIsProfileOpen(false)}

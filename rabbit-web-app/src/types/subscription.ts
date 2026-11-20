@@ -122,6 +122,56 @@ export const DEFAULT_GLOBAL_VEHICLE_PRICING: GlobalVehiclePricingConfig = {
   },
 };
 
+export interface CountryPackageRate {
+  currency: string; // "USD" | "CAD" | "MXN" | "GBP" | "AUD"
+  symbol: string; // "$" | "C$" | "Mex$" | "£" | "A$"
+  truckMonthlyRate: number;
+  truckMonthlyDiscount?: number | null;
+  truckYearlyRate: number;
+  truckYearlyDiscount?: number | null;
+  trailerMonthlyRate: number;
+  trailerMonthlyDiscount?: number | null;
+  trailerYearlyRate: number;
+  trailerYearlyDiscount?: number | null;
+}
+
+export interface PackageVehicleSlab {
+  id: string; // unique row id
+  fromUnit: number; // e.g. 1
+  toUnit: number; // e.g. 1 or 5
+
+  // Truck (Power Unit) rates - Base USD
+  truckMonthlyRate: number;
+  truckMonthlyDiscount?: number | null;
+  truckYearlyRate: number;
+  truckYearlyDiscount?: number | null;
+
+  // Trailer (Trailed Unit) rates - Base USD
+  trailerMonthlyRate: number;
+  trailerMonthlyDiscount?: number | null;
+  trailerYearlyRate: number;
+  trailerYearlyDiscount?: number | null;
+
+  // Multi-Country Rates (auto-computed from USD multipliers + manual override)
+  countryRates?: Record<string, CountryPackageRate>;
+}
+
+export const DEFAULT_PACKAGE_SLABS: PackageVehicleSlab[] = [
+  {
+    id: "slab-1",
+    fromUnit: 1,
+    toUnit: 1,
+    truckMonthlyRate: 0,
+    truckMonthlyDiscount: null,
+    truckYearlyRate: 0,
+    truckYearlyDiscount: null,
+    trailerMonthlyRate: 0,
+    trailerMonthlyDiscount: null,
+    trailerYearlyRate: 0,
+    trailerYearlyDiscount: null,
+  },
+];
+
 export interface FleetVehicleTier {
   id: string; // unique row id
   fromVehicles: number; // 1 to 300
@@ -164,7 +214,8 @@ export interface SubscriptionPlan {
   termsAndConditions: string[];
 
   // Owners / Drivers specific fields (type: "trenoops")
-  fleetVehicleTiers?: FleetVehicleTier[]; // Dynamic vehicle slabs (e.g. 1-2, 3-5, 6-10)
+  packageVehicleSlabs?: PackageVehicleSlab[]; // Package-based pricing slabs (1-1, 2-2, 3-5, etc.)
+  fleetVehicleTiers?: FleetVehicleTier[]; // Legacy vehicle slabs
   minVehicles?: number; // minimum vehicles in fleet tier range (e.g. 3 for "3 TO 5")
   maxVehicles?: number; // total vehicles included (-1 for unlimited, e.g. 5 for "3 TO 5")
   vehicleTypeScope?: "both" | "truck_only" | "trailer_only" | "all"; // Scope
@@ -237,5 +288,102 @@ export interface SubscriptionPurchaseRecord {
   trailerLimit?: number;
   vehicleTypeScope?: string;
 
+  updatedAt?: any;
+}
+
+
+/**
+ * Current active subscription snapshot stored directly on `Users/{ownerUid}.currentSubscription`
+ */
+export interface OwnerCurrentSubscription {
+  planId: string;
+  planName: string;
+  planType: SubscriptionPlanType; // "trenoops"
+  duration: SubscriptionDuration; // "Monthly" | "Yearly" | etc.
+  amountPaid: number;
+  originalPrice?: number;
+  discountPrice?: number | null;
+  currency: string;
+  purchasedAt: string; // ISO string
+  purchasedTimestamp: number;
+  status: "active" | "expired" | "cancelled" | "past_due";
+  autoPay?: boolean;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripeSessionId?: string;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+
+  // Fleet composition captured during subscription
+  vehicleRange: string; // e.g. "1 to 5"
+  trucksCount: number; // e.g. 3
+  trailersCount: number; // e.g. 2
+  totalFleetCount: number; // e.g. 5
+
+  features?: string[];
+  termsAndConditions?: string[];
+}
+
+/**
+ * History record stored in `Users/{ownerUid}/subscriptions/{purchaseId}`
+ */
+export interface OwnerSubscriptionHistoryItem {
+  purchaseId?: string;
+  planId: string;
+  planName: string;
+  planType: SubscriptionPlanType;
+  duration: SubscriptionDuration;
+  amountPaid: number;
+  originalPrice?: number;
+  discountPrice?: number | null;
+  currency: string;
+  purchasedAt: string;
+  purchasedTimestamp: number;
+  status: "active" | "expired" | "cancelled" | "past_due";
+  paymentMethod: "stripe" | "manual";
+  autoPay?: boolean;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripeInvoiceId?: string;
+  stripeSessionId?: string;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+
+  // Fleet composition captured during subscription
+  vehicleRange: string;
+  trucksCount: number;
+  trailersCount: number;
+  totalFleetCount: number;
+
+  features?: string[];
+  termsAndConditions?: string[];
+  createdAt?: any;
+}
+
+/**
+ * Enterprise Custom Plan Request submitted when user fleet size
+ * does not match an exact pre-set slab.
+ * Stored in Firestore collection: `vehicleCustomPlanRequests`
+ */
+export interface CustomFleetPlanRequest {
+  id?: string;
+  userId: string;
+  userEmail: string;
+  userName?: string;
+  companyName: string;
+  contactNumber: string;
+  country: string;
+  requestedTrucks: number;
+  requestedTrailers: number;
+  totalUnits: number;
+  preferredBilling: "Monthly" | "Yearly";
+  notes?: string;
+  status: "pending" | "reviewed" | "quoted" | "completed" | "rejected";
+  quotedAmount?: number | null;
+  quotedDuration?: "Monthly" | "Yearly" | null;
+  stripePaymentLink?: string | null;
+  adminNotes?: string | null;
+  quotedAt?: any;
+  createdAt?: any;
   updatedAt?: any;
 }
