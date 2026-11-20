@@ -19,6 +19,17 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { updatePassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import {
+  CreditCard,
+  Sparkles,
+  CheckCircle2,
+  Truck,
+  Layers,
+  ShieldCheck,
+  AlertCircle,
+  ArrowRight,
+} from "lucide-react";
+import { isSubscriptionBypassedEmail } from "@/lib/adminConfig";
 
 export default function MyProfile() {
   const { user } = useAuth() || { user: null };
@@ -244,6 +255,215 @@ export default function MyProfile() {
             {userData?.userName}
           </h2>
         </div>
+
+        {/* Membership / Subscription Plan Section */}
+        {(() => {
+          const isPurchased = userData?.isSubscriptionPurchase === true;
+          const isBypassed = Boolean(user && isSubscriptionBypassedEmail(user.email));
+          const sub = userData?.currentSubscription;
+
+          const formatSubscriptionDate = (timestamp: any): string => {
+            if (!timestamp) return "";
+            try {
+              const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
+              if (isNaN(date.getTime())) return "";
+              return date.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              });
+            } catch {
+              return "";
+            }
+          };
+
+          const getSubCurrencySymbol = (currency?: string): string => {
+            const c = (currency || "USD").toUpperCase();
+            if (c === "CAD") return "C$";
+            if (c === "MXN") return "Mex$";
+            if (c === "GBP") return "£";
+            if (c === "AUD") return "A$";
+            if (c === "EUR") return "€";
+            return "$";
+          };
+
+          return (
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6 border border-gray-100">
+              <div className="bg-gradient-to-r from-[#F96176] to-[#e04f63] px-4 sm:px-6 py-3.5 sm:py-4 flex flex-wrap gap-2 justify-between items-center text-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-white/20 text-white">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold tracking-tight">
+                      Membership Plan
+                    </h3>
+                    <p className="text-xs text-white/80">
+                      Your active fleet operations subscription & coverage
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href="/choose-plan"
+                  className="bg-white text-[#F96176] hover:bg-rose-50 px-4 py-1.5 text-xs sm:text-sm font-bold rounded-full transition shadow-xs flex items-center gap-1.5"
+                >
+                  <Sparkles size={14} />
+                  <span>{isPurchased ? "Upgrade / Change Plan" : "Choose a Plan"}</span>
+                </Link>
+              </div>
+
+              <div className="p-5 sm:p-6">
+                {isPurchased ? (
+                  <div className="space-y-4">
+                    {/* Top Status & Plan Name Row */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-lg font-black text-gray-900">
+                            {sub?.planName || "Fleet Operations Plan"}
+                          </h4>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-[#58BB87] border border-emerald-200">
+                            <CheckCircle2 size={12} />
+                            <span>Active</span>
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Billing Interval:{" "}
+                          <span className="font-semibold text-gray-700">
+                            {sub?.duration || "Monthly"}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="text-left sm:text-right">
+                        <div className="text-2xl font-black text-gray-900">
+                          {getSubCurrencySymbol(sub?.currency)}
+                          {Number(sub?.amountPaid || 0).toFixed(2)}
+                        </div>
+                        <p className="text-xs text-gray-400 uppercase font-semibold">
+                          Per {sub?.duration?.toLowerCase() || "month"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Fleet Limits & Details Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                      {/* Covered Trucks */}
+                      <div className="bg-rose-50/50 p-3.5 rounded-xl border border-rose-100 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-[#F96176] text-white flex items-center justify-center font-bold shrink-0">
+                          <Truck size={18} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                            Power Units
+                          </p>
+                          <p className="text-sm font-black text-gray-900">
+                            {sub?.trucksCount || 0}{" "}
+                            {sub?.trucksCount === 1 ? "Truck" : "Trucks"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Covered Trailers */}
+                      <div className="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-[#58BB87] text-white flex items-center justify-center font-bold shrink-0">
+                          <Truck size={18} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                            Trailed Units
+                          </p>
+                          <p className="text-sm font-black text-gray-900">
+                            {sub?.trailersCount || 0}{" "}
+                            {sub?.trailersCount === 1 ? "Trailer" : "Trailers"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Range & Capacity */}
+                      <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-gray-700 text-white flex items-center justify-center font-bold shrink-0">
+                          <Layers size={18} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                            Fleet Capacity
+                          </p>
+                          <p className="text-sm font-black text-gray-900">
+                            {(sub?.trucksCount || 0) + (sub?.trailersCount || 0)} Units{" "}
+                            {sub?.vehicleRange ? `(${sub.vehicleRange})` : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expiration / Renewal Date */}
+                    {Boolean(sub?.purchasedAt || sub?.expiresAt || sub?.currentPeriodEnd) && (
+                      <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100 gap-2">
+                        {sub?.purchasedAt && (
+                          <span>
+                            Activated on:{" "}
+                            <strong className="text-gray-700">
+                              {formatSubscriptionDate(sub.purchasedAt)}
+                            </strong>
+                          </span>
+                        )}
+                        {Boolean(sub?.expiresAt || sub?.currentPeriodEnd) && (
+                          <span>
+                            Renews / Valid through:{" "}
+                            <strong className="text-gray-700">
+                              {formatSubscriptionDate(sub?.expiresAt || sub?.currentPeriodEnd)}
+                            </strong>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : isBypassed ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-[#58BB87] text-white shrink-0">
+                        <ShieldCheck size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900">
+                          Co-Owner Administrative Access
+                        </h4>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          Your account has full unlocked access across all fleet operations, dispatch, and driver management features.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-white text-[#58BB87] border border-emerald-200 self-start sm:self-auto shrink-0">
+                      Unlimited Access
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 text-[#F96176] flex items-center justify-center mx-auto mb-3">
+                      <AlertCircle size={24} />
+                    </div>
+                    <h4 className="text-base font-bold text-gray-900">
+                      No Active Membership Plan
+                    </h4>
+                    <p className="text-xs text-gray-500 max-w-md mx-auto mt-1 mb-4">
+                      You do not currently have an active fleet membership plan. Choose a package to unlock full maintenance dispatch, driver seats, and emergency road service.
+                    </p>
+                    <Link
+                      href="/choose-plan"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-bold transition shadow-md shadow-[#F96176]/20"
+                    >
+                      <CreditCard size={14} />
+                      <span>Select Fleet Plan</span>
+                      <ArrowRight size={14} />
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Personal Details Section */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">

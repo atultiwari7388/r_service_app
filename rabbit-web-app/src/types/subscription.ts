@@ -313,6 +313,7 @@ export interface OwnerCurrentSubscription {
   stripeSessionId?: string;
   currentPeriodStart?: string;
   currentPeriodEnd?: string;
+  expiresAt?: string;
 
   // Fleet composition captured during subscription
   vehicleRange: string; // e.g. "1 to 5"
@@ -348,6 +349,7 @@ export interface OwnerSubscriptionHistoryItem {
   stripeSessionId?: string;
   currentPeriodStart?: string;
   currentPeriodEnd?: string;
+  expiresAt?: string;
 
   // Fleet composition captured during subscription
   vehicleRange: string;
