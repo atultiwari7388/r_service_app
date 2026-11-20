@@ -13,6 +13,7 @@ interface RequestBody {
   vehicleRange: string;
   trucksCount: number;
   trailersCount: number;
+  originUrl?: string;
 }
 
 function mapDurationToStripeInterval(durationStr: string): {
@@ -105,7 +106,10 @@ export async function POST(req: Request) {
     }
 
     const { interval, interval_count } = mapDurationToStripeInterval(planDuration);
-    const appUrl = getAppBaseUrl();
+    const appUrl =
+      body.originUrl && !body.originUrl.includes("localhost")
+        ? body.originUrl.replace(/\/+$/, "")
+        : getAppBaseUrl(req);
 
     // Create Stripe Checkout Session (Recurring Subscription with Auto-Pay)
     const session = await stripe.checkout.sessions.create({

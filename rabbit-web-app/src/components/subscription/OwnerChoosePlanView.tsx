@@ -241,6 +241,7 @@ export default function OwnerChoosePlanView() {
           vehicleRange: matchedRangeStr,
           trucksCount,
           trailersCount,
+          originUrl: typeof window !== "undefined" ? window.location.origin : undefined,
         }),
       });
 
