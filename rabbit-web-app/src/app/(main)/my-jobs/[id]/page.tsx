@@ -8,6 +8,8 @@ import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { HashLoader } from "react-spinners";
 import { use } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
 import RequestAcceptHistoryCard from "@/components/RequestAcceptHistoryCard";
 
 export default function JobIdDetails({
@@ -15,14 +17,138 @@ export default function JobIdDetails({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth() || { user: null };
   const [loading, setLoading] = useState(true);
   const [jobDetails, setJobDetails] = useState<HistoryItem | null>(null);
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>("");
   const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
   const [userRole, setUserRole] = useState("");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { id } = use(params);
+
+  // Handle Stripe return redirect (success or cancellation)
+  const paymentSuccess = searchParams.get("payment_success");
+  const sessionId = searchParams.get("session_id");
+  const queryMechanicId = searchParams.get("mechanicId");
+  const paymentCancelled = searchParams.get("payment_cancelled");
+
+  useEffect(() => {
+    if (paymentCancelled) {
+      toast.error("Online payment was cancelled.");
+      router.replace(`/my-jobs/${id}`);
+      return;
+    }
+
+    if (paymentSuccess === "true" && sessionId && effectiveUserId) {
+      let isSubscribed = true;
+
+      const verifyPayment = async () => {
+        try {
+          const toastId = toast.loading(
+            "Verifying online payment with Stripe..."
+          );
+          const res = await fetch("/api/stripe/verify-job-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId,
+              jobId: id,
+              effectiveUserId,
+              mechanicId: queryMechanicId,
+            }),
+          });
+          const data = await res.json();
+          toast.dismiss(toastId);
+
+          if (res.ok && data.success) {
+            // Apply authenticated client-side Firestore update (matching cash flow permissions)
+            try {
+              const jobDocId = id.startsWith("#") ? id : `#${id}`;
+              const userHistoryRef = doc(
+                db,
+                "Users",
+                effectiveUserId,
+                "history",
+                jobDocId
+              );
+              const jobRef = doc(db, "jobs", jobDocId);
+
+              const currentHistorySnap = await getDoc(userHistoryRef);
+              const historyData = currentHistorySnap.exists()
+                ? currentHistorySnap.data()
+                : null;
+              const currentOffers: any[] =
+                historyData?.mechanicsOffer || jobDetails?.mechanicsOffer || [];
+
+              const targetMId = queryMechanicId || data.targetMechanicId;
+              const updatedMechanicsOffer = currentOffers.map((offer: any) => ({
+                ...offer,
+                status: offer.mId === targetMId ? 3 : offer.status,
+              }));
+
+              const clientUpdates = {
+                status: 3,
+                payMode: "online",
+                isPaid: true,
+                paidAmount: data.amount,
+                paidCurrency: data.currency || "USD",
+                stripeSessionId: sessionId,
+                paidAt: data.paidAt || new Date().toISOString(),
+                mechanicsOffer: updatedMechanicsOffer,
+              };
+
+              await updateDoc(userHistoryRef, clientUpdates);
+              try {
+                await updateDoc(jobRef, clientUpdates);
+              } catch (jobDocErr) {
+                console.warn("Global jobDoc update handled:", jobDocErr);
+              }
+
+              // Update local state immediately
+              setJobDetails((prev: any) => ({
+                ...prev,
+                ...clientUpdates,
+              }));
+            } catch (fsErr) {
+              console.error("Client Firestore update error:", fsErr);
+            }
+
+            toast.success(
+              `Online payment of $${Number(data.amount || 0).toFixed(
+                2
+              )} completed! Mechanic has been notified.`
+            );
+          } else {
+            toast.error(data.error || "Could not verify payment session.");
+          }
+        } catch (e: any) {
+          console.error("Error verifying payment on return:", e);
+          toast.error("Failed to verify payment with server.");
+        } finally {
+          if (isSubscribed) {
+            router.replace(`/my-jobs/${id}`);
+          }
+        }
+      };
+
+      verifyPayment();
+
+      return () => {
+        isSubscribed = false;
+      };
+    }
+  }, [
+    paymentSuccess,
+    sessionId,
+    paymentCancelled,
+    effectiveUserId,
+    id,
+    queryMechanicId,
+    router,
+  ]);
 
   // Fetch user data and determine effectiveUserId
   useEffect(() => {
@@ -116,10 +242,70 @@ export default function JobIdDetails({
   const handlePayment = async (mechanicId: string) => {
     if (!jobDetails || !effectiveUserId) return;
 
+    // 1. Online Stripe Payment Flow
+    if (selectedPaymentMode === "online") {
+      const acceptedMech = jobDetails.mechanicsOffer?.find(
+        (m) => m.mId === mechanicId
+      );
+      const amount = jobDetails.fixPriceEnabled
+        ? Number(acceptedMech?.fixPrice || 0)
+        : parseFloat(
+            String(acceptedMech?.arrivalCharges || "0").replace(
+              /[^0-9.]/g,
+              ""
+            ) || "0"
+          );
+
+      if (isNaN(amount) || amount <= 0) {
+        toast.error("Invalid payment amount for this offer.");
+        return;
+      }
+
+      try {
+        setIsProcessingPayment(true);
+        const res = await fetch("/api/stripe/job-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jobId: id,
+            effectiveUserId,
+            mechanicId,
+            mechanicName:
+              acceptedMech?.workshopName ||
+              acceptedMech?.mName ||
+              "Assigned Mechanic",
+            serviceName: jobDetails.selectedService || "Roadside Service",
+            amount,
+            currency: "USD",
+            userEmail: user?.email || "",
+            originUrl:
+              typeof window !== "undefined"
+                ? window.location.origin
+                : undefined,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.url) {
+          throw new Error(data.error || "Failed to initialize Stripe checkout");
+        }
+
+        // Redirect to Stripe Checkout page
+        window.location.href = data.url;
+      } catch (err: any) {
+        console.error("Online payment error:", err);
+        toast.error(err?.message || "Failed to start Stripe checkout.");
+        setIsProcessingPayment(false);
+      }
+      return;
+    }
+
+    // 2. Cash Payment Flow
     try {
+      setIsProcessingPayment(true);
       const updates = {
         status: 3,
-        payMode: selectedPaymentMode,
+        payMode: "cash",
         mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
           ...offer,
           status: offer.mId === mechanicId ? 3 : offer.status,
@@ -142,8 +328,12 @@ export default function JobIdDetails({
       if (updatedJobSnap.exists()) {
         setJobDetails(updatedJobSnap.data() as HistoryItem);
       }
+      toast.success("Cash payment mode confirmed! Mechanic has been notified.");
     } catch (error) {
-      console.error("Error processing payment:", error);
+      console.error("Error processing cash payment:", error);
+      toast.error("Failed to update payment status.");
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -339,6 +529,7 @@ export default function JobIdDetails({
                     onStartJob={() => handleStartJob(mechanic.mId)}
                     selectedPaymentMode={selectedPaymentMode}
                     setSelectedPaymentMode={setSelectedPaymentMode}
+                    isProcessingPayment={isProcessingPayment}
                   />
                 </div>
               ))}

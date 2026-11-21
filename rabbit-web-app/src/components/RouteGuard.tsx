@@ -79,6 +79,7 @@ export default function RouteGuard({
 }) {
   const auth = useAuth();
   const user = auth?.user;
+  const userData = auth?.userData;
   const isLoading = auth?.isLoading ?? true;
   const isSubscriptionActive = auth?.isSubscriptionActive ?? false;
   const isOwner = auth?.isOwner ?? false;
@@ -96,7 +97,8 @@ export default function RouteGuard({
   const isAdminUser = Boolean(user && isAllowedAdminEmail(user.email));
 
   useEffect(() => {
-    if (isLoading) return;
+    // If auth state or user profile document is still loading, wait!
+    if (isLoading || (user && !userData)) return;
 
     // Detect user authentication type
     const isPhoneOrGuestUser = Boolean(
@@ -130,6 +132,10 @@ export default function RouteGuard({
       // If user is on an Auth page (like /login or /sign-up)
       if (isAuthPage) {
         if (!isSubscriptionActive) {
+          if (isTeamMember) {
+            // Team member cannot choose a plan. Do not send to /choose-plan.
+            return;
+          }
           router.replace("/choose-plan");
         } else {
           router.replace("/records");
@@ -139,13 +145,30 @@ export default function RouteGuard({
 
       // ==============================================================
       // STRICT SUBSCRIPTION PAYWALL ENFORCEMENT FOR LOGGED-IN USERS
-      // (Admin bypass disabled as requested to test checkout flow)
       // ==============================================================
       if (!isSubscriptionActive) {
+        if (isTeamMember) {
+          // Team members cannot purchase a plan; they should not be redirected to /choose-plan.
+          const isAllowedTeamMember =
+            normalizedPath === "/account/my-profile" ||
+            normalizedPath === "/contact-us" ||
+            normalizedPath.startsWith("/my-jobs") ||
+            normalizedPath.startsWith("/history");
+
+          if (!isAllowedTeamMember) {
+            router.replace("/account/my-profile");
+            return;
+          }
+          return;
+        }
+
         const isAllowedUnpaid =
           normalizedPath === "/choose-plan" ||
           normalizedPath === "/choose-plan/success" ||
-          normalizedPath === "/account/my-profile";
+          normalizedPath === "/account/my-profile" ||
+          normalizedPath === "/contact-us" ||
+          normalizedPath.startsWith("/my-jobs") ||
+          normalizedPath.startsWith("/history");
 
         if (!isAllowedUnpaid) {
           router.replace("/choose-plan");
@@ -166,6 +189,7 @@ export default function RouteGuard({
     isLoading,
     isSubscriptionActive,
     isOwner,
+    isTeamMember,
     isAdminUser,
     pathname,
     isPublic,

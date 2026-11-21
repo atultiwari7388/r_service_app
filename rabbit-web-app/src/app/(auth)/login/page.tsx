@@ -8,13 +8,28 @@ import {
   sendEmailVerification,
   signOut,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { Button } from "@nextui-org/react";
 import { auth, db } from "../../../lib/firebase";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContexts";
 import { LoginFormValues } from "@/types/types";
-import { isAllowedAdminEmail, isSubscriptionBypassedEmail } from "@/lib/adminConfig";
+import {
+  isAllowedAdminEmail,
+  isSubscriptionBypassedEmail,
+} from "@/lib/adminConfig";
+import {
+  checkHasActiveSubscription,
+  isUserTeamMember,
+  isUserOwner,
+} from "@/lib/services/subscriptionService";
 
 interface AuthErrorPayload {
   code?: string;
@@ -58,25 +73,51 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  const { user, isSubscriptionActive, isOwner } = useAuth() || {
+  const {
+    user,
+    userData,
+    isSubscriptionActive,
+    isOwner,
+    isTeamMember,
+    isLoading: isAuthLoading,
+  } = useAuth() || {
     user: null,
+    userData: null,
     isSubscriptionActive: false,
     isOwner: false,
+    isTeamMember: false,
+    isLoading: true,
   };
 
   useEffect(() => {
+    // CRITICAL: Do NOT redirect while auth state or company owner profile is still resolving!
+    if (isAuthLoading || (user && !userData)) return;
+
     if (user) {
       if (user.phoneNumber || user.isAnonymous) {
         router.push("/my-jobs");
       } else if (user.emailVerified) {
         if (!isSubscriptionActive) {
+          if (isTeamMember) {
+            // Team member without active owner subscription
+            // Do NOT redirect to /choose-plan!
+            return;
+          }
           router.push("/choose-plan");
         } else {
           router.push("/records");
         }
       }
     }
-  }, [router, user, isOwner, isSubscriptionActive]);
+  }, [
+    router,
+    user,
+    userData,
+    isOwner,
+    isTeamMember,
+    isSubscriptionActive,
+    isAuthLoading,
+  ]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -168,23 +209,8 @@ const Login: React.FC = () => {
               return;
             }
 
-            // ✅ Active user logic
-            if (userData.active === true && userData.status === "active") {
-              toast.dismiss();
-              toast.success("Login Successful");
-
-              const isBypassed =
-                isSubscriptionBypassedEmail(user.email) ||
-                isSubscriptionBypassedEmail(email);
-              const hasActiveSub =
-                userData.isSubscriptionPurchase === true || isBypassed;
-
-              if (!hasActiveSub) {
-                router.push("/choose-plan");
-              } else {
-                router.push("/records");
-              }
-            } else if (userData.status === "deactivated") {
+            // 🚫 Check if account is deactivated
+            if (userData.status === "deactivated") {
               const deactMsg =
                 "Your account is deactivated. Please contact your office.";
               toast.dismiss();
@@ -195,18 +221,136 @@ const Login: React.FC = () => {
               setErrorMessage(deactMsg);
               await signOut(auth);
               router.push("/contact-us");
-            } else {
-              const inactiveMsg =
-                "Your account is not active. Please contact your office.";
-              toast.dismiss();
-              toast.error(inactiveMsg, {
-                id: "auth-login-error",
-                duration: 7500,
-              });
-              setErrorMessage(inactiveMsg);
-              await signOut(auth);
-              router.push("/contact-us");
+              return;
             }
+
+            // ✅ Active user logic
+            const isBypassed =
+              isSubscriptionBypassedEmail(user.email) ||
+              isSubscriptionBypassedEmail(email) ||
+              isSubscriptionBypassedEmail(userData?.email);
+
+            // 1. Direct check: Does the user themselves directly have an active plan?
+            let hasActiveSub =
+              checkHasActiveSubscription(userData) || isBypassed;
+
+            // 2. Client-side check on subscriptionPurchases and Users/{uid}/subscriptions
+            if (!hasActiveSub) {
+              try {
+                const [purchSnap, subSnap] = await Promise.all([
+                  getDocs(
+                    query(
+                      collection(db, "subscriptionPurchases"),
+                      where("userId", "==", user.uid)
+                    )
+                  ),
+                  getDocs(collection(db, "Users", user.uid, "subscriptions")),
+                ]);
+
+                const hasActivePurch = purchSnap.docs.some((d) => {
+                  const s = String(d.data()?.status || "").toLowerCase();
+                  return s !== "cancelled" && s !== "expired";
+                });
+                const hasActiveSubDoc = subSnap.docs.some((d) => {
+                  const s = String(d.data()?.status || "").toLowerCase();
+                  return s !== "cancelled" && s !== "expired";
+                });
+
+                if (hasActivePurch || hasActiveSubDoc) {
+                  hasActiveSub = true;
+                }
+              } catch (subErr) {
+                console.warn(
+                  "Client fallback subscription check warning:",
+                  subErr
+                );
+              }
+            }
+
+            // 3. If not detected directly on user doc, attempt automatic Stripe / DB sync
+            if (!hasActiveSub) {
+              try {
+                const syncRes = await fetch(
+                  "/api/stripe/sync-user-subscription",
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      ownerUid: user.uid,
+                      email: user.email || email,
+                    }),
+                  }
+                );
+                if (syncRes.ok) {
+                  const syncData = await syncRes.json();
+                  if (syncData.active) {
+                    hasActiveSub = true;
+                  }
+                }
+              } catch (syncErr) {
+                console.warn(
+                  "Auto-sync subscription error during login:",
+                  syncErr
+                );
+              }
+            }
+
+            // 4. If direct user has active sub, proceed immediately to /records
+            if (hasActiveSub) {
+              toast.dismiss();
+              toast.success("Login Successful");
+              router.push("/records");
+              return;
+            }
+
+            // 5. If user is a team member, check their company owner's status
+            const isMember = isUserTeamMember(userData, user.uid);
+
+            if (isMember) {
+              const ownerUid = userData.createdBy;
+              let isOwnerActive = isBypassed;
+
+              if (!isOwnerActive && ownerUid && ownerUid !== user.uid) {
+                try {
+                  const ownerDocSnap = await getDoc(doc(db, "Users", ownerUid));
+                  if (ownerDocSnap.exists()) {
+                    const ownerData = ownerDocSnap.data();
+                    isOwnerActive = checkHasActiveSubscription(ownerData);
+                  }
+                } catch (err) {
+                  console.error(
+                    "Error checking owner subscription on login:",
+                    err
+                  );
+                }
+              }
+
+              if (isOwnerActive) {
+                toast.dismiss();
+                toast.success("Login Successful");
+                router.push("/records");
+                return;
+              } else {
+                // Company owner has NOT purchased or activated a plan.
+                // A team member cannot purchase a plan.
+                const inactiveMsg =
+                  "Your company owner does not have an active subscription plan. Please contact your company administrator to activate a subscription.";
+                toast.dismiss();
+                toast.error(inactiveMsg, {
+                  id: "auth-login-error",
+                  duration: 8000,
+                });
+                setErrorMessage(inactiveMsg);
+                await signOut(auth);
+                setIsLoading(false);
+                return;
+              }
+            }
+
+            // 6. Unsubscribed Owner:
+            toast.dismiss();
+            toast.success("Login Successful");
+            router.push("/choose-plan");
           } else {
             const mismatchMsg = "User mismatch. Please try again.";
             toast.dismiss();

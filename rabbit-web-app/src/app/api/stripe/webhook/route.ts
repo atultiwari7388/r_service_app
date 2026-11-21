@@ -42,6 +42,93 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        // 1. One-Time Job Payment Fulfillment
+        if (
+          session.metadata?.type === "job_payment" ||
+          session.metadata?.jobDocId ||
+          (session.metadata?.jobId && !session.metadata?.planId)
+        ) {
+          const rawJobId = session.metadata?.jobId || "";
+          const jobDocId =
+            session.metadata?.jobDocId ||
+            (rawJobId ? (rawJobId.startsWith("#") ? rawJobId : `#${rawJobId}`) : "");
+          const targetUserId =
+            session.metadata?.effectiveUserId || session.client_reference_id;
+          const targetMechanicId = session.metadata?.mechanicId;
+
+          if (jobDocId) {
+            const jobRef = doc(db, "jobs", jobDocId);
+            const jobSnap = await getDoc(jobRef);
+            const jobData = jobSnap.exists() ? jobSnap.data() : null;
+
+            // Only update if not already status >= 3 or not isPaid
+            if (jobData && (!jobData.isPaid || jobData.status < 3)) {
+              const currentOffers: any[] = jobData.mechanicsOffer || [];
+              const updatedMechanicsOffer = currentOffers.map((offer: any) => ({
+                ...offer,
+                status: offer.mId === targetMechanicId ? 3 : offer.status,
+              }));
+
+              const updates: Record<string, any> = {
+                status: 3,
+                payMode: "online",
+                isPaid: true,
+                paidAmount: (session.amount_total || 0) / 100,
+                paidCurrency: (session.currency || "usd").toUpperCase(),
+                stripeSessionId: session.id,
+                stripePaymentIntentId:
+                  typeof session.payment_intent === "string"
+                    ? session.payment_intent
+                    : session.payment_intent?.id || null,
+                paidAt: new Date().toISOString(),
+                mechanicsOffer: updatedMechanicsOffer,
+              };
+
+              await updateDoc(jobRef, updates);
+
+              if (targetUserId) {
+                const userHistoryRef = doc(
+                  db,
+                  "Users",
+                  targetUserId,
+                  "history",
+                  jobDocId
+                );
+                const userHistorySnap = await getDoc(userHistoryRef);
+                if (userHistorySnap.exists()) {
+                  await updateDoc(userHistoryRef, updates);
+                }
+              }
+
+              // Secondary sync for owner / driver if applicable
+              const otherIds = Array.from(
+                new Set([jobData.ownerId, jobData.userId, jobData.createdBy])
+              ).filter((uid) => uid && uid !== targetUserId);
+
+              for (const otherId of otherIds) {
+                try {
+                  const otherRef = doc(
+                    db,
+                    "Users",
+                    otherId as string,
+                    "history",
+                    jobDocId
+                  );
+                  const otherSnap = await getDoc(otherRef);
+                  if (otherSnap.exists()) {
+                    await updateDoc(otherRef, updates);
+                  }
+                } catch (e) {
+                  console.warn(`Webhook sync error for ${otherId}:`, e);
+                }
+              }
+            }
+          }
+          break;
+        }
+
+        // 2. Subscription Membership Plan Fulfillment
         const ownerUid =
           session.metadata?.ownerUid || session.client_reference_id;
         const planId = session.metadata?.planId;

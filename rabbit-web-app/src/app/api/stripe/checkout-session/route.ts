@@ -14,6 +14,8 @@ interface RequestBody {
   trucksCount: number;
   trailersCount: number;
   originUrl?: string;
+  couponCode?: string;
+  isUpgrade?: boolean;
 }
 
 function mapDurationToStripeInterval(durationStr: string): {
@@ -152,6 +154,8 @@ export async function POST(req: Request) {
           trucksCount: String(trucksCount || 0),
           trailersCount: String(trailersCount || 0),
           amountPaid: String(finalAmount),
+          couponCode: body.couponCode || "",
+          isUpgrade: String(body.isUpgrade || false),
         },
       },
       metadata: {
@@ -164,6 +168,8 @@ export async function POST(req: Request) {
         trucksCount: String(trucksCount || 0),
         trailersCount: String(trailersCount || 0),
         amountPaid: String(finalAmount),
+        couponCode: body.couponCode || "",
+        isUpgrade: String(body.isUpgrade || false),
       },
       success_url: `${appUrl}/choose-plan/success?session_id={CHECKOUT_SESSION_ID}&ownerUid=${ownerUid}`,
       cancel_url: `${appUrl}/choose-plan?ownerUid=${ownerUid}&cancelled=true`,

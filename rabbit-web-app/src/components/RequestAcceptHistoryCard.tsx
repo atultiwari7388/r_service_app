@@ -4,6 +4,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { calculateDistance } from "@/utils/calculateLatLng";
 import { HistoryItem, MechanicsOffer } from "@/types/types";
+import { CreditCard, Banknote } from "lucide-react";
 
 interface RequestAcceptHistoryCardProps {
   mechanic: MechanicsOffer;
@@ -13,6 +14,7 @@ interface RequestAcceptHistoryCardProps {
   onStartJob: () => void;
   selectedPaymentMode: string;
   setSelectedPaymentMode: (mode: string) => void;
+  isProcessingPayment?: boolean;
 }
 
 export default function RequestAcceptHistoryCard({
@@ -23,6 +25,7 @@ export default function RequestAcceptHistoryCard({
   onStartJob,
   selectedPaymentMode,
   setSelectedPaymentMode,
+  isProcessingPayment = false,
 }: RequestAcceptHistoryCardProps) {
   const [workshopName, setWorkshopName] = useState<string>(
     mechanic.workshopName || ""
@@ -161,35 +164,88 @@ export default function RequestAcceptHistoryCard({
           )}
 
           {mechanic.status === 2 && (
-            <div className="space-y-4">
-              <div className="flex gap-4">
+            <div className="space-y-3 min-w-[220px]">
+              <div className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                Select Payment Mode:
+              </div>
+              <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => setSelectedPaymentMode("cash")}
-                  className={`px-6 py-2 rounded-full ${
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                     selectedPaymentMode === "cash"
-                      ? "bg-[#F96176] text-white"
-                      : "bg-gray-200 text-gray-700"
+                      ? "bg-[#58BB87] text-white shadow-md shadow-[#58BB87]/20"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200"
                   }`}
                 >
-                  Cash
+                  <Banknote size={14} />
+                  <span>Cash</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setSelectedPaymentMode("online")}
-                  className={`px-6 py-2 rounded-full ${
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                     selectedPaymentMode === "online"
-                      ? "bg-[#F96176] text-white"
-                      : "bg-gray-200 text-gray-700"
+                      ? "bg-[#F96176] text-white shadow-md shadow-[#F96176]/20"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200"
                   }`}
                 >
-                  Online
+                  <CreditCard size={14} />
+                  <span>Online</span>
                 </button>
               </div>
+
               {selectedPaymentMode && (
                 <button
+                  type="button"
                   onClick={onPayment}
-                  className="w-full bg-gradient-to-r from-[#F96176] to-[#F96176] text-white px-8 py-2.5 rounded-full hover:from-[#F96176] hover:to-[#F96176] transform hover:scale-105 transition-all duration-200"
+                  disabled={isProcessingPayment}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white transition shadow-md flex items-center justify-center gap-2 cursor-pointer ${
+                    selectedPaymentMode === "online"
+                      ? "bg-[#F96176] hover:bg-[#e04f63] shadow-[#F96176]/25"
+                      : "bg-[#58BB87] hover:bg-[#4ca877] shadow-[#58BB87]/25"
+                  } disabled:opacity-50`}
                 >
-                  Process Payment
+                  {isProcessingPayment ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Securing Stripe Checkout...</span>
+                    </>
+                  ) : selectedPaymentMode === "online" ? (
+                    <>
+                      <CreditCard size={14} />
+                      <span>
+                        Pay Online $
+                        {(jobDetails.fixPriceEnabled
+                          ? Number(mechanic.fixPrice || 0)
+                          : parseFloat(
+                              String(mechanic.arrivalCharges || "0").replace(
+                                /[^0-9.]/g,
+                                ""
+                              ) || "0"
+                            )
+                        ).toFixed(2)}{" "}
+                        (Stripe)
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Banknote size={14} />
+                      <span>
+                        Confirm Cash ($
+                        {(jobDetails.fixPriceEnabled
+                          ? Number(mechanic.fixPrice || 0)
+                          : parseFloat(
+                              String(mechanic.arrivalCharges || "0").replace(
+                                /[^0-9.]/g,
+                                ""
+                              ) || "0"
+                            )
+                        ).toFixed(2)}
+                        )
+                      </span>
+                    </>
+                  )}
                 </button>
               )}
             </div>

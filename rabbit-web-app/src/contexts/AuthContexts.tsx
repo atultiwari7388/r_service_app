@@ -13,6 +13,11 @@ import {
 import RouteGuard from "@/components/RouteGuard";
 import { ProfileValues } from "@/types/types";
 import { isAllowedAdminEmail, isSubscriptionBypassedEmail } from "@/lib/adminConfig";
+import {
+  checkHasActiveSubscription,
+  isUserTeamMember,
+  isUserOwner,
+} from "@/lib/services/subscriptionService";
 
 // Define types for the context value
 export interface AuthContextType {
@@ -41,18 +46,21 @@ export default function AuthContextProvider({
   const [companyOwnerSubscriptionActive, setCompanyOwnerSubscriptionActive] = useState(false);
   const [effectiveOwnerId, setEffectiveOwnerId] = useState("");
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [isOwnerDocLoading, setIsOwnerDocLoading] = useState(false);
 
   // 1. Listen to Firebase Auth state
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         setUser(fbUser);
+        setIsProfileLoading(true);
       } else {
         setUser(null);
         setUserData(null);
         setCompanyOwnerSubscriptionActive(false);
         setEffectiveOwnerId("");
         setIsProfileLoading(false);
+        setIsOwnerDocLoading(false);
       }
     });
     return () => unsub();
@@ -63,6 +71,7 @@ export default function AuthContextProvider({
     if (!user) {
       setUserData(null);
       setIsProfileLoading(false);
+      setIsOwnerDocLoading(false);
       return;
     }
 
@@ -75,23 +84,25 @@ export default function AuthContextProvider({
           const data = docSnap.data() as ProfileValues;
           setUserData(data);
 
-          const isMember =
-            data.isTeamMember === true ||
-            (data.role && data.role !== "Owner" && data.role !== "owner");
+          const isMember = isUserTeamMember(data, user.uid);
 
           if (isMember && data.createdBy && data.createdBy !== user.uid) {
             setEffectiveOwnerId(data.createdBy);
+            setIsOwnerDocLoading(true);
           } else {
             setEffectiveOwnerId(user.uid);
+            setIsOwnerDocLoading(false);
           }
         } else {
           setUserData(null);
+          setIsOwnerDocLoading(false);
         }
         setIsProfileLoading(false);
       },
       (err) => {
         console.error("AuthContexts: Error listening to user profile:", err);
         setIsProfileLoading(false);
+        setIsOwnerDocLoading(false);
       }
     );
 
@@ -102,24 +113,28 @@ export default function AuthContextProvider({
   useEffect(() => {
     if (!effectiveOwnerId || !user || effectiveOwnerId === user.uid) {
       setCompanyOwnerSubscriptionActive(false);
+      setIsOwnerDocLoading(false);
       return;
     }
 
+    setIsOwnerDocLoading(true);
     const ownerDocRef = doc(db, "Users", effectiveOwnerId);
     const unsubOwner = onSnapshot(
       ownerDocRef,
       (ownerSnap) => {
         if (ownerSnap.exists()) {
           const ownerData = ownerSnap.data();
-          const hasPlan = ownerData?.isSubscriptionPurchase === true;
+          const hasPlan = checkHasActiveSubscription(ownerData);
           setCompanyOwnerSubscriptionActive(hasPlan);
         } else {
           setCompanyOwnerSubscriptionActive(false);
         }
+        setIsOwnerDocLoading(false);
       },
       (err) => {
         console.error("AuthContexts: Error listening to company owner profile:", err);
         setCompanyOwnerSubscriptionActive(false);
+        setIsOwnerDocLoading(false);
       }
     );
 
@@ -133,33 +148,33 @@ export default function AuthContextProvider({
     setUserData(null);
     setCompanyOwnerSubscriptionActive(false);
     setEffectiveOwnerId("");
+    setIsOwnerDocLoading(false);
   };
 
-  const isOwner =
-    userData?.role === "Owner" ||
-    userData?.role === "owner" ||
-    (userData?.isOwner === true && !userData?.isTeamMember);
-
-  const isTeamMember =
-    userData?.isTeamMember === true ||
-    (!isOwner && Boolean(userData?.role && userData.role !== "Guest"));
+  const isMember = isUserTeamMember(userData, user?.uid);
+  const isOwner = !isMember && isUserOwner(userData, user?.uid);
+  const isTeamMember = isMember;
 
   const isAdminUser = Boolean(user && isAllowedAdminEmail(user.email));
-  const isSubscriptionBypassed = Boolean(user && isSubscriptionBypassedEmail(user.email));
-  const isDirectlyPurchased = userData?.isSubscriptionPurchase === true;
-  const isTeamMemberUser =
-    userData?.isTeamMember === true &&
-    Boolean(userData?.createdBy && userData.createdBy !== user?.uid);
+  const isSubscriptionBypassed = Boolean(
+    (user?.email && isSubscriptionBypassedEmail(user.email)) ||
+    (userData?.email && isSubscriptionBypassedEmail(userData.email))
+  );
+  const isDirectlyPurchased = checkHasActiveSubscription(userData);
 
-  // Subscription is active if user has directly purchased, or is team member of active owner,
-  // or is an authorized Co-Owner bypass email (atul2.mylexinfotech@gmail.com)
+  // Subscription is active if:
+  // 1. Current user email is bypassed (e.g. atul2.mylexinfotech@gmail.com)
+  // 2. Current user THEMSELVES directly has an active subscription
+  // 3. For a Team Member: their Company Owner has an active subscription
   const isSubscriptionActive =
     isSubscriptionBypassed ||
-    (isTeamMemberUser
-      ? companyOwnerSubscriptionActive === true
-      : isDirectlyPurchased);
+    isDirectlyPurchased ||
+    (isTeamMember && companyOwnerSubscriptionActive === true);
 
-  const isLoading = user === undefined || (Boolean(user) && isProfileLoading);
+  // Complete hydration wait: wait for profile loading AND company owner profile loading for team members!
+  const isLoading =
+    user === undefined ||
+    (Boolean(user) && (userData === null || isProfileLoading || (isTeamMember && isOwnerDocLoading)));
 
   return (
     <AuthContext.Provider

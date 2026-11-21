@@ -1,4 +1,5 @@
 import { db } from "@/lib/firebase";
+import { isSubscriptionBypassedEmail } from "@/lib/adminConfig";
 import {
   collection,
   query,
@@ -178,6 +179,8 @@ export interface PackagePriceCalculationResult {
   discountPrice: number | null;
   finalPrice: number;
   matchedSlab?: PackageVehicleSlab;
+  truckSlab?: PackageVehicleSlab | null;
+  trailerSlab?: PackageVehicleSlab | null;
   isExactMatch?: boolean;
   billingCycle: "Monthly" | "Yearly";
   currency: string;
@@ -190,6 +193,23 @@ export interface PackagePriceCalculationResult {
   trailerDiscountRate: number | null;
   truckPayable: number;
   trailerPayable: number;
+  couponCode?: string | null;
+  couponDiscountAmount?: number;
+  couponPercent?: number;
+  couponError?: string | null;
+}
+
+/**
+ * Finds the package vehicle slab matching a given unit quantity.
+ */
+export function findMatchingSlabForQuantity(
+  quantity: number,
+  slabs?: PackageVehicleSlab[]
+): PackageVehicleSlab | null {
+  if (!slabs || slabs.length === 0 || quantity <= 0) return null;
+  const sorted = [...slabs].sort((a, b) => a.fromUnit - b.fromUnit);
+  const match = sorted.find((s) => quantity >= s.fromUnit && quantity <= s.toUnit);
+  return match || null;
 }
 
 /**
@@ -234,7 +254,10 @@ export function normalizeCountryCode(country?: string | null): string {
 
 /**
  * Calculates package-based pricing for given fleet composition (trucks + trailers)
- * matching the user's unit count to a plan's packageVehicleSlabs.
+ * where Truck quantity matches a Truck Package Slab and Trailer quantity matches a Trailer Package Slab independently.
+ * Also evaluates static coupon codes:
+ * - TRENO100: 100% OFF (Monthly only)
+ * - TRENO50: 50% OFF (Monthly only)
  */
 export function calculatePackageSlabPrice(params: {
   plan: SubscriptionPlan;
@@ -244,105 +267,150 @@ export function calculatePackageSlabPrice(params: {
   countryCode?: string;
   selectedSlab?: PackageVehicleSlab | null;
   globalPricing?: GlobalVehiclePricingConfig;
+  couponCode?: string | null;
 }): PackagePriceCalculationResult {
-  const { plan, trucks, trailers, billingCycle = "Monthly", countryCode = "USA", selectedSlab, globalPricing } = params;
-  const totalVehicles = trucks + trailers;
+  const {
+    plan,
+    trucks,
+    trailers,
+    billingCycle = "Monthly",
+    countryCode = "USA",
+    globalPricing,
+    couponCode,
+  } = params;
 
   const cCode = normalizeCountryCode(countryCode);
   const isUSA = cCode === "USA";
+  const isMonthly = billingCycle === "Monthly";
 
-  // If plan has packageVehicleSlabs
-  if (plan.packageVehicleSlabs && plan.packageVehicleSlabs.length > 0) {
-    let slab: PackageVehicleSlab | undefined;
+  const slabs = plan.packageVehicleSlabs || [];
 
-    // If an explicit slab was chosen by the user, find that slab in this plan
-    if (selectedSlab) {
-      slab = plan.packageVehicleSlabs.find(
-        (s) => s.id === selectedSlab.id || (s.fromUnit === selectedSlab.fromUnit && s.toUnit === selectedSlab.toUnit)
-      );
-    }
+  if (slabs.length > 0) {
+    // 1. Independent slab lookup for Trucks & Trailers
+    const truckSlab = findMatchingSlabForQuantity(trucks, slabs);
+    const trailerSlab = findMatchingSlabForQuantity(trailers, slabs);
 
-    // Otherwise find slab matching unit count
-    if (!slab) {
-      slab = plan.packageVehicleSlabs.find(
-        (s) => totalVehicles >= s.fromUnit && totalVehicles <= s.toUnit
-      );
-    }
+    let currency = plan.currency || "USD";
+    let currencySymbol = getCurrencySymbol(plan.currency, cCode);
 
-    const isExactMatch = slab ? totalVehicles >= slab.fromUnit && totalVehicles <= slab.toUnit : false;
-
-    // If totalVehicles exceeds highest slab or is 0 and no slab selected, pick closest boundary
-    if (!slab && totalVehicles > 0) {
-      const sorted = [...plan.packageVehicleSlabs].sort((a, b) => a.fromUnit - b.fromUnit);
-      if (totalVehicles < sorted[0].fromUnit) {
-        slab = sorted[0];
-      } else {
-        slab = sorted[sorted.length - 1];
-      }
-    }
-
-    if (slab) {
-      // Look up countryData from slab.countryRates (works for USA as well as international)
-      const countryData = slab.countryRates?.[cCode] || (!isUSA ? null : slab.countryRates?.["US"]) || null;
-
-      const currency = countryData ? countryData.currency : (plan.currency || "USD");
-      const currencySymbol = countryData ? countryData.symbol : getCurrencySymbol(plan.currency, cCode);
-
-      const isMonthly = billingCycle === "Monthly";
-
-      // Raw rates from slab
-      let rawTruckRate = 0;
-      let rawTruckDisc: number | null = null;
-      let rawTrailerRate = 0;
-      let rawTrailerDisc: number | null = null;
-
+    // Truck Rates
+    let rawTruckRate = 0;
+    let rawTruckDisc: number | null = null;
+    if (truckSlab && trucks > 0) {
+      const countryData =
+        truckSlab.countryRates?.[cCode] ||
+        (!isUSA ? null : truckSlab.countryRates?.["US"]) ||
+        null;
       if (countryData) {
-        rawTruckRate = isMonthly ? countryData.truckMonthlyRate : countryData.truckYearlyRate;
-        rawTruckDisc = isMonthly ? (countryData.truckMonthlyDiscount ?? null) : (countryData.truckYearlyDiscount ?? null);
-        rawTrailerRate = isMonthly ? countryData.trailerMonthlyRate : countryData.trailerYearlyRate;
-        rawTrailerDisc = isMonthly ? (countryData.trailerMonthlyDiscount ?? null) : (countryData.trailerYearlyDiscount ?? null);
+        currency = countryData.currency;
+        currencySymbol = countryData.symbol;
+        rawTruckRate = isMonthly
+          ? countryData.truckMonthlyRate
+          : countryData.truckYearlyRate;
+        rawTruckDisc = isMonthly
+          ? (countryData.truckMonthlyDiscount ?? null)
+          : (countryData.truckYearlyDiscount ?? null);
       } else {
-        rawTruckRate = isMonthly ? slab.truckMonthlyRate : slab.truckYearlyRate;
-        rawTruckDisc = isMonthly ? (slab.truckMonthlyDiscount ?? null) : (slab.truckYearlyDiscount ?? null);
-        rawTrailerRate = isMonthly ? slab.trailerMonthlyRate : slab.trailerYearlyRate;
-        rawTrailerDisc = isMonthly ? (slab.trailerMonthlyDiscount ?? null) : (slab.trailerYearlyDiscount ?? null);
+        rawTruckRate = isMonthly
+          ? truckSlab.truckMonthlyRate
+          : truckSlab.truckYearlyRate;
+        rawTruckDisc = isMonthly
+          ? (truckSlab.truckMonthlyDiscount ?? null)
+          : (truckSlab.truckYearlyDiscount ?? null);
       }
-
-      const truckPayableUnit = rawTruckDisc && rawTruckDisc > 0 ? rawTruckDisc : rawTruckRate;
-      const trailerPayableUnit = rawTrailerDisc && rawTrailerDisc > 0 ? rawTrailerDisc : rawTrailerRate;
-
-      // Flat package calculation:
-      // If user has > 0 trucks, they pay the flat truck package rate for this slab.
-      // If user has > 0 trailers, they pay the flat trailer package rate for this slab.
-      const truckSubtotal = trucks > 0 ? rawTruckRate : 0;
-      const truckPayable = trucks > 0 ? truckPayableUnit : 0;
-
-      const trailerSubtotal = trailers > 0 ? rawTrailerRate : 0;
-      const trailerPayable = trailers > 0 ? trailerPayableUnit : 0;
-
-      const subtotal = truckSubtotal + trailerSubtotal;
-      const finalPrice = truckPayable + trailerPayable;
-      const discountPrice = finalPrice < subtotal ? finalPrice : null;
-
-      return {
-        subtotal,
-        discountPrice,
-        finalPrice,
-        matchedSlab: slab,
-        isExactMatch,
-        billingCycle,
-        currency,
-        currencySymbol,
-        trucksCount: trucks,
-        trailersCount: trailers,
-        truckRate: rawTruckRate,
-        truckDiscountRate: rawTruckDisc,
-        trailerRate: rawTrailerRate,
-        trailerDiscountRate: rawTrailerDisc,
-        truckPayable,
-        trailerPayable,
-      };
     }
+
+    // Trailer Rates
+    let rawTrailerRate = 0;
+    let rawTrailerDisc: number | null = null;
+    if (trailerSlab && trailers > 0) {
+      const countryData =
+        trailerSlab.countryRates?.[cCode] ||
+        (!isUSA ? null : trailerSlab.countryRates?.["US"]) ||
+        null;
+      if (countryData) {
+        if (!truckSlab) {
+          currency = countryData.currency;
+          currencySymbol = countryData.symbol;
+        }
+        rawTrailerRate = isMonthly
+          ? countryData.trailerMonthlyRate
+          : countryData.trailerYearlyRate;
+        rawTrailerDisc = isMonthly
+          ? (countryData.trailerMonthlyDiscount ?? null)
+          : (countryData.trailerYearlyDiscount ?? null);
+      } else {
+        rawTrailerRate = isMonthly
+          ? trailerSlab.trailerMonthlyRate
+          : trailerSlab.trailerYearlyRate;
+        rawTrailerDisc = isMonthly
+          ? (trailerSlab.trailerMonthlyDiscount ?? null)
+          : (trailerSlab.trailerYearlyDiscount ?? null);
+      }
+    }
+
+    const truckPayableUnit =
+      rawTruckDisc && rawTruckDisc > 0 ? rawTruckDisc : rawTruckRate;
+    const trailerPayableUnit =
+      rawTrailerDisc && rawTrailerDisc > 0 ? rawTrailerDisc : rawTrailerRate;
+
+    const truckSubtotal = trucks > 0 ? rawTruckRate : 0;
+    const truckPayable = trucks > 0 ? truckPayableUnit : 0;
+
+    const trailerSubtotal = trailers > 0 ? rawTrailerRate : 0;
+    const trailerPayable = trailers > 0 ? trailerPayableUnit : 0;
+
+    const baseSubtotal = truckSubtotal + trailerSubtotal;
+    let baseFinalPrice = truckPayable + trailerPayable;
+
+    // 2. Coupon Validation & Discount Calculation
+    let couponDiscountAmount = 0;
+    let couponPercent = 0;
+    let couponError: string | null = null;
+    const cleanCoupon = (couponCode || "").trim().toUpperCase();
+
+    if (cleanCoupon) {
+      if (!isMonthly) {
+        couponError = "Coupons are valid only on Monthly billing plans.";
+      } else if (cleanCoupon === "TRENO100") {
+        couponPercent = 100;
+        couponDiscountAmount = baseFinalPrice;
+        baseFinalPrice = 0;
+      } else if (cleanCoupon === "TRENO50") {
+        couponPercent = 50;
+        couponDiscountAmount = Math.round(baseFinalPrice * 0.5 * 100) / 100;
+        baseFinalPrice = Math.max(0, baseFinalPrice - couponDiscountAmount);
+      } else {
+        couponError = "Invalid coupon code.";
+      }
+    }
+
+    const discountPrice =
+      baseFinalPrice < baseSubtotal ? baseFinalPrice : null;
+
+    return {
+      subtotal: baseSubtotal,
+      discountPrice,
+      finalPrice: baseFinalPrice,
+      matchedSlab: truckSlab || trailerSlab || undefined,
+      truckSlab,
+      trailerSlab,
+      billingCycle,
+      currency,
+      currencySymbol,
+      trucksCount: trucks,
+      trailersCount: trailers,
+      truckRate: rawTruckRate,
+      truckDiscountRate: rawTruckDisc,
+      trailerRate: rawTrailerRate,
+      trailerDiscountRate: rawTrailerDisc,
+      truckPayable,
+      trailerPayable,
+      couponCode: cleanCoupon || null,
+      couponDiscountAmount,
+      couponPercent,
+      couponError,
+    };
   }
 
   // Fallback to legacy calculation
@@ -356,14 +424,38 @@ export function calculatePackageSlabPrice(params: {
   const currencySymbol = getCurrencySymbol(plan.currency, cCode);
   const multiplier = billingCycle === "Yearly" ? 10 : 1;
 
-  const subtotal = legacy.subtotal * multiplier;
-  const finalPrice = legacy.finalPrice * multiplier;
-  const discountPrice = legacy.discountPrice !== null ? legacy.discountPrice * multiplier : null;
+  const baseSubtotal = legacy.subtotal * multiplier;
+  let baseFinalPrice = legacy.finalPrice * multiplier;
+
+  // Coupon application on legacy fallback
+  let couponDiscountAmount = 0;
+  let couponPercent = 0;
+  let couponError: string | null = null;
+  const cleanCoupon = (couponCode || "").trim().toUpperCase();
+
+  if (cleanCoupon) {
+    if (!isMonthly) {
+      couponError = "Coupons are valid only on Monthly billing plans.";
+    } else if (cleanCoupon === "TRENO100") {
+      couponPercent = 100;
+      couponDiscountAmount = baseFinalPrice;
+      baseFinalPrice = 0;
+    } else if (cleanCoupon === "TRENO50") {
+      couponPercent = 50;
+      couponDiscountAmount = Math.round(baseFinalPrice * 0.5 * 100) / 100;
+      baseFinalPrice = Math.max(0, baseFinalPrice - couponDiscountAmount);
+    } else {
+      couponError = "Invalid coupon code.";
+    }
+  }
+
+  const discountPrice =
+    baseFinalPrice < baseSubtotal ? baseFinalPrice : null;
 
   return {
-    subtotal,
+    subtotal: baseSubtotal,
     discountPrice,
-    finalPrice,
+    finalPrice: baseFinalPrice,
     billingCycle,
     currency: plan.currency || "USD",
     currencySymbol,
@@ -375,5 +467,140 @@ export function calculatePackageSlabPrice(params: {
     trailerDiscountRate: null,
     truckPayable: trucks * legacy.truckRate * multiplier,
     trailerPayable: trailers * legacy.trailerRate * multiplier,
+    couponCode: cleanCoupon || null,
+    couponDiscountAmount,
+    couponPercent,
+    couponError,
   };
+}
+
+/**
+ * Checks if a user or owner document has an active subscription.
+ * Validates:
+ * 1. Email whitelist bypass (e.g. atul2.mylexinfotech@gmail.com)
+ * 2. isSubscriptionPurchase truthy (boolean or "true" string)
+ * 3. currentSubscription.status in ["active", "trialing", "paid", "complete", "completed", "succeeded"]
+ * 4. currentSubscription has a valid planId or planName
+ * 5. Direct planId or subscribedPlanId on document
+ */
+export function checkHasActiveSubscription(data: any): boolean {
+  if (!data) return false;
+
+  // 1. Email whitelist bypass
+  if (data.email && isSubscriptionBypassedEmail(data.email)) return true;
+
+  // 2. Direct boolean or truthy string for subscription purchase indicators
+  if (
+    data.isSubscriptionPurchase === true ||
+    String(data.isSubscriptionPurchase).toLowerCase() === "true" ||
+    data.isSubscriptionPurchased === true ||
+    String(data.isSubscriptionPurchased).toLowerCase() === "true" ||
+    data.subscriptionPurchased === true ||
+    String(data.subscriptionPurchased).toLowerCase() === "true" ||
+    data.subscription_purchased === true ||
+    String(data.subscription_purchased).toLowerCase() === "true" ||
+    data.isSubscribed === true ||
+    String(data.isSubscribed).toLowerCase() === "true" ||
+    data.hasActiveSubscription === true ||
+    String(data.hasActiveSubscription).toLowerCase() === "true" ||
+    data.planPurchased === true ||
+    data.isPlanPurchased === true
+  ) {
+    return true;
+  }
+
+  // 3. Subscription snapshot object on user doc (currentSubscription, subscription, plan, currentPlan)
+  const sub =
+    data.currentSubscription ||
+    data.subscription ||
+    data.currentPlan ||
+    data.plan ||
+    data.activeSubscription;
+
+  if (sub && typeof sub === "object") {
+    const status = String(sub.status || "").toLowerCase().trim();
+    if (
+      status === "active" ||
+      status === "trialing" ||
+      status === "paid" ||
+      status === "complete" ||
+      status === "completed" ||
+      status === "succeeded" ||
+      status === "open"
+    ) {
+      return true;
+    }
+    // If status is empty/missing but a valid plan identifier exists
+    if (!status && (sub.planId || sub.planName || sub.name || sub.id)) {
+      return true;
+    }
+  }
+
+  // 4. Any direct plan identifier or name on the user document itself
+  if (
+    data.planId ||
+    data.subscribedPlanId ||
+    data.currentPlanId ||
+    data.planName ||
+    data.subscribedPlanName
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Determines whether a given user document belongs to a Team Member.
+ * Returns true if:
+ * - isTeamMember === true
+ * - createdBy points to another user UID
+ * - role is one of the team member roles (Dispatcher, SubOwner, Sub-Owner, Manager, Staff, Accountant, Safety, etc.)
+ */
+export function isUserTeamMember(data: any, currentUid?: string): boolean {
+  if (!data) return false;
+  if (data.isTeamMember === true) return true;
+
+  const role = typeof data.role === "string" ? data.role.trim() : "";
+  const teamMemberRoles = [
+    "dispatcher",
+    "subowner",
+    "sub-owner",
+    "manager",
+    "co-owner",
+    "staff",
+    "accountant",
+    "safety",
+  ];
+  if (role && teamMemberRoles.includes(role.toLowerCase())) {
+    return true;
+  }
+
+  // If createdBy is provided and is different from current user uid
+  const uid = currentUid || data.uid;
+  if (data.createdBy && uid && data.createdBy !== uid) {
+    return true;
+  }
+
+  if (role && role.toLowerCase() !== "owner" && data.createdBy) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Determines whether a user is a Company Owner.
+ */
+export function isUserOwner(data: any, currentUid?: string): boolean {
+  if (!data) return false;
+  if (isUserTeamMember(data, currentUid)) return false;
+  const role = typeof data.role === "string" ? data.role.trim().toLowerCase() : "";
+  if (role === "owner" || data.isOwner === true) return true;
+
+  const uid = currentUid || data.uid;
+  if (!data.createdBy || (uid && data.createdBy === uid)) {
+    return true;
+  }
+  return false;
 }
