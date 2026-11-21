@@ -14,6 +14,7 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const ownerUid = searchParams.get("ownerUid");
+  const isFreePlan = searchParams.get("free") === "true";
 
   const [loading, setLoading] = useState(true);
   const [verifiedPlanName, setVerifiedPlanName] = useState<string>("Fleet Membership");
@@ -37,6 +38,43 @@ function SuccessContent() {
     let isMounted = true;
 
     async function verifyAndFinalize() {
+      // 1. FREE PLAN ACTIVATION FLOW (TRENO100)
+      if (isFreePlan) {
+        const targetOwnerUid = ownerUid || auth.currentUser?.uid;
+        let pName = searchParams.get("planName") || "Fleet Membership (100% Free Promo)";
+        let rangeStr = searchParams.get("range") || "";
+        let trucksNum = parseInt(searchParams.get("trucks") || "0", 10);
+        let trailersNum = parseInt(searchParams.get("trailers") || "0", 10);
+
+        if (targetOwnerUid && (!rangeStr || (!trucksNum && !trailersNum))) {
+          try {
+            const userSnap = await getDoc(doc(db, "users", targetOwnerUid));
+            if (userSnap.exists()) {
+              const uData = userSnap.data();
+              if (uData.subscriptionPlan?.name) pName = uData.subscriptionPlan.name;
+              if (uData.vehicleRange) rangeStr = uData.vehicleRange;
+              if (uData.trucksCount !== undefined) trucksNum = uData.trucksCount;
+              if (uData.trailersCount !== undefined) trailersNum = uData.trailersCount;
+            }
+          } catch (e) {
+            console.warn("Could not fetch user details for free plan:", e);
+          }
+        }
+
+        if (isMounted) {
+          setVerifiedPlanName(pName);
+          setFleetDetails({
+            range: rangeStr || `${trucksNum} Trucks, ${trailersNum} Trailers`,
+            trucks: isNaN(trucksNum) ? 0 : trucksNum,
+            trailers: isNaN(trailersNum) ? 0 : trailersNum,
+            amount: 0,
+            currency: "USD",
+          });
+          setLoading(false);
+        }
+        return;
+      }
+
       if (!sessionId) {
         setError("Invalid checkout session.");
         setLoading(false);
@@ -194,7 +232,11 @@ function SuccessContent() {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#58BB87]/10 text-[#58BB87] text-xs font-bold">
             <ShieldCheck size={14} />
-            <span>Membership Activated Successfully</span>
+            <span>
+              {isFreePlan
+                ? "100% Free Promo Membership Activated"
+                : "Membership Activated Successfully"}
+            </span>
           </div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">
             Welcome to Treno Fleet!
@@ -226,8 +268,10 @@ function SuccessContent() {
           </div>
           <div className="flex items-center justify-between text-xs font-bold text-gray-900 pt-2 border-t border-slate-200">
             <span>Amount Paid:</span>
-            <span className="text-[#58BB87] text-sm">
-              ${fleetDetails.amount} {fleetDetails.currency}
+            <span className="text-[#58BB87] text-sm font-bold">
+              {fleetDetails.amount === 0
+                ? "$0.00 (100% Free Promo)"
+                : `$${fleetDetails.amount} ${fleetDetails.currency}`}
             </span>
           </div>
         </div>

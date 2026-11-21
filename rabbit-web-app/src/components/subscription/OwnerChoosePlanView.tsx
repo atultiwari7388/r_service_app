@@ -283,6 +283,14 @@ export default function OwnerChoosePlanView() {
     appliedCoupon,
   ]);
 
+  // Package Slab Discount & Total Savings
+  const packageDiscount = Math.max(
+    0,
+    priceCalc.subtotal - (priceCalc.truckPayable + priceCalc.trailerPayable)
+  );
+  const totalSavings =
+    packageDiscount + (priceCalc.couponDiscountAmount || 0);
+
   // Handle Coupon Apply
   const handleApplyCoupon = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -379,7 +387,10 @@ export default function OwnerChoosePlanView() {
 
         toast.dismiss("free-act");
         toast.success("100% Free Plan activated successfully! Welcome to Trenoops.");
-        router.push("/choose-plan/success?free=true");
+        const freeUrl = `/choose-plan/success?free=true&planName=${encodeURIComponent(
+          primaryPlan.name
+        )}&range=${encodeURIComponent(matchedRangeStr)}&trucks=${trucksCount}&trailers=${trailersCount}&ownerUid=${currentUser.uid}`;
+        router.push(freeUrl);
         return;
       } catch (err: any) {
         toast.dismiss("free-act");
@@ -662,16 +673,33 @@ export default function OwnerChoosePlanView() {
                   {trucksCount === 0 ? (
                     <span className="text-gray-400 font-medium">0 Trucks ($0)</span>
                   ) : truckSlab ? (
-                    <span className="font-bold text-[#F96176] bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-[11px]">
-                      {truckSlab.fromUnit === truckSlab.toUnit
-                        ? `${truckSlab.fromUnit} Truck Package`
-                        : `${truckSlab.fromUnit}-${truckSlab.toUnit} Trucks Package`}{" "}
-                      • {priceCalc.currencySymbol}
-                      {billingCycle === "Monthly"
-                        ? truckSlab.truckMonthlyDiscount ?? truckSlab.truckMonthlyRate
-                        : truckSlab.truckYearlyDiscount ?? truckSlab.truckYearlyRate}
-                      /{billingCycle === "Monthly" ? "mo" : "yr"}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-[#F96176] bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md text-[11px] flex items-center gap-1">
+                        <span>
+                          {truckSlab.fromUnit === truckSlab.toUnit
+                            ? `${truckSlab.fromUnit} Truck Package`
+                            : `${truckSlab.fromUnit}-${truckSlab.toUnit} Trucks Package`}{" "}
+                          •
+                        </span>
+                        {priceCalc.truckRate > priceCalc.truckPayable && (
+                          <span className="line-through text-gray-400 font-normal">
+                            {priceCalc.currencySymbol}
+                            {priceCalc.truckRate}
+                          </span>
+                        )}
+                        <span>
+                          {priceCalc.currencySymbol}
+                          {priceCalc.truckPayable}/
+                          {billingCycle === "Monthly" ? "mo" : "yr"}
+                        </span>
+                      </span>
+                      {priceCalc.truckRate > priceCalc.truckPayable && (
+                        <span className="text-[10px] font-bold text-[#58BB87] bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-md">
+                          Save {priceCalc.currencySymbol}
+                          {(priceCalc.truckRate - priceCalc.truckPayable).toFixed(0)}
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md text-[10px]">
@@ -741,16 +769,33 @@ export default function OwnerChoosePlanView() {
                   {trailersCount === 0 ? (
                     <span className="text-gray-400 font-medium">0 Trailers ($0)</span>
                   ) : trailerSlab ? (
-                    <span className="font-bold text-[#58BB87] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px]">
-                      {trailerSlab.fromUnit === trailerSlab.toUnit
-                        ? `${trailerSlab.fromUnit} Trailer Package`
-                        : `${trailerSlab.fromUnit}-${trailerSlab.toUnit} Trailers Package`}{" "}
-                      • {priceCalc.currencySymbol}
-                      {billingCycle === "Monthly"
-                        ? trailerSlab.trailerMonthlyDiscount ?? trailerSlab.trailerMonthlyRate
-                        : trailerSlab.trailerYearlyDiscount ?? trailerSlab.trailerYearlyRate}
-                      /{billingCycle === "Monthly" ? "mo" : "yr"}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-[#58BB87] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px] flex items-center gap-1">
+                        <span>
+                          {trailerSlab.fromUnit === trailerSlab.toUnit
+                            ? `${trailerSlab.fromUnit} Trailer Package`
+                            : `${trailerSlab.fromUnit}-${trailerSlab.toUnit} Trailers Package`}{" "}
+                          •
+                        </span>
+                        {priceCalc.trailerRate > priceCalc.trailerPayable && (
+                          <span className="line-through text-gray-400 font-normal">
+                            {priceCalc.currencySymbol}
+                            {priceCalc.trailerRate}
+                          </span>
+                        )}
+                        <span>
+                          {priceCalc.currencySymbol}
+                          {priceCalc.trailerPayable}/
+                          {billingCycle === "Monthly" ? "mo" : "yr"}
+                        </span>
+                      </span>
+                      {priceCalc.trailerRate > priceCalc.trailerPayable && (
+                        <span className="text-[10px] font-bold text-[#58BB87] bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-md">
+                          Save {priceCalc.currencySymbol}
+                          {(priceCalc.trailerRate - priceCalc.trailerPayable).toFixed(0)}
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md text-[10px]">
@@ -906,10 +951,18 @@ export default function OwnerChoosePlanView() {
                     ):
                   </span>
                 </div>
-                <span className="font-bold text-gray-900">
-                  {priceCalc.currencySymbol}
-                  {priceCalc.truckPayable.toFixed(2)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {priceCalc.truckRate > priceCalc.truckPayable && (
+                    <span className="line-through text-gray-400 font-medium">
+                      {priceCalc.currencySymbol}
+                      {priceCalc.truckRate.toFixed(2)}
+                    </span>
+                  )}
+                  <span className="font-bold text-gray-900">
+                    {priceCalc.currencySymbol}
+                    {priceCalc.truckPayable.toFixed(2)}
+                  </span>
+                </div>
               </div>
 
               {/* Trailer Line Item */}
@@ -924,20 +977,46 @@ export default function OwnerChoosePlanView() {
                     ):
                   </span>
                 </div>
-                <span className="font-bold text-gray-900">
-                  {priceCalc.currencySymbol}
-                  {priceCalc.trailerPayable.toFixed(2)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {priceCalc.trailerRate > priceCalc.trailerPayable && (
+                    <span className="line-through text-gray-400 font-medium">
+                      {priceCalc.currencySymbol}
+                      {priceCalc.trailerRate.toFixed(2)}
+                    </span>
+                  )}
+                  <span className="font-bold text-gray-900">
+                    {priceCalc.currencySymbol}
+                    {priceCalc.trailerPayable.toFixed(2)}
+                  </span>
+                </div>
               </div>
 
               {/* Subtotal */}
               <div className="pt-2 border-t border-gray-200/80 flex items-center justify-between text-xs text-gray-600">
-                <span>Subtotal ({billingCycle}):</span>
+                <span>
+                  {packageDiscount > 0
+                    ? `Regular Subtotal (${billingCycle}):`
+                    : `Subtotal (${billingCycle}):`}
+                </span>
                 <span className="font-bold text-gray-800">
                   {priceCalc.currencySymbol}
                   {priceCalc.subtotal.toFixed(2)}
                 </span>
               </div>
+
+              {/* Package Instant Slab Discount */}
+              {packageDiscount > 0 && (
+                <div className="flex items-center justify-between text-xs text-[#58BB87] font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles size={13} />
+                    <span>Package Slab Discount:</span>
+                  </div>
+                  <span className="font-bold">
+                    -{priceCalc.currencySymbol}
+                    {packageDiscount.toFixed(2)}
+                  </span>
+                </div>
+              )}
 
               {/* Applied Coupon Discount Row */}
               {appliedCoupon && (
@@ -964,7 +1043,13 @@ export default function OwnerChoosePlanView() {
                     Billed {billingCycle.toLowerCase()} • Cancel anytime
                   </span>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex items-center gap-2">
+                  {totalSavings > 0 && (
+                    <span className="line-through text-gray-400 text-xs sm:text-sm font-semibold">
+                      {priceCalc.currencySymbol}
+                      {priceCalc.subtotal.toFixed(2)}
+                    </span>
+                  )}
                   <span className="text-xl sm:text-2xl font-black text-gray-900">
                     {priceCalc.currencySymbol}
                     {priceCalc.finalPrice.toFixed(2)}
@@ -975,6 +1060,17 @@ export default function OwnerChoosePlanView() {
                 </div>
               </div>
             </div>
+
+            {/* Total Savings Callout Badge */}
+            {totalSavings > 0 && (
+              <div className="mb-4 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-center text-xs font-bold text-[#58BB87] flex items-center justify-center gap-1.5 shadow-2xs">
+                <Sparkles size={14} />
+                <span>
+                  🎉 You save {priceCalc.currencySymbol}
+                  {totalSavings.toFixed(2)} on this fleet package!
+                </span>
+              </div>
+            )}
 
             {/* Coupon Code Input Box */}
             <div className="mb-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
