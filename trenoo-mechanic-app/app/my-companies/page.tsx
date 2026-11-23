@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { useAuth } from "@/contexts/AuthContexts";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import {
   collection,
   doc,
@@ -14,6 +14,7 @@ import {
   writeBatch,
   serverTimestamp,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import toast from "react-hot-toast";
 import {
   Building2,
@@ -29,56 +30,42 @@ import {
   Star,
   ShieldCheck,
   Truck,
+  Camera,
+  FileText,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { CompanyType } from "@/types/company";
 import {
   SUPPORTED_COUNTRIES,
-  COUNTRY_REGISTRATION_FIELDS,
   normalizeCountry,
-  ALL_COUNTRY_REGISTRATION_KEYS,
   SupportedCountry,
 } from "@/lib/countryFields";
 
 interface CompanyFormData {
-  companyName: string;
-  dot: string;
-  mc: string;
-  nsc: string;
-  cvor: string;
-  nir: string;
-  cbsa: string;
-  rfc: string;
-  ftp: string;
-  voln: string;
-  abn: string;
-  hva: string;
+  businessName: string;
   address: string;
   city: string;
   state: string;
   country: SupportedCountry;
-  postalCode?: string;
+  postalCode: string;
+  logoUrl: string;
+  businessLicense: string;
+  sellerPermit: string;
   isDefault: boolean;
   isActive: boolean;
 }
 
 const initialFormData: CompanyFormData = {
-  companyName: "",
-  dot: "",
-  mc: "",
-  nsc: "",
-  cvor: "",
-  nir: "",
-  cbsa: "",
-  rfc: "",
-  ftp: "",
-  voln: "",
-  abn: "",
-  hva: "",
+  businessName: "",
   address: "",
   city: "",
   state: "",
   country: "USA",
   postalCode: "",
+  logoUrl: "",
+  businessLicense: "",
+  sellerPermit: "",
   isDefault: false,
   isActive: true,
 };
@@ -95,6 +82,12 @@ export default function MyCompaniesPage() {
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [formData, setFormData] = useState<CompanyFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Logo upload state
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Active action dropdown
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
@@ -134,23 +127,20 @@ export default function MyCompaniesPage() {
           const data = docSnap.data();
           loaded.push({
             id: docSnap.id,
-            companyName: data.companyName || "Unnamed Company",
+            companyName: data.companyName || data.businessName || "Unnamed Business",
+            businessName: data.businessName || data.companyName || "Unnamed Business",
+            logoUrl: data.logoUrl || data.logo || "",
+            logo: data.logo || data.logoUrl || "",
+            businessLicense: data.businessLicense || "",
+            sellerPermit: data.sellerPermit || "",
             dot: data.dot || "",
             mc: data.mc || "",
-            nsc: data.nsc || "",
-            cvor: data.cvor || "",
-            nir: data.nir || "",
-            cbsa: data.cbsa || "",
-            rfc: data.rfc || "",
-            ftp: data.ftp || "",
-            voln: data.voln || "",
-            abn: data.abn || "",
-            hva: data.hva || "",
             address: data.address || "",
             city: data.city || "",
             state: data.state || "",
             country: data.country || "USA",
-            postalCode: data.postalCode || "",
+            postalCode: data.postalCode || data.zipCode || "",
+            zipCode: data.zipCode || data.postalCode || "",
             isDefault: Boolean(data.isDefault),
             isActive: data.isActive !== false,
             created_at: data.created_at,
@@ -175,39 +165,65 @@ export default function MyCompaniesPage() {
     return [...companies].sort((a, b) => {
       if (a.isDefault && !b.isDefault) return -1;
       if (!a.isDefault && b.isDefault) return 1;
-      return a.companyName.localeCompare(b.companyName);
+      const nameA = a.businessName || a.companyName || "";
+      const nameB = b.businessName || b.companyName || "";
+      return nameA.localeCompare(nameB);
     });
   }, [companies]);
+
+  // Handle Logo file select
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload a valid image file (PNG, JPG, WebP)");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Logo file must be under 5MB");
+      return;
+    }
+
+    setLogoFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setLogoPreview(previewUrl);
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setFormData((prev) => ({ ...prev, logoUrl: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const handleOpenAddModal = () => {
     setEditingCompanyId(null);
     setFormData(initialFormData);
+    setLogoFile(null);
+    setLogoPreview(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (company: CompanyType) => {
     setEditingCompanyId(company.id);
+    const existingLogo = company.logoUrl || company.logo || "";
     setFormData({
-      companyName: company.companyName,
-      dot: company.dot || "",
-      mc: company.mc || "",
-      nsc: company.nsc || "",
-      cvor: company.cvor || "",
-      nir: company.nir || "",
-      cbsa: company.cbsa || "",
-      rfc: company.rfc || "",
-      ftp: company.ftp || "",
-      voln: company.voln || "",
-      abn: company.abn || "",
-      hva: company.hva || "",
+      businessName: company.businessName || company.companyName || "",
       address: company.address || "",
       city: company.city || "",
       state: company.state || "",
       country: normalizeCountry(company.country),
-      postalCode: company.postalCode || "",
+      postalCode: company.postalCode || company.zipCode || "",
+      logoUrl: existingLogo,
+      businessLicense: company.businessLicense || "",
+      sellerPermit: company.sellerPermit || "",
       isDefault: company.isDefault,
       isActive: company.isActive,
     });
+    setLogoFile(null);
+    setLogoPreview(existingLogo || null);
     setIsModalOpen(true);
   };
 
@@ -235,13 +251,13 @@ export default function MyCompaniesPage() {
       return;
     }
 
-    if (!formData.companyName.trim()) {
-      toast.error("Company Name is required");
+    if (!formData.businessName.trim()) {
+      toast.error("Business Name / Workshop Name is required");
       return;
     }
 
     if (!formData.address.trim()) {
-      toast.error("Street address is required");
+      toast.error("Business Address is required");
       return;
     }
 
@@ -258,6 +274,30 @@ export default function MyCompaniesPage() {
     setIsSubmitting(true);
 
     try {
+      let finalLogoUrl = formData.logoUrl;
+
+      // Upload new logo if selected
+      if (logoFile) {
+        setIsUploadingLogo(true);
+        try {
+          const fileExt = logoFile.name.split(".").pop() || "png";
+          const storageRef = ref(
+            storage,
+            `company_logos/${effectiveMechanicId}/logo_${Date.now()}.${fileExt}`
+          );
+          const snapshot = await uploadBytes(storageRef, logoFile);
+          finalLogoUrl = await getDownloadURL(snapshot.ref);
+        } catch (uploadErr: any) {
+          console.error("Error uploading logo:", uploadErr);
+          toast.error("Failed to upload business logo: " + (uploadErr.message || ""));
+          setIsSubmitting(false);
+          setIsUploadingLogo(false);
+          return;
+        } finally {
+          setIsUploadingLogo(false);
+        }
+      }
+
       const companiesRef = collection(db, "Mechanics", effectiveMechanicId, "myCompanies");
       const existingSnapshot = await getDocs(companiesRef);
       const isFirstCompany = existingSnapshot.empty;
@@ -275,25 +315,20 @@ export default function MyCompaniesPage() {
       }
 
       const payload = {
-        companyName: formData.companyName.trim(),
-        dot: formData.dot.trim(),
-        mc: formData.mc.trim(),
-        nsc: formData.nsc.trim(),
-        cvor: formData.cvor.trim(),
-        nir: formData.nir.trim(),
-        cbsa: formData.cbsa.trim(),
-        rfc: formData.rfc.trim(),
-        ftp: formData.ftp.trim(),
-        voln: formData.voln.trim(),
-        abn: formData.abn.trim(),
-        hva: formData.hva.trim(),
+        companyName: formData.businessName.trim(), // backward-compatible
+        businessName: formData.businessName.trim(),
         address: formData.address.trim(),
         city: formData.city.trim(),
         state: formData.state.trim(),
         country: formData.country.trim(),
         postalCode: (formData.postalCode || "").trim(),
+        zipCode: (formData.postalCode || "").trim(),
+        logoUrl: finalLogoUrl || "",
+        logo: finalLogoUrl || "",
+        businessLicense: (formData.businessLicense || "").trim(),
+        sellerPermit: (formData.sellerPermit || "").trim(),
         isDefault: makeDefault,
-        isActive: formData.isActive,
+        isActive: editingCompanyId ? formData.isActive : true,
         updated_at: serverTimestamp(),
       };
 
@@ -314,23 +349,14 @@ export default function MyCompaniesPage() {
       // Sync root mechanic document if default
       if (makeDefault) {
         await updateDoc(doc(db, "Mechanics", effectiveMechanicId), {
-          companyName: formData.companyName.trim(),
-          dot: formData.dot.trim(),
-          mc: formData.mc.trim(),
-          nsc: formData.nsc.trim(),
-          cvor: formData.cvor.trim(),
-          nir: formData.nir.trim(),
-          cbsa: formData.cbsa.trim(),
-          rfc: formData.rfc.trim(),
-          ftp: formData.ftp.trim(),
-          voln: formData.voln.trim(),
-          abn: formData.abn.trim(),
-          hva: formData.hva.trim(),
+          companyName: formData.businessName.trim(),
+          businessName: formData.businessName.trim(),
           address: formData.address.trim(),
           city: formData.city.trim(),
           state: formData.state.trim(),
           country: formData.country.trim(),
           postalCode: (formData.postalCode || "").trim(),
+          logoUrl: finalLogoUrl || "",
           updated_at: new Date(),
         });
       }
@@ -365,27 +391,18 @@ export default function MyCompaniesPage() {
 
       // Sync root mechanic profile document
       await updateDoc(doc(db, "Mechanics", effectiveMechanicId), {
-        companyName: company.companyName,
-        dot: company.dot || "",
-        mc: company.mc || "",
-        nsc: company.nsc || "",
-        cvor: company.cvor || "",
-        nir: company.nir || "",
-        cbsa: company.cbsa || "",
-        rfc: company.rfc || "",
-        ftp: company.ftp || "",
-        voln: company.voln || "",
-        abn: company.abn || "",
-        hva: company.hva || "",
+        companyName: company.businessName || company.companyName,
+        businessName: company.businessName || company.companyName,
         address: company.address || "",
         city: company.city || "",
         state: company.state || "",
         country: company.country || "",
-        postalCode: company.postalCode || "",
+        postalCode: company.postalCode || company.zipCode || "",
+        logoUrl: company.logoUrl || company.logo || "",
         updated_at: new Date(),
       });
 
-      toast.success(`${company.companyName} set as default company`);
+      toast.success(`${company.businessName || company.companyName} set as default company`);
     } catch (error) {
       console.error("Error setting default company:", error);
       toast.error("Failed to set default company");
@@ -493,9 +510,6 @@ export default function MyCompaniesPage() {
               ].filter(Boolean);
               const fullAddress = addressParts.join(", ");
 
-              const countryKey = normalizeCountry(company.country);
-              const fieldConfigs = COUNTRY_REGISTRATION_FIELDS[countryKey] || [];
-
               return (
                 <div
                   key={company.id}
@@ -509,18 +523,26 @@ export default function MyCompaniesPage() {
                     {/* Header Row */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={`p-3 rounded-xl shrink-0 ${
-                            company.isDefault && isOwner
-                              ? "bg-rose-50 text-[#F96176]"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          <Building2 size={20} />
-                        </div>
+                        {company.logoUrl || company.logo ? (
+                          <img
+                            src={company.logoUrl || company.logo}
+                            alt={company.businessName || company.companyName}
+                            className="w-12 h-12 rounded-xl object-cover border border-gray-200 shrink-0 bg-white shadow-2xs"
+                          />
+                        ) : (
+                          <div
+                            className={`p-3 rounded-xl shrink-0 ${
+                              company.isDefault && isOwner
+                                ? "bg-rose-50 text-[#F96176]"
+                                : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            <Building2 size={20} />
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <h3 className="text-base font-bold text-gray-900 truncate">
-                            {company.companyName}
+                            {company.businessName || company.companyName}
                           </h3>
                           <div className="flex items-center gap-1.5 mt-1">
                             {/* Active / Closed Badge */}
@@ -618,24 +640,25 @@ export default function MyCompaniesPage() {
                       )}
                     </div>
 
-                    {/* Country & Authority Badges */}
+                    {/* Country, License & Permit Badges (No DOT/MC) */}
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {company.country && (
                         <span className="inline-block px-2 py-0.5 bg-rose-50 text-[#F96176] text-[11px] font-bold rounded-md border border-rose-200">
                           {normalizeCountry(company.country)}
                         </span>
                       )}
-                      {fieldConfigs
-                        .filter((f) => Boolean(company[f.key as keyof CompanyType]))
-                        .map((f) => (
-                          <span
-                            key={f.key}
-                            className="inline-block px-2 py-0.5 bg-gray-100 text-gray-800 text-[11px] font-medium rounded-md border border-gray-200"
-                          >
-                            <span className="font-bold">{f.badgeLabel}:</span>{" "}
-                            {String(company[f.key as keyof CompanyType])}
-                          </span>
-                        ))}
+                      {company.businessLicense && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-800 text-[11px] font-medium rounded-md border border-gray-200">
+                          <ShieldCheck size={11} className="text-[#58BB87]" />
+                          <span className="font-bold">License:</span> {company.businessLicense}
+                        </span>
+                      )}
+                      {company.sellerPermit && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-800 text-[11px] font-medium rounded-md border border-gray-200">
+                          <FileText size={11} className="text-gray-500" />
+                          <span className="font-bold">Resale Permit:</span> {company.sellerPermit}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -681,15 +704,69 @@ export default function MyCompaniesPage() {
 
               {/* Form */}
               <form onSubmit={handleSaveCompany} className="mt-5 space-y-4 text-xs">
-                {/* 1. Company Name */}
+                {/* 1. Business Logo Upload */}
+                <div>
+                  <label className="block text-gray-700 font-bold mb-1.5">
+                    Business Logo
+                  </label>
+                  <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div className="w-16 h-16 rounded-xl border border-gray-200 bg-white overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
+                      {logoPreview || formData.logoUrl ? (
+                        <img
+                          src={logoPreview || formData.logoUrl}
+                          alt="Business Logo"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-gray-300 flex flex-col items-center justify-center">
+                          <Building2 size={24} />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept="image/*"
+                        onChange={handleLogoSelect}
+                        className="hidden"
+                        id="company-logo-input"
+                      />
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="company-logo-input"
+                          className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:border-[#F96176] text-gray-700 hover:text-[#F96176] text-xs font-semibold cursor-pointer transition shadow-2xs inline-flex items-center gap-1.5"
+                        >
+                          <Camera size={13} />
+                          <span>{logoPreview || formData.logoUrl ? "Change Logo" : "Upload Logo"}</span>
+                        </label>
+                        {(logoPreview || formData.logoUrl) && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveLogo}
+                            className="px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 text-xs font-semibold cursor-pointer transition border border-transparent hover:border-rose-100"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        Recommended: Square PNG, JPG or WebP (Max 5MB)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Business Name / Workshop Name */}
                 <div>
                   <label className="block text-gray-700 font-bold mb-1">
-                    Company / Workshop Name <span className="text-red-500">*</span>
+                    Business Name / Workshop Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="companyName"
-                    value={formData.companyName}
+                    name="businessName"
+                    value={formData.businessName}
                     onChange={handleFormChange}
                     placeholder="e.g. Metro Mobile Truck Repair LLC"
                     required
@@ -697,53 +774,10 @@ export default function MyCompaniesPage() {
                   />
                 </div>
 
-                {/* 2. Country Selection */}
+                {/* 3. Business Address */}
                 <div>
                   <label className="block text-gray-700 font-bold mb-1">
-                    Country <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="country"
-                    value={formData.country}
-                    onChange={handleFormChange}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 bg-white focus:outline-hidden focus:border-[#F96176] font-medium"
-                  >
-                    {SUPPORTED_COUNTRIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 3. Dynamic Authority Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="sm:col-span-2 text-[11px] font-bold text-gray-600 flex items-center gap-1.5 mb-1">
-                    <ShieldCheck size={14} className="text-[#58BB87]" />
-                    <span>{formData.country} Authority & Certification Numbers</span>
-                  </div>
-
-                  {(COUNTRY_REGISTRATION_FIELDS[formData.country] || []).map((f) => (
-                    <div key={f.key}>
-                      <label className="block text-gray-600 font-semibold mb-1 text-[11px]">
-                        {f.label}
-                      </label>
-                      <input
-                        type="text"
-                        name={f.key}
-                        value={(formData as any)[f.key] || ""}
-                        onChange={handleFormChange}
-                        placeholder={f.placeholder}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-900 bg-white focus:outline-hidden focus:border-[#F96176]"
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* 4. Address Details */}
-                <div>
-                  <label className="block text-gray-700 font-bold mb-1">
-                    Street Address <span className="text-red-500">*</span>
+                    Business Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -756,7 +790,8 @@ export default function MyCompaniesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                {/* 4. City, State & Zip / Postal Code */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">
                       City <span className="text-red-500">*</span>
@@ -789,47 +824,71 @@ export default function MyCompaniesPage() {
 
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">
-                      Postal Code
+                      Zip / Postal Code <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       name="postalCode"
-                      value={formData.postalCode || ""}
+                      value={formData.postalCode}
                       onChange={handleFormChange}
                       placeholder="e.g. 75001"
+                      required
                       className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-hidden focus:border-[#F96176]"
                     />
                   </div>
                 </div>
 
-                {/* 5. Checkboxes */}
-                <div className="pt-2 space-y-2 border-t border-gray-100">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="isDefault"
-                      checked={formData.isDefault}
-                      onChange={handleFormChange}
-                      className="h-4 w-4 rounded-sm border-gray-300 text-[#F96176] focus:ring-[#F96176]"
-                    />
-                    <span className="text-xs font-semibold text-gray-800">
-                      Set as primary default dispatch company
-                    </span>
+                {/* 5. Country Selection */}
+                <div>
+                  <label className="block text-gray-700 font-bold mb-1">
+                    Country
                   </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="isActive"
-                      checked={formData.isActive}
-                      onChange={handleFormChange}
-                      className="h-4 w-4 rounded-sm border-gray-300 text-[#58BB87] focus:ring-[#58BB87]"
-                    />
-                    <span className="text-xs font-semibold text-gray-800">
-                      Mark company as active for fleet requests
-                    </span>
-                  </label>
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={handleFormChange}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 bg-white focus:outline-hidden focus:border-[#F96176] font-medium"
+                  >
+                    {SUPPORTED_COUNTRIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                {/* 6. Business License & Seller’s Resale / Permit */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1 text-xs">
+                      Business License / Registration Number (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      name="businessLicense"
+                      value={formData.businessLicense}
+                      onChange={handleFormChange}
+                      placeholder="e.g. BL-987654321"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-900 bg-white focus:outline-hidden focus:border-[#F96176]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1 text-xs">
+                      Seller’s Resale / Permit (if applicable)
+                    </label>
+                    <input
+                      type="text"
+                      name="sellerPermit"
+                      value={formData.sellerPermit}
+                      onChange={handleFormChange}
+                      placeholder="e.g. SR-12345678"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-900 bg-white focus:outline-hidden focus:border-[#F96176]"
+                    />
+                  </div>
+                </div>
+
+                {/* Notice: Last two lines (set as primary & mark company as active) removed as requested */}
 
                 {/* Buttons */}
                 <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
@@ -843,13 +902,13 @@ export default function MyCompaniesPage() {
 
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isUploadingLogo}
                     className="px-5 py-2.5 rounded-xl bg-[#F96176] hover:bg-[#e0485d] text-white font-bold transition shadow-xs disabled:opacity-60 flex items-center gap-2 cursor-pointer"
                   >
-                    {isSubmitting ? (
+                    {isSubmitting || isUploadingLogo ? (
                       <>
                         <RefreshCw size={14} className="animate-spin" />
-                        <span>Saving...</span>
+                        <span>{isUploadingLogo ? "Uploading Logo..." : "Saving..."}</span>
                       </>
                     ) : (
                       <span>{editingCompanyId ? "Update Company" : "Save Company"}</span>

@@ -319,7 +319,7 @@ export default function AddTeamMemberModal({
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  US Mobile Number <span className="text-rose-500">*</span>
+                  Phone Number <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />

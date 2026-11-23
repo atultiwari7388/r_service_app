@@ -22,6 +22,7 @@ import {
   Building2,
   RefreshCw,
   Truck,
+  Power,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
@@ -30,6 +31,8 @@ import {
   query,
   where,
   onSnapshot,
+  doc,
+  updateDoc,
 } from "firebase/firestore";
 import { MechanicProfile } from "@/types/auth";
 import { Vehicle } from "@/types/vehicle";
@@ -54,6 +57,31 @@ export default function TeamPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<MechanicProfile | null>(null);
   const [deletingMember, setDeletingMember] = useState<MechanicProfile | null>(null);
+  const [togglingUid, setTogglingUid] = useState<string | null>(null);
+
+  // Toggle technician duty/service on/off in real-time
+  const handleToggleService = async (member: MechanicProfile) => {
+    if (!member.uid) return;
+    const isCurrentlyActive = member.active !== false;
+    const newActive = !isCurrentlyActive;
+    setTogglingUid(member.uid);
+
+    try {
+      await updateDoc(doc(db, "Mechanics", member.uid), {
+        active: newActive,
+      });
+      toast.success(
+        `${member.name || member.userName || "Technician"} service is now ${
+          newActive ? "ON (Online)" : "OFF (Duty Paused)"
+        }`
+      );
+    } catch (error: any) {
+      console.error("Error toggling member active status:", error);
+      toast.error(error?.message || "Failed to toggle service status");
+    } finally {
+      setTogglingUid(null);
+    }
+  };
 
   // Subscribe in real-time to this owner's team members
   useEffect(() => {
@@ -326,209 +354,200 @@ export default function TeamPage() {
             )}
           </div>
         ) : (
-          /* Team Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMembers.map((member) => {
-              const memberName = member.name || member.userName || "Technician";
-              const initials = memberName
-                .split(" ")
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase() || "T";
-              const city = member.baseCity || member.city || "Unassigned";
-              const isDirectAccept = member.allowDirectJobAcceptance === true;
-              const isBusy = !!member.currentActiveJobId;
-              const isActive = member.active !== false;
-              const rating = member.rating || 5.0;
-              const reviews = member.totalReviewsCount || 0;
-              const rate = member.perHourCharge || (member as any).perHCharge || 45;
+          /* Horizontal Team Table */
+          <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/80 border-b border-gray-200/80 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    <th className="py-3.5 px-4 sm:px-6">Name</th>
+                    <th className="py-3.5 px-4">Vehicle Number</th>
+                    <th className="py-3.5 px-4">Location</th>
+                    <th className="py-3.5 px-4">Phone Number</th>
+                    <th className="py-3.5 px-4 text-center">Service Status</th>
+                    <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-xs sm:text-sm">
+                  {filteredMembers.map((member) => {
+                    const memberName = member.name || member.userName || "Technician";
+                    const initials =
+                      memberName
+                        .split(" ")
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase() || "T";
+                    const city = member.baseCity || member.city || "Unassigned";
+                    const isActive = member.active !== false;
+                    const isBusy = !!member.currentActiveJobId;
+                    const isToggling = togglingUid === member.uid;
 
-              // Find vehicles assigned to this member
-              const memberAssignedVehicles = workshopVehicles.filter(
-                (v) =>
-                  v.assignedTo === member.uid ||
-                  (Array.isArray(member.assignedVehicles) &&
-                    member.assignedVehicles.includes(v.id))
-              );
+                    // Find vehicles assigned to this member
+                    const memberAssignedVehicles = workshopVehicles.filter(
+                      (v) =>
+                        v.assignedTo === member.uid ||
+                        (Array.isArray(member.assignedVehicles) &&
+                          member.assignedVehicles.includes(v.id))
+                    );
 
-              return (
-                <div
-                  key={member.uid}
-                  className="p-6 rounded-3xl bg-white border border-gray-200/90 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between relative group"
-                >
-                  <div>
-                    {/* Status & Badge Row */}
-                    <div className="flex items-center justify-between gap-2 mb-4">
-                      {/* Active / Busy badge */}
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 ${
-                          isBusy
-                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                            : isActive
-                            ? "bg-[#EAF8F1] text-[#58BB87] border border-emerald-200"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
+                    return (
+                      <tr
+                        key={member.uid}
+                        className="hover:bg-gray-50/70 transition-colors"
                       >
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            isBusy
-                              ? "bg-amber-500 animate-pulse"
-                              : isActive
-                              ? "bg-[#58BB87]"
-                              : "bg-gray-400"
-                          }`}
-                        />
-                        {isBusy ? "Busy on Job" : isActive ? "Active On-Duty" : "Offline"}
-                      </span>
+                        {/* 1. Name */}
+                        <td className="py-4 px-4 sm:px-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#F96176] to-[#ff7d8f] text-white flex items-center justify-center font-extrabold text-xs shadow-2xs shrink-0">
+                              {initials}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-gray-900 truncate">
+                                  {memberName}
+                                </span>
+                                {isBusy && (
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                                    On Job
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
+                                <span className="truncate max-w-[170px]">
+                                  {member.email || "No email"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
 
-                      {/* City Pill */}
-                      <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-[#F96176] border border-rose-100 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {city}
-                      </span>
-                    </div>
-
-                    {/* Member Profile Info */}
-                    <div className="flex items-start gap-3.5 mb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#F96176] to-[#ff7d8f] text-white flex items-center justify-center font-extrabold text-base shadow-xs shrink-0">
-                        {initials}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-extrabold text-gray-900 truncate">
-                          {memberName}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-gray-500 flex items-center gap-1">
-                            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                            <b className="text-gray-800">{rating.toFixed(1)}</b> ({reviews})
-                          </span>
-                          <span className="text-gray-300">•</span>
-                          <span className="text-xs font-bold text-gray-700">
-                            ${rate}/hr
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Contact & Dispatch Mode Info */}
-                    <div className="space-y-2 py-3 border-t border-gray-100 text-xs text-gray-600">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400 flex items-center gap-1.5">
-                          <Mail className="w-3.5 h-3.5 text-gray-400" /> Email:
-                        </span>
-                        <span className="font-semibold text-gray-800 truncate max-w-[160px]">
-                          {member.email || "N/A"}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400 flex items-center gap-1.5">
-                          <Phone className="w-3.5 h-3.5 text-gray-400" /> Phone:
-                        </span>
-                        <a
-                          href={`tel:${member.cellPhone || member.phoneNumber}`}
-                          className="font-semibold text-gray-800 hover:text-[#F96176] transition"
-                        >
-                          {formatUSPhoneNumber(member.cellPhone || member.phoneNumber || "") || "N/A"}
-                        </a>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-gray-400 flex items-center gap-1.5">
-                          <Radio className="w-3.5 h-3.5 text-gray-400" /> Dispatch Mode:
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            isDirectAccept
-                              ? "bg-[#EAF8F1] text-[#58BB87] border border-emerald-200"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {isDirectAccept ? "Autonomous Direct" : "Owner Dispatched"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Assigned Vehicles Section */}
-                    <div className="pt-3 border-t border-gray-100 text-xs">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-gray-400 flex items-center gap-1.5 font-medium">
-                          <Truck className="w-3.5 h-3.5 text-[#F96176]" /> Assigned Vehicles:
-                        </span>
-                        <span className="text-[11px] font-bold text-gray-700">
-                          {memberAssignedVehicles.length} {memberAssignedVehicles.length === 1 ? "unit" : "units"}
-                        </span>
-                      </div>
-                      {memberAssignedVehicles.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {memberAssignedVehicles.map((v) => (
-                            <span
-                              key={v.id}
-                              className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 text-[#F96176] border border-rose-100 flex items-center gap-1"
-                              title={`${v.companyName || "Workshop"} ${v.licensePlate ? `• Plate: ${v.licensePlate}` : ""}`}
-                            >
-                              <Truck className="w-2.5 h-2.5" />
-                              <span>#{v.vehicleNumber}</span>
+                        {/* 2. Vehicle Number */}
+                        <td className="py-4 px-4">
+                          {memberAssignedVehicles.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5 max-w-[220px]">
+                              {memberAssignedVehicles.map((v) => (
+                                <span
+                                  key={v.id}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 text-[#F96176] border border-rose-100"
+                                  title={`${v.companyName || "Workshop"} ${
+                                    v.licensePlate ? `• Plate: ${v.licensePlate}` : ""
+                                  }`}
+                                >
+                                  <Truck className="w-3 h-3" />
+                                  <span>#{v.vehicleNumber}</span>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">
+                              No vehicle assigned
                             </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-gray-400 italic">No vehicle assigned</span>
-                      )}
-                    </div>
+                          )}
+                        </td>
 
-                    {/* Specialties Tags */}
-                    {member.selected_services && member.selected_services.length > 0 && (
-                      <div className="pt-3 border-t border-gray-100 flex flex-wrap gap-1.5">
-                        {member.selected_services.slice(0, 3).map((s) => (
-                          <span
-                            key={s}
-                            className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-gray-50 text-gray-600 border border-gray-200"
-                          >
-                            {s}
-                          </span>
-                        ))}
-                        {member.selected_services.length > 3 && (
-                          <span className="px-1.5 py-0.5 rounded-lg text-[10px] font-semibold bg-gray-100 text-gray-500">
-                            +{member.selected_services.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                        {/* 3. Location */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-1.5 text-xs text-gray-700 font-medium">
+                            <MapPin className="w-3.5 h-3.5 text-[#F96176] shrink-0" />
+                            <span className="truncate max-w-[150px]">{city}</span>
+                          </div>
+                        </td>
 
-                  {/* Actions Footer */}
-                  <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
-                    <a
-                      href={`tel:${member.cellPhone || member.phoneNumber}`}
-                      className="px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-semibold transition flex items-center gap-1.5"
-                    >
-                      <Phone className="w-3.5 h-3.5" /> Call
-                    </a>
+                        {/* 4. Phone Number */}
+                        <td className="py-4 px-4">
+                          {member.cellPhone || member.phoneNumber ? (
+                            <a
+                              href={`tel:${member.cellPhone || member.phoneNumber}`}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-800 hover:text-[#F96176] transition"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              <span className="whitespace-nowrap">
+                                {formatUSPhoneNumber(
+                                  member.cellPhone || member.phoneNumber || ""
+                                )}
+                              </span>
+                            </a>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">N/A</span>
+                          )}
+                        </td>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setEditingMember(member)}
-                        className="p-2 rounded-xl text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition cursor-pointer"
-                        title="Edit Member"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeletingMember(member)}
-                        className="p-2 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                        title="Remove Member"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                        {/* 5. Service ON/OFF Button */}
+                        <td className="py-4 px-4 text-center">
+                          <div className="inline-flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isActive}
+                              disabled={isToggling}
+                              onClick={() => handleToggleService(member)}
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-50 ${
+                                isActive ? "bg-[#58BB87]" : "bg-gray-300"
+                              }`}
+                              title={
+                                isActive
+                                  ? "Service ON (Receiving jobs) - Click to turn OFF"
+                                  : "Service OFF (Duty paused) - Click to turn ON"
+                              }
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
+                                  isActive ? "translate-x-5" : "translate-x-0"
+                                }`}
+                              >
+                                {isToggling ? (
+                                  <RefreshCw
+                                    size={10}
+                                    className="animate-spin text-gray-500"
+                                  />
+                                ) : (
+                                  <Power
+                                    size={11}
+                                    className={
+                                      isActive ? "text-[#58BB87]" : "text-gray-400"
+                                    }
+                                  />
+                                )}
+                              </span>
+                            </button>
+                            <span
+                              className={`text-xs font-bold min-w-[34px] text-left ${
+                                isActive ? "text-[#58BB87]" : "text-gray-400"
+                              }`}
+                            >
+                              {isActive ? "ON" : "OFF"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 6. Edit & Actions Button */}
+                        <td className="py-4 px-4 sm:px-6 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setEditingMember(member)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 hover:border-[#F96176] text-gray-700 hover:text-[#F96176] hover:bg-rose-50/50 text-xs font-semibold transition cursor-pointer"
+                              title="Edit Member"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => setDeletingMember(member)}
+                              className="p-1.5 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="Remove Member"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
