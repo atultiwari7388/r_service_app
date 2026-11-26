@@ -948,7 +948,7 @@ export function useMechanicDashboard() {
         const data = jobSnap.data();
         const offers = (data.mechanicsOffer || []) as MechanicOffer[];
         const updatedOffers = offers.map((offer) => {
-          if (offer.mId === currentUId) {
+          if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
             return { ...offer, status: newStatus };
           }
           return offer;
@@ -979,7 +979,7 @@ export function useMechanicDashboard() {
           const hData = histSnap.data();
           const offers = (hData.mechanicsOffer || []) as MechanicOffer[];
           const updatedOffers = offers.map((offer) => {
-            if (offer.mId === currentUId) {
+            if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
               return { ...offer, status: newStatus };
             }
             return offer;
@@ -1033,12 +1033,17 @@ export function useMechanicDashboard() {
       if (jobSnap.exists()) {
         const offers = (jobSnap.data().mechanicsOffer || []) as MechanicOffer[];
         const updatedOffers = offers.map((offer) =>
-          offer.mId === currentUId ? { ...offer, status: -1 } : offer
+          offer.mId === currentUId || offer.assignedMemberId === currentUId
+            ? { ...offer, status: -1 }
+            : offer
         );
-        await updateDoc(jobRef, {
-          ...cancelData,
-          mechanicsOffer: updatedOffers,
-        });
+        await updateDoc(
+          jobRef,
+          sanitizeFirestoreData({
+            ...cancelData,
+            mechanicsOffer: updatedOffers,
+          })
+        );
       }
 
       const cancelTargetUids = new Set<string>();
@@ -1057,12 +1062,17 @@ export function useMechanicDashboard() {
           const offers = (histSnap.data().mechanicsOffer ||
             []) as MechanicOffer[];
           const updatedOffers = offers.map((offer) =>
-            offer.mId === currentUId ? { ...offer, status: -1 } : offer
+            offer.mId === currentUId || offer.assignedMemberId === currentUId
+              ? { ...offer, status: -1 }
+              : offer
           );
-          await updateDoc(historyRef, {
-            ...cancelData,
-            mechanicsOffer: updatedOffers,
-          });
+          await updateDoc(
+            historyRef,
+            sanitizeFirestoreData({
+              ...cancelData,
+              mechanicsOffer: updatedOffers,
+            })
+          );
         }
       }
 
