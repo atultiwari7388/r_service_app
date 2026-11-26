@@ -53,6 +53,15 @@ export default function OngoingJobCard({
   const [isUpdating, setIsUpdating] = useState(false);
   const [nowTime, setNowTime] = useState<number>(Date.now());
 
+  // Role determination: Is this job delegated to a member, and who is the current user?
+  const isAssignedToMember = Boolean(job.assignedMemberId);
+  const isExecutingTechnician = isAssignedToMember
+    ? job.assignedMemberId === currentUId
+    : true;
+  const isSupervisingOwner = Boolean(
+    isOwner && isAssignedToMember && job.assignedMemberId !== currentUId
+  );
+
   // Retrieve mechanic's specific offer
   const myOffer = job.mechanicsOffer?.find(
     (o) => o.mId === currentUId || o.assignedMemberId === currentUId
@@ -190,27 +199,29 @@ export default function OngoingJobCard({
 
           {offerStatus === 1 && (
             <span className="mt-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-extrabold text-[11px] animate-pulse">
-              1/4 Waiting for Driver
+              1/5 Waiting for Driver
             </span>
           )}
           {offerStatus === 2 && (
             <span className="mt-1 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-700 font-extrabold text-[11px]">
-              2/4 Driver Choosing Payment
+              2/5 Dispatched • En Route
             </span>
           )}
           {offerStatus === 3 && (
-            <span className="mt-1 px-2.5 py-1 rounded-full bg-[#58BB87]/15 border border-[#58BB87]/30 text-[#58BB87] font-extrabold text-[11px]">
-              3/4 Driver Confirmed • En Route
+            <span className="mt-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-extrabold text-[11px]">
+              3/5 On-Site • Vehicle Inspection
             </span>
           )}
           {offerStatus === 4 && (
             <span className="mt-1 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 font-extrabold text-[11px]">
-              4/4 Service In Progress
+              {job.repairCompletedByTechnician || myOffer?.repairCompletedByTechnician
+                ? "4/5 Awaiting Customer Sign-Off"
+                : "4/5 Repair In Progress"}
             </span>
           )}
           {offerStatus === 5 && (
             <span className="mt-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-extrabold text-[11px]">
-              ✓ Completed
+              ✓ Completed & Signed Off
             </span>
           )}
           {offerStatus === -1 && (
@@ -346,202 +357,252 @@ export default function OngoingJobCard({
       </div>
 
       {/* ACTION TOOLBAR BY STATUS */}
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 flex-wrap">
-        {/* Step 1: Waiting for driver acceptance */}
-        {offerStatus === 1 && (
-          <>
-            <div className="flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
-              <Clock size={14} className="animate-spin text-amber-500" />
-              <span>Offer sent. Awaiting driver confirmation...</span>
-            </div>
-            <button
-              onClick={() => onCancelClick(job)}
-              className="px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-[#F96176] font-bold text-xs transition cursor-pointer"
-            >
-              Cancel Offer
-            </button>
-          </>
-        )}
-
-        {/* Step 2: Driver accepted offer -> Technician Dispatched & En Route */}
-        {offerStatus === 2 && (
-          <div className="flex items-center justify-between w-full gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              {job.userPhoneNumber && (
-                <a
-                  href={`tel:${job.userPhoneNumber}`}
-                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
-                >
-                  <Phone size={13} className="text-[#58BB87]" />
-                  <span>Call Driver</span>
-                </a>
-              )}
-              <button
-                onClick={openDirections}
-                className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer"
+      {isSupervisingOwner ? (
+        <div className="flex items-center justify-between w-full gap-2 flex-wrap pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-2">
+            {job.userPhoneNumber && (
+              <a
+                href={`tel:${job.userPhoneNumber}`}
+                className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
               >
-                <Navigation size={13} className="text-[#58BB87]" />
-                <span>Map</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => onHandoverClick(job)}
-                className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
-                title="Request Emergency Handover"
+                <Phone size={13} className="text-[#58BB87]" />
+                <span>Call Driver</span>
+              </a>
+            )}
+            {job.assignedMemberPhone && (
+              <a
+                href={`tel:${job.assignedMemberPhone}`}
+                className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition"
               >
-                <AlertTriangle size={13} />
-                <span>Handover</span>
-              </button>
-
-              <button
-                onClick={() => onMarkArrived(job)}
-                className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
-              >
-                <MapPin size={14} />
-                <span>Arrived at Location</span>
-              </button>
-            </div>
+                <Phone size={13} className="text-blue-600" />
+                <span>Call Tech ({job.assignedMemberName})</span>
+              </a>
+            )}
           </div>
-        )}
 
-        {/* Step 3: Technician Arrived On-Site -> Diagnostic & Vehicle Inspection */}
-        {offerStatus === 3 && (
-          <div className="flex items-center justify-between w-full gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              {job.userPhoneNumber && (
-                <a
-                  href={`tel:${job.userPhoneNumber}`}
-                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
-                >
-                  <Phone size={13} className="text-[#58BB87]" />
-                  <span>Call Driver</span>
-                </a>
-              )}
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-xl">
-                On-Site: Inspection
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-500 hidden sm:inline">
+              {offerStatus === 1
+                ? "Waiting for driver confirmation"
+                : offerStatus === 2
+                ? "Technician en route to vehicle site"
+                : offerStatus === 3
+                ? "Technician conducting on-site inspection"
+                : offerStatus === 4
+                ? "Repair execution in progress"
+                : "Work order completed"}
+            </span>
+            {offerStatus < 5 && (
               <button
-                onClick={() => onHandoverClick(job)}
-                className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
-                title="Request Emergency Handover"
+                type="button"
+                onClick={() => onReassignClick(job)}
+                className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
               >
-                <AlertTriangle size={13} />
-                <span>Handover</span>
+                <UserCheck size={13} className="text-[#F96176]" />
+                <span>Reassign Tech</span>
               </button>
-
-              <button
-                onClick={() => onInspectClick(job)}
-                className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
-              >
-                <Wrench size={14} />
-                <span>Vehicle Inspection & Final Quote</span>
-              </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
+      ) : (
+        /* EXECUTING TECHNICIAN TOOLBAR (Assigned Team Member or Owner self-accepted) */
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 flex-wrap">
+          {/* Step 1: Waiting for driver acceptance */}
+          {offerStatus === 1 && (
+            <>
+              <div className="flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
+                <Clock size={14} className="animate-spin text-amber-500" />
+                <span>Offer sent. Awaiting driver confirmation...</span>
+              </div>
+              <button
+                onClick={() => onCancelClick(job)}
+                className="px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-[#F96176] font-bold text-xs transition cursor-pointer"
+              >
+                Cancel Offer
+              </button>
+            </>
+          )}
 
-        {/* Step 4: Invoice Submitted / Repair In Progress */}
-        {offerStatus === 4 && (
-          <div className="flex flex-col w-full gap-3">
-            {/* If customer hasn't paid yet */}
-            {!job.isPaid && !job.payMode ? (
-              <div className="flex items-center justify-between w-full gap-2 bg-amber-50/80 border border-amber-200 p-3 rounded-2xl">
-                <div className="flex items-center gap-2">
-                  <Clock size={16} className="text-amber-600 animate-pulse" />
-                  <div className="text-xs">
-                    <p className="font-bold text-amber-900">
-                      Invoice ${job.finalDiagnosedAmount || myOffer?.finalDiagnosedAmount || 0} Sent
-                    </p>
-                    <p className="text-amber-700">
-                      Awaiting customer payment authorization on portal...
-                    </p>
-                  </div>
-                </div>
+          {/* Step 2: Driver accepted offer -> Technician Dispatched & En Route */}
+          {offerStatus === 2 && (
+            <div className="flex items-center justify-between w-full gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
                 {job.userPhoneNumber && (
                   <a
                     href={`tel:${job.userPhoneNumber}`}
-                    className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold text-xs"
+                    className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
                   >
-                    <Phone size={13} />
+                    <Phone size={13} className="text-[#58BB87]" />
                     <span>Call Driver</span>
                   </a>
                 )}
+                <button
+                  onClick={openDirections}
+                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer"
+                >
+                  <Navigation size={13} className="text-[#58BB87]" />
+                  <span>Map</span>
+                </button>
               </div>
-            ) : (
-              /* Customer has paid / authorized work */
-              <div className="flex items-center justify-between w-full gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-xl">
-                    <CheckCircle size={13} className="text-emerald-600" />
-                    <span>
-                      Paid ${job.finalDiagnosedAmount || job.paidAmount || myOffer?.finalDiagnosedAmount} ({job.payMode?.toUpperCase() || "PAID"})
-                    </span>
-                  </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onHandoverClick(job)}
+                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
+                  title="Request Emergency Handover"
+                >
+                  <AlertTriangle size={13} />
+                  <span>Handover</span>
+                </button>
+
+                <button
+                  onClick={() => onMarkArrived(job)}
+                  className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
+                >
+                  <MapPin size={14} />
+                  <span>Arrived at Location</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Technician Arrived On-Site -> Diagnostic & Vehicle Inspection */}
+          {offerStatus === 3 && (
+            <div className="flex items-center justify-between w-full gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                {job.userPhoneNumber && (
+                  <a
+                    href={`tel:${job.userPhoneNumber}`}
+                    className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
+                  >
+                    <Phone size={13} className="text-[#58BB87]" />
+                    <span>Call Driver</span>
+                  </a>
+                )}
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-xl">
+                  On-Site: Inspection
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onHandoverClick(job)}
+                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
+                  title="Request Emergency Handover"
+                >
+                  <AlertTriangle size={13} />
+                  <span>Handover</span>
+                </button>
+
+                <button
+                  onClick={() => onInspectClick(job)}
+                  className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
+                >
+                  <Wrench size={14} />
+                  <span>Vehicle Inspection & Final Quote</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Invoice Submitted / Repair In Progress */}
+          {offerStatus === 4 && (
+            <div className="flex flex-col w-full gap-3">
+              {/* If customer hasn't paid yet */}
+              {!job.isPaid && !job.payMode ? (
+                <div className="flex items-center justify-between w-full gap-2 bg-amber-50/80 border border-amber-200 p-3 rounded-2xl">
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} className="text-amber-600 animate-pulse" />
+                    <div className="text-xs">
+                      <p className="font-bold text-amber-900">
+                        Invoice ${job.finalDiagnosedAmount || myOffer?.finalDiagnosedAmount || 0} Sent
+                      </p>
+                      <p className="text-amber-700">
+                        Awaiting customer payment authorization on portal...
+                      </p>
+                    </div>
+                  </div>
                   {job.userPhoneNumber && (
                     <a
                       href={`tel:${job.userPhoneNumber}`}
-                      className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
+                      className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold text-xs"
                     >
-                      <Phone size={13} className="text-[#58BB87]" />
-                      <span>Call</span>
+                      <Phone size={13} />
+                      <span>Call Driver</span>
                     </a>
                   )}
                 </div>
-
-                {job.repairCompletedByTechnician || myOffer?.repairCompletedByTechnician ? (
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
-                    <Clock size={13} className="animate-spin text-indigo-500" />
-                    <span>Awaiting Customer Quality Sign-Off & Release</span>
+              ) : (
+                /* Customer has paid / authorized work */
+                <div className="flex items-center justify-between w-full gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-xl">
+                      <CheckCircle size={13} className="text-emerald-600" />
+                      <span>
+                        Paid ${job.finalDiagnosedAmount || job.paidAmount || myOffer?.finalDiagnosedAmount} ({job.payMode?.toUpperCase() || "PAID"})
+                      </span>
+                    </span>
+                    {job.userPhoneNumber && (
+                      <a
+                        href={`tel:${job.userPhoneNumber}`}
+                        className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
+                      >
+                        <Phone size={13} className="text-[#58BB87]" />
+                        <span>Call</span>
+                      </a>
+                    )}
                   </div>
-                ) : (
-                  <button
-                    onClick={() => onMarkRepairFinished(job)}
-                    disabled={isUpdating}
-                    className="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-md transition cursor-pointer disabled:opacity-50"
-                  >
-                    <CheckCircle size={15} />
-                    <span>Mark Repair Finished & Request Sign-Off</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Step 5: Completed */}
-        {offerStatus === 5 && (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
-                <CheckCircle size={14} /> Completed & Signed Off by Customer
-              </span>
-              {job.mRating && (
-                <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
-                  <Star size={12} className="fill-amber-400 text-amber-400" />
-                  {job.mRating} Rating Given
-                </span>
+                  {job.repairCompletedByTechnician || myOffer?.repairCompletedByTechnician ? (
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
+                      <Clock size={13} className="animate-spin text-indigo-500" />
+                      <span>Awaiting Customer Quality Sign-Off & Release</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => onMarkRepairFinished(job)}
+                      disabled={isUpdating}
+                      className="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle size={15} />
+                      <span>Mark Repair Finished & Request Sign-Off</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-            {job.finalDiagnosedAmount && (
-              <span className="text-xs font-bold text-gray-600">
-                Invoice Total: ${job.finalDiagnosedAmount}
-              </span>
-            )}
-            <button
-              onClick={() => onRateClick(job)}
-              className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs transition cursor-pointer"
-            >
-              <Star size={13} className="text-amber-500" />
-              <span>{job.mReviewSubmitted ? "Edit Driver Review" : "Rate Driver"}</span>
-            </button>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* Step 5: Completed */}
+          {offerStatus === 5 && (
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                  <CheckCircle size={14} /> Completed & Signed Off by Customer
+                </span>
+                {job.mRating && (
+                  <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
+                    <Star size={12} className="fill-amber-400 text-amber-400" />
+                    {job.mRating} Rating Given
+                  </span>
+                )}
+              </div>
+              {job.finalDiagnosedAmount && (
+                <span className="text-xs font-bold text-gray-600">
+                  Invoice Total: ${job.finalDiagnosedAmount}
+                </span>
+              )}
+              <button
+                onClick={() => onRateClick(job)}
+                className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs transition cursor-pointer"
+              >
+                <Star size={13} className="text-amber-500" />
+                <span>{job.mReviewSubmitted ? "Edit Driver Review" : "Rate Driver"}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

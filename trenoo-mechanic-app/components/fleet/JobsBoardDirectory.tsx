@@ -237,22 +237,21 @@ export default function JobsBoardDirectory() {
         );
       case 2:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200">
-            Driver Choosing Pay
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-50 text-sky-800 text-xs font-semibold border border-sky-200">
+            Dispatched • En Route
           </span>
         );
       case 3:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-800 text-xs font-semibold border border-orange-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-            En Route
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
+            On-Site • Inspection
           </span>
         );
       case 4:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            In Progress
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-800 text-xs font-semibold border border-orange-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+            Repair In Progress
           </span>
         );
       default:
