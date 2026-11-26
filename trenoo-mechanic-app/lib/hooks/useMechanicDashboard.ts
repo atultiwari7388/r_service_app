@@ -25,6 +25,42 @@ import {
 import toast from "react-hot-toast";
 
 /**
+ * Recursively removes all `undefined` values from an object or array.
+ * Firestore throws an error if `undefined` is passed in any field, nested map, or array element.
+ */
+export function sanitizeFirestoreData<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
+  }
+  // Preserve Date, Firestore Timestamp, or FieldValue instances
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    (data instanceof Date ||
+      data instanceof Timestamp ||
+      ("isEqual" in data && typeof (data as any).isEqual === "function") ||
+      ("_methodName" in data && typeof (data as any)._methodName === "string"))
+  ) {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeFirestoreData(item)) as unknown as T;
+  }
+  if (typeof data === "object") {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data as Record<string, any>)) {
+      if (value !== undefined) {
+        cleaned[key] = sanitizeFirestoreData(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return data;
+}
+
+/**
  * Exact Haversine formula matching Flutter rabbit_shop_app/lib/services/calculate_distance.dart
  * Radius of Earth = 6371 km
  */
@@ -675,15 +711,19 @@ export function useMechanicDashboard() {
       assignedMemberPhone,
     } = params;
 
-    const offer: MechanicOffer = {
+    const isAssigned = Boolean(
+      assignedMemberId && assignedMemberId.trim() !== "" && assignedMemberId !== "self"
+    );
+
+    const offerPayload: Record<string, any> = {
       mId: currentUId,
       mName:
-        assignedMemberName ||
+        (isAssigned ? assignedMemberName : "") ||
         mechanicProfile?.workshopName ||
         mechanicProfile?.userName ||
         "Mechanic",
       mNumber:
-        assignedMemberPhone ||
+        (isAssigned ? assignedMemberPhone : "") ||
         mechanicProfile?.cellPhone ||
         mechanicProfile?.telephone ||
         "",
@@ -691,9 +731,9 @@ export function useMechanicDashboard() {
       arrivalCharges: arrivalCharges || 0,
       perHourCharges: perHourCharges || mechanicProfile?.perHourCharge || 0,
       fixPrice: fixPrice || 0,
-      time: arrivalTime || "15",
-      latitude: currentLat,
-      longitude: currentLng,
+      time: String(arrivalTime || "15"),
+      latitude: currentLat || 0,
+      longitude: currentLng || 0,
       status: 1, // 1 = Offered / waiting for driver acceptance
       rating: "4.8",
       reviewSubmitted: false,
@@ -702,34 +742,39 @@ export function useMechanicDashboard() {
             .filter(([, v]) => v)
             .map(([k]) => k)
         : ["English"],
-      mechanicAddress: currentAddress,
+      mechanicAddress: currentAddress || "",
       offerAcceptedDate: Timestamp.now(),
-      assignedMemberId,
-      assignedMemberName,
-      assignedMemberCity,
-      assignedMemberPhone,
-      isAssignedByOwner: Boolean(assignedMemberId),
+      isAssignedByOwner: isAssigned,
     };
+
+    if (isAssigned) {
+      offerPayload.assignedMemberId = assignedMemberId;
+      offerPayload.assignedMemberName = (assignedMemberName || "").trim();
+      offerPayload.assignedMemberCity = (assignedMemberCity || "").trim();
+      offerPayload.assignedMemberPhone = (assignedMemberPhone || "").trim();
+    }
+
+    const cleanOffer = sanitizeFirestoreData(offerPayload) as MechanicOffer;
 
     try {
       const jobDocRef = doc(db, "jobs", jobId);
       const jobSnap = await getDoc(jobDocRef);
       const jobData = jobSnap.exists() ? jobSnap.data() : null;
 
-      const jobUpdatePayload: any = {
-        mechanicsOffer: arrayUnion(offer),
+      const jobUpdatePayload: Record<string, any> = {
+        mechanicsOffer: arrayUnion(cleanOffer),
         ownerId: currentUId,
       };
 
-      if (assignedMemberId) {
+      if (isAssigned) {
         jobUpdatePayload.assignedMemberId = assignedMemberId;
-        jobUpdatePayload.assignedMemberName = assignedMemberName || "";
-        jobUpdatePayload.assignedMemberCity = assignedMemberCity || "";
-        jobUpdatePayload.assignedMemberPhone = assignedMemberPhone || "";
+        jobUpdatePayload.assignedMemberName = (assignedMemberName || "").trim();
+        jobUpdatePayload.assignedMemberCity = (assignedMemberCity || "").trim();
+        jobUpdatePayload.assignedMemberPhone = (assignedMemberPhone || "").trim();
         jobUpdatePayload.isAssignedByOwner = true;
       }
 
-      await updateDoc(jobDocRef, jobUpdatePayload);
+      await updateDoc(jobDocRef, sanitizeFirestoreData(jobUpdatePayload));
 
       // Target all related user histories (creator, fleet owner, user)
       const targetUids = new Set<string>();
@@ -745,20 +790,21 @@ export function useMechanicDashboard() {
         const historySnap = await getDoc(historyRef);
         if (historySnap.exists()) {
           await updateDoc(historyRef, {
-            mechanicsOffer: arrayUnion(offer),
+            mechanicsOffer: arrayUnion(cleanOffer),
           });
         } else {
-          await setDoc(historyRef, {
+          const rawHistoryData = {
             ...(jobData || {}),
-            mechanicsOffer: [offer],
+            mechanicsOffer: [cleanOffer],
             orderId: jobId,
             status: 0,
-          });
+          };
+          await setDoc(historyRef, sanitizeFirestoreData(rawHistoryData));
         }
       }
 
       toast.success(
-        assignedMemberName
+        isAssigned && assignedMemberName
           ? `Offer submitted and dispatched to ${assignedMemberName}!`
           : "Offer submitted to driver successfully!"
       );
@@ -789,12 +835,12 @@ export function useMechanicDashboard() {
         return offer;
       });
 
-      await updateDoc(jobDocRef, {
+      await updateDoc(jobDocRef, sanitizeFirestoreData({
         status: 4,
         mechanicsOffer: updatedOffers,
         estimatedRepairMinutes: estimatedMinutes,
         activeJobStartedAt: now,
-      });
+      }));
 
       // Update the technician's profile with active job & progress timer
       const targetTechUid = jobData?.assignedMemberId || currentUId;
@@ -908,10 +954,13 @@ export function useMechanicDashboard() {
           return offer;
         });
 
-        await updateDoc(jobDocRef, {
-          status: newStatus,
-          mechanicsOffer: updatedOffers,
-        });
+        await updateDoc(
+          jobDocRef,
+          sanitizeFirestoreData({
+            status: newStatus,
+            mechanicsOffer: updatedOffers,
+          })
+        );
       }
 
       const targetUids = new Set<string>();
@@ -935,10 +984,13 @@ export function useMechanicDashboard() {
             }
             return offer;
           });
-          await updateDoc(historyRef, {
-            status: newStatus,
-            mechanicsOffer: updatedOffers,
-          });
+          await updateDoc(
+            historyRef,
+            sanitizeFirestoreData({
+              status: newStatus,
+              mechanicsOffer: updatedOffers,
+            })
+          );
         }
       }
 

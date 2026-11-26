@@ -167,7 +167,7 @@ export default function JobOfferModal({
     let assignedMemberCity: string | undefined = undefined;
     let assignedMemberPhone: string | undefined = undefined;
 
-    if (selectedMemberId !== "self") {
+    if (selectedMemberId && selectedMemberId !== "self") {
       const selected = teamMembers.find((m) => m.uid === selectedMemberId);
       if (selected) {
         if (checkIsBlockedBy70PercentRule(selected)) {
@@ -177,9 +177,9 @@ export default function JobOfferModal({
           return;
         }
         assignedMemberId = selected.uid;
-        assignedMemberName = selected.name || selected.userName;
-        assignedMemberCity = selected.baseCity || selected.city;
-        assignedMemberPhone = selected.cellPhone || selected.phoneNumber;
+        assignedMemberName = (selected.name || selected.userName || "").trim();
+        assignedMemberCity = (selected.baseCity || selected.city || "").trim();
+        assignedMemberPhone = (selected.cellPhone || selected.phoneNumber || "").trim();
       }
     }
 
