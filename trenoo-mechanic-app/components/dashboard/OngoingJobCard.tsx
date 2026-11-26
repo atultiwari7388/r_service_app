@@ -26,7 +26,10 @@ interface OngoingJobCardProps {
   currentUId: string;
   isOwner?: boolean;
   onUpdateStatus: (jobId: string, userId: string, newStatus: number) => Promise<void>;
-  onStartJobClick: (job: FirestoreJob) => void;
+  onMarkArrived: (job: FirestoreJob) => void;
+  onInspectClick: (job: FirestoreJob) => void;
+  onMarkRepairFinished: (job: FirestoreJob) => void;
+  onStartJobClick?: (job: FirestoreJob) => void;
   onHandoverClick: (job: FirestoreJob) => void;
   onReassignClick: (job: FirestoreJob) => void;
   onCancelClick: (job: FirestoreJob) => void;
@@ -38,6 +41,9 @@ export default function OngoingJobCard({
   currentUId,
   isOwner = true,
   onUpdateStatus,
+  onMarkArrived,
+  onInspectClick,
+  onMarkRepairFinished,
   onStartJobClick,
   onHandoverClick,
   onReassignClick,
@@ -357,23 +363,8 @@ export default function OngoingJobCard({
           </>
         )}
 
-        {/* Step 2: Driver is selecting payment mode */}
+        {/* Step 2: Driver accepted offer -> Technician Dispatched & En Route */}
         {offerStatus === 2 && (
-          <div className="w-full flex items-center justify-between">
-            <span className="text-xs text-gray-600 font-semibold">
-              Driver selected you and is choosing payment method...
-            </span>
-            <button
-              onClick={() => onCancelClick(job)}
-              className="px-3.5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs transition cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-
-        {/* Step 3: Driver confirmed, mechanic on the way */}
-        {offerStatus === 3 && (
           <div className="flex items-center justify-between w-full gap-2 flex-wrap">
             <div className="flex items-center gap-1.5">
               {job.userPhoneNumber && (
@@ -405,19 +396,18 @@ export default function OngoingJobCard({
               </button>
 
               <button
-                onClick={() => onStartJobClick(job)}
-                disabled={isUpdating}
-                className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
+                onClick={() => onMarkArrived(job)}
+                className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
               >
-                <PlayCircle size={15} />
-                <span>Arrived & Set Duration</span>
+                <MapPin size={14} />
+                <span>Arrived at Location</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 4: Service in progress */}
-        {offerStatus === 4 && (
+        {/* Step 3: Technician Arrived On-Site -> Diagnostic & Vehicle Inspection */}
+        {offerStatus === 3 && (
           <div className="flex items-center justify-between w-full gap-2 flex-wrap">
             <div className="flex items-center gap-1.5">
               {job.userPhoneNumber && (
@@ -426,31 +416,100 @@ export default function OngoingJobCard({
                   className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
                 >
                   <Phone size={13} className="text-[#58BB87]" />
-                  <span>Call</span>
+                  <span>Call Driver</span>
                 </a>
               )}
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-xl">
+                On-Site: Inspection
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => onHandoverClick(job)}
-                className="inline-flex items-center gap-1 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
                 title="Request Emergency Handover"
               >
                 <AlertTriangle size={13} />
                 <span>Handover</span>
               </button>
-            </div>
 
-            <button
-              onClick={() => handleAdvanceStatus(5)}
-              disabled={isUpdating}
-              className="inline-flex items-center gap-2 py-2 px-5 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-md transition cursor-pointer disabled:opacity-50"
-            >
-              <CheckCircle size={16} />
-              <span>
-                {job.payMode === "COD"
-                  ? "Collect Cash & Complete Job"
-                  : "Complete Service Now"}
-              </span>
-            </button>
+              <button
+                onClick={() => onInspectClick(job)}
+                className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
+              >
+                <Wrench size={14} />
+                <span>Vehicle Inspection & Final Quote</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Invoice Submitted / Repair In Progress */}
+        {offerStatus === 4 && (
+          <div className="flex flex-col w-full gap-3">
+            {/* If customer hasn't paid yet */}
+            {!job.isPaid && !job.payMode ? (
+              <div className="flex items-center justify-between w-full gap-2 bg-amber-50/80 border border-amber-200 p-3 rounded-2xl">
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className="text-amber-600 animate-pulse" />
+                  <div className="text-xs">
+                    <p className="font-bold text-amber-900">
+                      Invoice ${job.finalDiagnosedAmount || myOffer?.finalDiagnosedAmount || 0} Sent
+                    </p>
+                    <p className="text-amber-700">
+                      Awaiting customer payment authorization on portal...
+                    </p>
+                  </div>
+                </div>
+                {job.userPhoneNumber && (
+                  <a
+                    href={`tel:${job.userPhoneNumber}`}
+                    className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold text-xs"
+                  >
+                    <Phone size={13} />
+                    <span>Call Driver</span>
+                  </a>
+                )}
+              </div>
+            ) : (
+              /* Customer has paid / authorized work */
+              <div className="flex items-center justify-between w-full gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-xl">
+                    <CheckCircle size={13} className="text-emerald-600" />
+                    <span>
+                      Paid ${job.finalDiagnosedAmount || job.paidAmount || myOffer?.finalDiagnosedAmount} ({job.payMode?.toUpperCase() || "PAID"})
+                    </span>
+                  </span>
+                  {job.userPhoneNumber && (
+                    <a
+                      href={`tel:${job.userPhoneNumber}`}
+                      className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
+                    >
+                      <Phone size={13} className="text-[#58BB87]" />
+                      <span>Call</span>
+                    </a>
+                  )}
+                </div>
+
+                {job.repairCompletedByTechnician || myOffer?.repairCompletedByTechnician ? (
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
+                    <Clock size={13} className="animate-spin text-indigo-500" />
+                    <span>Awaiting Customer Quality Sign-Off & Release</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => onMarkRepairFinished(job)}
+                    disabled={isUpdating}
+                    className="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCircle size={15} />
+                    <span>Mark Repair Finished & Request Sign-Off</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -458,8 +517,8 @@ export default function OngoingJobCard({
         {offerStatus === 5 && (
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-700">
-                <CheckCircle size={14} /> Completed
+              <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                <CheckCircle size={14} /> Completed & Signed Off by Customer
               </span>
               {job.mRating && (
                 <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
@@ -468,7 +527,11 @@ export default function OngoingJobCard({
                 </span>
               )}
             </div>
-
+            {job.finalDiagnosedAmount && (
+              <span className="text-xs font-bold text-gray-600">
+                Invoice Total: ${job.finalDiagnosedAmount}
+              </span>
+            )}
             <button
               onClick={() => onRateClick(job)}
               className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs transition cursor-pointer"

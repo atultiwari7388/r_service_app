@@ -23,6 +23,13 @@ export interface MechanicOffer {
   assignedMemberCity?: string;
   assignedMemberPhone?: string;
   isAssignedByOwner?: boolean;
+  finalDiagnosedAmount?: number;
+  inspectionNotes?: string;
+  inspectionCompletedAt?: Timestamp | Date | any;
+  repairCompletedByTechnician?: boolean;
+  repairFinishedAt?: Timestamp | Date | any;
+  customerSignOff?: boolean;
+  customerSignOffAt?: Timestamp | Date | any;
 }
 
 export interface FirestoreJob {
@@ -57,6 +64,16 @@ export interface FirestoreJob {
   mReview?: string;
   mReviewSubmitted?: boolean;
   calculatedDistance?: number;
+  finalDiagnosedAmount?: number;
+  inspectionNotes?: string;
+  inspectionCompletedAt?: Timestamp | Date | any;
+  repairCompletedByTechnician?: boolean;
+  repairFinishedAt?: Timestamp | Date | any;
+  customerSignOff?: boolean;
+  customerSignOffAt?: Timestamp | Date | any;
+  isPaid?: boolean;
+  paidAmount?: number;
+  paidAt?: string | Timestamp | Date;
   // Dispatch & Queueing fields
   assignedMemberId?: string;
   assignedMemberName?: string;

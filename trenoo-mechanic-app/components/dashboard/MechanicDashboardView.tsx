@@ -32,6 +32,7 @@ import JobOfferModal from "./JobOfferModal";
 import CancelReasonModal from "./CancelReasonModal";
 import DriverRatingModal from "./DriverRatingModal";
 import StartJobDurationModal from "./StartJobDurationModal";
+import InspectionAndQuoteModal from "./InspectionAndQuoteModal";
 import EmergencyHandoverModal from "./EmergencyHandoverModal";
 import ReassignMemberModal from "./ReassignMemberModal";
 import { FirestoreJob } from "@/types/job";
@@ -85,6 +86,9 @@ export default function MechanicDashboardView() {
     cancelJob,
     submitRating,
     startJobWithDuration,
+    markArrivedAtSite,
+    submitInspectionAndQuote,
+    markRepairFinished,
     requestEmergencyHandover,
     reassignJobMember,
     currentUId,
@@ -104,6 +108,9 @@ export default function MechanicDashboardView() {
   );
   const [rateModalJob, setRateModalJob] = useState<FirestoreJob | null>(null);
   const [durationModalJob, setDurationModalJob] = useState<FirestoreJob | null>(
+    null
+  );
+  const [inspectModalJob, setInspectModalJob] = useState<FirestoreJob | null>(
     null
   );
   const [handoverModalJob, setHandoverModalJob] = useState<FirestoreJob | null>(
@@ -665,6 +672,9 @@ export default function MechanicDashboardView() {
                             currentUId={currentUId}
                             isOwner={mechanicProfile?.role !== "member"}
                             onUpdateStatus={updateJobStatus}
+                            onMarkArrived={(j) => markArrivedAtSite(j.id, j.userId)}
+                            onInspectClick={(j) => setInspectModalJob(j)}
+                            onMarkRepairFinished={(j) => markRepairFinished(j.id, j.userId)}
                             onStartJobClick={(j) => setDurationModalJob(j)}
                             onHandoverClick={(j) => setHandoverModalJob(j)}
                             onReassignClick={(j) => setReassignModalJob(j)}
@@ -719,6 +729,9 @@ export default function MechanicDashboardView() {
                             currentUId={currentUId}
                             isOwner={mechanicProfile?.role !== "member"}
                             onUpdateStatus={updateJobStatus}
+                            onMarkArrived={(j) => markArrivedAtSite(j.id, j.userId)}
+                            onInspectClick={(j) => setInspectModalJob(j)}
+                            onMarkRepairFinished={(j) => markRepairFinished(j.id, j.userId)}
                             onStartJobClick={(j) => setDurationModalJob(j)}
                             onHandoverClick={(j) => setHandoverModalJob(j)}
                             onReassignClick={(j) => setReassignModalJob(j)}
@@ -777,6 +790,24 @@ export default function MechanicDashboardView() {
             est
           )
         }
+      />
+
+      {/* 2b. On-site Vehicle Inspection & Final Work Order Modal */}
+      <InspectionAndQuoteModal
+        job={inspectModalJob}
+        isOpen={Boolean(inspectModalJob)}
+        onClose={() => setInspectModalJob(null)}
+        currentOffer={inspectModalJob?.mechanicsOffer?.find(
+          (o) => o.mId === currentUId || o.assignedMemberId === currentUId
+        )}
+        onSubmit={async (params) => {
+          if (!inspectModalJob) return;
+          await submitInspectionAndQuote(
+            inspectModalJob.id,
+            inspectModalJob.userId,
+            params
+          );
+        }}
       />
 
       {/* 3. Emergency Handover Modal (Scenario 3) */}

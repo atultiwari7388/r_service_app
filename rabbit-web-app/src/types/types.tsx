@@ -171,6 +171,17 @@ export interface MechanicsOffer {
   reviewSubmitted: boolean;
   status: number;
   time: 10;
+  finalDiagnosedAmount?: number;
+  inspectionNotes?: string;
+  inspectionCompletedAt?: Timestamp | Date | any;
+  repairCompletedByTechnician?: boolean;
+  repairFinishedAt?: Timestamp | Date | any;
+  customerSignOff?: boolean;
+  customerSignOffAt?: Timestamp | Date | any;
+  assignedMemberId?: string;
+  assignedMemberName?: string;
+  assignedMemberPhone?: string;
+  isAssignedByOwner?: boolean;
 }
 
 export interface HistoryItem {
@@ -207,4 +218,18 @@ export interface HistoryItem {
   vehicleNumber: string;
   engineName?: string;
   isGuest?: boolean;
+  finalDiagnosedAmount?: number;
+  inspectionNotes?: string;
+  inspectionCompletedAt?: Timestamp | Date | any;
+  repairCompletedByTechnician?: boolean;
+  repairFinishedAt?: Timestamp | Date | any;
+  customerSignOff?: boolean;
+  customerSignOffAt?: Timestamp | Date | any;
+  assignedMemberId?: string;
+  assignedMemberName?: string;
+  assignedMemberPhone?: string;
+  isAssignedByOwner?: boolean;
+  isPaid?: boolean;
+  paidAmount?: number;
+  paidAt?: string | Timestamp | Date;
 }

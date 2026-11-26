@@ -86,11 +86,12 @@ export default function JobIdDetails({
               const targetMId = queryMechanicId || data.targetMechanicId;
               const updatedMechanicsOffer = currentOffers.map((offer: any) => ({
                 ...offer,
-                status: offer.mId === targetMId ? 3 : offer.status,
+                isPaid: true,
+                paidAmount: data.amount,
+                status: offer.status < 4 ? 4 : offer.status,
               }));
 
               const clientUpdates = {
-                status: 3,
                 payMode: "online",
                 isPaid: true,
                 paidAmount: data.amount,
@@ -242,25 +243,30 @@ export default function JobIdDetails({
   const handlePayment = async (mechanicId: string) => {
     if (!jobDetails || !effectiveUserId) return;
 
-    // 1. Online Stripe Payment Flow
-    if (selectedPaymentMode === "online") {
-      const acceptedMech = jobDetails.mechanicsOffer?.find(
-        (m) => m.mId === mechanicId
-      );
-      const amount = jobDetails.fixPriceEnabled
+    const acceptedMech = jobDetails.mechanicsOffer?.find(
+      (m) => m.mId === mechanicId
+    );
+
+    // Prioritize final diagnosed amount from on-site inspection
+    const amount =
+      Number(jobDetails.finalDiagnosedAmount) ||
+      Number(acceptedMech?.finalDiagnosedAmount) ||
+      (jobDetails.fixPriceEnabled
         ? Number(acceptedMech?.fixPrice || 0)
         : parseFloat(
             String(acceptedMech?.arrivalCharges || "0").replace(
               /[^0-9.]/g,
               ""
             ) || "0"
-          );
+          ));
 
-      if (isNaN(amount) || amount <= 0) {
-        toast.error("Invalid payment amount for this offer.");
-        return;
-      }
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Invalid payment amount for this work order.");
+      return;
+    }
 
+    // 1. Online Stripe Payment Flow
+    if (selectedPaymentMode === "online") {
       try {
         setIsProcessingPayment(true);
         const res = await fetch("/api/stripe/job-checkout-session", {
@@ -304,11 +310,14 @@ export default function JobIdDetails({
     try {
       setIsProcessingPayment(true);
       const updates = {
-        status: 3,
         payMode: "cash",
+        isPaid: true,
+        paidAmount: amount,
+        paidAt: new Date().toISOString(),
         mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
           ...offer,
-          status: offer.mId === mechanicId ? 3 : offer.status,
+          isPaid: true,
+          paidAmount: amount,
         })),
       };
 
@@ -322,13 +331,19 @@ export default function JobIdDetails({
       const jobRef = doc(db, "jobs", `#${id}`);
 
       await updateDoc(userHistoryRef, updates);
-      await updateDoc(jobRef, updates);
+      try {
+        await updateDoc(jobRef, updates);
+      } catch (e) {
+        console.warn("Global jobDoc update handled:", e);
+      }
 
       const updatedJobSnap = await getDoc(userHistoryRef);
       if (updatedJobSnap.exists()) {
         setJobDetails(updatedJobSnap.data() as HistoryItem);
       }
-      toast.success("Cash payment mode confirmed! Mechanic has been notified.");
+      toast.success(
+        `Cash payment of $${amount.toFixed(2)} confirmed! Mechanic has been notified to execute repairs.`
+      );
     } catch (error) {
       console.error("Error processing cash payment:", error);
       toast.error("Failed to update payment status.");
@@ -337,13 +352,63 @@ export default function JobIdDetails({
     }
   };
 
-  const handleStartJob = async (mechanicId: string) => {
-    if (!jobDetails || !effectiveUserId) return; // Change from user to effectiveUserId
+  const handleCustomerSignOff = async (mechanicId: string) => {
+    if (!jobDetails || !effectiveUserId) return;
 
-    const confirmAccept = window.confirm(
-      "Are you sure the Mechanic has arrived and you want to start the job?"
+    const confirmSignOff = window.confirm(
+      "Vehicle Repair Quality Sign-Off & Acceptance:\n\nHas the technician successfully completed all requested repairs to your satisfaction and is the vehicle roadworthy?"
     );
-    if (!confirmAccept) return;
+    if (!confirmSignOff) return;
+
+    try {
+      const now = new Date();
+      const updates = {
+        status: 5,
+        customerSignOff: true,
+        customerSignOffAt: now,
+        mechanicsOffer: (jobDetails.mechanicsOffer || []).map((offer: any) => ({
+          ...offer,
+          status:
+            offer.mId === mechanicId || offer.assignedMemberId === mechanicId
+              ? 5
+              : offer.status,
+          customerSignOff: true,
+          customerSignOffAt: now,
+        })),
+      };
+
+      const userHistoryRef = doc(
+        db,
+        "Users",
+        effectiveUserId,
+        "history",
+        `#${id}`
+      );
+      const jobRef = doc(db, "jobs", `#${id}`);
+
+      await updateDoc(userHistoryRef, updates);
+      try {
+        await updateDoc(jobRef, updates);
+      } catch (jobDocErr) {
+        console.warn("Global jobDoc update handled:", jobDocErr);
+      }
+
+      setJobDetails((prev: any) => ({
+        ...prev,
+        ...updates,
+      }));
+
+      toast.success(
+        "Commercial vehicle repair approved and signed off! Job is officially completed."
+      );
+    } catch (err: any) {
+      console.error("Error signing off work order:", err);
+      toast.error("Failed to complete vehicle quality sign-off.");
+    }
+  };
+
+  const handleStartJob = async (mechanicId: string) => {
+    if (!jobDetails || !effectiveUserId) return;
 
     try {
       const updates = {
@@ -360,11 +425,15 @@ export default function JobIdDetails({
         effectiveUserId,
         "history",
         `#${id}`
-      ); // Use effectiveUserId
+      );
       const jobRef = doc(db, "jobs", `#${id}`);
 
       await updateDoc(userHistoryRef, updates);
-      await updateDoc(jobRef, updates);
+      try {
+        await updateDoc(jobRef, updates);
+      } catch (e) {
+        console.warn("Global jobDoc update handled:", e);
+      }
 
       const updatedJobSnap = await getDoc(userHistoryRef);
       if (updatedJobSnap.exists()) {
@@ -526,6 +595,7 @@ export default function JobIdDetails({
                     jobDetails={jobDetails}
                     onAcceptOffer={() => handleAcceptOffer(mechanic.mId)}
                     onPayment={() => handlePayment(mechanic.mId)}
+                    onCustomerSignOff={() => handleCustomerSignOff(mechanic.mId)}
                     onStartJob={() => handleStartJob(mechanic.mId)}
                     selectedPaymentMode={selectedPaymentMode}
                     setSelectedPaymentMode={setSelectedPaymentMode}

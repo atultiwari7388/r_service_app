@@ -815,34 +815,135 @@ export function useMechanicDashboard() {
     }
   };
 
-  // Start Job with Estimated Duration (Scenario 1 & 2)
-  const startJobWithDuration = async (
+  // Helper to reliably sync updates across jobs doc and user histories
+  const syncJobAndHistories = async (
     jobId: string,
     userId: string,
-    estimatedMinutes: number
+    jobData: any,
+    updates: Record<string, any>
   ) => {
+    const rawId = jobId.replace(/^#/, "");
+    const hashId = `#${rawId}`;
+
+    // Update jobs doc
+    for (const jId of [jobId, rawId, hashId]) {
+      try {
+        const jRef = doc(db, "jobs", jId);
+        const jSnap = await getDoc(jRef);
+        if (jSnap.exists()) {
+          await updateDoc(jRef, sanitizeFirestoreData(updates));
+        }
+      } catch (e) {
+        // ignore if id variant doesn't exist
+      }
+    }
+
+    // Target user histories
+    const targetUids = new Set<string>();
+    if (userId) targetUids.add(userId);
+    if (jobData?.userId) targetUids.add(jobData.userId);
+    if (jobData?.ownerId) targetUids.add(jobData.ownerId);
+    if (jobData?.createdBy) targetUids.add(jobData.createdBy);
+    if (jobData?.creatorId) targetUids.add(jobData.creatorId);
+
+    for (const targetUid of targetUids) {
+      if (!targetUid) continue;
+      for (const hId of [jobId, rawId, hashId]) {
+        try {
+          const hRef = doc(db, "Users", targetUid, "history", hId);
+          const hSnap = await getDoc(hRef);
+          if (hSnap.exists()) {
+            await updateDoc(hRef, sanitizeFirestoreData(updates));
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  };
+
+  // Step 2 -> 3: Mark Technician Arrived at Breakdown Site (Begins on-site diagnosis)
+  const markArrivedAtSite = async (jobId: string, userId: string) => {
     try {
-      const now = Timestamp.now();
-      const jobDocRef = doc(db, "jobs", jobId);
-      const jobSnap = await getDoc(jobDocRef);
+      const rawId = jobId.replace(/^#/, "");
+      let jobSnap = await getDoc(doc(db, "jobs", jobId));
+      if (!jobSnap.exists()) {
+        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
+      }
       const jobData = jobSnap.exists() ? jobSnap.data() : null;
 
+      const now = Timestamp.now();
       const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
       const updatedOffers = offers.map((offer) => {
         if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
-          return { ...offer, status: 4 };
+          return { ...offer, status: 3, arrivedAt: now };
         }
         return offer;
       });
 
-      await updateDoc(jobDocRef, sanitizeFirestoreData({
-        status: 4,
+      const updates = {
+        status: 3,
+        arrivedAtLocation: true,
+        arrivedAt: now,
         mechanicsOffer: updatedOffers,
+      };
+
+      await syncJobAndHistories(jobId, userId, jobData, updates);
+      toast.success("Arrived at breakdown site! Please conduct on-site vehicle inspection.");
+    } catch (err: any) {
+      console.error("Error marking arrival:", err);
+      toast.error(err.message || "Failed to mark arrival");
+      throw err;
+    }
+  };
+
+  // Step 3 -> 4: Submit On-site Inspection & Final Diagnosed Work Order Amount
+  const submitInspectionAndQuote = async (
+    jobId: string,
+    userId: string,
+    params: {
+      finalAmount: number;
+      inspectionNotes: string;
+      estimatedMinutes?: number;
+    }
+  ) => {
+    try {
+      const { finalAmount, inspectionNotes, estimatedMinutes = 45 } = params;
+      const rawId = jobId.replace(/^#/, "");
+      let jobSnap = await getDoc(doc(db, "jobs", jobId));
+      if (!jobSnap.exists()) {
+        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
+      }
+      const jobData = jobSnap.exists() ? jobSnap.data() : null;
+
+      const now = Timestamp.now();
+      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
+      const updatedOffers = offers.map((offer) => {
+        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
+          return {
+            ...offer,
+            status: 4,
+            finalDiagnosedAmount: finalAmount,
+            inspectionNotes: inspectionNotes.trim(),
+            inspectionCompletedAt: now,
+          };
+        }
+        return offer;
+      });
+
+      const updates = {
+        status: 4,
+        finalDiagnosedAmount: finalAmount,
+        inspectionNotes: inspectionNotes.trim(),
+        inspectionCompletedAt: now,
         estimatedRepairMinutes: estimatedMinutes,
         activeJobStartedAt: now,
-      }));
+        mechanicsOffer: updatedOffers,
+      };
 
-      // Update the technician's profile with active job & progress timer
+      await syncJobAndHistories(jobId, userId, jobData, updates);
+
+      // Update technician's active job timer
       const targetTechUid = jobData?.assignedMemberId || currentUId;
       try {
         const techRef = doc(db, "Mechanics", targetTechUid);
@@ -855,12 +956,65 @@ export function useMechanicDashboard() {
         console.warn("Could not update technician active timer:", techErr);
       }
 
-      toast.success(`Job started! Estimated repair timer set to ${estimatedMinutes} mins.`);
+      toast.success("Inspection submitted! Final invoice sent to customer for payment.");
     } catch (err: any) {
-      console.error("Error starting job with duration:", err);
-      toast.error(err.message || "Failed to start repair job");
+      console.error("Error submitting inspection:", err);
+      toast.error(err.message || "Failed to submit inspection");
       throw err;
     }
+  };
+
+  // Step 4 (Execution): Mark Physical Repair Finished & Request Customer Sign-Off
+  const markRepairFinished = async (jobId: string, userId: string) => {
+    try {
+      const rawId = jobId.replace(/^#/, "");
+      let jobSnap = await getDoc(doc(db, "jobs", jobId));
+      if (!jobSnap.exists()) {
+        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
+      }
+      const jobData = jobSnap.exists() ? jobSnap.data() : null;
+
+      const now = Timestamp.now();
+      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
+      const updatedOffers = offers.map((offer) => {
+        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
+          return {
+            ...offer,
+            repairCompletedByTechnician: true,
+            repairFinishedAt: now,
+          };
+        }
+        return offer;
+      });
+
+      const updates = {
+        repairCompletedByTechnician: true,
+        repairFinishedAt: now,
+        mechanicsOffer: updatedOffers,
+      };
+
+      await syncJobAndHistories(jobId, userId, jobData, updates);
+      toast.success(
+        "Repair marked finished! Work order submitted for customer quality sign-off."
+      );
+    } catch (err: any) {
+      console.error("Error marking repair finished:", err);
+      toast.error(err.message || "Failed to mark repair finished");
+      throw err;
+    }
+  };
+
+  // Backward-compatible Start Job with Duration
+  const startJobWithDuration = async (
+    jobId: string,
+    userId: string,
+    estimatedMinutes: number
+  ) => {
+    return submitInspectionAndQuote(jobId, userId, {
+      finalAmount: 150,
+      inspectionNotes: "Standard on-site diagnostic and repair execution.",
+      estimatedMinutes,
+    });
   };
 
   // Request Emergency Handover (Scenario 3)
@@ -1161,6 +1315,9 @@ export function useMechanicDashboard() {
     cancelJob,
     submitRating,
     startJobWithDuration,
+    markArrivedAtSite,
+    submitInspectionAndQuote,
+    markRepairFinished,
     requestEmergencyHandover,
     reassignJobMember,
   };

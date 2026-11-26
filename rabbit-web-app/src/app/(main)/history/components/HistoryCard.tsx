@@ -52,19 +52,28 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ items }) => {
         items.mechanicsOffer.map((offer, index) => (
           <div
             key={index}
-            className="bg-gray-50 p-2 mt-2 rounded-lg shadow-inner"
+            className="bg-gray-50 p-2 mt-2 rounded-lg shadow-inner text-xs"
           >
             {/* Check if offer status is between 2 and 5 */}
             {offer.status >= 2 && offer.status <= 5 && (
               <>
-                <p className="text-gray-700">
-                  <span className="font-semibold">Arrival Charges:</span> ₹
-                  {offer.arrivalCharges}
-                </p>
-                <p className="text-gray-700">
-                  <span className="font-semibold">Per Hour Charges:</span> ₹
-                  {offer.perHourCharges}
-                </p>
+                {(items.finalDiagnosedAmount || offer.finalDiagnosedAmount) ? (
+                  <p className="text-gray-900 font-bold">
+                    <span>Final Work Order:</span> $
+                    {items.finalDiagnosedAmount || offer.finalDiagnosedAmount}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-gray-700">
+                      <span className="font-semibold">Arrival Charges:</span> $
+                      {offer.arrivalCharges}
+                    </p>
+                    <p className="text-gray-700">
+                      <span className="font-semibold">Per Hour Charges:</span> $
+                      {offer.perHourCharges}
+                    </p>
+                  </>
+                )}
               </>
             )}
           </div>
