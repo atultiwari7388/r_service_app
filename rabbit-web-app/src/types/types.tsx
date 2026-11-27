@@ -181,6 +181,7 @@ export interface MechanicsOffer {
   assignedMemberId?: string;
   assignedMemberName?: string;
   assignedMemberPhone?: string;
+  assignedMemberCity?: string;
   isAssignedByOwner?: boolean;
 }
 
@@ -228,6 +229,7 @@ export interface HistoryItem {
   assignedMemberId?: string;
   assignedMemberName?: string;
   assignedMemberPhone?: string;
+  assignedMemberCity?: string;
   isAssignedByOwner?: boolean;
   isPaid?: boolean;
   paidAmount?: number;

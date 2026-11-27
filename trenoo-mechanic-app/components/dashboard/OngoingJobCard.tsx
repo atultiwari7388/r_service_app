@@ -53,20 +53,50 @@ export default function OngoingJobCard({
   const [isUpdating, setIsUpdating] = useState(false);
   const [nowTime, setNowTime] = useState<number>(Date.now());
 
-  // Role determination: Is this job delegated to a member, and who is the current user?
-  const isAssignedToMember = Boolean(job.assignedMemberId);
-  const isExecutingTechnician = isAssignedToMember
-    ? job.assignedMemberId === currentUId
-    : true;
-  const isSupervisingOwner = Boolean(
-    isOwner && isAssignedToMember && job.assignedMemberId !== currentUId
-  );
-
-  // Retrieve mechanic's specific offer
+  // Retrieve mechanic's specific offer (either made by owner or assigned to member)
   const myOffer = job.mechanicsOffer?.find(
     (o) => o.mId === currentUId || o.assignedMemberId === currentUId
   );
   const offerStatus = myOffer?.status ?? job.status;
+
+  // Resolve delegated technician reliably from root doc or offer payload
+  const effectiveAssignedMemberId =
+    job.assignedMemberId ||
+    myOffer?.assignedMemberId ||
+    job.mechanicsOffer?.find((o) => Boolean(o.assignedMemberId))?.assignedMemberId;
+
+  const effectiveAssignedMemberName =
+    job.assignedMemberName ||
+    myOffer?.assignedMemberName ||
+    job.mechanicsOffer?.find((o) => Boolean(o.assignedMemberName))?.assignedMemberName ||
+    "Technician";
+
+  const effectiveAssignedMemberPhone =
+    job.assignedMemberPhone ||
+    myOffer?.assignedMemberPhone ||
+    job.mechanicsOffer?.find((o) => Boolean(o.assignedMemberPhone))?.assignedMemberPhone ||
+    "";
+
+  const effectiveAssignedMemberCity =
+    job.assignedMemberCity ||
+    myOffer?.assignedMemberCity ||
+    job.mechanicsOffer?.find((o) => Boolean(o.assignedMemberCity))?.assignedMemberCity ||
+    "";
+
+  // Role determination: Is this job delegated to a team member?
+  const isAssignedToMember = Boolean(
+    effectiveAssignedMemberId && effectiveAssignedMemberId !== "self"
+  );
+
+  // Executing technician: The assigned member, OR the owner when doing the job directly
+  const isExecutingTechnician = isAssignedToMember
+    ? effectiveAssignedMemberId === currentUId
+    : true;
+
+  // Supervising owner: Owner viewing a job delegated to their team member
+  const isSupervisingOwner = Boolean(
+    isOwner && isAssignedToMember && effectiveAssignedMemberId !== currentUId
+  );
 
   // Refresh progress clock every 10 seconds for live progress bar
   useEffect(() => {
@@ -233,16 +263,16 @@ export default function OngoingJobCard({
       </div>
 
       {/* ASSIGNED TECHNICIAN BADGE (Team Dispatch) */}
-      {job.assignedMemberName && (
+      {(effectiveAssignedMemberName && effectiveAssignedMemberName !== "Technician" || isAssignedToMember) && (
         <div className="px-3.5 py-2 rounded-2xl bg-slate-50 border border-gray-200 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
             <UserCheck size={14} className="text-[#58BB87]" />
             <span className="text-gray-500 font-medium">Assigned Technician:</span>
-            <span className="font-bold text-gray-900">{job.assignedMemberName}</span>
+            <span className="font-bold text-gray-900">{effectiveAssignedMemberName}</span>
           </div>
-          {job.assignedMemberCity && (
+          {effectiveAssignedMemberCity && (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-[#F96176]">
-              📍 {job.assignedMemberCity}
+              📍 {effectiveAssignedMemberCity}
             </span>
           )}
         </div>
@@ -369,13 +399,13 @@ export default function OngoingJobCard({
                 <span>Call Driver</span>
               </a>
             )}
-            {job.assignedMemberPhone && (
+            {effectiveAssignedMemberPhone && (
               <a
-                href={`tel:${job.assignedMemberPhone}`}
+                href={`tel:${effectiveAssignedMemberPhone}`}
                 className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition"
               >
                 <Phone size={13} className="text-blue-600" />
-                <span>Call Tech ({job.assignedMemberName})</span>
+                <span>Call Tech ({effectiveAssignedMemberName})</span>
               </a>
             )}
           </div>
@@ -404,7 +434,7 @@ export default function OngoingJobCard({
             )}
           </div>
         </div>
-      ) : (
+      ) : isExecutingTechnician ? (
         /* EXECUTING TECHNICIAN TOOLBAR (Assigned Team Member or Owner self-accepted) */
         <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 flex-wrap">
           {/* Step 1: Waiting for driver acceptance */}
@@ -600,6 +630,20 @@ export default function OngoingJobCard({
                 <span>{job.mReviewSubmitted ? "Edit Driver Review" : "Rate Driver"}</span>
               </button>
             </div>
+          )}
+        </div>
+      ) : (
+        /* TEAM MEMBER OBSERVER / NON-ASSIGNED VIEW */
+        <div className="flex items-center justify-between w-full gap-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
+          <span>Assigned to {effectiveAssignedMemberName}</span>
+          {job.userPhoneNumber && (
+            <a
+              href={`tel:${job.userPhoneNumber}`}
+              className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
+            >
+              <Phone size={13} className="text-[#58BB87]" />
+              <span>Call Driver</span>
+            </a>
           )}
         </div>
       )}

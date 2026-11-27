@@ -208,7 +208,11 @@ export default function JobIdDetails({
     if (!confirmAccept) return;
 
     try {
-      const updates = {
+      const selectedOffer = jobDetails.mechanicsOffer?.find(
+        (offer) => offer.mId === mechanicId
+      );
+
+      const updates: any = {
         status: 2,
         mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
           ...offer,
@@ -216,19 +220,39 @@ export default function JobIdDetails({
         })),
       };
 
+      if (selectedOffer?.assignedMemberId) {
+        updates.assignedMemberId = selectedOffer.assignedMemberId;
+        updates.assignedMemberName = selectedOffer.assignedMemberName || "";
+        updates.assignedMemberPhone = selectedOffer.assignedMemberPhone || "";
+        updates.assignedMemberCity = selectedOffer.assignedMemberCity || "";
+        updates.isAssignedByOwner = true;
+      }
+
+      const jobDocId = id.startsWith("#") ? id : `#${id}`;
+      const rawJobId = id.replace(/^#/, "");
+
       // Update user history document
       const userHistoryRef = doc(
         db,
         "Users",
         effectiveUserId,
         "history",
-        `#${id}`
+        jobDocId
       );
       await updateDoc(userHistoryRef, updates);
 
-      // Update jobs document
-      const jobRef = doc(db, "jobs", `#${id}`);
-      await updateDoc(jobRef, updates);
+      // Update jobs document (support both #id and bare id)
+      try {
+        const jobRef = doc(db, "jobs", jobDocId);
+        await updateDoc(jobRef, updates);
+      } catch (jobErr) {
+        try {
+          const rawJobRef = doc(db, "jobs", rawJobId);
+          await updateDoc(rawJobRef, updates);
+        } catch (rawErr) {
+          console.warn("Could not update bare jobs doc:", rawErr);
+        }
+      }
 
       // Refresh job details
       const updatedJobSnap = await getDoc(userHistoryRef);

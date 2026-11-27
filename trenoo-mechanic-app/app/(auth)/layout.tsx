@@ -1,8 +1,6 @@
 "use client";
 
 import { ReactNode } from "react";
-import AuthContextProvider from "@/contexts/AuthContexts";
-import { Toaster } from "react-hot-toast";
 
 interface LayoutProps {
   children: ReactNode;
