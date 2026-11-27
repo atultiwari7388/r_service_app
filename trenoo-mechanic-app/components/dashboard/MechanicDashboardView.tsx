@@ -688,6 +688,7 @@ export default function MechanicDashboardView() {
                             onReassignClick={(j) => setReassignModalJob(j)}
                             onCancelClick={(j) => setCancelModalJob(j)}
                             onRateClick={(j) => setRateModalJob(j)}
+                            onAcceptAssignment={(j) => acceptMemberAssignment(j.id, j.userId)}
                           />
                         ))}
                       </div>
@@ -748,6 +749,7 @@ export default function MechanicDashboardView() {
                             onReassignClick={(j) => setReassignModalJob(j)}
                             onCancelClick={(j) => setCancelModalJob(j)}
                             onRateClick={(j) => setRateModalJob(j)}
+                            onAcceptAssignment={(j) => acceptMemberAssignment(j.id, j.userId)}
                           />
                         ))}
                       </div>

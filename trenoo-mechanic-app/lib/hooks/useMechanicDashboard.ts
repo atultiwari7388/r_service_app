@@ -421,40 +421,44 @@ export function useMechanicDashboard() {
   }, [mechanicProfile?.selected_services]);
 
   // Upcoming Jobs (Filtered according to Flutter dashboard_screen.dart rules)
-  // Strictly enforces:
-  // 1. Mechanic must have registered workshop services (selected_services)
-  // 2. Job's selectedService must match mechanic's registered services
-  // 3. Job is only visible for 5 minutes (300s) from creation time; auto-hidden afterwards
-  // 4. Excluded if mechanic already made an offer (status == 1)
-  // 5. Excluded if beyond nearby dispatch radius
+  // Direct workshop owner assignments to a team member are ALWAYS visible regardless of online status or services!
   const upcomingJobs = useMemo(() => {
-    if (!isOnline) return [];
-
-    // Flutter dashboard_screen.dart lines 89-120:
-    // If mechanic has not selected any services yet, show 0 jobs until they add services!
-    if (mechanicServices.length === 0) return [];
-
-    // Filter by status, offers, services, and distance
     const isMember = mechanicProfile?.role === "member" || !!mechanicProfile?.ownerId;
     const allowDirect = mechanicProfile?.allowDirectJobAcceptance === true;
 
-    const filtered = allJobs
+    // 1. Direct assignments from workshop owner to this technician
+    // CRITICAL: Must NEVER be blocked by isOnline or mechanicServices!
+    const myDirectAssignments = allJobs.filter((job) => {
+      if (job.status === 5 || job.status === -1) return false;
+      const isAssigned =
+        job.assignedMemberId === currentUId ||
+        job.mechanicsOffer?.some((o) => o.assignedMemberId === currentUId);
+      return (
+        isAssigned &&
+        job.status === 2 &&
+        job.assignmentStatus === "pending_member_acceptance"
+      );
+    });
+
+    // 2. Open roadside emergency jobs (status == 0)
+    // Only available when online and workshop has registered services
+    if (!isOnline || mechanicServices.length === 0) {
+      return myDirectAssignments.map((job) => {
+        const dist = calculateDistance(
+          job.userLat || 0,
+          job.userLong || 0,
+          currentLat,
+          currentLng
+        );
+        return {
+          ...job,
+          calculatedDistance: dist,
+        };
+      });
+    }
+
+    const filteredOpenJobs = allJobs
       .filter((job) => {
-        // Special case: Member Assigned Jobs awaiting acceptance
-        // If current user is a team member, and this job is assigned to them with status === 2 and assignmentStatus === "pending_member_acceptance"
-        const isMyPendingAssignment =
-          isMember &&
-          job.status === 2 &&
-          (job.assignedMemberId === currentUId ||
-            job.mechanicsOffer?.some(
-              (o) => o.assignedMemberId === currentUId && o.status === 2
-            )) &&
-          job.assignmentStatus === "pending_member_acceptance";
-
-        if (isMyPendingAssignment) {
-          return true; // Show in Upcoming for the member to accept!
-        }
-
         // Status must be 0 (new)
         if (job.status !== 0) return false;
 
@@ -496,7 +500,7 @@ export function useMechanicDashboard() {
           jobTimeMs = new Date(job.orderDate).getTime();
         }
 
-        if (jobTimeMs > 0 && !isMyPendingAssignment) {
+        if (jobTimeMs > 0) {
           const elapsedSeconds = Math.floor((currentTime - jobTimeMs) / 1000);
           if (elapsedSeconds >= 300) {
             return false;
@@ -504,7 +508,6 @@ export function useMechanicDashboard() {
         }
 
         // 2. NEARBY DISTANCE FILTERING (Exact Flutter logic from dashboard_screen.dart line 369-371)
-        // Flutter: if (distance <= (job['nearByDistance'] ?? 0))
         if (filterOnlyNearby && currentLat !== 0 && currentLng !== 0) {
           const dist = calculateDistance(
             job.userLat || 0,
@@ -519,42 +522,42 @@ export function useMechanicDashboard() {
               : 50; // Fallback radius if unconfigured
 
           if (dist > maxAllowedDistance) {
-            // HIDE this job because it is outside the nearby dispatch radius!
             return false;
           }
         }
 
         return true;
-      })
-      .map((job) => {
-        const dist = calculateDistance(
-          job.userLat || 0,
-          job.userLong || 0,
-          currentLat,
-          currentLng
-        );
-        return {
-          ...job,
-          calculatedDistance: dist,
-        };
       });
+
+    const combined = [...myDirectAssignments, ...filteredOpenJobs].map((job) => {
+      const dist = calculateDistance(
+        job.userLat || 0,
+        job.userLong || 0,
+        currentLat,
+        currentLng
+      );
+      return {
+        ...job,
+        calculatedDistance: dist,
+      };
+    });
 
     // 3. SORTING (matching Flutter dashboard_screen.dart lines 170-204)
     if (selectedSortOption === "Near by") {
-      filtered.sort(
+      combined.sort(
         (a, b) => (a.calculatedDistance || 0) - (b.calculatedDistance || 0)
       );
     } else if (selectedSortOption === "Rating") {
-      filtered.sort((a, b) => (b.mRating || 4.5) - (a.mRating || 4.5));
+      combined.sort((a, b) => (b.mRating || 4.5) - (a.mRating || 4.5));
     } else if (selectedSortOption === "Newest") {
-      filtered.sort((a, b) => {
+      combined.sort((a, b) => {
         const dateA = a.orderDate?.seconds || 0;
         const dateB = b.orderDate?.seconds || 0;
         return dateB - dateA;
       });
     }
 
-    return filtered;
+    return combined;
   }, [
     allJobs,
     isOnline,
@@ -573,27 +576,18 @@ export function useMechanicDashboard() {
   const ongoingJobs = useMemo(() => {
     if (!currentUId) return [];
 
-    const isMember = mechanicProfile?.role === "member" || !!mechanicProfile?.ownerId;
-
     return allJobs
       .filter((job) => {
         if (job.status === 5 || job.status === -1) return false;
 
-        // If current user is the assigned member, but they haven't accepted the assignment yet,
-        // it lives in upcomingJobs until accepted!
-        const isMyPendingAssignment =
-          (job.assignedMemberId === currentUId ||
-            job.mechanicsOffer?.some(
-              (o) => o.assignedMemberId === currentUId && o.status === 2
-            )) &&
-          job.assignmentStatus === "pending_member_acceptance";
+        // Direct assignment match to this technician (ALWAYS visible in ongoing!)
+        const isAssignedToMe =
+          job.assignedMemberId === currentUId ||
+          job.mechanicsOffer?.some((o) => o.assignedMemberId === currentUId);
 
-        if (isMember && isMyPendingAssignment) {
-          return false;
+        if (isAssignedToMe && [1, 2, 3, 4].includes(job.status)) {
+          return true;
         }
-
-        // Direct assignment match
-        if (job.assignedMemberId === currentUId) return true;
 
         const myOffer = job.mechanicsOffer?.find(
           (o) => o.mId === currentUId || o.assignedMemberId === currentUId
@@ -613,7 +607,7 @@ export function useMechanicDashboard() {
           calculatedDistance: dist,
         };
       });
-  }, [allJobs, currentUId, mechanicProfile, currentLat, currentLng]);
+  }, [allJobs, currentUId, currentLat, currentLng]);
 
   // Completed / Cancelled Jobs (History)
   // Strictly matches Flutter rabbit_shop_app history_screen.dart & completed_history_screen.dart
