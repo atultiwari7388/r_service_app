@@ -41,6 +41,7 @@ import {
   normalizeCountry,
   SupportedCountry,
 } from "@/lib/countryFields";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 interface CompanyFormData {
   businessName: string;
@@ -92,10 +93,7 @@ export default function MyCompaniesPage() {
   // Active action dropdown
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
 
-  const isMember =
-    mechanicProfile?.role === "member" ||
-    !!mechanicProfile?.ownerId ||
-    mechanicProfile?.isTeamMember === true;
+  const isMember = isTeamMemberProfile(mechanicProfile);
   const isOwner = !isMember;
 
   const effectiveMechanicId = isMember && mechanicProfile?.ownerId

@@ -34,8 +34,16 @@ import { FirestoreJob, MechanicOffer } from "@/types/job";
 import JobOfferModal from "@/components/dashboard/JobOfferModal";
 import CancelReasonModal from "@/components/dashboard/CancelReasonModal";
 import DriverRatingModal from "@/components/dashboard/DriverRatingModal";
-import StartJobDurationModal from "@/components/dashboard/StartJobDurationModal";
 import EmergencyHandoverModal from "@/components/dashboard/EmergencyHandoverModal";
+import InspectionAndQuoteModal from "@/components/dashboard/InspectionAndQuoteModal";
+import ReassignMemberModal from "@/components/dashboard/ReassignMemberModal";
+import {
+  JOB_STATUS,
+  getAcceptedOffer,
+  getJobPhase,
+  getJobRelation,
+  getMechanicPhaseLabel,
+} from "@/lib/jobWorkflow";
 
 type JobTab = "upcoming" | "ongoing" | "completed" | "cancelled";
 
@@ -53,11 +61,13 @@ export default function JobsBoardDirectory() {
     completedJobs,
     cancelledJobs,
     submitOffer,
-    updateJobStatus,
     cancelJob,
     submitRating,
-    startJobWithDuration,
+    markArrivedAtSite,
+    submitInspectionAndQuote,
+    markRepairFinished,
     requestEmergencyHandover,
+    reassignJobMember,
     cancelReasons,
   } = useMechanicDashboard();
 
@@ -82,9 +92,29 @@ export default function JobsBoardDirectory() {
   const [offerModalJob, setOfferModalJob] = useState<FirestoreJob | null>(null);
   const [cancelModalJob, setCancelModalJob] = useState<FirestoreJob | null>(null);
   const [rateModalJob, setRateModalJob] = useState<FirestoreJob | null>(null);
-  const [durationModalJob, setDurationModalJob] = useState<FirestoreJob | null>(null);
+  const [inspectModalJob, setInspectModalJob] = useState<FirestoreJob | null>(null);
+  const [reassignModalJob, setReassignModalJob] = useState<FirestoreJob | null>(null);
   const [handoverModalJob, setHandoverModalJob] = useState<FirestoreJob | null>(null);
-  const [isAdvancingStatus, setIsAdvancingStatus] = useState(false);
+  const [busyJobId, setBusyJobId] = useState<string | null>(null);
+
+  const runRowAction = async (job: FirestoreJob, action: () => Promise<unknown>) => {
+    if (busyJobId) return;
+    setBusyJobId(job.id);
+    try {
+      await action();
+    } catch {
+      // toast raised by the hook
+    } finally {
+      setBusyJobId(null);
+    }
+  };
+
+  // Phase 3: record arrival, then open the inspection modal automatically
+  const handleArrived = (job: FirestoreJob) =>
+    runRowAction(job, async () => {
+      await markArrivedAtSite(job.id);
+      setInspectModalJob({ ...job, status: JOB_STATUS.ON_SITE, arrivedAtLocation: true });
+    });
 
   // Sync tab from URL if changed
   useEffect(() => {
@@ -202,10 +232,11 @@ export default function JobsBoardDirectory() {
 
   // Status Badge Component
   const renderStatusBadge = (job: FirestoreJob) => {
-    const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
-    const offerStatus = myOffer?.status ?? job.status;
+    const phase = getJobPhase(job);
+    const { offer } = getJobRelation(job, currentUId);
+    const withdrawn = phase === "open" && offer?.status === JOB_STATUS.CANCELLED;
 
-    if (offerStatus === 5 || job.status === 5) {
+    if (phase === "completed") {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAF8F1] text-[#58BB87] text-xs font-semibold border border-[#58BB87]/30">
           <CheckCircle2 size={12} />
@@ -213,65 +244,110 @@ export default function JobsBoardDirectory() {
         </span>
       );
     }
-
-    if (offerStatus === -1 || job.status === -1) {
+    if (phase === "cancelled" || withdrawn) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold border border-red-200">
           <XCircle size={12} />
-          Cancelled
+          {withdrawn ? "Quote Withdrawn" : "Cancelled"}
         </span>
       );
     }
-
-    switch (offerStatus) {
-      case 0:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-            New Request
-          </span>
-        );
-      case 1:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 text-xs font-semibold border border-teal-200">
-            Offer Submitted
-          </span>
-        );
-      case 2:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-50 text-sky-800 text-xs font-semibold border border-sky-200">
-            Dispatched • En Route
-          </span>
-        );
-      case 3:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
-            On-Site • Inspection
-          </span>
-        );
-      case 4:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-800 text-xs font-semibold border border-orange-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-            Repair In Progress
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
-            Status #{offerStatus}
-          </span>
-        );
+    if (phase === "open" && !offer) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+          New Request
+        </span>
+      );
     }
+    const tone =
+      phase === "awaiting_payment" || phase === "open"
+        ? "bg-amber-50 text-amber-800 border-amber-200"
+        : phase === "repairing"
+        ? "bg-orange-50 text-orange-800 border-orange-200"
+        : "bg-sky-50 text-sky-800 border-sky-200";
+    return (
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${tone}`}>
+        {getMechanicPhaseLabel(job)}
+      </span>
+    );
   };
 
-  const handleAdvanceStatus = async (job: FirestoreJob, targetStatus: number) => {
-    setIsAdvancingStatus(true);
-    try {
-      await updateJobStatus(job.id, job.userId, targetStatus);
-    } finally {
-      setIsAdvancingStatus(false);
+  // Phase/role driven quick actions (same rules as the dashboard cards)
+  const renderRowActions = (job: FirestoreJob) => {
+    const phase = getJobPhase(job);
+    const { relation } = getJobRelation(job, currentUId);
+    const busy = busyJobId === job.id;
+    const btn =
+      "px-3 py-1.5 rounded-lg text-white text-xs font-semibold transition shadow-xs flex items-center gap-1.5 disabled:opacity-50";
+
+    if (relation === "executor") {
+      const handover =
+        !job.handoverRequested &&
+        (phase === "en_route" || phase === "on_site_inspecting" || phase === "repairing") ? (
+          <button
+            onClick={() => setHandoverModalJob(job)}
+            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition"
+            title="Emergency Handover"
+          >
+            <AlertTriangle size={13} />
+          </button>
+        ) : null;
+      return (
+        <>
+          {phase === "en_route" && (
+            <button
+              onClick={() => handleArrived(job)}
+              disabled={busy}
+              className={`${btn} bg-emerald-600 hover:bg-emerald-700`}
+            >
+              <MapPin size={12} />
+              <span>Arrived at Destination</span>
+            </button>
+          )}
+          {phase === "on_site_inspecting" && (
+            <button
+              onClick={() => setInspectModalJob(job)}
+              className={`${btn} bg-[#58BB87] hover:bg-[#48a674]`}
+            >
+              <FileText size={12} />
+              <span>Inspection</span>
+            </button>
+          )}
+          {phase === "awaiting_payment" && (
+            <span className="text-[11px] font-semibold text-amber-700">Awaiting payment</span>
+          )}
+          {phase === "repairing" && (
+            <button
+              onClick={() => runRowAction(job, () => markRepairFinished(job.id))}
+              disabled={busy}
+              className={`${btn} bg-[#58BB87] hover:bg-[#48a674]`}
+            >
+              <Check size={12} />
+              <span>Mark Repair Finished</span>
+            </button>
+          )}
+          {phase === "awaiting_signoff" && (
+            <span className="text-[11px] font-semibold text-indigo-700">Awaiting sign-off</span>
+          )}
+          {handover}
+        </>
+      );
     }
+
+    if (relation === "supervisor" && ["en_route", "on_site_inspecting", "awaiting_payment", "repairing"].includes(phase)) {
+      return (
+        <button
+          onClick={() => setReassignModalJob(job)}
+          className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 text-xs font-semibold transition flex items-center gap-1.5"
+        >
+          <User size={12} className="text-[#F96176]" />
+          <span>Reassign Tech</span>
+        </button>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -486,9 +562,6 @@ export default function JobsBoardDirectory() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {paginatedJobs.map((job) => {
-                  const myOffer = job.mechanicsOffer?.find((o) => o.mId === currentUId);
-                  const offerStatus = myOffer?.status ?? job.status;
-
                   return (
                     <tr
                       key={job.id}
@@ -580,7 +653,7 @@ export default function JobsBoardDirectory() {
                           </button>
 
                           {/* Quick action button depending on tab */}
-                          {activeTab === "upcoming" && !isMember && (
+                          {activeTab === "upcoming" && !isMember && job.status === JOB_STATUS.OPEN && (
                             <button
                               onClick={() => setOfferModalJob(job)}
                               className="px-3 py-1.5 rounded-lg bg-[#F96176] hover:bg-[#e0485d] text-white text-xs font-semibold transition shadow-xs flex items-center gap-1 cursor-pointer"
@@ -590,39 +663,9 @@ export default function JobsBoardDirectory() {
                             </button>
                           )}
 
-                          {activeTab === "ongoing" && (
-                            <>
-                              {offerStatus === 3 && (
-                                <button
-                                  onClick={() => setDurationModalJob(job)}
-                                  disabled={isAdvancingStatus}
-                                  className="px-3 py-1.5 rounded-lg bg-[#58BB87] hover:bg-[#48a674] text-white text-xs font-semibold transition shadow-xs flex items-center gap-1.5"
-                                  title="Arrived at truck breakdown & specify repair minutes"
-                                >
-                                  <Clock size={12} />
-                                  <span>Arrived & Set Duration</span>
-                                </button>
-                              )}
-                              {offerStatus === 4 && (
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => handleAdvanceStatus(job, 5)}
-                                    disabled={isAdvancingStatus}
-                                    className="px-3 py-1.5 rounded-lg bg-[#58BB87] hover:bg-[#48a674] text-white text-xs font-semibold transition shadow-xs"
-                                  >
-                                    Complete
-                                  </button>
-                                  <button
-                                    onClick={() => setHandoverModalJob(job)}
-                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition"
-                                    title="Emergency Handover"
-                                  >
-                                    <AlertTriangle size={13} />
-                                  </button>
-                                </div>
-                              )}
-                            </>
-                          )}
+                          {(activeTab === "ongoing" || activeTab === "upcoming") &&
+                            job.status !== JOB_STATUS.OPEN &&
+                            renderRowActions(job)}
 
                           {activeTab === "completed" && !job.mReviewSubmitted && (
                             <button
@@ -897,7 +940,9 @@ export default function JobsBoardDirectory() {
               </button>
 
               {/* Action buttons inside details modal */}
-              {selectedJobForDetails.status === 0 && (
+              {selectedJobForDetails.status === JOB_STATUS.OPEN &&
+                !isMember &&
+                !selectedJobForDetails.mechanicsOffer?.some((o) => o.mId === currentUId) && (
                 <button
                   onClick={() => {
                     const j = selectedJobForDetails;
@@ -911,7 +956,13 @@ export default function JobsBoardDirectory() {
                 </button>
               )}
 
-              {[1, 2, 3, 4].includes(selectedJobForDetails.status) && (
+              {isOwner &&
+                !selectedJobForDetails.isPaid &&
+                [JOB_STATUS.OPEN, JOB_STATUS.DISPATCHED, JOB_STATUS.ON_SITE, JOB_STATUS.WORK_ORDER].includes(
+                  selectedJobForDetails.status as 0 | 2 | 3 | 4
+                ) &&
+                getJobRelation(selectedJobForDetails, currentUId).relation !== null &&
+                getJobRelation(selectedJobForDetails, currentUId).offer?.status !== JOB_STATUS.CANCELLED && (
                 <button
                   onClick={() => {
                     const j = selectedJobForDetails;
@@ -920,7 +971,7 @@ export default function JobsBoardDirectory() {
                   }}
                   className="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-semibold transition"
                 >
-                  Cancel Work Order
+                  {selectedJobForDetails.status === JOB_STATUS.OPEN ? "Withdraw Quote" : "Cancel Work Order"}
                 </button>
               )}
             </div>
@@ -935,6 +986,8 @@ export default function JobsBoardDirectory() {
           isOpen={Boolean(offerModalJob)}
           onClose={() => setOfferModalJob(null)}
           onSubmit={submitOffer}
+          ownerId={currentUId}
+          isOwner={isOwner}
         />
       )}
 
@@ -965,22 +1018,26 @@ export default function JobsBoardDirectory() {
         onSubmit={submitRating}
       />
 
-      {/* Start Job Duration Modal */}
-      {durationModalJob && (
-        <StartJobDurationModal
-          job={durationModalJob}
-          isOpen={Boolean(durationModalJob)}
-          onClose={() => setDurationModalJob(null)}
-          onConfirm={async (minutes: number) => {
-            await startJobWithDuration(
-              durationModalJob.id,
-              durationModalJob.userId,
-              minutes
-            );
-            setDurationModalJob(null);
-          }}
-        />
-      )}
+      {/* On-site Inspection & Verified Final Amount */}
+      <InspectionAndQuoteModal
+        job={inspectModalJob}
+        isOpen={Boolean(inspectModalJob)}
+        onClose={() => setInspectModalJob(null)}
+        currentOffer={inspectModalJob ? getAcceptedOffer(inspectModalJob) : undefined}
+        onSubmit={async (params) => {
+          if (!inspectModalJob) return;
+          await submitInspectionAndQuote(inspectModalJob.id, params);
+        }}
+      />
+
+      {/* Reassign Technician (workshop owner) */}
+      <ReassignMemberModal
+        job={reassignModalJob}
+        isOpen={Boolean(reassignModalJob)}
+        onClose={() => setReassignModalJob(null)}
+        ownerId={currentUId}
+        onReassign={reassignJobMember}
+      />
 
       {/* Emergency Handover Modal */}
       {handoverModalJob && (

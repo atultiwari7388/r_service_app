@@ -13,11 +13,14 @@ import {
   Maximize2,
   X,
   Star,
-  UserCheck,
-  Phone,
-  AlertTriangle,
 } from "lucide-react";
 import { FirestoreJob } from "@/types/job";
+import {
+  JOB_STATUS,
+  getJobRelation,
+  getMechanicPhaseLabel,
+} from "@/lib/jobWorkflow";
+import { ExecutorActions, SupervisorActions } from "./JobFieldActions";
 
 interface UpcomingJobCardProps {
   job: FirestoreJob;
@@ -27,8 +30,8 @@ interface UpcomingJobCardProps {
   onMarkArrived?: (job: FirestoreJob) => void;
   onInspectClick?: (job: FirestoreJob) => void;
   onHandoverClick?: (job: FirestoreJob) => void;
-  onAcceptAssignment?: (job: FirestoreJob) => void;
-  onDeclineAssignment?: (job: FirestoreJob) => void;
+  onMarkRepairFinished?: (job: FirestoreJob) => void | Promise<void>;
+  onReassignClick?: (job: FirestoreJob) => void;
 }
 
 export default function UpcomingJobCard({
@@ -39,21 +42,14 @@ export default function UpcomingJobCard({
   onMarkArrived,
   onInspectClick,
   onHandoverClick,
-  onAcceptAssignment,
-  onDeclineAssignment,
+  onMarkRepairFinished,
+  onReassignClick,
 }: UpcomingJobCardProps) {
-  // Determine if this is an assigned execution job (status >= 2, or assigned to this technician)
-  const isAssignedExecution =
-    isMember ||
-    job.status >= 2 ||
-    Boolean(job.assignedMemberId) ||
-    Boolean(job.isAssignedByOwner) ||
-    Boolean(
-      currentUId &&
-        job.mechanicsOffer?.some(
-          (o) => o.assignedMemberId === currentUId || o.status >= 2
-        )
-    );
+  // Open request (owner can quote) vs. dispatched work order (field execution).
+  // Team members NEVER get the open-request UI, whatever the job data says.
+  const { relation, offer } = getJobRelation(job, currentUId || "");
+  const isOpenRequest = !isMember && job.status === JOB_STATUS.OPEN;
+  const isAssignedExecution = !isOpenRequest;
 
   // 5-minute countdown timer logic matching Flutter (ONLY applies to open status 0 bids)
   const [secondsRemaining, setSecondsRemaining] = useState<number>(300);
@@ -95,6 +91,11 @@ export default function UpcomingJobCard({
   // If 5 minutes have elapsed, hide open job so mechanic cannot submit expired quote.
   // CRITICAL: An active assigned work order never expires!
   if (!isAssignedExecution && (isExpired || secondsRemaining <= 0)) {
+    return null;
+  }
+
+  // A dispatched job is only rendered for the technician or supervising owner
+  if (isAssignedExecution && relation !== "executor" && relation !== "supervisor") {
     return null;
   }
 
@@ -213,7 +214,7 @@ export default function UpcomingJobCard({
 
             {isAssignedExecution ? (
               <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-black tracking-tight shadow-2xs">
-                {job.status === 3 ? "On-Site • Inspecting" : "En Route to Breakdown"}
+                {getMechanicPhaseLabel(job)}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200/80 text-[#F96176] text-[11px] font-black tracking-tight animate-pulse shadow-2xs">
@@ -288,24 +289,6 @@ export default function UpcomingJobCard({
           </div>
         )}
 
-        {/* WORKSHOP OWNER ASSIGNMENT BANNER */}
-        {job.assignmentStatus === "pending_member_acceptance" && (
-          <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-xs flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <UserCheck size={16} className="text-blue-600 shrink-0" />
-              <div>
-                <span className="font-extrabold text-blue-950 block">Assigned by Workshop Owner</span>
-                <span className="text-[11px] text-blue-800">
-                  Customer accepted offer. Please accept assignment to begin dispatch.
-                </span>
-              </div>
-            </div>
-            <span className="px-2.5 py-1 rounded-full bg-blue-600 text-white font-black text-[10px] animate-pulse">
-              Action Required
-            </span>
-          </div>
-        )}
-
         {/* ISSUE DESCRIPTION */}
         {job.description && (
           <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-100 text-xs">
@@ -315,66 +298,25 @@ export default function UpcomingJobCard({
         )}
 
         {/* BOTTOM ACTION BUTTONS: Assigned Execution vs Open Solicitation */}
-        {isAssignedExecution || isMember ? (
-          <div className="flex items-center justify-between w-full gap-2 pt-1 border-t border-gray-100 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              {job.userPhoneNumber && (
-                <a
-                  href={`tel:${job.userPhoneNumber}`}
-                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
-                >
-                  <Phone size={13} className="text-[#58BB87]" />
-                  <span>Call Driver</span>
-                </a>
-              )}
-              <button
-                type="button"
-                onClick={openDirections}
-                className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer"
-                title="Open GPS Navigation"
-              >
-                <Navigation size={13} className="text-[#58BB87]" />
-                <span>Map Direction</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {onHandoverClick && (
-                <button
-                  type="button"
-                  onClick={() => onHandoverClick(job)}
-                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
-                  title="Request Emergency Handover"
-                >
-                  <AlertTriangle size={13} />
-                  <span>Handover</span>
-                </button>
-              )}
-
-              {job.status === 3 ? (
-                <button
-                  type="button"
-                  onClick={() => onInspectClick?.(job)}
-                  className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
-                >
-                  <Wrench size={14} />
-                  <span>Vehicle Inspection & Quote</span>
-                </button>
-              ) : job.status === 4 ? (
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
-                  {job.repairCompletedByTechnician ? "Repair Finished • Awaiting Sign-off" : "Repair in Progress"}
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onMarkArrived?.(job)}
-                  className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer"
-                >
-                  <MapPin size={14} />
-                  <span>Arrived at Destination</span>
-                </button>
-              )}
-            </div>
+        {isAssignedExecution ? (
+          <div className="pt-2 border-t border-gray-100">
+            {relation === "executor" ? (
+              <ExecutorActions
+                job={job}
+                offer={offer}
+                onMarkArrived={onMarkArrived}
+                onInspectClick={onInspectClick}
+                onMarkRepairFinished={onMarkRepairFinished}
+                onHandoverClick={onHandoverClick}
+              />
+            ) : (
+              <SupervisorActions
+                job={job}
+                techName={offer?.assignedMemberName || "Technician"}
+                techPhone={offer?.assignedMemberPhone}
+                onReassignClick={onReassignClick}
+              />
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-2 pt-1 border-t border-gray-100">

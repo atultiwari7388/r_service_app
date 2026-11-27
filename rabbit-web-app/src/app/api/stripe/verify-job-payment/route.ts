@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { getAcceptedOffer, type WorkflowJob } from "@/lib/jobWorkflow";
 
 export async function POST(req: Request) {
   try {
@@ -39,23 +40,29 @@ export async function POST(req: Request) {
       const jobRef = doc(db, "jobs", jobDocId);
       const jobSnap = await getDoc(jobRef);
       if (jobSnap.exists()) {
-        const jobData = jobSnap.data();
-        const currentOffers: any[] = jobData?.mechanicsOffer || [];
-        const updatedMechanicsOffer = currentOffers.map((offer: any) => ({
-          ...offer,
-          status: offer.mId === targetMechanicId ? 3 : offer.status,
-        }));
+        const jobData = jobSnap.data() as WorkflowJob & Record<string, any>;
+        // Payment never changes `status` (stays 4 = work order); it only flips
+        // isPaid so the technician can start the repair. Idempotent.
+        if (!jobData.isPaid) {
+          const accepted = getAcceptedOffer(jobData);
+          const updatedMechanicsOffer = (jobData.mechanicsOffer || []).map((offer) =>
+            offer === accepted
+              ? { ...offer, isPaid: true, paidAmount: amount, assignmentStatus: "repairing" }
+              : offer
+          );
 
-        await updateDoc(jobRef, {
-          status: 3,
-          payMode: "online",
-          isPaid: true,
-          paidAmount: amount,
-          paidCurrency: currency,
-          stripeSessionId: session.id,
-          paidAt: new Date().toISOString(),
-          mechanicsOffer: updatedMechanicsOffer,
-        });
+          await updateDoc(jobRef, {
+            payMode: "online",
+            isPaid: true,
+            paidAmount: amount,
+            paidCurrency: currency,
+            stripeSessionId: session.id,
+            paidAt: new Date().toISOString(),
+            assignmentStatus: "repairing",
+            activeJobStartedAt: new Date(),
+            mechanicsOffer: updatedMechanicsOffer,
+          });
+        }
       }
     } catch (serverErr) {
       console.warn("Server Firestore sync warning (client will finalize):", serverErr);
@@ -68,7 +75,7 @@ export async function POST(req: Request) {
       jobDocId,
       targetUserId,
       targetMechanicId,
-      status: 3,
+      status: 4,
       payMode: "online",
       isPaid: true,
       amount,

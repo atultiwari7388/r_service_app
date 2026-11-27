@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Plus,
 } from "lucide-react";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 const FALLBACK_VEHICLE_TYPES = ["Truck", "Trailer"];
 
@@ -94,10 +95,7 @@ export default function EditVehiclePage() {
   const [selectedMyCompanyId, setSelectedMyCompanyId] = useState<string>("");
   const [selectedMyCompanyName, setSelectedMyCompanyName] = useState<string>("");
 
-  const isMember =
-    mechanicProfile?.role === "member" ||
-    !!mechanicProfile?.ownerId ||
-    mechanicProfile?.isTeamMember === true;
+  const isMember = isTeamMemberProfile(mechanicProfile);
 
   const effectiveMechanicId = isMember && mechanicProfile?.ownerId
     ? mechanicProfile.ownerId

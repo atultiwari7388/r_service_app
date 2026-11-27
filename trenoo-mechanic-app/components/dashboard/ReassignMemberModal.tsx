@@ -6,17 +6,17 @@ import { FirestoreJob } from "@/types/job";
 import { MechanicProfile } from "@/types/auth";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import toast from "react-hot-toast";
+import { getAcceptedOffer } from "@/lib/jobWorkflow";
 
 interface ReassignMemberModalProps {
   job: FirestoreJob | null;
   isOpen: boolean;
   onClose: () => void;
   ownerId: string;
+  /** member === null → owner keeps the job ("Self") */
   onReassign: (
     jobId: string,
-    newMemberId: string | null,
-    newMemberName: string
+    member: { id: string; name: string; phone?: string; city?: string } | null
   ) => Promise<void>;
 }
 
@@ -59,23 +59,28 @@ export default function ReassignMemberModal({
 
   if (!isOpen || !job) return null;
 
+  // Current assignee comes from the accepted offer (or this owner's pending quote)
+  const activeOffer =
+    getAcceptedOffer(job) || job.mechanicsOffer?.find((o) => o.mId === ownerId);
+  const currentAssigneeId = activeOffer?.assignedMemberId || "";
+
   const handleConfirm = async () => {
     setIsSubmitting(true);
     try {
       if (selectedMemberId === "self") {
-        await onReassign(job.id, null, "Workshop Owner (Self)");
+        await onReassign(job.id, null);
       } else {
         const found = members.find((m) => m.uid === selectedMemberId);
-        await onReassign(
-          job.id,
-          selectedMemberId,
-          found?.name || found?.userName || "Assigned Technician"
-        );
+        await onReassign(job.id, {
+          id: selectedMemberId,
+          name: (found?.name || found?.userName || "Assigned Technician").trim(),
+          phone: (found?.cellPhone || found?.phoneNumber || "").trim(),
+          city: (found?.baseCity || found?.city || "").trim(),
+        });
       }
-      toast.success("Job reassigned successfully!");
       onClose();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to reassign job");
+    } catch {
+      // error toast raised by the hook
     } finally {
       setIsSubmitting(false);
     }
@@ -147,7 +152,7 @@ export default function ReassignMemberModal({
 
           {/* Team Members */}
           {members
-            .filter((m) => m.uid !== job.assignedMemberId)
+            .filter((m) => m.uid !== currentAssigneeId)
             .map((m) => {
               const isSelected = selectedMemberId === m.uid;
               const isBusy = !!m.currentActiveJobId;

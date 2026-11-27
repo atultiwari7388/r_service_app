@@ -36,19 +36,25 @@ export default function InspectionAndQuoteModal({
   const [inspectionNotes, setInspectionNotes] = useState<string>("");
   const [estimatedMinutes, setEstimatedMinutes] = useState<number>(45);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const quoteReference = (() => {
+    const fix = Number(currentOffer?.fixPrice) || 0;
+    if (fix > 0) return `$${fix} flat`;
+    const arrival = Number(currentOffer?.arrivalCharges) || 0;
+    const hourly = Number(currentOffer?.perHourCharges) || 0;
+    if (arrival || hourly) return `$${arrival} arrival + $${hourly}/hr`;
+    return "";
+  })();
 
   useEffect(() => {
     if (job && isOpen) {
-      // Pre-fill amount from current offer or job fixPrice if available
-      const defaultAmount =
-        Number(job.finalDiagnosedAmount) ||
-        Number(currentOffer?.fixPrice) ||
-        Number(job.fixPrice) ||
-        Number(currentOffer?.arrivalCharges) ||
-        150;
-      setFinalAmount(defaultAmount > 0 ? defaultAmount : 150);
+      // The technician must enter the verified amount after inspecting the vehicle.
+      // Only a previously submitted verified amount is pre-filled; quotes are shown as reference.
+      setFinalAmount(Number(job.finalDiagnosedAmount) || 0);
       setInspectionNotes(job.inspectionNotes || "");
       setEstimatedMinutes(job.estimatedRepairMinutes || 45);
+      setFormError("");
     }
   }, [job, isOpen, currentOffer]);
 
@@ -56,14 +62,19 @@ export default function InspectionAndQuoteModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (finalAmount <= 0) {
-      alert("Please enter a valid final diagnosed amount greater than $0.");
-      return;
-    }
     if (!inspectionNotes.trim()) {
-      alert("Please provide on-site vehicle inspection notes or diagnosed findings.");
+      setFormError("Diagnostic notes are required.");
       return;
     }
+    if (!Number.isFinite(estimatedMinutes) || estimatedMinutes <= 0) {
+      setFormError("Enter the estimated repair time in minutes.");
+      return;
+    }
+    if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+      setFormError("Enter the verified final amount (greater than $0).");
+      return;
+    }
+    setFormError("");
 
     setIsSubmitting(true);
     try {
@@ -141,55 +152,29 @@ export default function InspectionAndQuoteModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Final Diagnosed Amount */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <DollarSign size={14} className="text-[#58BB87]" />
-              <span>Final Diagnosed Work Order Amount ($ USD) *</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">
-                $
-              </span>
-              <input
-                type="number"
-                min="1"
-                step="0.01"
-                required
-                value={finalAmount || ""}
-                onChange={(e) => setFinalAmount(parseFloat(e.target.value) || 0)}
-                placeholder="e.g. 275.00"
-                className="w-full pl-8 pr-4 py-2.5 rounded-2xl border border-gray-200 text-sm font-black text-gray-900 focus:outline-hidden focus:border-[#58BB87] focus:ring-2 focus:ring-[#58BB87]/20"
-              />
-            </div>
-            <p className="text-[11px] text-gray-400">
-              Include parts, on-site labor, and call-out dispatch charge.
-            </p>
-          </div>
-
-          {/* Inspection & Diagnostic Notes */}
+          {/* Field 1: Diagnostic Notes */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
               <FileText size={14} className="text-[#F96176]" />
-              <span>Diagnostic Findings & Parts Replaced *</span>
+              <span>Diagnostic Notes: physical fault discovered *</span>
             </label>
             <textarea
               required
               rows={3}
               value={inspectionNotes}
               onChange={(e) => setInspectionNotes(e.target.value)}
-              placeholder="e.g., Inspected primary airline fitting. Replaced 3/8 brass union connector, leak-checked system at 120 PSI, holding pressure properly."
+              placeholder="e.g., Primary airline fitting cracked at the trailer gladhand. Replace 3/8 brass union and leak-check at 120 PSI."
               className="w-full p-3 rounded-2xl border border-gray-200 text-xs font-medium text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]/20"
             />
           </div>
 
-          {/* Estimated Repair Time */}
+          {/* Field 2: Estimated Repair Minutes */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
               <Clock size={14} className="text-blue-500" />
-              <span>Estimated Execution Time (Minutes)</span>
+              <span>Estimated Repair Minutes *</span>
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {[30, 45, 60, 90].map((mins) => (
                 <button
                   key={mins}
@@ -201,11 +186,54 @@ export default function InspectionAndQuoteModal({
                       : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
                   }`}
                 >
-                  {mins} mins
+                  {mins}m
                 </button>
               ))}
+              <input
+                type="number"
+                min="1"
+                step="1"
+                required
+                value={estimatedMinutes || ""}
+                onChange={(e) => setEstimatedMinutes(parseInt(e.target.value, 10) || 0)}
+                aria-label="Custom repair minutes"
+                className="w-full px-2 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 text-center focus:outline-hidden focus:border-blue-300"
+              />
             </div>
           </div>
+
+          {/* Field 3: Verified Final Amount */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+              <DollarSign size={14} className="text-[#58BB87]" />
+              <span>Verified Final Amount ($) *</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">
+                $
+              </span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={finalAmount || ""}
+                onChange={(e) => setFinalAmount(parseFloat(e.target.value) || 0)}
+                placeholder="e.g. 275.00"
+                className="w-full pl-8 pr-4 py-2.5 rounded-2xl border border-gray-200 text-sm font-black text-gray-900 focus:outline-hidden focus:border-[#58BB87] focus:ring-2 focus:ring-[#58BB87]/20"
+              />
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Exact final bill for parts + labor.
+              {quoteReference ? ` Original quote: ${quoteReference}.` : ""}
+            </p>
+          </div>
+
+          {formError && (
+            <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+              {formError}
+            </p>
+          )}
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">

@@ -1,4 +1,6 @@
 import { Timestamp } from "firebase/firestore";
+import type { AssignmentStatus } from "@/lib/jobWorkflow";
+import type { AppliedCommission } from "@/lib/commission";
 
 export interface MechanicOffer {
   mId: string;
@@ -23,7 +25,7 @@ export interface MechanicOffer {
   assignedMemberCity?: string;
   assignedMemberPhone?: string;
   isAssignedByOwner?: boolean;
-  assignmentStatus?: "pending_member_acceptance" | "en_route" | "arrived" | "inspecting" | "repairing" | "finished" | string;
+  assignmentStatus?: AssignmentStatus | (string & {});
   memberAcceptedAt?: Timestamp | Date | any;
   memberDeclinedAt?: Timestamp | Date | any;
   finalDiagnosedAmount?: number;
@@ -33,6 +35,9 @@ export interface MechanicOffer {
   repairFinishedAt?: Timestamp | Date | any;
   customerSignOff?: boolean;
   customerSignOffAt?: Timestamp | Date | any;
+  isPaid?: boolean;
+  paidAmount?: number;
+  cancelReason?: string;
 }
 
 export interface FirestoreJob {
@@ -49,7 +54,7 @@ export interface FirestoreJob {
   vehicleModel?: string;
   userLat?: number;
   userLong?: number;
-  status: number; // 0 = new, 1-4 = ongoing, 5 = completed, -1 = cancelled
+  status: number; // see lib/jobWorkflow.ts: 0 open, 2 en route, 3 on site, 4 work order, 5 completed, -1 cancelled
   orderDate?: Timestamp | Date | any;
   date?: Timestamp | Date | any;
   nearByDistance?: number;
@@ -58,7 +63,7 @@ export interface FirestoreJob {
   fixPriceEnabled?: boolean;
   fixPrice?: number | string;
   myCompany?: string;
-  payMode?: string;
+  payMode?: "cash" | "online" | (string & {});
   cancelReason?: string;
   cancelBy?: string;
   description?: string;
@@ -77,6 +82,8 @@ export interface FirestoreJob {
   isPaid?: boolean;
   paidAmount?: number;
   paidAt?: string | Timestamp | Date;
+  paidCurrency?: string;
+  reassignedAt?: Timestamp | Date | any;
   // Dispatch & Queueing fields
   assignedMemberId?: string;
   assignedMemberName?: string;
@@ -92,11 +99,19 @@ export interface FirestoreJob {
   handoverReason?: string;
   handoverRequestedAt?: Timestamp | Date | any;
   reassignedFromMemberId?: string;
-  assignmentStatus?: "pending_member_acceptance" | "en_route" | "arrived" | "inspecting" | "repairing" | "finished" | string;
+  assignmentStatus?: AssignmentStatus | (string & {});
   memberAcceptedAt?: Timestamp | Date | any;
   memberDeclinedAt?: Timestamp | Date | any;
   arrivedAtLocation?: boolean;
   arrivedAt?: Timestamp | Date | any;
+  // Commission & settlement (see lib/commission.ts)
+  mechanicCommission?: number; // locked at inspection from the workshop owner's plan
+  mechanicCommissionRule?: AppliedCommission;
+  mechanicNetEarning?: number;
+  customerServiceFee?: number; // locked at payment from the customer's plan
+  customerServiceFeeRule?: AppliedCommission;
+  totalAmountDue?: number; // work order + customer service fee
+  settlementId?: string; // jobSettlements/{id}, written at customer sign-off (status lives there)
 }
 
 export interface SubmitOfferParams {
@@ -116,7 +131,7 @@ export interface SubmitOfferParams {
 export interface CompleteJobParams {
   jobId: string;
   userId: string;
-  payMode?: string;
+  payMode?: "cash" | "online" | (string & {});
 }
 
 export interface CancelJobParams {

@@ -12,6 +12,7 @@ import {
   query,
   orderBy,
   Timestamp,
+  deleteField,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
@@ -23,6 +24,47 @@ import {
   SubmitRatingParams,
 } from "@/types/job";
 import toast from "react-hot-toast";
+import {
+  AppliedCommission,
+  ZERO_COMMISSION,
+  resolveCommission,
+  roundMoney,
+} from "@/lib/commission";
+import { loadWorkshopCommissionConfig } from "@/lib/services/commissionService";
+import {
+  JOB_STATUS,
+  JobRelation,
+  canMarkArrived,
+  canMarkRepairFinished,
+  canSubmitInspection,
+  getAcceptedOffer,
+  getExecutingTechnicianId,
+  getJobRelation,
+  isTeamMemberProfile,
+} from "@/lib/jobWorkflow";
+
+/** Statuses in which a dispatched technician is actively working a job. */
+const ACTIVE_EXECUTION_STATUSES: number[] = [
+  JOB_STATUS.DISPATCHED,
+  JOB_STATUS.ON_SITE,
+  JOB_STATUS.WORK_ORDER,
+];
+
+/** Normalise Firestore Timestamp / Date / string / {seconds} into epoch ms (0 if unknown). */
+export function toMillis(value: unknown): number {
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "string") {
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  }
+  if (typeof value === "object") {
+    const v = value as { toMillis?: () => number; seconds?: number };
+    if (typeof v.toMillis === "function") return v.toMillis();
+    if (typeof v.seconds === "number") return v.seconds * 1000;
+  }
+  return 0;
+}
 
 /**
  * Recursively removes all `undefined` values from an object or array.
@@ -103,11 +145,7 @@ export function useMechanicDashboard() {
   const [isUpdatingLocation, setIsUpdatingLocation] = useState<boolean>(false);
 
   // Active Plan Check (Owner must have isSubscriptionPurchase, Member can inherit)
-  const isMember = Boolean(
-    mechanicProfile?.role?.toLowerCase() === "member" ||
-    mechanicProfile?.ownerId ||
-    mechanicProfile?.isTeamMember === true
-  );
+  const isMember = isTeamMemberProfile(mechanicProfile);
   const isOwner = !isMember;
 
   const hasActivePlan = Boolean(
@@ -322,6 +360,13 @@ export function useMechanicDashboard() {
             memberDeclinedAt: data.memberDeclinedAt,
             arrivedAtLocation: data.arrivedAtLocation,
             arrivedAt: data.arrivedAt,
+            mechanicCommission: data.mechanicCommission,
+            mechanicCommissionRule: data.mechanicCommissionRule,
+            mechanicNetEarning: data.mechanicNetEarning,
+            customerServiceFee: data.customerServiceFee,
+            customerServiceFeeRule: data.customerServiceFeeRule,
+            totalAmountDue: data.totalAmountDue,
+            settlementId: data.settlementId,
           });
         });
         setAllJobs(jobsList);
@@ -422,111 +467,57 @@ export function useMechanicDashboard() {
     return mechanicProfile?.selected_services || [];
   }, [mechanicProfile?.selected_services]);
 
-  // Upcoming Jobs (Filtered according to Flutter dashboard_screen.dart rules)
-  // Direct workshop owner assignments to a team member are ALWAYS visible regardless of online status or services!
+  // Attach live distance from the mechanic's current GPS position
+  const withDistance = useCallback(
+    (job: FirestoreJob): FirestoreJob => ({
+      ...job,
+      calculatedDistance: calculateDistance(
+        job.userLat || 0,
+        job.userLong || 0,
+        currentLat,
+        currentLng
+      ),
+    }),
+    [currentLat, currentLng]
+  );
+
+  // Upcoming Jobs
+  //  - Team members: ONLY jobs dispatched to them (status 2-4). Never open requests,
+  //    never pending quotes. Members do not bid.
+  //  - Owners: open status-0 requests they have not quoted yet (Flutter dashboard rules).
   const upcomingJobs = useMemo(() => {
-    const isMemberRole = Boolean(
-      mechanicProfile?.role?.toLowerCase() === "member" ||
-      mechanicProfile?.ownerId ||
-      mechanicProfile?.isTeamMember === true
-    );
-    const allowDirect = mechanicProfile?.allowDirectJobAcceptance === true;
+    if (!currentUId) return [];
 
-    // 1. Direct assignments from workshop owner to this technician
-    // CRITICAL: Must NEVER be blocked by isOnline or mechanicServices!
-    const myDirectAssignments = allJobs.filter((job) => {
-      if (job.status === 5 || job.status === -1) return false;
-      const isAssigned =
-        job.assignedMemberId === currentUId ||
-        job.mechanicsOffer?.some((o) => o.assignedMemberId === currentUId);
-      return isAssigned && job.status >= 2;
-    });
-
-    // Technicians / Team Members NEVER bid on or submit quotes for open emergency jobs.
-    // They ONLY see jobs assigned to them by their workshop owner!
-    if (isMemberRole) {
-      return myDirectAssignments.map((job) => {
-        const dist = calculateDistance(
-          job.userLat || 0,
-          job.userLong || 0,
-          currentLat,
-          currentLng
-        );
-        return {
-          ...job,
-          calculatedDistance: dist,
-        };
-      });
+    if (isMember) {
+      return allJobs
+        .filter(
+          (job) =>
+            ACTIVE_EXECUTION_STATUSES.includes(job.status) &&
+            getJobRelation(job, currentUId).relation === "executor"
+        )
+        .map(withDistance);
     }
 
-    // 2. Open roadside emergency jobs (status == 0)
-    // Only available when online and workshop has registered services
-    if (!isOnline || mechanicServices.length === 0) {
-      return myDirectAssignments.map((job) => {
-        const dist = calculateDistance(
-          job.userLat || 0,
-          job.userLong || 0,
-          currentLat,
-          currentLng
-        );
-        return {
-          ...job,
-          calculatedDistance: dist,
-        };
-      });
-    }
+    // Open roadside requests are only offered while online with registered services
+    if (!isOnline || mechanicServices.length === 0) return [];
 
-    const filteredOpenJobs = allJobs
+    const openJobs = allJobs
       .filter((job) => {
-        // Status must be 0 (new)
-        if (job.status !== 0) return false;
+        if (job.status !== JOB_STATUS.OPEN) return false;
 
-        // Autonomous Direct-Accept Gate for Members:
-        // If technician is a Member without direct accept permission,
-        // they ONLY see jobs directly assigned to them by their workshop owner!
-        if (isMember && !allowDirect) {
-          if (job.assignedMemberId !== currentUId) {
-            return false;
-          }
-        }
+        // Already quoted (or withdrawn) by this workshop: never quote twice
+        if (job.mechanicsOffer?.some((o) => o.mId === currentUId)) return false;
 
-        // Check if current mechanic already made an offer with status == 1 (accepted/interested)
-        if (currentUId && job.mechanicsOffer && job.mechanicsOffer.length > 0) {
-          const myOffer = job.mechanicsOffer.find(
-            (o) => o.mId === currentUId || o.assignedMemberId === currentUId
-          );
-          if (myOffer && myOffer.status === 1) {
-            return false; // already interested/accepted
-          }
-        }
+        // Service match (Flutter dashboard_screen.dart lines 278-286)
+        if (!mechanicServices.includes(job.selectedService)) return false;
 
-        // Flutter dashboard_screen.dart lines 278-286:
-        // Service match check: job's selectedService must be in mechanicServices
-        if (!mechanicServices.includes(job.selectedService)) {
+        // 5-minute auto-hide (Flutter dashboard_screen.dart lines 288-305)
+        const jobTimeMs = toMillis(job.orderDate);
+        if (jobTimeMs > 0 && Math.floor((currentTime - jobTimeMs) / 1000) >= 300) {
           return false;
         }
 
-        // Flutter dashboard_screen.dart lines 288-305:
-        // 5-MINUTE AUTO-HIDE: Hide the job if 5 minutes (300 seconds) have passed since creation!
-        let jobTimeMs = 0;
-        if (job.orderDate?.toMillis) {
-          jobTimeMs = job.orderDate.toMillis();
-        } else if (job.orderDate?.seconds) {
-          jobTimeMs = job.orderDate.seconds * 1000;
-        } else if (job.orderDate instanceof Date) {
-          jobTimeMs = job.orderDate.getTime();
-        } else if (typeof job.orderDate === "string") {
-          jobTimeMs = new Date(job.orderDate).getTime();
-        }
-
-        if (jobTimeMs > 0) {
-          const elapsedSeconds = Math.floor((currentTime - jobTimeMs) / 1000);
-          if (elapsedSeconds >= 300) {
-            return false;
-          }
-        }
-
-        // 2. NEARBY DISTANCE FILTERING (Exact Flutter logic from dashboard_screen.dart line 369-371)
+        // Nearby distance filtering (Flutter dashboard_screen.dart lines 369-371)
         if (filterOnlyNearby && currentLat !== 0 && currentLng !== 0) {
           const dist = calculateDistance(
             job.userLat || 0,
@@ -534,203 +525,101 @@ export function useMechanicDashboard() {
             currentLat,
             currentLng
           );
-
           const maxAllowedDistance =
             typeof job.nearByDistance === "number" && job.nearByDistance > 0
               ? job.nearByDistance
-              : 50; // Fallback radius if unconfigured
-
-          if (dist > maxAllowedDistance) {
-            return false;
-          }
+              : 50;
+          if (dist > maxAllowedDistance) return false;
         }
 
         return true;
-      });
+      })
+      .map(withDistance);
 
-    const combined = [...myDirectAssignments, ...filteredOpenJobs].map((job) => {
-      const dist = calculateDistance(
-        job.userLat || 0,
-        job.userLong || 0,
-        currentLat,
-        currentLng
-      );
-      return {
-        ...job,
-        calculatedDistance: dist,
-      };
-    });
-
-    // 3. SORTING (matching Flutter dashboard_screen.dart lines 170-204)
+    // Sorting (Flutter dashboard_screen.dart lines 170-204)
     if (selectedSortOption === "Near by") {
-      combined.sort(
+      openJobs.sort(
         (a, b) => (a.calculatedDistance || 0) - (b.calculatedDistance || 0)
       );
     } else if (selectedSortOption === "Rating") {
-      combined.sort((a, b) => (b.mRating || 4.5) - (a.mRating || 4.5));
+      openJobs.sort((a, b) => (b.mRating || 4.5) - (a.mRating || 4.5));
     } else if (selectedSortOption === "Newest") {
-      combined.sort((a, b) => {
-        const dateA = a.orderDate?.seconds || 0;
-        const dateB = b.orderDate?.seconds || 0;
-        return dateB - dateA;
-      });
+      openJobs.sort((a, b) => toMillis(b.orderDate) - toMillis(a.orderDate));
     }
 
-    return combined;
+    return openJobs;
   }, [
     allJobs,
+    isMember,
     isOnline,
     currentUId,
     mechanicServices,
-    mechanicProfile,
     currentTime,
     currentLat,
     currentLng,
     filterOnlyNearby,
     selectedSortOption,
+    withDistance,
   ]);
 
-  // Ongoing Jobs (current mechanic has offer with status 1, 2, 3, or 4 and job not completed/cancelled)
-  // Or technician is assignedMemberId on the job
+  // Ongoing Jobs
+  //  - Executor (member or self-assigned owner) and supervising owner: status 2-4
+  //  - Owner's pending quotes while the request is still open (offer status 1)
+  //  - Losing bids disappear as soon as the customer accepts another offer
   const ongoingJobs = useMemo(() => {
     if (!currentUId) return [];
 
     return allJobs
       .filter((job) => {
-        if (job.status === 5 || job.status === -1) return false;
-
-        // Direct assignment match to this technician (ALWAYS visible in ongoing!)
-        const isAssignedToMe =
-          job.assignedMemberId === currentUId ||
-          job.mechanicsOffer?.some((o) => o.assignedMemberId === currentUId);
-
-        if (isAssignedToMe && [1, 2, 3, 4].includes(job.status)) {
-          return true;
+        const { relation, offer } = getJobRelation(job, currentUId);
+        if (relation === "executor" || relation === "supervisor") {
+          return ACTIVE_EXECUTION_STATUSES.includes(job.status);
         }
-
-        const myOffer = job.mechanicsOffer?.find(
-          (o) => o.mId === currentUId || o.assignedMemberId === currentUId
-        );
-        if (!myOffer) return false;
-        return [1, 2, 3, 4].includes(myOffer.status);
+        if (relation === "bidder") {
+          return (
+            !isMember &&
+            job.status === JOB_STATUS.OPEN &&
+            offer?.status === JOB_STATUS.QUOTED
+          );
+        }
+        return false;
       })
-      .map((job) => {
-        const dist = calculateDistance(
-          job.userLat || 0,
-          job.userLong || 0,
-          currentLat,
-          currentLng
-        );
-        return {
-          ...job,
-          calculatedDistance: dist,
-        };
-      });
-  }, [allJobs, currentUId, currentLat, currentLng]);
+      .map(withDistance);
+  }, [allJobs, currentUId, isMember, withDistance]);
 
-  // Completed / Cancelled Jobs (History)
-  // Strictly matches Flutter rabbit_shop_app history_screen.dart & completed_history_screen.dart
-  // A newly registered mechanic with no offers or assignments will see 0 jobs.
-  const historyJobs = useMemo(() => {
-    if (!currentUId) return [];
-
-    return allJobs.filter((job) => {
-      const isAssigned =
-        job.assignedMemberId === currentUId ||
-        job.mechanicId === currentUId ||
-        (job as any).mId === currentUId;
-
-      const myOffer = job.mechanicsOffer?.find(
-        (o) => o.mId === currentUId || o.assignedMemberId === currentUId
-      );
-
-      // Exclude completely if current mechanic has no offer and is not assigned
-      if (!isAssigned && !myOffer) return false;
-
-      // Direct assignment completed or cancelled
-      if (isAssigned && (job.status === 5 || job.status === -1)) {
-        return true;
-      }
-
-      // Check mechanic's offer
-      if (myOffer) {
-        // Direct offer completion or cancellation
-        if (myOffer.status === 5 || myOffer.status === -1) {
-          return true;
-        }
-
-        // If overall job is completed (5) and this mechanic was the accepted mechanic (status 2..5)
-        if (job.status === 5 && myOffer.status >= 2 && myOffer.status <= 5) {
-          return true;
-        }
-
-        // If overall job was cancelled (-1) and this mechanic was actively engaged
-        if (job.status === -1 && myOffer.status >= 1) {
-          return true;
-        }
-      }
-
-      return false;
-    });
-  }, [allJobs, currentUId]);
-
-  // Distinct Completed Jobs (status == 5)
-  // Strictly matches Flutter completed_history_screen.dart: mechanicsOffer.any((offer) => offer['mId'] == currentUId)
+  // Completed jobs: this mechanic executed or supervised the signed-off work order
   const completedJobs = useMemo(() => {
     if (!currentUId) return [];
-
     return allJobs.filter((job) => {
-      const isAssigned =
-        job.assignedMemberId === currentUId ||
-        job.mechanicId === currentUId ||
-        (job as any).mId === currentUId;
-
-      const myOffer = job.mechanicsOffer?.find(
-        (o) => o.mId === currentUId || o.assignedMemberId === currentUId
-      );
-
-      if (!isAssigned && !myOffer) return false;
-
-      if (isAssigned && job.status === 5) return true;
-
-      if (myOffer) {
-        if (myOffer.status === 5) return true;
-        if (job.status === 5 && myOffer.status >= 2 && myOffer.status <= 5) {
-          return true;
-        }
-      }
-
-      return false;
+      if (job.status !== JOB_STATUS.COMPLETED) return false;
+      const { relation } = getJobRelation(job, currentUId);
+      return relation === "executor" || relation === "supervisor";
     });
   }, [allJobs, currentUId]);
 
-  // Distinct Cancelled Jobs (status == -1)
-  // Strictly matches Flutter cancelled jobs logic where offer belongs to current mechanic
+  // Cancelled jobs: engaged work orders that were cancelled, or this workshop's withdrawn quotes
   const cancelledJobs = useMemo(() => {
     if (!currentUId) return [];
-
     return allJobs.filter((job) => {
-      const isAssigned =
-        job.assignedMemberId === currentUId ||
-        job.mechanicId === currentUId ||
-        (job as any).mId === currentUId;
-
-      const myOffer = job.mechanicsOffer?.find(
-        (o) => o.mId === currentUId || o.assignedMemberId === currentUId
-      );
-
-      if (!isAssigned && !myOffer) return false;
-
-      if (isAssigned && job.status === -1) return true;
-
-      if (myOffer) {
-        if (myOffer.status === -1) return true;
-        if (job.status === -1 && myOffer.status >= 1) return true;
+      const { relation, offer } = getJobRelation(job, currentUId);
+      if (relation === "executor" || relation === "supervisor") {
+        return job.status === JOB_STATUS.CANCELLED;
       }
-
+      if (relation === "bidder") {
+        return (
+          job.status === JOB_STATUS.CANCELLED ||
+          offer?.status === JOB_STATUS.CANCELLED
+        );
+      }
       return false;
     });
   }, [allJobs, currentUId]);
+
+  // History tab: completed + cancelled, newest first (allJobs is ordered by orderDate desc)
+  const historyJobs = useMemo(() => {
+    const ids = new Set([...completedJobs, ...cancelledJobs].map((j) => j.id));
+    return allJobs.filter((j) => ids.has(j.id));
+  }, [allJobs, completedJobs, cancelledJobs]);
 
   // Counters matching Flutter DashboardController (dashboard_controller.dart lines 92-97)
   const totalCompletedJobsCount = useMemo(() => {
@@ -743,30 +632,169 @@ export function useMechanicDashboard() {
 
   // Total count of all new jobs in system vs nearby (within 5-minute active window)
   const totalNewJobsCount = useMemo(() => {
+    if (isMember) return 0;
     return allJobs.filter((j) => {
-      if (j.status !== 0) return false;
-      let jobTimeMs = 0;
-      if (j.orderDate?.toMillis) {
-        jobTimeMs = j.orderDate.toMillis();
-      } else if (j.orderDate?.seconds) {
-        jobTimeMs = j.orderDate.seconds * 1000;
-      } else if (j.orderDate instanceof Date) {
-        jobTimeMs = j.orderDate.getTime();
-      } else if (typeof j.orderDate === "string") {
-        jobTimeMs = new Date(j.orderDate).getTime();
-      }
-      if (jobTimeMs > 0) {
-        const elapsedSeconds = Math.floor((currentTime - jobTimeMs) / 1000);
-        if (elapsedSeconds >= 300) return false;
-      }
-      return true;
+      if (j.status !== JOB_STATUS.OPEN) return false;
+      const jobTimeMs = toMillis(j.orderDate);
+      return !(jobTimeMs > 0 && Math.floor((currentTime - jobTimeMs) / 1000) >= 300);
     }).length;
-  }, [allJobs, currentTime]);
+  }, [allJobs, currentTime, isMember]);
 
-  // Submit Offer / "Interested" Action
+  // ─── Firestore helpers ──────────────────────────────────────────────────────
+
+  // Jobs may be stored under "#id" or the bare id; resolve whichever exists.
+  const loadJob = async (jobId: string) => {
+    const rawId = jobId.replace(/^#/, "");
+    for (const candidate of [jobId, `#${rawId}`, rawId]) {
+      const snap = await getDoc(doc(db, "jobs", candidate));
+      if (snap.exists()) {
+        const data = snap.data();
+        const job = {
+          ...data,
+          id: snap.id,
+          status: typeof data.status === "number" ? data.status : 0,
+          mechanicsOffer: (data.mechanicsOffer || []) as MechanicOffer[],
+        } as FirestoreJob & { mechanicsOffer: MechanicOffer[] };
+        return { job, data };
+      }
+    }
+    throw new Error("Job not found. It may have been removed by the customer.");
+  };
+
+  // Reliably sync updates across the jobs doc and every related user history doc
+  const syncJobAndHistories = async (
+    jobId: string,
+    userId: string,
+    jobData: Record<string, unknown> | null | undefined,
+    updates: Record<string, unknown>
+  ) => {
+    const rawId = jobId.replace(/^#/, "");
+    const hashId = `#${rawId}`;
+    const cleanUpdates = sanitizeFirestoreData(updates);
+
+    let jobDocUpdated = false;
+    for (const jId of [jobId, rawId, hashId]) {
+      try {
+        const jRef = doc(db, "jobs", jId);
+        const jSnap = await getDoc(jRef);
+        if (jSnap.exists()) {
+          await updateDoc(jRef, cleanUpdates);
+          jobDocUpdated = true;
+          break;
+        }
+      } catch (e) {
+        console.warn(`jobs/${jId} update skipped:`, e);
+      }
+    }
+    if (!jobDocUpdated) {
+      throw new Error("Could not update the job. Please retry.");
+    }
+
+    // Customer-side history copies (driver, fleet owner, creator)
+    const targetUids = new Set<string>();
+    if (userId) targetUids.add(userId);
+    for (const key of ["userId", "ownerId", "createdBy", "creatorId"] as const) {
+      const uid = jobData?.[key];
+      if (typeof uid === "string" && uid) targetUids.add(uid);
+    }
+
+    for (const targetUid of targetUids) {
+      if (!targetUid) continue;
+      for (const hId of [rawId, hashId]) {
+        try {
+          const hRef = doc(db, "Users", targetUid, "history", hId);
+          const hSnap = await getDoc(hRef);
+          if (hSnap.exists()) {
+            await updateDoc(hRef, cleanUpdates);
+          }
+        } catch (e) {
+          console.warn(`history ${targetUid}/${hId} update skipped:`, e);
+        }
+      }
+    }
+  };
+
+  // Clear / set the technician's active-job pointer used by the 70% queueing rule
+  const setTechnicianActiveJob = async (
+    techUid: string,
+    jobId: string | null,
+    estimatedMinutes?: number
+  ) => {
+    if (!techUid) return;
+    try {
+      await updateDoc(doc(db, "Mechanics", techUid), {
+        currentActiveJobId: jobId,
+        activeJobStartedAt: jobId ? Timestamp.now() : null,
+        activeJobEstimatedMinutes: jobId ? estimatedMinutes || 45 : null,
+      });
+    } catch (e) {
+      console.warn("Could not update technician active job:", e);
+    }
+  };
+
+  /**
+   * Run a guarded field transition on the ACCEPTED offer only.
+   * Re-reads the job first so stale UI can never move the state machine backwards.
+   */
+  const runFieldTransition = async (
+    jobId: string,
+    opts: {
+      allowed: JobRelation[];
+      guard: (job: FirestoreJob) => boolean;
+      guardMessage: string;
+      build: (
+        job: FirestoreJob,
+        now: Timestamp
+      ) => { job: Record<string, any>; offer: Partial<MechanicOffer> };
+    }
+  ) => {
+    const { job, data } = await loadJob(jobId);
+    const { relation } = getJobRelation(job, currentUId);
+    if (!opts.allowed.includes(relation)) {
+      throw new Error("Only the technician assigned to this job can do that.");
+    }
+    if (!opts.guard(job)) {
+      throw new Error(opts.guardMessage);
+    }
+
+    const now = Timestamp.now();
+    const patch = opts.build(job, now);
+    const accepted = getAcceptedOffer(job);
+    const mechanicsOffer = job.mechanicsOffer.map((o) =>
+      o === accepted ? { ...o, ...patch.offer } : o
+    );
+
+    await syncJobAndHistories(job.id, job.userId || data.userId, data, {
+      ...patch.job,
+      mechanicsOffer,
+    });
+    return { job, accepted, now };
+  };
+
+  const withToast = async <T,>(
+    action: () => Promise<T>,
+    success: string,
+    failure: string
+  ): Promise<T> => {
+    try {
+      const result = await action();
+      toast.success(success);
+      return result;
+    } catch (err: unknown) {
+      console.error(failure, err);
+      toast.error(err instanceof Error && err.message ? err.message : failure);
+      throw err;
+    }
+  };
+
+  // ─── Phase 1: Workshop owner submits a quote (optionally delegated) ─────────
   const submitOffer = async (params: SubmitOfferParams) => {
     if (!currentUId) {
       toast.error("Please sign in as a mechanic first");
+      return;
+    }
+    if (isMember) {
+      toast.error("Team members cannot quote on jobs. Your workshop owner dispatches jobs to you.");
       return;
     }
 
@@ -784,21 +812,19 @@ export function useMechanicDashboard() {
     } = params;
 
     const isAssigned = Boolean(
-      assignedMemberId && assignedMemberId.trim() !== "" && assignedMemberId !== "self"
+      assignedMemberId &&
+        assignedMemberId.trim() !== "" &&
+        assignedMemberId !== "self" &&
+        assignedMemberId !== currentUId
     );
 
     const offerPayload: Record<string, any> = {
       mId: currentUId,
       mName:
-        (isAssigned ? assignedMemberName : "") ||
         mechanicProfile?.workshopName ||
         mechanicProfile?.userName ||
         "Mechanic",
-      mNumber:
-        (isAssigned ? assignedMemberPhone : "") ||
-        mechanicProfile?.cellPhone ||
-        mechanicProfile?.telephone ||
-        "",
+      mNumber: mechanicProfile?.cellPhone || mechanicProfile?.telephone || "",
       mDp: mechanicProfile?.profilePicture || mechanicProfile?.mDp || "",
       arrivalCharges: arrivalCharges || 0,
       perHourCharges: perHourCharges || mechanicProfile?.perHourCharge || 0,
@@ -806,7 +832,7 @@ export function useMechanicDashboard() {
       time: String(arrivalTime || "15"),
       latitude: currentLat || 0,
       longitude: currentLng || 0,
-      status: 1, // 1 = Offered / waiting for driver acceptance
+      status: JOB_STATUS.QUOTED,
       rating: "4.8",
       reviewSubmitted: false,
       languages: mechanicProfile?.languages
@@ -828,577 +854,326 @@ export function useMechanicDashboard() {
 
     const cleanOffer = sanitizeFirestoreData(offerPayload) as MechanicOffer;
 
-    try {
-      const jobDocRef = doc(db, "jobs", jobId);
-      const jobSnap = await getDoc(jobDocRef);
-      const jobData = jobSnap.exists() ? jobSnap.data() : null;
-
-      const jobUpdatePayload: Record<string, any> = {
-        mechanicsOffer: arrayUnion(cleanOffer),
-        ownerId: currentUId,
-      };
-
-      if (isAssigned) {
-        jobUpdatePayload.assignedMemberId = assignedMemberId;
-        jobUpdatePayload.assignedMemberName = (assignedMemberName || "").trim();
-        jobUpdatePayload.assignedMemberCity = (assignedMemberCity || "").trim();
-        jobUpdatePayload.assignedMemberPhone = (assignedMemberPhone || "").trim();
-        jobUpdatePayload.isAssignedByOwner = true;
-      }
-
-      await updateDoc(jobDocRef, sanitizeFirestoreData(jobUpdatePayload));
-
-      // Target all related user histories (creator, fleet owner, user)
-      const targetUids = new Set<string>();
-      if (userId) targetUids.add(userId);
-      if (jobData?.userId) targetUids.add(jobData.userId);
-      if (jobData?.ownerId) targetUids.add(jobData.ownerId);
-      if (jobData?.createdBy) targetUids.add(jobData.createdBy);
-      if (jobData?.creatorId) targetUids.add(jobData.creatorId);
-
-      for (const targetUid of targetUids) {
-        if (!targetUid) continue;
-        const historyRef = doc(db, "Users", targetUid, "history", jobId);
-        const historySnap = await getDoc(historyRef);
-        if (historySnap.exists()) {
-          await updateDoc(historyRef, {
-            mechanicsOffer: arrayUnion(cleanOffer),
-          });
-        } else {
-          const rawHistoryData = {
-            ...(jobData || {}),
-            mechanicsOffer: [cleanOffer],
-            orderId: jobId,
-            status: 0,
-          };
-          await setDoc(historyRef, sanitizeFirestoreData(rawHistoryData));
+    await withToast(
+      async () => {
+        const { job, data: jobData } = await loadJob(jobId);
+        if (job.status !== JOB_STATUS.OPEN) {
+          throw new Error("This request is no longer open for quotes.");
         }
-      }
-
-      toast.success(
-        isAssigned && assignedMemberName
-          ? `Offer submitted and dispatched to ${assignedMemberName}!`
-          : "Offer submitted to driver successfully!"
-      );
-    } catch (err: any) {
-      console.error("Error submitting offer:", err);
-      toast.error(err.message || "Failed to submit offer");
-      throw err;
-    }
-  };
-
-  // Helper to reliably sync updates across jobs doc and user histories
-  const syncJobAndHistories = async (
-    jobId: string,
-    userId: string,
-    jobData: any,
-    updates: Record<string, any>
-  ) => {
-    const rawId = jobId.replace(/^#/, "");
-    const hashId = `#${rawId}`;
-
-    // Update jobs doc
-    for (const jId of [jobId, rawId, hashId]) {
-      try {
-        const jRef = doc(db, "jobs", jId);
-        const jSnap = await getDoc(jRef);
-        if (jSnap.exists()) {
-          await updateDoc(jRef, sanitizeFirestoreData(updates));
+        if (job.mechanicsOffer.some((o) => o.mId === currentUId)) {
+          throw new Error("Your workshop has already quoted on this request.");
         }
-      } catch (e) {
-        // ignore if id variant doesn't exist
-      }
-    }
 
-    // Target user histories
-    const targetUids = new Set<string>();
-    if (userId) targetUids.add(userId);
-    if (jobData?.userId) targetUids.add(jobData.userId);
-    if (jobData?.ownerId) targetUids.add(jobData.ownerId);
-    if (jobData?.createdBy) targetUids.add(jobData.createdBy);
-    if (jobData?.creatorId) targetUids.add(jobData.creatorId);
+        // NOTE: only the offer is written here. Top-level dispatch fields
+        // (assignedMemberId, etc.) are written by the customer app when THIS
+        // offer is accepted; writing them now would let the last bidder
+        // overwrite them. `ownerId` on the job is the customer's fleet owner and
+        // must never be touched by the mechanic app.
+        await updateDoc(doc(db, "jobs", job.id), {
+          mechanicsOffer: arrayUnion(cleanOffer),
+        });
 
-    for (const targetUid of targetUids) {
-      if (!targetUid) continue;
-      for (const hId of [jobId, rawId, hashId]) {
-        try {
-          const hRef = doc(db, "Users", targetUid, "history", hId);
-          const hSnap = await getDoc(hRef);
-          if (hSnap.exists()) {
-            await updateDoc(hRef, sanitizeFirestoreData(updates));
+        const targetUids = new Set<string>();
+        if (userId) targetUids.add(userId);
+        if (jobData?.userId) targetUids.add(jobData.userId);
+        if (jobData?.ownerId) targetUids.add(jobData.ownerId);
+        if (jobData?.createdBy) targetUids.add(jobData.createdBy);
+        if (jobData?.creatorId) targetUids.add(jobData.creatorId);
+
+        for (const targetUid of targetUids) {
+          if (!targetUid) continue;
+          const historyRef = doc(db, "Users", targetUid, "history", job.id);
+          const historySnap = await getDoc(historyRef);
+          if (historySnap.exists()) {
+            await updateDoc(historyRef, {
+              mechanicsOffer: arrayUnion(cleanOffer),
+            });
+          } else {
+            await setDoc(
+              historyRef,
+              sanitizeFirestoreData({
+                ...(jobData || {}),
+                mechanicsOffer: [cleanOffer],
+                orderId: job.id,
+                status: JOB_STATUS.OPEN,
+              })
+            );
           }
-        } catch (e) {
-          // ignore
         }
-      }
-    }
+      },
+      isAssigned && assignedMemberName
+        ? `Quote submitted. ${assignedMemberName} will be dispatched if the driver accepts.`
+        : "Offer submitted to driver successfully!",
+      "Failed to submit offer"
+    );
   };
 
-  // Step 2A -> 2B: Team Member Accepts Assignment Dispatched by Owner
-  const acceptMemberAssignment = async (jobId: string, userId: string) => {
-    try {
-      const rawId = jobId.replace(/^#/, "");
-      let jobSnap = await getDoc(doc(db, "jobs", jobId));
-      if (!jobSnap.exists()) {
-        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
-      }
-      const jobData = jobSnap.exists() ? jobSnap.data() : null;
+  // ─── Phase 3: Technician arrives on site (status 2 → 3) ─────────────────────
+  const markArrivedAtSite = async (jobId: string) =>
+    withToast(
+      () =>
+        runFieldTransition(jobId, {
+          allowed: ["executor"],
+          guard: canMarkArrived,
+          guardMessage: "Arrival can only be recorded while the job is en route.",
+          build: (_job, now) => ({
+            job: {
+              status: JOB_STATUS.ON_SITE,
+              assignmentStatus: "inspecting",
+              arrivedAtLocation: true,
+              arrivedAt: now,
+            },
+            offer: { status: JOB_STATUS.ON_SITE, assignmentStatus: "inspecting" },
+          }),
+        }),
+      "Arrival recorded. Complete the on-site inspection.",
+      "Failed to mark arrival"
+    );
 
-      const now = Timestamp.now();
-      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
-      const updatedOffers = offers.map((offer) => {
-        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
-          return {
-            ...offer,
-            status: 2,
-            assignmentStatus: "en_route",
-            memberAcceptedAt: now,
-          };
-        }
-        return offer;
-      });
-
-      const updates = {
-        status: 2,
-        assignmentStatus: "en_route",
-        memberAcceptedAt: now,
-        mechanicsOffer: updatedOffers,
-      };
-
-      await syncJobAndHistories(jobId, userId, jobData, updates);
-      toast.success("Assignment accepted! En route to vehicle breakdown site.");
-    } catch (err: any) {
-      console.error("Error accepting assignment:", err);
-      toast.error(err.message || "Failed to accept assignment");
-      throw err;
-    }
-  };
-
-  // Step 2A: Team Member Declines Assignment -> Returns to Owner for Reassignment
-  const declineMemberAssignment = async (jobId: string, userId: string, reason?: string) => {
-    try {
-      const rawId = jobId.replace(/^#/, "");
-      let jobSnap = await getDoc(doc(db, "jobs", jobId));
-      if (!jobSnap.exists()) {
-        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
-      }
-      const jobData = jobSnap.exists() ? jobSnap.data() : null;
-
-      const now = Timestamp.now();
-      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
-      const updatedOffers = offers.map((offer) => {
-        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
-          return {
-            ...offer,
-            handoverRequested: true,
-            handoverReason: reason || "Declined by technician",
-            memberDeclinedAt: now,
-          };
-        }
-        return offer;
-      });
-
-      const updates = {
-        handoverRequested: true,
-        handoverReason: reason || "Declined by technician",
-        memberDeclinedAt: now,
-        mechanicsOffer: updatedOffers,
-      };
-
-      await syncJobAndHistories(jobId, userId, jobData, updates);
-      toast.success("Assignment declined. Returned to workshop owner for reassignment.");
-    } catch (err: any) {
-      console.error("Error declining assignment:", err);
-      toast.error(err.message || "Failed to decline assignment");
-      throw err;
-    }
-  };
-
-  // Step 2 -> 3: Mark Technician Arrived at Breakdown Site (Begins on-site diagnosis)
-  const markArrivedAtSite = async (jobId: string, userId: string) => {
-    try {
-      const rawId = jobId.replace(/^#/, "");
-      let jobSnap = await getDoc(doc(db, "jobs", jobId));
-      if (!jobSnap.exists()) {
-        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
-      }
-      const jobData = jobSnap.exists() ? jobSnap.data() : null;
-
-      const now = Timestamp.now();
-      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
-      const updatedOffers = offers.map((offer) => {
-        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
-          return {
-            ...offer,
-            status: 3,
-            assignmentStatus: "inspecting",
-            arrivedAtLocation: true,
-            arrivedAt: now,
-          };
-        }
-        return offer;
-      });
-
-      const updates = {
-        status: 3,
-        assignmentStatus: "inspecting",
-        arrivedAtLocation: true,
-        arrivedAt: now,
-        mechanicsOffer: updatedOffers,
-      };
-
-      await syncJobAndHistories(jobId, userId, jobData, updates);
-      toast.success("Arrived at breakdown site! Please conduct on-site vehicle inspection.");
-    } catch (err: any) {
-      console.error("Error marking arrival:", err);
-      toast.error(err.message || "Failed to mark arrival");
-      throw err;
-    }
-  };
-
-  // Step 3 -> 4: Submit On-site Inspection & Final Diagnosed Work Order Amount
+  // ─── Phase 3 → 4: Inspection with verified final amount ─────────────────────
   const submitInspectionAndQuote = async (
     jobId: string,
-    userId: string,
     params: {
       finalAmount: number;
       inspectionNotes: string;
-      estimatedMinutes?: number;
+      estimatedMinutes: number;
     }
   ) => {
-    try {
-      const { finalAmount, inspectionNotes, estimatedMinutes = 45 } = params;
-      const rawId = jobId.replace(/^#/, "");
-      let jobSnap = await getDoc(doc(db, "jobs", jobId));
-      if (!jobSnap.exists()) {
-        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
-      }
-      const jobData = jobSnap.exists() ? jobSnap.data() : null;
+    const finalAmount = Math.round(Number(params.finalAmount) * 100) / 100;
+    const notes = (params.inspectionNotes || "").trim();
+    const minutes = Math.round(Number(params.estimatedMinutes));
 
-      const now = Timestamp.now();
-      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
-      const updatedOffers = offers.map((offer) => {
-        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
-          return {
-            ...offer,
-            status: 4,
-            assignmentStatus: "awaiting_payment",
-            finalDiagnosedAmount: finalAmount,
-            inspectionNotes: inspectionNotes.trim(),
-            inspectionCompletedAt: now,
-          };
-        }
-        return offer;
-      });
-
-      const updates = {
-        status: 4,
-        assignmentStatus: "awaiting_payment",
-        finalDiagnosedAmount: finalAmount,
-        inspectionNotes: inspectionNotes.trim(),
-        inspectionCompletedAt: now,
-        estimatedRepairMinutes: estimatedMinutes,
-        activeJobStartedAt: now,
-        mechanicsOffer: updatedOffers,
-      };
-
-      await syncJobAndHistories(jobId, userId, jobData, updates);
-
-      // Update technician's active job timer
-      const targetTechUid = jobData?.assignedMemberId || currentUId;
-      try {
-        const techRef = doc(db, "Mechanics", targetTechUid);
-        await updateDoc(techRef, {
-          currentActiveJobId: jobId,
-          activeJobStartedAt: now,
-          activeJobEstimatedMinutes: estimatedMinutes,
-        });
-      } catch (techErr) {
-        console.warn("Could not update technician active timer:", techErr);
-      }
-
-      toast.success("Inspection submitted! Final invoice sent to customer for payment.");
-    } catch (err: any) {
-      console.error("Error submitting inspection:", err);
-      toast.error(err.message || "Failed to submit inspection");
-      throw err;
+    if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+      toast.error("Enter a verified final amount greater than $0.");
+      throw new Error("Invalid final amount");
     }
-  };
-
-  // Step 4 (Execution): Mark Physical Repair Finished & Request Customer Sign-Off
-  const markRepairFinished = async (jobId: string, userId: string) => {
-    try {
-      const rawId = jobId.replace(/^#/, "");
-      let jobSnap = await getDoc(doc(db, "jobs", jobId));
-      if (!jobSnap.exists()) {
-        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
-      }
-      const jobData = jobSnap.exists() ? jobSnap.data() : null;
-
-      const now = Timestamp.now();
-      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
-      const updatedOffers = offers.map((offer) => {
-        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
-          return {
-            ...offer,
-            repairCompletedByTechnician: true,
-            assignmentStatus: "finished",
-            repairFinishedAt: now,
-          };
-        }
-        return offer;
-      });
-
-      const updates = {
-        repairCompletedByTechnician: true,
-        assignmentStatus: "finished",
-        repairFinishedAt: now,
-        mechanicsOffer: updatedOffers,
-      };
-
-      await syncJobAndHistories(jobId, userId, jobData, updates);
-      toast.success(
-        "Repair marked finished! Work order submitted for customer quality sign-off."
-      );
-    } catch (err: any) {
-      console.error("Error marking repair finished:", err);
-      toast.error(err.message || "Failed to mark repair finished");
-      throw err;
+    if (!notes) {
+      toast.error("Diagnostic notes are required.");
+      throw new Error("Missing diagnostic notes");
     }
-  };
-
-  // Backward-compatible Start Job with Duration
-  const startJobWithDuration = async (
-    jobId: string,
-    userId: string,
-    estimatedMinutes: number
-  ) => {
-    return submitInspectionAndQuote(jobId, userId, {
-      finalAmount: 150,
-      inspectionNotes: "Standard on-site diagnostic and repair execution.",
-      estimatedMinutes,
-    });
-  };
-
-  // Request Emergency Handover (Scenario 3)
-  const requestEmergencyHandover = async (jobId: string, reason: string) => {
-    try {
-      const jobDocRef = doc(db, "jobs", jobId);
-      await updateDoc(jobDocRef, {
-        handoverRequested: true,
-        handoverReason: reason,
-        handoverRequestedAt: Timestamp.now(),
-      });
-      toast.success("Emergency handover requested. Owner notified.");
-    } catch (err: any) {
-      console.error("Error requesting handover:", err);
-      toast.error(err?.message || "Failed to request handover");
-      throw err;
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      toast.error("Enter the estimated repair time in minutes.");
+      throw new Error("Invalid repair minutes");
     }
+
+    // Lock the workshop owner's plan commission on this work order now, so the
+    // technician / owner see their net earning before the repair starts.
+    // Team members are billed on their workshop owner's plan (offer.mId).
+    let commissionRule: AppliedCommission = { ...ZERO_COMMISSION };
+    try {
+      const { job: current } = await loadJob(jobId);
+      const workshopOwnerId = getAcceptedOffer(current)?.mId;
+      const config = await loadWorkshopCommissionConfig(workshopOwnerId);
+      commissionRule = resolveCommission(config, current.selectedService, finalAmount, {
+        capAtBase: true,
+      });
+    } catch (err) {
+      console.warn("Commission lookup failed; it will be resolved at sign-off:", err);
+    }
+    const mechanicNetEarning = roundMoney(finalAmount - commissionRule.amount);
+
+    const { accepted } = await withToast(
+      () =>
+        runFieldTransition(jobId, {
+          allowed: ["executor"],
+          guard: canSubmitInspection,
+          guardMessage: "Inspection can only be submitted after arriving on site.",
+          build: (_job, now) => ({
+            job: {
+              status: JOB_STATUS.WORK_ORDER,
+              assignmentStatus: "awaiting_payment",
+              finalDiagnosedAmount: finalAmount,
+              inspectionNotes: notes,
+              inspectionCompletedAt: now,
+              estimatedRepairMinutes: minutes,
+              isPaid: false,
+              mechanicCommission: commissionRule.amount,
+              mechanicCommissionRule: commissionRule,
+              mechanicNetEarning,
+            },
+            offer: {
+              status: JOB_STATUS.WORK_ORDER,
+              assignmentStatus: "awaiting_payment",
+              finalDiagnosedAmount: finalAmount,
+              inspectionNotes: notes,
+              inspectionCompletedAt: now,
+            },
+          }),
+        }),
+      "Inspection submitted. Final work order sent to the customer for payment.",
+      "Failed to submit inspection"
+    );
+
+    await setTechnicianActiveJob(getExecutingTechnicianId(accepted), jobId, minutes);
   };
 
-  // Reassign Job Member (Scenario 3 - Owner action)
+  // ─── Phase 5: Repair finished (requires payment) ────────────────────────────
+  const markRepairFinished = async (jobId: string) => {
+    const { accepted } = await withToast(
+      () =>
+        runFieldTransition(jobId, {
+          allowed: ["executor"],
+          guard: canMarkRepairFinished,
+          guardMessage: "The repair can only be finished after the customer has paid.",
+          build: (_job, now) => ({
+            job: { repairCompletedByTechnician: true, repairFinishedAt: now },
+            offer: { repairCompletedByTechnician: true, repairFinishedAt: now },
+          }),
+        }),
+      "Repair marked finished. Waiting for the customer's quality sign-off.",
+      "Failed to mark repair finished"
+    );
+    await setTechnicianActiveJob(getExecutingTechnicianId(accepted), null);
+  };
+
+  // ─── Emergency handover (executing technician) ──────────────────────────────
+  const requestEmergencyHandover = async (jobId: string, reason: string): Promise<void> => {
+    await withToast(
+      () =>
+        runFieldTransition(jobId, {
+          allowed: ["executor"],
+          guard: (job) => ACTIVE_EXECUTION_STATUSES.includes(job.status),
+          guardMessage: "Handover is only possible on an active job.",
+          build: (_job, now) => ({
+            job: {
+              handoverRequested: true,
+              handoverReason: reason,
+              handoverRequestedAt: now,
+            },
+            offer: {},
+          }),
+        }),
+      "Emergency handover requested. Workshop owner notified.",
+      "Failed to request handover"
+    );
+  };
+
+  // ─── Reassign technician (workshop owner) ───────────────────────────────────
+  // member === null → owner takes the job back ("Self")
   const reassignJobMember = async (
     jobId: string,
-    newMemberId: string | null,
-    newMemberName: string
-  ) => {
-    try {
-      const jobDocRef = doc(db, "jobs", jobId);
-      const jobSnap = await getDoc(jobDocRef);
-      const oldMemberId = jobSnap.exists() ? jobSnap.data()?.assignedMemberId : null;
-
-      // Clear old member's active job
-      if (oldMemberId) {
-        try {
-          await updateDoc(doc(db, "Mechanics", oldMemberId), {
-            currentActiveJobId: null,
-            activeJobStartedAt: null,
-            activeJobEstimatedMinutes: null,
-          });
-        } catch (e) {
-          console.warn("Could not clear old member timer:", e);
+    member: { id: string; name: string; phone?: string; city?: string } | null
+  ) =>
+    withToast(
+      async () => {
+        const { job, data } = await loadJob(jobId);
+        const { relation, offer } = getJobRelation(job, currentUId);
+        if (!offer || offer.mId !== currentUId) {
+          throw new Error("Only the workshop owner can reassign this job.");
         }
-      }
-
-      // Assign to new member or self
-      if (newMemberId) {
-        try {
-          await updateDoc(doc(db, "Mechanics", newMemberId), {
-            currentActiveJobId: jobId,
-            activeJobStartedAt: Timestamp.now(),
-            activeJobEstimatedMinutes:
-              jobSnap.data()?.estimatedRepairMinutes || 45,
-          });
-        } catch (e) {
-          console.warn("Could not set new member timer:", e);
+        const isOpenBid = relation === "bidder" && job.status === JOB_STATUS.OPEN;
+        if (!isOpenBid && !ACTIVE_EXECUTION_STATUSES.includes(job.status)) {
+          throw new Error("This job can no longer be reassigned.");
         }
-      }
+        if (job.isPaid && job.repairCompletedByTechnician) {
+          throw new Error("Repair is already finished; reassignment is not needed.");
+        }
 
-      await updateDoc(jobDocRef, {
-        assignedMemberId: newMemberId || null,
-        assignedMemberName: newMemberName,
-        handoverRequested: false,
-        reassignedFromMemberId: oldMemberId || null,
-        reassignedAt: Timestamp.now(),
-      });
+        const target = offer as MechanicOffer;
+        const previousTechId = getExecutingTechnicianId(target);
+        const delegate = member && member.id !== currentUId ? member : null;
 
-      toast.success(`Job successfully reassigned to ${newMemberName}!`);
-    } catch (err: any) {
-      console.error("Error reassigning job:", err);
-      toast.error(err?.message || "Failed to reassign job");
-      throw err;
-    }
-  };
-
-  // Update Status
-  const updateJobStatus = async (
-    jobId: string,
-    userId: string,
-    newStatus: number
-  ) => {
-    try {
-      const jobDocRef = doc(db, "jobs", jobId);
-      const jobSnap = await getDoc(jobDocRef);
-
-      if (jobSnap.exists()) {
-        const data = jobSnap.data();
-        const offers = (data.mechanicsOffer || []) as MechanicOffer[];
-        const updatedOffers = offers.map((offer) => {
-          if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
-            return { ...offer, status: newStatus };
-          }
-          return offer;
-        });
-
-        await updateDoc(
-          jobDocRef,
-          sanitizeFirestoreData({
-            status: newStatus,
-            mechanicsOffer: updatedOffers,
-          })
-        );
-      }
-
-      const targetUids = new Set<string>();
-      if (userId) targetUids.add(userId);
-      const data = jobSnap.exists() ? jobSnap.data() : null;
-      if (data?.userId) targetUids.add(data.userId);
-      if (data?.ownerId) targetUids.add(data.ownerId);
-      if (data?.createdBy) targetUids.add(data.createdBy);
-      if (data?.creatorId) targetUids.add(data.creatorId);
-
-      for (const targetUid of targetUids) {
-        if (!targetUid) continue;
-        const historyRef = doc(db, "Users", targetUid, "history", jobId);
-        const histSnap = await getDoc(historyRef);
-        if (histSnap.exists()) {
-          const hData = histSnap.data();
-          const offers = (hData.mechanicsOffer || []) as MechanicOffer[];
-          const updatedOffers = offers.map((offer) => {
-            if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
-              return { ...offer, status: newStatus };
+        // Rebuild the offer without stale member fields when reverting to self
+        const {
+          assignedMemberId: _oldId,
+          assignedMemberName: _oldName,
+          assignedMemberPhone: _oldPhone,
+          assignedMemberCity: _oldCity,
+          ...offerBase
+        } = target;
+        const nextOffer: MechanicOffer = delegate
+          ? {
+              ...offerBase,
+              assignedMemberId: delegate.id,
+              assignedMemberName: delegate.name,
+              assignedMemberPhone: delegate.phone || "",
+              assignedMemberCity: delegate.city || "",
+              isAssignedByOwner: true,
             }
-            return offer;
-          });
-          await updateDoc(
-            historyRef,
-            sanitizeFirestoreData({
-              status: newStatus,
-              mechanicsOffer: updatedOffers,
-            })
-          );
-        }
-      }
+          : { ...offerBase, isAssignedByOwner: false };
 
-      if (newStatus === 5) {
-        const targetTechUid = jobSnap.exists()
-          ? jobSnap.data()?.assignedMemberId || currentUId
-          : currentUId;
-        try {
-          await updateDoc(doc(db, "Mechanics", targetTechUid), {
-            currentActiveJobId: null,
-            activeJobStartedAt: null,
-            activeJobEstimatedMinutes: null,
-          });
-        } catch (techErr) {
-          console.warn("Could not reset technician timer upon completion:", techErr);
-        }
-        toast.success("Job marked as COMPLETED! Great work.");
-      } else {
-        toast.success(`Job status updated to Step ${newStatus}`);
-      }
-    } catch (err: any) {
-      console.error("Error updating job status:", err);
-      toast.error(err.message || "Failed to update status");
-      throw err;
-    }
-  };
+        const mechanicsOffer = job.mechanicsOffer.map((o) =>
+          o === target ? nextOffer : o
+        );
 
-  // Cancel Job
+        const updates: Record<string, unknown> = { mechanicsOffer };
+        if (!isOpenBid) {
+          Object.assign(updates, {
+            assignedMemberId: delegate ? delegate.id : deleteField(),
+            assignedMemberName: delegate ? delegate.name : deleteField(),
+            assignedMemberPhone: delegate ? delegate.phone || "" : deleteField(),
+            assignedMemberCity: delegate ? delegate.city || "" : deleteField(),
+            isAssignedByOwner: Boolean(delegate),
+            handoverRequested: false,
+            reassignedFromMemberId: previousTechId || null,
+            reassignedAt: Timestamp.now(),
+          });
+        }
+
+        await syncJobAndHistories(job.id, job.userId || data.userId, data, updates);
+
+        if (!isOpenBid) {
+          const nextTechId = delegate ? delegate.id : currentUId;
+          if (previousTechId && previousTechId !== nextTechId) {
+            await setTechnicianActiveJob(previousTechId, null);
+          }
+          if (job.status === JOB_STATUS.WORK_ORDER) {
+            await setTechnicianActiveJob(nextTechId, job.id, job.estimatedRepairMinutes);
+          }
+        }
+      },
+      member ? `Job reassigned to ${member.name}.` : "Job reassigned to you (Self).",
+      "Failed to reassign job"
+    );
+
+  // ─── Cancel ─────────────────────────────────────────────────────────────────
+  // Open request: withdraw ONLY this workshop's quote (the customer's request stays open).
+  // Accepted job: the workshop owner can cancel before payment is captured.
   const cancelJob = async (params: CancelJobParams) => {
-    const { jobId, userId, reason } = params;
-    try {
-      const cancelData = {
-        status: -1,
-        cancelReason: reason,
-        cancelBy: "Mechanic",
-      };
+    const { jobId, reason } = params;
+    await withToast(
+      async () => {
+        const { job, data } = await loadJob(jobId);
+        const { relation, offer } = getJobRelation(job, currentUId);
 
-      const jobRef = doc(db, "jobs", jobId);
-      const jobSnap = await getDoc(jobRef);
-      if (jobSnap.exists()) {
-        const offers = (jobSnap.data().mechanicsOffer || []) as MechanicOffer[];
-        const updatedOffers = offers.map((offer) =>
-          offer.mId === currentUId || offer.assignedMemberId === currentUId
-            ? { ...offer, status: -1 }
-            : offer
-        );
-        await updateDoc(
-          jobRef,
-          sanitizeFirestoreData({
-            ...cancelData,
-            mechanicsOffer: updatedOffers,
-          })
-        );
-      }
-
-      const cancelTargetUids = new Set<string>();
-      if (userId) cancelTargetUids.add(userId);
-      const cancelJobData = jobSnap.exists() ? jobSnap.data() : null;
-      if (cancelJobData?.userId) cancelTargetUids.add(cancelJobData.userId);
-      if (cancelJobData?.ownerId) cancelTargetUids.add(cancelJobData.ownerId);
-      if (cancelJobData?.createdBy) cancelTargetUids.add(cancelJobData.createdBy);
-      if (cancelJobData?.creatorId) cancelTargetUids.add(cancelJobData.creatorId);
-
-      for (const targetUid of cancelTargetUids) {
-        if (!targetUid) continue;
-        const historyRef = doc(db, "Users", targetUid, "history", jobId);
-        const histSnap = await getDoc(historyRef);
-        if (histSnap.exists()) {
-          const offers = (histSnap.data().mechanicsOffer ||
-            []) as MechanicOffer[];
-          const updatedOffers = offers.map((offer) =>
-            offer.mId === currentUId || offer.assignedMemberId === currentUId
-              ? { ...offer, status: -1 }
-              : offer
+        if (relation === "bidder" && job.status === JOB_STATUS.OPEN && offer) {
+          const mechanicsOffer = job.mechanicsOffer.map((o) =>
+            o === offer ? { ...o, status: JOB_STATUS.CANCELLED, cancelReason: reason } : o
           );
-          await updateDoc(
-            historyRef,
-            sanitizeFirestoreData({
-              ...cancelData,
-              mechanicsOffer: updatedOffers,
-            })
+          await syncJobAndHistories(job.id, job.userId || data.userId, data, {
+            mechanicsOffer,
+          });
+          return;
+        }
+
+        if (!offer || offer.mId !== currentUId) {
+          throw new Error(
+            "Only the workshop owner can cancel an accepted job. Use Handover instead."
           );
         }
-      }
+        if (!ACTIVE_EXECUTION_STATUSES.includes(job.status)) {
+          throw new Error("This job can no longer be cancelled.");
+        }
+        if (job.isPaid) {
+          throw new Error(
+            "The customer has already paid for this work order. Contact support to cancel and refund."
+          );
+        }
 
-      toast.success("Job cancelled successfully");
-    } catch (err: any) {
-      console.error("Error cancelling job:", err);
-      toast.error(err.message || "Failed to cancel job");
-      throw err;
-    }
+        const mechanicsOffer = job.mechanicsOffer.map((o) =>
+          o === offer ? { ...o, status: JOB_STATUS.CANCELLED } : o
+        );
+        await syncJobAndHistories(job.id, job.userId || data.userId, data, {
+          status: JOB_STATUS.CANCELLED,
+          cancelReason: reason,
+          cancelBy: "Mechanic",
+          mechanicsOffer,
+        });
+        await setTechnicianActiveJob(getExecutingTechnicianId(offer), null);
+      },
+      "Cancelled successfully",
+      "Failed to cancel job"
+    );
   };
 
   // Submit Rating
@@ -1476,12 +1251,8 @@ export function useMechanicDashboard() {
     setFilterOnlyNearby,
     cancelReasons,
     submitOffer,
-    updateJobStatus,
     cancelJob,
     submitRating,
-    startJobWithDuration,
-    acceptMemberAssignment,
-    declineMemberAssignment,
     markArrivedAtSite,
     submitInspectionAndQuote,
     markRepairFinished,

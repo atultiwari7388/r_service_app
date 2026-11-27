@@ -570,8 +570,10 @@ export default function SubscriptionPlanModal({
             : "7"
         );
       } else {
+        // Plans saved before commissions existed: owner/driver plans had no fee,
+        // so default to 0% to avoid silently adding a fee on the next save.
         setDefaultCommissionType("percentage");
-        setDefaultCommissionValue("7");
+        setDefaultCommissionValue(activeType === "trenoops" ? "0" : "7");
       }
 
       if (initialData.serviceCommissions) {
@@ -711,6 +713,9 @@ export default function SubscriptionPlanModal({
           "Fleet limits apply strictly to active registered commercial units.",
           "Cancellation must be submitted 24 hours prior to billing cycle.",
         ]);
+        setDefaultCommissionType("percentage");
+        setDefaultCommissionValue("0");
+        setServiceCommissions({});
       } else {
         setMechanicCategory("roadside");
         setIsUnlimitedBays(false);
@@ -1042,28 +1047,32 @@ export default function SubscriptionPlanModal({
         payload.priorityJobLeads = priorityJobLeads;
         payload.directCarrierInvoicing = directCarrierInvoicing;
 
-        // Save Commission configuration
-        const defCommVal = parseFloat(defaultCommissionValue);
-        payload.defaultCommission = {
-          type: defaultCommissionType,
-          value: isNaN(defCommVal) ? 0 : defCommVal,
-        };
-
-        const cleanServiceCommissions: Record<string, ServiceCommissionConfig> = {};
-        Object.entries(serviceCommissions).forEach(([srvTitle, cfg]) => {
-          const val = parseFloat(cfg.value);
-          cleanServiceCommissions[srvTitle] = {
-            enabled: cfg.enabled,
-            type: cfg.type,
-            value: isNaN(val) ? 0 : val,
-          };
-        });
-        payload.serviceCommissions = cleanServiceCommissions;
-
         // Save Page RBAC Access Permissions
         payload.allowedPages = allowedPages;
         payload.hasAllPagesAccess = hasAllPagesAccess;
       }
+
+      // Save Commission configuration (both plan types):
+      //  - treno_mechanic: commission deducted from the workshop payout
+      //  - trenoops:       service fee added on top of the customer's work order
+      // Percentages are clamped to 0-100; negative values are treated as 0.
+      const defCommVal = parseFloat(defaultCommissionValue);
+      const cleanCommissionValue = (t: CommissionType, v: number) =>
+        isNaN(v) || v < 0 ? 0 : t === "percentage" ? Math.min(v, 100) : v;
+      payload.defaultCommission = {
+        type: defaultCommissionType,
+        value: cleanCommissionValue(defaultCommissionType, defCommVal),
+      };
+
+      const cleanServiceCommissions: Record<string, ServiceCommissionConfig> = {};
+      Object.entries(serviceCommissions).forEach(([srvTitle, cfg]) => {
+        cleanServiceCommissions[srvTitle] = {
+          enabled: cfg.enabled,
+          type: cfg.type,
+          value: cleanCommissionValue(cfg.type, parseFloat(cfg.value)),
+        };
+      });
+      payload.serviceCommissions = cleanServiceCommissions;
 
       // Save Cancellation Penalty Policy (Applies to both Driver/Owner & Mechanic plans, goes to Admin)
       const graceMin = parseInt(gracePeriodMinutes, 10);
@@ -2282,216 +2291,6 @@ export default function SubscriptionPlanModal({
                 </label>
               </div>
 
-              {/* Per-Job Commission Section */}
-              <div className="bg-white rounded-xl p-4 border border-emerald-200/90 shadow-xs space-y-3.5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#58BB87] flex items-center justify-center shrink-0">
-                      <Percent className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
-                        Per-Job Commission (Selected Services)
-                      </h4>
-                      <p className="text-[11px] text-gray-500">
-                        Set platform commission per roadside / repair job lead
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleApplyDefaultCommissionToAll}
-                    className="text-xs font-bold text-[#58BB87] hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" /> Apply Default to All
-                  </button>
-                </div>
-
-                {/* Default Commission Control */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Default Commission Type
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDefaultCommissionType("percentage")}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                          defaultCommissionType === "percentage"
-                            ? "bg-[#58BB87] text-white border-[#58BB87] shadow-xs"
-                            : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
-                        }`}
-                      >
-                        <Percent className="w-3.5 h-3.5" /> Percentage (%)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDefaultCommissionType("flat")}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                          defaultCommissionType === "flat"
-                            ? "bg-[#58BB87] text-white border-[#58BB87] shadow-xs"
-                            : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
-                        }`}
-                      >
-                        <DollarSign className="w-3.5 h-3.5" /> Flat Fee ($)
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Default Commission Rate / Amount
-                    </label>
-                    <div className="flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-[#58BB87]">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={defaultCommissionValue}
-                        onChange={(e) => setDefaultCommissionValue(e.target.value)}
-                        placeholder={
-                          defaultCommissionType === "percentage" ? "e.g. 7" : "e.g. 20"
-                        }
-                        className="w-full text-sm font-bold text-gray-900 focus:outline-none"
-                      />
-                      <span className="text-xs font-bold text-gray-500 shrink-0 ml-1">
-                        {defaultCommissionType === "percentage" ? "% per job" : "flat / job"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Collapsible Per-Service Customization */}
-                <div className="pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowServiceCustomization(!showServiceCustomization)}
-                    className="w-full flex items-center justify-between text-xs font-bold text-gray-700 bg-gray-50 hover:bg-gray-100 p-2.5 rounded-lg border border-gray-200 transition cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Briefcase className="w-4 h-4 text-gray-500" />
-                      Customize Commission per Specific Service ({availableServices.length} Services available)
-                    </span>
-                    {showServiceCustomization ? (
-                      <ChevronUp className="w-4 h-4 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-500" />
-                    )}
-                  </button>
-
-                  {showServiceCustomization && (
-                    <div className="mt-2.5 p-3 rounded-lg border border-gray-200 bg-white space-y-3">
-                      {/* Search */}
-                      <div className="relative">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          value={serviceSearchQuery}
-                          onChange={(e) => setServiceSearchQuery(e.target.value)}
-                          placeholder="Search services (e.g. Tire, Brake, Welding, Oil)..."
-                          className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#58BB87]"
-                        />
-                      </div>
-
-                      {/* Services List Table */}
-                      <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 border border-gray-200 rounded-lg">
-                        {filteredServices.map((srv) => {
-                          const cfg = serviceCommissions[srv.title];
-                          const isEnabled = cfg ? cfg.enabled : true;
-                          const currentType = cfg ? cfg.type : defaultCommissionType;
-                          const currentVal = cfg ? cfg.value : defaultCommissionValue;
-                          const isCustomized = !!cfg;
-
-                          return (
-                            <div
-                              key={srv.title}
-                              className="p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-gray-50 transition text-xs"
-                            >
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <input
-                                  type="checkbox"
-                                  checked={isEnabled}
-                                  onChange={(e) =>
-                                    handleServiceCommissionChange(srv.title, {
-                                      enabled: e.target.checked,
-                                    })
-                                  }
-                                  className="w-4 h-4 rounded text-[#58BB87] focus:ring-[#58BB87] cursor-pointer"
-                                />
-                                <span
-                                  className={`font-semibold truncate ${
-                                    isEnabled
-                                      ? "text-gray-900"
-                                      : "text-gray-400 line-through"
-                                  }`}
-                                >
-                                  {srv.title}
-                                </span>
-                                {isCustomized && (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 shrink-0">
-                                    Custom
-                                  </span>
-                                )}
-                              </div>
-
-                              {isEnabled && (
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <select
-                                    value={currentType}
-                                    onChange={(e) =>
-                                      handleServiceCommissionChange(srv.title, {
-                                        type: e.target.value as CommissionType,
-                                      })
-                                    }
-                                    className="text-xs font-semibold px-2 py-1 rounded border border-gray-300 bg-white"
-                                  >
-                                    <option value="percentage">% Percent</option>
-                                    <option value="flat">$ Flat</option>
-                                  </select>
-
-                                  <div className="flex items-center border border-gray-300 rounded px-2 py-1 w-20 bg-white">
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="0.5"
-                                      value={currentVal}
-                                      onChange={(e) =>
-                                        handleServiceCommissionChange(srv.title, {
-                                          value: e.target.value,
-                                        })
-                                      }
-                                      className="w-full text-xs font-bold text-gray-900 focus:outline-none"
-                                    />
-                                    <span className="text-[10px] text-gray-500 font-bold ml-0.5">
-                                      {currentType === "percentage" ? "%" : "$"}
-                                    </span>
-                                  </div>
-
-                                  {isCustomized && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleResetServiceCommission(srv.title)
-                                      }
-                                      className="text-[11px] text-gray-400 hover:text-red-500 p-1 cursor-pointer"
-                                      title="Reset to default rate"
-                                    >
-                                      <RotateCcw className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Page Access RBAC Section */}
               <div className="bg-white rounded-xl p-4 border border-emerald-200/90 shadow-xs space-y-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
@@ -2605,6 +2404,221 @@ export default function SubscriptionPlanModal({
               </div>
             </div>
           )}
+
+          {/* Per-Job Commission Section (both plan types; settled per completed job) */}
+          <div className="bg-white rounded-xl p-4 border border-emerald-200/90 shadow-xs space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#58BB87] flex items-center justify-center shrink-0">
+                  <Percent className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                    {type === "trenoops"
+                      ? "Customer Service Fee per Job (Selected Services)"
+                      : "Per-Job Commission (Selected Services)"}
+                  </h4>
+                  <p className="text-[11px] text-gray-500">
+                    {type === "trenoops"
+                      ? "Platform fee added on top of the verified work order the fleet owner / driver pays"
+                      : "Platform commission deducted from the workshop's payout on each completed job"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleApplyDefaultCommissionToAll}
+                className="text-xs font-bold text-[#58BB87] hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Apply Default to All
+              </button>
+            </div>
+
+            {/* Default Commission Control */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Default Commission Type
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDefaultCommissionType("percentage")}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      defaultCommissionType === "percentage"
+                        ? "bg-[#58BB87] text-white border-[#58BB87] shadow-xs"
+                        : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    <Percent className="w-3.5 h-3.5" /> Percentage (%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDefaultCommissionType("flat")}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      defaultCommissionType === "flat"
+                        ? "bg-[#58BB87] text-white border-[#58BB87] shadow-xs"
+                        : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    <DollarSign className="w-3.5 h-3.5" /> Flat Fee ($)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Default Commission Rate / Amount
+                </label>
+                <div className="flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-[#58BB87]">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={defaultCommissionValue}
+                    onChange={(e) => setDefaultCommissionValue(e.target.value)}
+                    placeholder={
+                      defaultCommissionType === "percentage" ? "e.g. 7" : "e.g. 20"
+                    }
+                    className="w-full text-sm font-bold text-gray-900 focus:outline-none"
+                  />
+                  <span className="text-xs font-bold text-gray-500 shrink-0 ml-1">
+                    {defaultCommissionType === "percentage" ? "% per job" : "flat / job"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Collapsible Per-Service Customization */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowServiceCustomization(!showServiceCustomization)}
+                className="w-full flex items-center justify-between text-xs font-bold text-gray-700 bg-gray-50 hover:bg-gray-100 p-2.5 rounded-lg border border-gray-200 transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-gray-500" />
+                  Customize Commission per Specific Service ({availableServices.length} Services available)
+                </span>
+                {showServiceCustomization ? (
+                  <ChevronUp className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                )}
+              </button>
+
+              {showServiceCustomization && (
+                <div className="mt-2.5 p-3 rounded-lg border border-gray-200 bg-white space-y-3">
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={serviceSearchQuery}
+                      onChange={(e) => setServiceSearchQuery(e.target.value)}
+                      placeholder="Search services (e.g. Tire, Brake, Welding, Oil)..."
+                      className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#58BB87]"
+                    />
+                  </div>
+
+                  {/* Services List Table */}
+                  <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 border border-gray-200 rounded-lg">
+                    {filteredServices.map((srv) => {
+                      const cfg = serviceCommissions[srv.title];
+                      const isEnabled = cfg ? cfg.enabled : true;
+                      const currentType = cfg ? cfg.type : defaultCommissionType;
+                      const currentVal = cfg ? cfg.value : defaultCommissionValue;
+                      const isCustomized = !!cfg;
+
+                      return (
+                        <div
+                          key={srv.title}
+                          className="p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-gray-50 transition text-xs"
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={(e) =>
+                                handleServiceCommissionChange(srv.title, {
+                                  enabled: e.target.checked,
+                                })
+                              }
+                              className="w-4 h-4 rounded text-[#58BB87] focus:ring-[#58BB87] cursor-pointer"
+                            />
+                            <span
+                              className={`font-semibold truncate ${
+                                isEnabled
+                                  ? "text-gray-900"
+                                  : "text-gray-400 line-through"
+                              }`}
+                            >
+                              {srv.title}
+                            </span>
+                            {isCustomized && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 shrink-0">
+                                Custom
+                              </span>
+                            )}
+                          </div>
+
+                          {isEnabled && (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <select
+                                value={currentType}
+                                onChange={(e) =>
+                                  handleServiceCommissionChange(srv.title, {
+                                    type: e.target.value as CommissionType,
+                                  })
+                                }
+                                className="text-xs font-semibold px-2 py-1 rounded border border-gray-300 bg-white"
+                              >
+                                <option value="percentage">% Percent</option>
+                                <option value="flat">$ Flat</option>
+                              </select>
+
+                              <div className="flex items-center border border-gray-300 rounded px-2 py-1 w-20 bg-white">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={currentVal}
+                                  onChange={(e) =>
+                                    handleServiceCommissionChange(srv.title, {
+                                      value: e.target.value,
+                                    })
+                                  }
+                                  className="w-full text-xs font-bold text-gray-900 focus:outline-none"
+                                />
+                                <span className="text-[10px] text-gray-500 font-bold ml-0.5">
+                                  {currentType === "percentage" ? "%" : "$"}
+                                </span>
+                              </div>
+
+                              {isCustomized && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleResetServiceCommission(srv.title)
+                                  }
+                                  className="text-[11px] text-gray-400 hover:text-red-500 p-1 cursor-pointer"
+                                  title="Reset to default rate"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
 
           {/* Job Cancellation Penalty Policy Section (Applies to both Driver/Owner & Mechanic plans, goes to Admin) */}
           <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-xs space-y-3.5">

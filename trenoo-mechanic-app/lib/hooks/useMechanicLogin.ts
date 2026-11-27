@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { authenticateMechanic } from "@/lib/services/authService";
 import { LoginCredentials, LoginResult } from "@/types/auth";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 export interface UseMechanicLoginReturn {
   email: string;
@@ -74,10 +75,7 @@ export function useMechanicLogin(): UseMechanicLoginReturn {
           case "success":
             setLoginSuccess(true);
             toast.success("Login Successful");
-            const isMember =
-              result.mechanicData?.role === "member" ||
-              !!result.mechanicData?.ownerId ||
-              result.mechanicData?.isTeamMember === true;
+            const isMember = isTeamMemberProfile(result.mechanicData);
             setTimeout(() => {
               router.push(isMember ? "/jobs" : "/");
             }, 600);

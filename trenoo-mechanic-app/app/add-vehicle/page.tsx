@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   ShieldCheck,
 } from "lucide-react";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 // Standard fallback vehicle data when metadata documents are not yet seeded
 const FALLBACK_VEHICLE_TYPES = ["Truck", "Trailer"];
@@ -96,10 +97,7 @@ export default function AddVehiclePage() {
   const [selectedMyCompanyId, setSelectedMyCompanyId] = useState<string>("");
   const [selectedMyCompanyName, setSelectedMyCompanyName] = useState<string>("");
 
-  const isMember =
-    mechanicProfile?.role === "member" ||
-    !!mechanicProfile?.ownerId ||
-    mechanicProfile?.isTeamMember === true;
+  const isMember = isTeamMemberProfile(mechanicProfile);
 
   const effectiveMechanicId = isMember && mechanicProfile?.ownerId
     ? mechanicProfile.ownerId

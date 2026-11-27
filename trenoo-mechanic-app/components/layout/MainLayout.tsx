@@ -13,12 +13,14 @@ import { useRouter, usePathname } from "next/navigation";
 import toast from "react-hot-toast";
 import { APP_CONFIG } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 const RESTRICTED_MEMBER_ROUTES = [
+  "/earnings",
   "/team",
   "/my-services",
   "/services",
@@ -39,10 +41,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const mechanic = auth?.mechanicProfile;
   const isLoading = auth?.isLoading;
 
-  const isMember =
-    mechanic?.role === "member" ||
-    !!mechanic?.ownerId ||
-    mechanic?.isTeamMember === true;
+  const isMember = isTeamMemberProfile(mechanic);
 
   // Intercept unpaid mechanics attempting to access locked workshop features
   // Allows access to Home (/), Profile (/profile), and Services (/my-services)

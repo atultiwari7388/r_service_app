@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useMechanicProfile } from "@/lib/hooks/useMechanicProfile";
 import Link from "next/link";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 // Strict MM/DD/YYYY Date Formatter
 function formatToMMDDYYYY(dateInput: any): string {
@@ -116,10 +117,7 @@ export default function MechanicProfileView() {
     deleteAccountPermanently,
   } = useMechanicProfile();
 
-  const isMember =
-    mechanicProfile?.role === "member" ||
-    !!mechanicProfile?.ownerId ||
-    mechanicProfile?.isTeamMember === true;
+  const isMember = isTeamMemberProfile(mechanicProfile);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchParams = useSearchParams();

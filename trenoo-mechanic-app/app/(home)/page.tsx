@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContexts";
 import MainLayout from "@/components/layout/MainLayout";
 import MechanicDashboardView from "@/components/dashboard/MechanicDashboardView";
 import LandingPage from "@/components/landing/LandingPage";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 export default function HomePage() {
   const router = useRouter();
@@ -16,10 +17,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading && user && mechanic) {
-      const isMember =
-        mechanic.role === "member" ||
-        !!mechanic.ownerId ||
-        mechanic.isTeamMember === true;
+      const isMember = isTeamMemberProfile(mechanic);
 
       if (isMember) {
         // Members only have access to Jobs and My Profile

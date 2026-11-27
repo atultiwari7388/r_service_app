@@ -11,6 +11,7 @@ import {
   MechanicSubscriptionHistoryItem,
   GlobalSubscriptionPurchase,
 } from "@/types/subscription";
+import { buildCommissionSnapshot } from "@/lib/services/commissionService";
 
 export interface ActivationParams {
   mechanicId: string;
@@ -115,8 +116,12 @@ export async function recordAndActivateSubscription(
     updatedAt: serverTimestamp(),
   };
 
+  // Freeze the plan's commission settings for this subscriber
+  const commissionSnapshot = await buildCommissionSnapshot(plan);
+
   // 2. Prepare Current Subscription Snapshot for `Mechanics/{mechanicId}`
   const currentSub: MechanicCurrentSubscription = {
+    commission: commissionSnapshot,
     planId: plan.id,
     planName: plan.name,
     duration: plan.duration,

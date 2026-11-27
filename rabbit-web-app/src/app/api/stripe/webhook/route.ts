@@ -5,6 +5,7 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { recordAndActivateOwnerSubscription } from "@/lib/services/subscriptionActivation";
 import { SubscriptionPlan } from "@/types/subscription";
 import Stripe from "stripe";
+import { getAcceptedOffer, type WorkflowJob } from "@/lib/jobWorkflow";
 
 export async function POST(req: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -60,18 +61,27 @@ export async function POST(req: Request) {
           if (jobDocId) {
             const jobRef = doc(db, "jobs", jobDocId);
             const jobSnap = await getDoc(jobRef);
-            const jobData = jobSnap.exists() ? jobSnap.data() : null;
+            const jobData = jobSnap.exists()
+              ? (jobSnap.data() as WorkflowJob & Record<string, any>)
+              : null;
 
-            // Only update if not already status >= 3 or not isPaid
-            if (jobData && (!jobData.isPaid || jobData.status < 3)) {
-              const currentOffers: any[] = jobData.mechanicsOffer || [];
-              const updatedMechanicsOffer = currentOffers.map((offer: any) => ({
-                ...offer,
-                status: offer.mId === targetMechanicId ? 3 : offer.status,
-              }));
+            // Idempotent: payment only flips isPaid; `status` stays 4 (work order)
+            // so the job never regresses to the on-site/diagnosing phase.
+            if (jobData && !jobData.isPaid) {
+              const accepted = getAcceptedOffer(jobData);
+              if (accepted && targetMechanicId && accepted.mId !== targetMechanicId) {
+                console.warn(
+                  `Webhook: paid mechanic ${targetMechanicId} differs from accepted offer ${accepted.mId} on ${jobDocId}`
+                );
+              }
+              const paidAmount = (session.amount_total || 0) / 100;
+              const updatedMechanicsOffer = (jobData.mechanicsOffer || []).map((offer) =>
+                offer === accepted
+                  ? { ...offer, isPaid: true, paidAmount, assignmentStatus: "repairing" }
+                  : offer
+              );
 
               const updates: Record<string, any> = {
-                status: 3,
                 payMode: "online",
                 isPaid: true,
                 paidAmount: (session.amount_total || 0) / 100,
@@ -82,6 +92,8 @@ export async function POST(req: Request) {
                     ? session.payment_intent
                     : session.payment_intent?.id || null,
                 paidAt: new Date().toISOString(),
+                assignmentStatus: "repairing",
+                activeJobStartedAt: new Date(),
                 mechanicsOffer: updatedMechanicsOffer,
               };
 

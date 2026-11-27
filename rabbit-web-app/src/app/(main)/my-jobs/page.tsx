@@ -18,6 +18,17 @@ import { HashLoader } from "react-spinners";
 import HistoryCard from "../history/components/HistoryCard";
 // import { GlobalToastError } from "@/utils/globalErrorToast";
 import Link from "next/link";
+import {
+  JOB_STATUS,
+  getAcceptedOffer,
+  getCustomerPhaseLabel,
+} from "@/lib/jobWorkflow";
+
+// The job page drives every phase after posting (quotes, dispatch, payment,
+// sign-off), so it must stay reachable once an offer exists or is accepted.
+const hasJobDetails = (item: HistoryItem) =>
+  item.status >= JOB_STATUS.DISPATCHED ||
+  (item.mechanicsOffer || []).some((o) => o.status === JOB_STATUS.QUOTED);
 
 export default function MyJobsPage() {
   const { user } = useAuth() || { user: null };
@@ -289,25 +300,36 @@ export default function MyJobsPage() {
                   <td className="px-4 py-2 border-b">{item.selectedService}</td>
                   <td className="px-4 py-2 border-b">{item.vehicleNumber}</td>
                   <td className="px-4 py-2 border-b">
-                    {item.mechanicsOffer.some((offer) => offer.status === 1)
-                      ? item.fixPriceEnabled
-                        ? `$${item.mechanicsOffer[0]?.fixPrice} (Fix Price)`
-                        : `$${item.mechanicsOffer[0]?.arrivalCharges} (Arrival Charges) $${item.mechanicsOffer[0]?.perHourCharges} (Per Hour Charges) `
-                      : "0"}
+                    {(() => {
+                      if (item.finalDiagnosedAmount) {
+                        return `$${item.finalDiagnosedAmount} (Verified Work Order)`;
+                      }
+                      const offer =
+                        getAcceptedOffer(item) ||
+                        item.mechanicsOffer?.find((o) => o.status === JOB_STATUS.QUOTED);
+                      if (!offer) return "0";
+                      return item.fixPriceEnabled
+                        ? `$${offer.fixPrice} (Fix Price)`
+                        : `$${offer.arrivalCharges} (Arrival Charges) $${offer.perHourCharges} (Per Hour Charges) `;
+                    })()}
                   </td>
                   <td className="px-4 py-2 border-b">{item.payMode}</td>
                   <td className="px-4 py-2 border-b">
-                    {item.status === 5 ? (
-                      <span className="text-green-500">Complete</span>
-                    ) : item.status === -1 ? (
-                      <span className="text-red-500">Cancelled</span>
-                    ) : (
-                      <span className="text-yellow-500">In Progress</span>
-                    )}
+                    <span
+                      className={
+                        item.status === JOB_STATUS.COMPLETED
+                          ? "text-green-500"
+                          : item.status === JOB_STATUS.CANCELLED
+                          ? "text-red-500"
+                          : "text-yellow-600"
+                      }
+                    >
+                      {getCustomerPhaseLabel(item)}
+                    </span>
                   </td>
 
                   <td className="px-4 py-2 border-b">
-                    {item.mechanicsOffer.some((offer) => offer.status === 1) ? (
+                    {hasJobDetails(item) ? (
                       <Link
                         href={`/my-jobs/${item.id.replace("#", "")}`}
                         className="bg-[#F96176] text-white px-2 py-2 rounded-sm"
@@ -360,7 +382,7 @@ export default function MyJobsPage() {
                       </option>
                     ))}
                   </select>
-                  {item.mechanicsOffer.some((offer) => offer.status === 1) && (
+                  {hasJobDetails(item) && (
                     <Link
                       href={`/my-jobs/${item.id.replace("#", "")}`}
                       className="bg-[#F96176] text-white px-4 py-2 rounded-sm"

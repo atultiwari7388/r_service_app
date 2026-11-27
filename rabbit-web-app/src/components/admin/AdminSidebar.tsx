@@ -20,6 +20,7 @@ import {
   Truck,
   Sparkles,
   Inbox,
+  Percent,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
 
@@ -89,6 +90,12 @@ const navItems: NavItem[] = [
     icon: Sparkles,
     description: "Purchased mechanics & drivers",
   },
+  {
+    name: "Commissions",
+    href: "/admin/commissions",
+    icon: Percent,
+    description: "Plan commissions & settlements",
+  },
 ];
 
 export default function AdminSidebar() {
@@ -127,6 +134,9 @@ export default function AdminSidebar() {
       return true;
     }
     if (href === "/admin/custom-plan-requests" && pathname?.startsWith("/admin/custom-plan-requests")) {
+      return true;
+    }
+    if (href === "/admin/commissions" && pathname?.startsWith("/admin/commissions")) {
       return true;
     }
     if (href === "/admin/subscribers" && pathname?.startsWith("/admin/subscribers")) {

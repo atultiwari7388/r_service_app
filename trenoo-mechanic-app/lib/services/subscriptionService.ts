@@ -15,6 +15,7 @@ import {
   MechanicCurrentSubscription,
   MechanicSubscriptionHistoryItem,
 } from "@/types/subscription";
+import { buildCommissionSnapshot } from "@/lib/services/commissionService";
 
 /**
  * Fetch all active subscription plans configured for mechanics.
@@ -128,7 +129,11 @@ export async function purchaseMechanicPlan(
       ? plan.discountPrice
       : plan.price;
 
+  // Freeze the plan's commission settings for this subscriber
+  const commissionSnapshot = await buildCommissionSnapshot(plan);
+
   const currentSub: MechanicCurrentSubscription = {
+    commission: commissionSnapshot,
     planId: plan.id,
     planName: plan.name,
     duration: plan.duration,

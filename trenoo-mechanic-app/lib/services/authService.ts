@@ -25,6 +25,7 @@ import {
   MechanicRegistrationData,
   RegistrationResult,
 } from "@/types/auth";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 export const getAuthErrorMessage = (error: any): string => {
   const code = (error?.code || "").toLowerCase();
@@ -253,7 +254,7 @@ export async function authenticateMechanic(
 
     // 3. Found in Mechanics collection
     const mechanicData = mechanicDocSnap.data() as MechanicProfile;
-    const isTeamMember = mechanicData.role === "member" || !!mechanicData.ownerId;
+    const isTeamMember = isTeamMemberProfile(mechanicData);
 
     // 4. Check if email is verified
     // (Note: Admin-created team members have emailVerified=true by default)

@@ -9,6 +9,7 @@ import {
   OwnerCurrentSubscription,
   OwnerSubscriptionHistoryItem,
 } from "@/types/subscription";
+import { buildCommissionSnapshot } from "@/lib/services/commissionService";
 
 export interface OwnerActivationParams {
   ownerUid: string;
@@ -124,8 +125,12 @@ export async function recordAndActivateOwnerSubscription(
     termsAndConditions: plan.termsAndConditions || [],
   };
 
+  // Freeze the plan's service-fee settings for this subscriber
+  const commissionSnapshot = await buildCommissionSnapshot(plan);
+
   // 2. Prepare Current Subscription Snapshot for `Users/{ownerUid}`
   const currentSub: OwnerCurrentSubscription = {
+    commission: commissionSnapshot,
     planId: plan.id || "",
     planName: plan.name,
     planType: "trenoops",

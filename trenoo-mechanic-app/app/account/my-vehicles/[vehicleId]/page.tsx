@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Clock,
 } from "lucide-react";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 export default function VehicleDetailsPage() {
   const params = useParams();
@@ -33,10 +34,7 @@ export default function VehicleDetailsPage() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isMember =
-    mechanicProfile?.role === "member" ||
-    !!mechanicProfile?.ownerId ||
-    mechanicProfile?.isTeamMember === true;
+  const isMember = isTeamMemberProfile(mechanicProfile);
 
   const effectiveMechanicId = isMember && mechanicProfile?.ownerId
     ? mechanicProfile.ownerId

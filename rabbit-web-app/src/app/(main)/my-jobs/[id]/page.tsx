@@ -3,8 +3,32 @@
 
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
-import { HistoryItem } from "@/types/types";
-import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
+import { HistoryItem, MechanicsOffer } from "@/types/types";
+import {
+  deleteField,
+  doc,
+  getDoc,
+  onSnapshot,
+  updateDoc,
+} from "firebase/firestore";
+import {
+  PlanCommissionConfig,
+  resolveCommission,
+  roundMoney,
+} from "@/lib/commission";
+import {
+  loadCustomerCommissionConfig,
+  recordJobSettlement,
+} from "@/lib/services/commissionService";
+import {
+  JOB_STATUS,
+  canCustomerSignOff,
+  canPay,
+  getAcceptedOffer,
+  getCustomerPhaseLabel,
+  getJobPhase,
+  isDelegatedOffer,
+} from "@/lib/jobWorkflow";
 import { useEffect, useState } from "react";
 import { HashLoader } from "react-spinners";
 import { use } from "react";
@@ -26,6 +50,9 @@ export default function JobIdDetails({
   const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
   const [userRole, setUserRole] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  // Customer's plan-based service fee settings (added on top of the work order)
+  const [customerFeeConfig, setCustomerFeeConfig] =
+    useState<PlanCommissionConfig | null>(null);
 
   const { id } = use(params);
 
@@ -64,7 +91,8 @@ export default function JobIdDetails({
           toast.dismiss(toastId);
 
           if (res.ok && data.success) {
-            // Apply authenticated client-side Firestore update (matching cash flow permissions)
+            // Apply authenticated client-side Firestore update.
+            // Status stays 4 (work order); payment only flips isPaid → repair starts.
             try {
               const jobDocId = id.startsWith("#") ? id : `#${id}`;
               const userHistoryRef = doc(
@@ -78,41 +106,42 @@ export default function JobIdDetails({
 
               const currentHistorySnap = await getDoc(userHistoryRef);
               const historyData = currentHistorySnap.exists()
-                ? currentHistorySnap.data()
+                ? (currentHistorySnap.data() as HistoryItem)
                 : null;
-              const currentOffers: any[] =
-                historyData?.mechanicsOffer || jobDetails?.mechanicsOffer || [];
 
-              const targetMId = queryMechanicId || data.targetMechanicId;
-              const updatedMechanicsOffer = currentOffers.map((offer: any) => ({
-                ...offer,
-                isPaid: true,
-                paidAmount: data.amount,
-                status: offer.status < 4 ? 4 : offer.status,
-              }));
+              if (historyData && !historyData.isPaid) {
+                const accepted = getAcceptedOffer(historyData);
+                const updatedMechanicsOffer = (historyData.mechanicsOffer || []).map(
+                  (offer) =>
+                    offer === accepted
+                      ? {
+                          ...offer,
+                          isPaid: true,
+                          paidAmount: data.amount,
+                          assignmentStatus: "repairing",
+                        }
+                      : offer
+                );
 
-              const clientUpdates = {
-                payMode: "online",
-                isPaid: true,
-                paidAmount: data.amount,
-                paidCurrency: data.currency || "USD",
-                stripeSessionId: sessionId,
-                paidAt: data.paidAt || new Date().toISOString(),
-                mechanicsOffer: updatedMechanicsOffer,
-              };
+                const clientUpdates = {
+                  payMode: "online",
+                  isPaid: true,
+                  paidAmount: data.amount,
+                  paidCurrency: data.currency || "USD",
+                  stripeSessionId: sessionId,
+                  paidAt: data.paidAt || new Date().toISOString(),
+                  assignmentStatus: "repairing",
+                  activeJobStartedAt: new Date(),
+                  mechanicsOffer: updatedMechanicsOffer,
+                };
 
-              await updateDoc(userHistoryRef, clientUpdates);
-              try {
-                await updateDoc(jobRef, clientUpdates);
-              } catch (jobDocErr) {
-                console.warn("Global jobDoc update handled:", jobDocErr);
+                await updateDoc(userHistoryRef, clientUpdates);
+                try {
+                  await updateDoc(jobRef, clientUpdates);
+                } catch (jobDocErr) {
+                  console.warn("Global jobDoc update handled:", jobDocErr);
+                }
               }
-
-              // Update local state immediately
-              setJobDetails((prev: any) => ({
-                ...prev,
-                ...clientUpdates,
-              }));
             } catch (fsErr) {
               console.error("Client Firestore update error:", fsErr);
             }
@@ -184,6 +213,17 @@ export default function JobIdDetails({
 
   useEffect(() => {
     if (!effectiveUserId) return;
+    let cancelled = false;
+    loadCustomerCommissionConfig(effectiveUserId).then((cfg) => {
+      if (!cancelled) setCustomerFeeConfig(cfg);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveUserId]);
+
+  useEffect(() => {
+    if (!effectiveUserId) return;
 
     const jobRef = doc(db, "Users", effectiveUserId, "history", `#${id}`);
 
@@ -199,111 +239,147 @@ export default function JobIdDetails({
     return () => unsubscribe();
   }, [effectiveUserId, id]);
 
-  const handleAcceptOffer = async (mechanicId: string) => {
-    if (!jobDetails || !effectiveUserId) return;
+  // ─── Firestore helpers ──────────────────────────────────────────────────────
+  const jobDocId = id.startsWith("#") ? id : `#${id}`;
+  const rawJobId = id.replace(/^#/, "");
 
-    const confirmAccept = window.confirm(
-      "Are you sure you want to accept this offer?"
-    );
-    if (!confirmAccept) return;
-
-    try {
-      const selectedOffer = jobDetails.mechanicsOffer?.find(
-        (offer) => offer.mId === mechanicId
-      );
-
-      const isAssignedToMember = Boolean(
-        selectedOffer?.assignedMemberId &&
-        selectedOffer.assignedMemberId.trim() !== "" &&
-        selectedOffer.assignedMemberId !== "self"
-      );
-
-      const targetAssignmentStatus = "en_route";
-
-      const updates: any = {
-        status: 2,
-        assignmentStatus: targetAssignmentStatus,
-        mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
-          ...offer,
-          status: offer.mId === mechanicId ? 2 : offer.status,
-          assignmentStatus:
-            offer.mId === mechanicId ? targetAssignmentStatus : offer.assignmentStatus,
-        })),
-      };
-
-      if (isAssignedToMember && selectedOffer) {
-        updates.assignedMemberId = selectedOffer.assignedMemberId;
-        updates.assignedMemberName = selectedOffer.assignedMemberName || "";
-        updates.assignedMemberPhone = selectedOffer.assignedMemberPhone || "";
-        updates.assignedMemberCity = selectedOffer.assignedMemberCity || "";
-        updates.isAssignedByOwner = true;
-      }
-
-      const jobDocId = id.startsWith("#") ? id : `#${id}`;
-      const rawJobId = id.replace(/^#/, "");
-
-      // Update user history document
-      const userHistoryRef = doc(
-        db,
-        "Users",
-        effectiveUserId,
-        "history",
-        jobDocId
-      );
-      await updateDoc(userHistoryRef, updates);
-
-      // Update jobs document (support both #id and bare id)
+  // Authoritative state: the global jobs doc (falls back to the user's history copy)
+  const loadLatestJob = async (): Promise<HistoryItem | null> => {
+    for (const candidate of [jobDocId, rawJobId]) {
       try {
-        const jobRef = doc(db, "jobs", jobDocId);
-        await updateDoc(jobRef, updates);
-      } catch (jobErr) {
-        try {
-          const rawJobRef = doc(db, "jobs", rawJobId);
-          await updateDoc(rawJobRef, updates);
-        } catch (rawErr) {
-          console.warn("Could not update bare jobs doc:", rawErr);
-        }
+        const snap = await getDoc(doc(db, "jobs", candidate));
+        if (snap.exists()) return snap.data() as HistoryItem;
+      } catch (e) {
+        console.warn(`jobs/${candidate} read skipped:`, e);
       }
+    }
+    if (!effectiveUserId) return null;
+    const hSnap = await getDoc(doc(db, "Users", effectiveUserId, "history", jobDocId));
+    return hSnap.exists() ? (hSnap.data() as HistoryItem) : null;
+  };
 
-      // Refresh job details
-      const updatedJobSnap = await getDoc(userHistoryRef);
-      if (updatedJobSnap.exists()) {
-        setJobDetails(updatedJobSnap.data() as HistoryItem);
+  // Write the same update to the user's history doc and the global jobs doc
+  const writeJobEverywhere = async (updates: Record<string, any>) => {
+    await updateDoc(doc(db, "Users", effectiveUserId, "history", jobDocId), updates);
+    let jobDocWritten = false;
+    for (const candidate of [jobDocId, rawJobId]) {
+      try {
+        const ref = doc(db, "jobs", candidate);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          await updateDoc(ref, updates);
+          jobDocWritten = true;
+          break;
+        }
+      } catch (e) {
+        console.warn(`jobs/${candidate} update skipped:`, e);
       }
-    } catch (error) {
-      console.error("Error accepting offer:", error);
+    }
+    if (!jobDocWritten) {
+      console.warn("Global jobs doc not updated for", jobDocId);
     }
   };
 
-  const handlePayment = async (mechanicId: string) => {
-    if (!jobDetails || !effectiveUserId) return;
-
-    const acceptedMech = jobDetails.mechanicsOffer?.find(
-      (m) => m.mId === mechanicId
+  // Patch ONLY the accepted offer; losing bids are never touched
+  const patchAcceptedOffer = (
+    job: HistoryItem,
+    patch: Partial<MechanicsOffer>
+  ): MechanicsOffer[] => {
+    const accepted = getAcceptedOffer(job);
+    return (job.mechanicsOffer || []).map((o) =>
+      o === accepted ? { ...o, ...patch } : o
     );
+  };
 
-    // Prioritize final diagnosed amount from on-site inspection
-    const amount =
-      Number(jobDetails.finalDiagnosedAmount) ||
-      Number(acceptedMech?.finalDiagnosedAmount) ||
-      (jobDetails.fixPriceEnabled
-        ? Number(acceptedMech?.fixPrice || 0)
-        : parseFloat(
-            String(acceptedMech?.arrivalCharges || "0").replace(
-              /[^0-9.]/g,
-              ""
-            ) || "0"
-          ));
+  // ─── Phase 2: Accept offer & dispatch (NO payment here) ─────────────────────
+  const handleAcceptOffer = async (mechanicId: string) => {
+    if (!effectiveUserId) return;
+    if (!window.confirm("Accept this offer and dispatch the technician?")) return;
 
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("Invalid payment amount for this work order.");
-      return;
+    try {
+      const latest = await loadLatestJob();
+      if (!latest) throw new Error("Job not found.");
+      if (getJobPhase(latest) !== "open") {
+        throw new Error("An offer has already been accepted for this job.");
+      }
+
+      const selectedOffer = latest.mechanicsOffer?.find(
+        (o) => o.mId === mechanicId && o.status === JOB_STATUS.QUOTED
+      );
+      if (!selectedOffer) {
+        throw new Error("This offer is no longer available.");
+      }
+
+      const delegated = isDelegatedOffer(selectedOffer);
+      const updates: Record<string, any> = {
+        status: JOB_STATUS.DISPATCHED,
+        assignmentStatus: "en_route",
+        mechanicsOffer: (latest.mechanicsOffer || []).map((o) =>
+          o === selectedOffer
+            ? { ...o, status: JOB_STATUS.DISPATCHED, assignmentStatus: "en_route" }
+            : o
+        ),
+        // Top-level dispatch fields always mirror the ACCEPTED offer, so stale
+        // values written by other bidders can never leak through.
+        isAssignedByOwner: delegated,
+        assignedMemberId: delegated ? selectedOffer.assignedMemberId : deleteField(),
+        assignedMemberName: delegated
+          ? selectedOffer.assignedMemberName || ""
+          : deleteField(),
+        assignedMemberPhone: delegated
+          ? selectedOffer.assignedMemberPhone || ""
+          : deleteField(),
+        assignedMemberCity: delegated
+          ? selectedOffer.assignedMemberCity || ""
+          : deleteField(),
+      };
+
+      await writeJobEverywhere(updates);
+      toast.success("Offer accepted. Technician dispatched!");
+    } catch (error: any) {
+      console.error("Error accepting offer:", error);
+      toast.error(error?.message || "Failed to accept offer.");
     }
+  };
 
-    // 1. Online Stripe Payment Flow
-    if (selectedPaymentMode === "online") {
-      try {
-        setIsProcessingPayment(true);
+  // ─── Phase 4: Pay the verified final work order ─────────────────────────────
+  const handlePayment = async (mechanicId: string) => {
+    if (!effectiveUserId || isProcessingPayment) return;
+
+    setIsProcessingPayment(true);
+    try {
+      const latest = await loadLatestJob();
+      if (!latest) throw new Error("Job not found.");
+      const accepted = getAcceptedOffer(latest);
+      if (!accepted || accepted.mId !== mechanicId) {
+        throw new Error("This offer is not the accepted work order.");
+      }
+      if (!canPay(latest)) {
+        throw new Error(
+          latest.isPaid
+            ? "This work order is already paid."
+            : "Payment unlocks after the technician submits the on-site inspection."
+        );
+      }
+
+      // Verified work order + the customer's plan service fee (re-read fresh so
+      // the charged fee always matches the plan at the moment of payment)
+      const workOrderAmount = roundMoney(Number(latest.finalDiagnosedAmount));
+      const feeRule = resolveCommission(
+        await loadCustomerCommissionConfig(effectiveUserId),
+        latest.selectedService,
+        workOrderAmount
+      );
+      const amount = roundMoney(workOrderAmount + feeRule.amount);
+      const feeLock = {
+        customerServiceFee: feeRule.amount,
+        customerServiceFeeRule: feeRule,
+        totalAmountDue: amount,
+      };
+
+      if (selectedPaymentMode === "online") {
+        // Lock the fee on the job before redirecting; the checkout route checks it
+        await writeJobEverywhere(feeLock);
         const res = await fetch("/api/stripe/job-checkout-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -312,175 +388,97 @@ export default function JobIdDetails({
             effectiveUserId,
             mechanicId,
             mechanicName:
-              acceptedMech?.workshopName ||
-              acceptedMech?.mName ||
-              "Assigned Mechanic",
-            serviceName: jobDetails.selectedService || "Roadside Service",
+              accepted.workshopName || accepted.mName || "Assigned Mechanic",
+            serviceName: latest.selectedService || "Roadside Service",
             amount,
+            workOrderAmount,
+            serviceFee: feeRule.amount,
             currency: "USD",
             userEmail: user?.email || "",
             originUrl:
-              typeof window !== "undefined"
-                ? window.location.origin
-                : undefined,
+              typeof window !== "undefined" ? window.location.origin : undefined,
           }),
         });
-
         const data = await res.json();
         if (!res.ok || !data.url) {
           throw new Error(data.error || "Failed to initialize Stripe checkout");
         }
-
-        // Redirect to Stripe Checkout page
         window.location.href = data.url;
-      } catch (err: any) {
-        console.error("Online payment error:", err);
-        toast.error(err?.message || "Failed to start Stripe checkout.");
-        setIsProcessingPayment(false);
+        return; // keep spinner while redirecting
       }
-      return;
-    }
 
-    // 2. Cash Payment Flow
-    try {
-      setIsProcessingPayment(true);
-      const updates = {
+      if (selectedPaymentMode !== "cash") {
+        throw new Error("Select a payment method.");
+      }
+
+      const paidAt = new Date().toISOString();
+      await writeJobEverywhere({
+        ...feeLock,
         payMode: "cash",
         isPaid: true,
         paidAmount: amount,
-        paidAt: new Date().toISOString(),
+        paidAt,
         assignmentStatus: "repairing",
         activeJobStartedAt: new Date(),
-        mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
-          ...offer,
+        mechanicsOffer: patchAcceptedOffer(latest, {
           isPaid: true,
           paidAmount: amount,
           assignmentStatus: "repairing",
-        })),
-      };
-
-      const userHistoryRef = doc(
-        db,
-        "Users",
-        effectiveUserId,
-        "history",
-        `#${id}`
-      );
-      const jobRef = doc(db, "jobs", `#${id}`);
-
-      await updateDoc(userHistoryRef, updates);
-      try {
-        await updateDoc(jobRef, updates);
-      } catch (e) {
-        console.warn("Global jobDoc update handled:", e);
-      }
-
-      const updatedJobSnap = await getDoc(userHistoryRef);
-      if (updatedJobSnap.exists()) {
-        setJobDetails(updatedJobSnap.data() as HistoryItem);
-      }
+        }),
+      });
       toast.success(
-        `Cash payment of $${amount.toFixed(2)} confirmed! Mechanic has been notified to execute repairs.`
+        `Cash payment of $${amount.toFixed(2)} confirmed. The technician can start the repair.`
       );
-    } catch (error) {
-      console.error("Error processing cash payment:", error);
-      toast.error("Failed to update payment status.");
-    } finally {
+      setIsProcessingPayment(false);
+    } catch (error: any) {
+      console.error("Payment error:", error);
+      toast.error(error?.message || "Failed to process payment.");
       setIsProcessingPayment(false);
     }
   };
 
-  const handleCustomerSignOff = async (mechanicId: string) => {
-    if (!jobDetails || !effectiveUserId) return;
-
-    const confirmSignOff = window.confirm(
-      "Vehicle Repair Quality Sign-Off & Acceptance:\n\nHas the technician successfully completed all requested repairs to your satisfaction and is the vehicle roadworthy?"
-    );
-    if (!confirmSignOff) return;
-
+  // ─── Phase 6: Customer quality sign-off → completed ─────────────────────────
+  const handleCustomerSignOff = async () => {
+    if (!effectiveUserId) return;
     try {
+      const latest = await loadLatestJob();
+      if (!latest) throw new Error("Job not found.");
+      if (!canCustomerSignOff(latest)) {
+        throw new Error(
+          "Sign-off is available once the work order is paid and the technician has marked the repair finished."
+        );
+      }
+
       const now = new Date();
-      const updates = {
-        status: 5,
+      await writeJobEverywhere({
+        status: JOB_STATUS.COMPLETED,
         assignmentStatus: "completed",
         customerSignOff: true,
         customerSignOffAt: now,
-        mechanicsOffer: (jobDetails.mechanicsOffer || []).map((offer: any) => ({
-          ...offer,
-          status:
-            offer.mId === mechanicId || offer.assignedMemberId === mechanicId
-              ? 5
-              : offer.status,
+        mechanicsOffer: patchAcceptedOffer(latest, {
+          status: JOB_STATUS.COMPLETED,
           assignmentStatus: "completed",
           customerSignOff: true,
           customerSignOffAt: now,
-        })),
-      };
+        }),
+      });
+      toast.success("Work order signed off. Job completed. You can now rate the technician.");
 
-      const userHistoryRef = doc(
-        db,
-        "Users",
-        effectiveUserId,
-        "history",
-        `#${id}`
-      );
-      const jobRef = doc(db, "jobs", `#${id}`);
-
-      await updateDoc(userHistoryRef, updates);
+      // Commission ledger entry (customer fee + workshop commission for this job)
       try {
-        await updateDoc(jobRef, updates);
-      } catch (jobDocErr) {
-        console.warn("Global jobDoc update handled:", jobDocErr);
+        await recordJobSettlement({
+          jobId: rawJobId,
+          job: { ...latest, status: JOB_STATUS.COMPLETED, payMode: latest.payMode },
+          customerId: effectiveUserId,
+          completedAt: now.toISOString(),
+        });
+      } catch (settleErr) {
+        // Sign-off stands; admin can regenerate missing settlements
+        console.error("Settlement record failed:", settleErr);
       }
-
-      setJobDetails((prev: any) => ({
-        ...prev,
-        ...updates,
-      }));
-
-      toast.success(
-        "Commercial vehicle repair approved and signed off! Job is officially completed."
-      );
     } catch (err: any) {
       console.error("Error signing off work order:", err);
-      toast.error("Failed to complete vehicle quality sign-off.");
-    }
-  };
-
-  const handleStartJob = async (mechanicId: string) => {
-    if (!jobDetails || !effectiveUserId) return;
-
-    try {
-      const updates = {
-        status: 4,
-        mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
-          ...offer,
-          status: offer.mId === mechanicId ? 4 : offer.status,
-        })),
-      };
-
-      const userHistoryRef = doc(
-        db,
-        "Users",
-        effectiveUserId,
-        "history",
-        `#${id}`
-      );
-      const jobRef = doc(db, "jobs", `#${id}`);
-
-      await updateDoc(userHistoryRef, updates);
-      try {
-        await updateDoc(jobRef, updates);
-      } catch (e) {
-        console.warn("Global jobDoc update handled:", e);
-      }
-
-      const updatedJobSnap = await getDoc(userHistoryRef);
-      if (updatedJobSnap.exists()) {
-        setJobDetails(updatedJobSnap.data() as HistoryItem);
-      }
-    } catch (error) {
-      console.error("Error starting job:", error);
+      toast.error(err?.message || "Failed to complete vehicle quality sign-off.");
     }
   };
 
@@ -508,9 +506,13 @@ export default function JobIdDetails({
     return <div>Job not found</div>;
   }
 
-  // Find if any mechanic has been accepted (status 2 or higher)
-  const acceptedMechanic = jobDetails.mechanicsOffer?.find(
-    (mechanic) => mechanic.status >= 2
+  // Once an offer is accepted only that work order is shown; before that,
+  // every live quote (withdrawn quotes are hidden).
+  const acceptedMechanic = getAcceptedOffer(jobDetails);
+  const visibleOffers = (jobDetails.mechanicsOffer || []).filter((mechanic) =>
+    acceptedMechanic
+      ? mechanic === acceptedMechanic
+      : mechanic.status === JOB_STATUS.QUOTED
   );
 
   return (
@@ -543,11 +545,7 @@ export default function JobIdDetails({
                 : "bg-yellow-100 text-yellow-600"
             }`}
           >
-            {jobDetails.status === 5
-              ? "Completed"
-              : jobDetails.status === -1
-              ? "Cancelled"
-              : "In Progress"}
+            {getCustomerPhaseLabel(jobDetails)}
           </span>
         </div>
 
@@ -609,34 +607,37 @@ export default function JobIdDetails({
       {/* Mechanics Offers Section */}
       <div>
         <h2 className="text-2xl font-bold mb-6 text-gray-800">
-          Mechanic Offers
+          {acceptedMechanic ? "Your Work Order" : "Mechanic Offers"}
         </h2>
-        {!jobDetails.mechanicsOffer ||
-        jobDetails.mechanicsOffer.length === 0 ? (
+        {visibleOffers.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-md">
             <p className="text-gray-500 text-lg">No Mechanic Offers Found</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {jobDetails.mechanicsOffer
-              .filter(
-                (mechanic) =>
-                  // Show all offers if no mechanic is accepted yet
-                  // Otherwise only show the accepted mechanic
-                  !acceptedMechanic || mechanic.mId === acceptedMechanic.mId
-              )
-              .map((mechanic, index) => (
+            {visibleOffers.map((mechanic, index) => (
                 <div
-                  key={index}
+                  key={`${mechanic.mId}-${index}`}
                   className="transform hover:scale-[1.02] transition-transform duration-300"
                 >
                   <RequestAcceptHistoryCard
                     mechanic={mechanic}
                     jobDetails={jobDetails}
+                    isAcceptedOffer={mechanic === acceptedMechanic}
+                    serviceFeePreview={
+                      mechanic === acceptedMechanic &&
+                      jobDetails.status === JOB_STATUS.WORK_ORDER &&
+                      !jobDetails.isPaid
+                        ? resolveCommission(
+                            customerFeeConfig,
+                            jobDetails.selectedService,
+                            Number(jobDetails.finalDiagnosedAmount) || 0
+                          )
+                        : null
+                    }
                     onAcceptOffer={() => handleAcceptOffer(mechanic.mId)}
                     onPayment={() => handlePayment(mechanic.mId)}
-                    onCustomerSignOff={() => handleCustomerSignOff(mechanic.mId)}
-                    onStartJob={() => handleStartJob(mechanic.mId)}
+                    onCustomerSignOff={handleCustomerSignOff}
                     selectedPaymentMode={selectedPaymentMode}
                     setSelectedPaymentMode={setSelectedPaymentMode}
                     isProcessingPayment={isProcessingPayment}

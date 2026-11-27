@@ -23,17 +23,20 @@ import {
   Wrench,
   Building2,
   Truck,
+  Wallet,
 } from "lucide-react";
 import { SIDEBAR_MENU_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContexts";
 import { useSidebar } from "@/contexts/SidebarContext";
 import toast from "react-hot-toast";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 // Map icons to the 7 menus
 const MENU_ICONS: Record<string, React.ReactNode> = {
   jobs: <Briefcase size={18} />,
   "find-jobs": <Briefcase size={18} />,
+  earnings: <Wallet size={18} />,
   "my-services": <Wrench size={18} />,
   "my-companies": <Building2 size={18} />,
   "my-vehicles": <Truck size={18} />,
@@ -55,10 +58,7 @@ export default function AppSidebar() {
 
   const { isMobileOpen, closeMobile } = useSidebar();
 
-  const isMember =
-    mechanic?.role === "member" ||
-    !!mechanic?.ownerId ||
-    mechanic?.isTeamMember === true;
+  const isMember = isTeamMemberProfile(mechanic);
 
   const hasActivePlan =
     mechanic?.isSubscriptionPurchase === true ||
@@ -179,8 +179,11 @@ export default function AppSidebar() {
               const isActive = isMenuLinkActive(item.href);
 
               // "my-services" page has NO restrictions and is always available for all plans & onboarding
+              // Earnings is never gated by plan page permissions: every plan pays commission
               const isMyServices =
-                item.key === "my-services" || item.href === "/my-services";
+                item.key === "my-services" ||
+                item.href === "/my-services" ||
+                item.key === "earnings";
 
               let isLocked = false;
               if (isMyServices) {

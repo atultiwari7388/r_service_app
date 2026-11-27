@@ -54,6 +54,8 @@ export const getCurrencySymbol = (currency?: string, countryCode?: string): stri
   return "$";
 };
 
+import type { PlanCommissionConfig } from "@/lib/commission";
+
 export type CommissionType = "percentage" | "flat";
 
 export interface ServiceCommissionConfig {
@@ -152,6 +154,8 @@ export interface SubscriptionPlan {
 }
 
 export interface MechanicCurrentSubscription {
+  /** Commission settings frozen at purchase time (see lib/commission.ts) */
+  commission?: PlanCommissionConfig | null;
   planId: string;
   planName: string;
   duration: string;

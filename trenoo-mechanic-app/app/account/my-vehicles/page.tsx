@@ -25,6 +25,7 @@ import {
   Building2,
   Hash,
 } from "lucide-react";
+import { isTeamMemberProfile } from "@/lib/jobWorkflow";
 
 export default function MyVehiclesPage() {
   const router = useRouter();
@@ -36,10 +37,7 @@ export default function MyVehiclesPage() {
   const [highlightedVehicleId, setHighlightedVehicleId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isMember =
-    mechanicProfile?.role === "member" ||
-    !!mechanicProfile?.ownerId ||
-    mechanicProfile?.isTeamMember === true;
+  const isMember = isTeamMemberProfile(mechanicProfile);
   const isOwner = !isMember;
 
   const effectiveMechanicId = isMember && mechanicProfile?.ownerId

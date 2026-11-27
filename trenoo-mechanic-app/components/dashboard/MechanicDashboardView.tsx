@@ -31,11 +31,11 @@ import OngoingJobCard from "./OngoingJobCard";
 import JobOfferModal from "./JobOfferModal";
 import CancelReasonModal from "./CancelReasonModal";
 import DriverRatingModal from "./DriverRatingModal";
-import StartJobDurationModal from "./StartJobDurationModal";
 import InspectionAndQuoteModal from "./InspectionAndQuoteModal";
 import EmergencyHandoverModal from "./EmergencyHandoverModal";
 import ReassignMemberModal from "./ReassignMemberModal";
 import { FirestoreJob } from "@/types/job";
+import { getAcceptedOffer } from "@/lib/jobWorkflow";
 import { APP_CONFIG } from "@/lib/constants";
 
 function formatRenewalDate(dateInput: any): string {
@@ -82,12 +82,8 @@ export default function MechanicDashboardView() {
     setFilterOnlyNearby,
     cancelReasons,
     submitOffer,
-    updateJobStatus,
     cancelJob,
     submitRating,
-    startJobWithDuration,
-    acceptMemberAssignment,
-    declineMemberAssignment,
     markArrivedAtSite,
     submitInspectionAndQuote,
     markRepairFinished,
@@ -95,15 +91,10 @@ export default function MechanicDashboardView() {
     reassignJobMember,
     currentUId,
     mechanicProfile,
+    isMember,
+    isOwner,
   } = useMechanicDashboard();
 
-  // Consistent role determination matching authService and useMechanicDashboard
-  const isMember = Boolean(
-    mechanicProfile?.role?.toLowerCase() === "member" ||
-    mechanicProfile?.ownerId ||
-    mechanicProfile?.isTeamMember === true
-  );
-  const isOwner = !isMember;
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<
@@ -117,9 +108,6 @@ export default function MechanicDashboardView() {
     null
   );
   const [rateModalJob, setRateModalJob] = useState<FirestoreJob | null>(null);
-  const [durationModalJob, setDurationModalJob] = useState<FirestoreJob | null>(
-    null
-  );
   const [inspectModalJob, setInspectModalJob] = useState<FirestoreJob | null>(
     null
   );
@@ -129,6 +117,13 @@ export default function MechanicDashboardView() {
   const [reassignModalJob, setReassignModalJob] = useState<FirestoreJob | null>(
     null
   );
+
+  // Phase 3: record arrival, then open the inspection modal automatically.
+  // The modal only opens once the arrival write succeeded.
+  const handleArrived = async (j: FirestoreJob) => {
+    await markArrivedAtSite(j.id);
+    setInspectModalJob({ ...j, status: 3, arrivedAtLocation: true });
+  };
 
   // Filter jobs by search
   const filterBySearch = (list: FirestoreJob[]) => {
@@ -636,9 +631,9 @@ export default function MechanicDashboardView() {
                         No Upcoming Job Requests
                       </h4>
                       <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                        There are currently no new roadside requests waiting for
-                        dispatch in your area. New emergency dispatches will
-                        appear here automatically in real time.
+                        {isMember
+                          ? "No jobs are dispatched to you right now. When your workshop owner assigns you a job and the driver accepts, it will appear here."
+                          : "There are currently no new roadside requests waiting for dispatch in your area. New emergency dispatches will appear here automatically in real time."}
                       </p>
                     </div>
                   ) : (
@@ -650,12 +645,11 @@ export default function MechanicDashboardView() {
                           currentUId={currentUId}
                           isMember={isMember}
                           onInterested={(j) => setOfferJob(j)}
-                          onMarkArrived={(j) => {
-                            markArrivedAtSite(j.id, j.userId);
-                            setInspectModalJob(j);
-                          }}
+                          onMarkArrived={handleArrived}
                           onInspectClick={(j) => setInspectModalJob(j)}
+                          onMarkRepairFinished={(j) => markRepairFinished(j.id)}
                           onHandoverClick={(j) => setHandoverModalJob(j)}
+                          onReassignClick={(j) => setReassignModalJob(j)}
                         />
                       ))}
                     </div>
@@ -689,19 +683,13 @@ export default function MechanicDashboardView() {
                             job={job}
                             currentUId={currentUId}
                             isOwner={isOwner}
-                            onUpdateStatus={updateJobStatus}
-                            onMarkArrived={(j) => {
-                              markArrivedAtSite(j.id, j.userId);
-                              setInspectModalJob(j);
-                            }}
+                            onMarkArrived={handleArrived}
                             onInspectClick={(j) => setInspectModalJob(j)}
-                            onMarkRepairFinished={(j) => markRepairFinished(j.id, j.userId)}
-                            onStartJobClick={(j) => setDurationModalJob(j)}
+                            onMarkRepairFinished={(j) => markRepairFinished(j.id)}
                             onHandoverClick={(j) => setHandoverModalJob(j)}
                             onReassignClick={(j) => setReassignModalJob(j)}
                             onCancelClick={(j) => setCancelModalJob(j)}
                             onRateClick={(j) => setRateModalJob(j)}
-                            onAcceptAssignment={(j) => acceptMemberAssignment(j.id, j.userId)}
                           />
                         ))}
                       </div>
@@ -750,19 +738,13 @@ export default function MechanicDashboardView() {
                             job={job}
                             currentUId={currentUId}
                             isOwner={isOwner}
-                            onUpdateStatus={updateJobStatus}
-                            onMarkArrived={(j) => {
-                              markArrivedAtSite(j.id, j.userId);
-                              setInspectModalJob(j);
-                            }}
+                            onMarkArrived={handleArrived}
                             onInspectClick={(j) => setInspectModalJob(j)}
-                            onMarkRepairFinished={(j) => markRepairFinished(j.id, j.userId)}
-                            onStartJobClick={(j) => setDurationModalJob(j)}
+                            onMarkRepairFinished={(j) => markRepairFinished(j.id)}
                             onHandoverClick={(j) => setHandoverModalJob(j)}
                             onReassignClick={(j) => setReassignModalJob(j)}
                             onCancelClick={(j) => setCancelModalJob(j)}
                             onRateClick={(j) => setRateModalJob(j)}
-                            onAcceptAssignment={(j) => acceptMemberAssignment(j.id, j.userId)}
                           />
                         ))}
                       </div>
@@ -804,35 +786,17 @@ export default function MechanicDashboardView() {
         isOwner={isOwner}
       />
 
-      {/* 2. Start Job Duration Modal (Scenario 1 & 2) */}
-      <StartJobDurationModal
-        job={durationModalJob}
-        isOpen={Boolean(durationModalJob)}
-        onClose={() => setDurationModalJob(null)}
-        onConfirm={(est) =>
-          startJobWithDuration(
-            durationModalJob?.id || "",
-            durationModalJob?.userId || "",
-            est
-          )
-        }
-      />
-
       {/* 2b. On-site Vehicle Inspection & Final Work Order Modal */}
       <InspectionAndQuoteModal
         job={inspectModalJob}
         isOpen={Boolean(inspectModalJob)}
         onClose={() => setInspectModalJob(null)}
-        currentOffer={inspectModalJob?.mechanicsOffer?.find(
-          (o) => o.mId === currentUId || o.assignedMemberId === currentUId
-        )}
+        currentOffer={
+          inspectModalJob ? getAcceptedOffer(inspectModalJob) : undefined
+        }
         onSubmit={async (params) => {
           if (!inspectModalJob) return;
-          await submitInspectionAndQuote(
-            inspectModalJob.id,
-            inspectModalJob.userId,
-            params
-          );
+          await submitInspectionAndQuote(inspectModalJob.id, params);
         }}
       />
 

@@ -1,5 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 import { OwnerCurrentSubscription } from "./subscription";
+import type { AssignmentStatus, JobStatusCode } from "@/lib/jobWorkflow";
+import type { AppliedCommission } from "@/lib/commission";
 
 export interface LocationLatLng {
   latitude: number;
@@ -183,8 +185,11 @@ export interface MechanicsOffer {
   assignedMemberPhone?: string;
   assignedMemberCity?: string;
   isAssignedByOwner?: boolean;
-  assignmentStatus?: "pending_member_acceptance" | "en_route" | "arrived" | "inspecting" | "repairing" | "finished" | string;
+  assignmentStatus?: AssignmentStatus | (string & {});
   memberAcceptedAt?: Timestamp | Date | any;
+  isPaid?: boolean;
+  paidAmount?: number;
+  cancelReason?: string;
 }
 
 export interface HistoryItem {
@@ -210,7 +215,8 @@ export interface HistoryItem {
   reviewSubmitted: boolean;
   role: string;
   selectedService: string;
-  status: number;
+  /** JobStatusCode: 0 open, 2 en route, 3 on site, 4 work order, 5 completed, -1 cancelled */
+  status: JobStatusCode | number;
   userDeliveryAddress: string;
   userId: string;
   userLat: number;
@@ -233,9 +239,24 @@ export interface HistoryItem {
   assignedMemberPhone?: string;
   assignedMemberCity?: string;
   isAssignedByOwner?: boolean;
-  assignmentStatus?: "pending_member_acceptance" | "en_route" | "arrived" | "inspecting" | "repairing" | "finished" | string;
+  assignmentStatus?: AssignmentStatus | (string & {});
   memberAcceptedAt?: Timestamp | Date | any;
   isPaid?: boolean;
   paidAmount?: number;
   paidAt?: string | Timestamp | Date;
+  paidCurrency?: string;
+  // On-site arrival & inspection (see src/lib/jobWorkflow.ts for the lifecycle)
+  arrivedAtLocation?: boolean;
+  arrivedAt?: Timestamp | Date | any;
+  estimatedRepairMinutes?: number;
+  activeJobStartedAt?: Timestamp | Date | any;
+  handoverRequested?: boolean;
+  // Commission & settlement (see lib/commission.ts)
+  mechanicCommission?: number; // locked at inspection from the workshop owner's plan
+  mechanicCommissionRule?: AppliedCommission;
+  mechanicNetEarning?: number;
+  customerServiceFee?: number; // locked at payment from the customer's plan
+  customerServiceFeeRule?: AppliedCommission;
+  totalAmountDue?: number; // work order + customer service fee
+  settlementId?: string; // jobSettlements/{id}, written at customer sign-off (status lives there)
 }

@@ -54,6 +54,8 @@ export const getCurrencySymbol = (currency?: string, countryCode?: string): stri
   return "$";
 };
 
+import type { PlanCommissionConfig } from "@/lib/commission";
+
 export type CommissionType = "percentage" | "flat";
 
 export interface ServiceCommissionConfig {
@@ -296,6 +298,8 @@ export interface SubscriptionPurchaseRecord {
  * Current active subscription snapshot stored directly on `Users/{ownerUid}.currentSubscription`
  */
 export interface OwnerCurrentSubscription {
+  /** Service-fee settings frozen at purchase time (see src/lib/commission.ts) */
+  commission?: PlanCommissionConfig | null;
   planId: string;
   planName: string;
   planType: SubscriptionPlanType; // "trenoops"

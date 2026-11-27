@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { stripe, getAppBaseUrl } from "@/lib/stripe";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { canPay, getAcceptedOffer, type WorkflowJob } from "@/lib/jobWorkflow";
+import { roundMoney } from "@/lib/commission";
 
 interface JobCheckoutRequestBody {
   jobId: string;
@@ -35,7 +39,57 @@ export async function POST(req: Request) {
       );
     }
 
-    const numAmount = typeof amount === "number" ? amount : parseFloat(String(amount || "0"));
+    let numAmount = typeof amount === "number" ? amount : parseFloat(String(amount || "0"));
+
+    // The charge must equal the technician's verified final work order.
+    // Re-read the job server-side so a tampered client amount is never charged.
+    {
+      const rawId = jobId.replace(/^#/, "");
+      let jobData: (WorkflowJob & Record<string, any>) | null = null;
+      for (const candidate of [`#${rawId}`, rawId]) {
+        try {
+          const snap = await getDoc(doc(db, "jobs", candidate));
+          if (snap.exists()) {
+            jobData = snap.data() as WorkflowJob & Record<string, any>;
+            break;
+          }
+        } catch (readErr) {
+          console.warn(`job-checkout-session: could not read jobs/${candidate}:`, readErr);
+        }
+      }
+
+      if (jobData) {
+        if (!canPay(jobData)) {
+          return NextResponse.json(
+            {
+              error: jobData.isPaid
+                ? "This work order is already paid."
+                : "Payment unlocks after the technician submits the on-site inspection.",
+            },
+            { status: 409 }
+          );
+        }
+        const accepted = getAcceptedOffer(jobData);
+        if (!accepted || accepted.mId !== mechanicId) {
+          return NextResponse.json(
+            { error: "Mechanic does not match the accepted work order." },
+            { status: 409 }
+          );
+        }
+        // Verified work order + the plan service fee locked on the job just before checkout
+        const lockedFee = Number(jobData.customerServiceFee);
+        numAmount = roundMoney(
+          Number(jobData.finalDiagnosedAmount) +
+            (Number.isFinite(lockedFee) && lockedFee > 0 ? lockedFee : 0)
+        );
+      } else {
+        console.warn(
+          "job-checkout-session: job not readable server-side; using client amount for",
+          jobId
+        );
+      }
+    }
+
     const unitAmountCents = Math.round(numAmount * 100);
 
     if (isNaN(unitAmountCents) || unitAmountCents <= 0) {
