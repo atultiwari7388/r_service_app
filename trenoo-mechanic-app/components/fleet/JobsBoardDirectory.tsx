@@ -45,6 +45,8 @@ export default function JobsBoardDirectory() {
 
   const {
     currentUId,
+    isMember,
+    isOwner,
     isLoadingJobs,
     upcomingJobs,
     ongoingJobs,
@@ -578,10 +580,10 @@ export default function JobsBoardDirectory() {
                           </button>
 
                           {/* Quick action button depending on tab */}
-                          {activeTab === "upcoming" && (
+                          {activeTab === "upcoming" && !isMember && (
                             <button
                               onClick={() => setOfferModalJob(job)}
-                              className="px-3 py-1.5 rounded-lg bg-[#F96176] hover:bg-[#e0485d] text-white text-xs font-semibold transition shadow-xs flex items-center gap-1"
+                              className="px-3 py-1.5 rounded-lg bg-[#F96176] hover:bg-[#e0485d] text-white text-xs font-semibold transition shadow-xs flex items-center gap-1 cursor-pointer"
                             >
                               <Send size={12} />
                               <span>Offer</span>

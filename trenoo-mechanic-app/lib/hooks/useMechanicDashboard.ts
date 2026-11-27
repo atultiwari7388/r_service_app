@@ -103,10 +103,12 @@ export function useMechanicDashboard() {
   const [isUpdatingLocation, setIsUpdatingLocation] = useState<boolean>(false);
 
   // Active Plan Check (Owner must have isSubscriptionPurchase, Member can inherit)
-  const isMember =
-    mechanicProfile?.role === "member" ||
-    !!mechanicProfile?.ownerId ||
-    mechanicProfile?.isTeamMember === true;
+  const isMember = Boolean(
+    mechanicProfile?.role?.toLowerCase() === "member" ||
+    mechanicProfile?.ownerId ||
+    mechanicProfile?.isTeamMember === true
+  );
+  const isOwner = !isMember;
 
   const hasActivePlan = Boolean(
     mechanicProfile?.isSubscriptionPurchase === true ||
@@ -423,7 +425,11 @@ export function useMechanicDashboard() {
   // Upcoming Jobs (Filtered according to Flutter dashboard_screen.dart rules)
   // Direct workshop owner assignments to a team member are ALWAYS visible regardless of online status or services!
   const upcomingJobs = useMemo(() => {
-    const isMember = mechanicProfile?.role === "member" || !!mechanicProfile?.ownerId;
+    const isMemberRole = Boolean(
+      mechanicProfile?.role?.toLowerCase() === "member" ||
+      mechanicProfile?.ownerId ||
+      mechanicProfile?.isTeamMember === true
+    );
     const allowDirect = mechanicProfile?.allowDirectJobAcceptance === true;
 
     // 1. Direct assignments from workshop owner to this technician
@@ -435,6 +441,23 @@ export function useMechanicDashboard() {
         job.mechanicsOffer?.some((o) => o.assignedMemberId === currentUId);
       return isAssigned && job.status >= 2;
     });
+
+    // Technicians / Team Members NEVER bid on or submit quotes for open emergency jobs.
+    // They ONLY see jobs assigned to them by their workshop owner!
+    if (isMemberRole) {
+      return myDirectAssignments.map((job) => {
+        const dist = calculateDistance(
+          job.userLat || 0,
+          job.userLong || 0,
+          currentLat,
+          currentLng
+        );
+        return {
+          ...job,
+          calculatedDistance: dist,
+        };
+      });
+    }
 
     // 2. Open roadside emergency jobs (status == 0)
     // Only available when online and workshop has registered services
@@ -1427,6 +1450,8 @@ export function useMechanicDashboard() {
     user,
     mechanicProfile,
     currentUId,
+    isMember,
+    isOwner,
     hasActivePlan,
     isOnline,
     currentAddress,

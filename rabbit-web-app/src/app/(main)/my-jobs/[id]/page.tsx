@@ -218,9 +218,7 @@ export default function JobIdDetails({
         selectedOffer.assignedMemberId !== "self"
       );
 
-      const targetAssignmentStatus = isAssignedToMember
-        ? "pending_member_acceptance"
-        : "en_route";
+      const targetAssignmentStatus = "en_route";
 
       const updates: any = {
         status: 2,

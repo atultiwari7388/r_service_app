@@ -97,6 +97,14 @@ export default function MechanicDashboardView() {
     mechanicProfile,
   } = useMechanicDashboard();
 
+  // Consistent role determination matching authService and useMechanicDashboard
+  const isMember = Boolean(
+    mechanicProfile?.role?.toLowerCase() === "member" ||
+    mechanicProfile?.ownerId ||
+    mechanicProfile?.isTeamMember === true
+  );
+  const isOwner = !isMember;
+
   // Active Tab
   const [activeTab, setActiveTab] = useState<
     "upcoming" | "ongoing" | "history"
@@ -640,7 +648,7 @@ export default function MechanicDashboardView() {
                           key={job.id}
                           job={job}
                           currentUId={currentUId}
-                          isMember={mechanicProfile?.role === "member"}
+                          isMember={isMember}
                           onInterested={(j) => setOfferJob(j)}
                           onMarkArrived={(j) => {
                             markArrivedAtSite(j.id, j.userId);
@@ -680,7 +688,7 @@ export default function MechanicDashboardView() {
                             key={job.id}
                             job={job}
                             currentUId={currentUId}
-                            isOwner={mechanicProfile?.role !== "member"}
+                            isOwner={isOwner}
                             onUpdateStatus={updateJobStatus}
                             onMarkArrived={(j) => {
                               markArrivedAtSite(j.id, j.userId);
@@ -741,7 +749,7 @@ export default function MechanicDashboardView() {
                             key={job.id}
                             job={job}
                             currentUId={currentUId}
-                            isOwner={mechanicProfile?.role !== "member"}
+                            isOwner={isOwner}
                             onUpdateStatus={updateJobStatus}
                             onMarkArrived={(j) => {
                               markArrivedAtSite(j.id, j.userId);
@@ -793,7 +801,7 @@ export default function MechanicDashboardView() {
         onSubmit={submitOffer}
         defaultPerHour={mechanicProfile?.perHourCharge || 50}
         ownerId={currentUId}
-        isOwner={mechanicProfile?.role !== "member"}
+        isOwner={isOwner}
       />
 
       {/* 2. Start Job Duration Modal (Scenario 1 & 2) */}

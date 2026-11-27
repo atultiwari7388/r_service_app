@@ -44,6 +44,7 @@ export default function UpcomingJobCard({
 }: UpcomingJobCardProps) {
   // Determine if this is an assigned execution job (status >= 2, or assigned to this technician)
   const isAssignedExecution =
+    isMember ||
     job.status >= 2 ||
     Boolean(job.assignedMemberId) ||
     Boolean(job.isAssignedByOwner) ||
@@ -314,7 +315,7 @@ export default function UpcomingJobCard({
         )}
 
         {/* BOTTOM ACTION BUTTONS: Assigned Execution vs Open Solicitation */}
-        {isAssignedExecution ? (
+        {isAssignedExecution || isMember ? (
           <div className="flex items-center justify-between w-full gap-2 pt-1 border-t border-gray-100 flex-wrap">
             <div className="flex items-center gap-1.5">
               {job.userPhoneNumber && (
@@ -359,6 +360,10 @@ export default function UpcomingJobCard({
                   <Wrench size={14} />
                   <span>Vehicle Inspection & Quote</span>
                 </button>
+              ) : job.status === 4 ? (
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
+                  {job.repairCompletedByTechnician ? "Repair Finished • Awaiting Sign-off" : "Repair in Progress"}
+                </span>
               ) : (
                 <button
                   type="button"
