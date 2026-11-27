@@ -464,106 +464,47 @@ export default function OngoingJobCard({
             </>
           )}
 
-          {/* Step 2: Driver accepted offer -> Member Pending Acceptance VS En Route */}
+          {/* Step 2: Driver accepted offer -> En Route to Destination */}
           {offerStatus === 2 && (
-            job.assignmentStatus === "pending_member_acceptance" ? (
-              <div className="flex flex-col w-full gap-2.5">
-                <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-xs flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <UserCheck size={16} className="text-blue-600 shrink-0" />
-                    <div>
-                      <span className="font-extrabold text-blue-950 block">Assigned by Workshop Owner</span>
-                      <span className="text-[11px] text-blue-800">
-                        Customer accepted offer. Please accept assignment to begin dispatch & navigation.
-                      </span>
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white font-bold text-[10px] animate-pulse">
-                    Action Required
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between w-full gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5">
-                    {job.userPhoneNumber && (
-                      <a
-                        href={`tel:${job.userPhoneNumber}`}
-                        className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
-                      >
-                        <Phone size={13} className="text-[#58BB87]" />
-                        <span>Call Driver</span>
-                      </a>
-                    )}
-                    <button
-                      onClick={openDirections}
-                      className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer"
-                    >
-                      <Navigation size={13} className="text-[#58BB87]" />
-                      <span>Map</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => onHandoverClick(job)}
-                      className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-[#F96176] font-bold text-xs transition cursor-pointer"
-                      title="Decline and return to workshop owner"
-                    >
-                      <AlertTriangle size={13} />
-                      <span>Decline</span>
-                    </button>
-
-                    <button
-                      onClick={() => onAcceptAssignment?.(job)}
-                      className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer"
-                    >
-                      <CheckCircle2 size={14} />
-                      <span>Accept Job & Dispatch</span>
-                    </button>
-                  </div>
-                </div>
+            <div className="flex items-center justify-between w-full gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                {job.userPhoneNumber && (
+                  <a
+                    href={`tel:${job.userPhoneNumber}`}
+                    className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
+                  >
+                    <Phone size={13} className="text-[#58BB87]" />
+                    <span>Call Driver</span>
+                  </a>
+                )}
+                <button
+                  onClick={openDirections}
+                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer"
+                >
+                  <Navigation size={13} className="text-[#58BB87]" />
+                  <span>Map</span>
+                </button>
               </div>
-            ) : (
-              <div className="flex items-center justify-between w-full gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  {job.userPhoneNumber && (
-                    <a
-                      href={`tel:${job.userPhoneNumber}`}
-                      className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
-                    >
-                      <Phone size={13} className="text-[#58BB87]" />
-                      <span>Call Driver</span>
-                    </a>
-                  )}
-                  <button
-                    onClick={openDirections}
-                    className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer"
-                  >
-                    <Navigation size={13} className="text-[#58BB87]" />
-                    <span>Map</span>
-                  </button>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onHandoverClick(job)}
-                    className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
-                    title="Request Emergency Handover"
-                  >
-                    <AlertTriangle size={13} />
-                    <span>Handover</span>
-                  </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onHandoverClick(job)}
+                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
+                  title="Request Emergency Handover"
+                >
+                  <AlertTriangle size={13} />
+                  <span>Handover</span>
+                </button>
 
-                  <button
-                    onClick={() => onMarkArrived(job)}
-                    className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
-                  >
-                    <MapPin size={14} />
-                    <span>Reached at Location</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => onMarkArrived(job)}
+                  className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
+                >
+                  <MapPin size={14} />
+                  <span>Arrived at Destination</span>
+                </button>
               </div>
-            )
+            </div>
           )}
 
           {/* Step 3: Technician Arrived On-Site -> Diagnostic & Vehicle Inspection */}

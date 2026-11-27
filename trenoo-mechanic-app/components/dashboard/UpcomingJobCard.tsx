@@ -14,30 +14,54 @@ import {
   X,
   Star,
   UserCheck,
+  Phone,
+  AlertTriangle,
 } from "lucide-react";
 import { FirestoreJob } from "@/types/job";
 
 interface UpcomingJobCardProps {
   job: FirestoreJob;
+  currentUId?: string;
+  isMember?: boolean;
   onInterested: (job: FirestoreJob) => void;
+  onMarkArrived?: (job: FirestoreJob) => void;
+  onInspectClick?: (job: FirestoreJob) => void;
+  onHandoverClick?: (job: FirestoreJob) => void;
   onAcceptAssignment?: (job: FirestoreJob) => void;
   onDeclineAssignment?: (job: FirestoreJob) => void;
-  isMember?: boolean;
 }
 
 export default function UpcomingJobCard({
   job,
+  currentUId,
+  isMember = false,
   onInterested,
+  onMarkArrived,
+  onInspectClick,
+  onHandoverClick,
   onAcceptAssignment,
   onDeclineAssignment,
-  isMember = false,
 }: UpcomingJobCardProps) {
-  // 5-minute countdown timer logic matching Flutter
+  // Determine if this is an assigned execution job (status >= 2, or assigned to this technician)
+  const isAssignedExecution =
+    job.status >= 2 ||
+    Boolean(job.assignedMemberId) ||
+    Boolean(job.isAssignedByOwner) ||
+    Boolean(
+      currentUId &&
+        job.mechanicsOffer?.some(
+          (o) => o.assignedMemberId === currentUId || o.status >= 2
+        )
+    );
+
+  // 5-minute countdown timer logic matching Flutter (ONLY applies to open status 0 bids)
   const [secondsRemaining, setSecondsRemaining] = useState<number>(300);
   const [isExpired, setIsExpired] = useState<boolean>(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isAssignedExecution) return;
+
     let orderDateMs: number;
     if (job.orderDate?.toMillis) {
       orderDateMs = job.orderDate.toMillis();
@@ -64,11 +88,12 @@ export default function UpcomingJobCard({
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [job.orderDate]);
+  }, [job.orderDate, isAssignedExecution]);
 
   // Flutter rule (dashboard_screen.dart lines 288-305):
-  // If 5 minutes have elapsed, hide the job immediately so mechanic cannot submit expired quote
-  if (isExpired || secondsRemaining <= 0) {
+  // If 5 minutes have elapsed, hide open job so mechanic cannot submit expired quote.
+  // CRITICAL: An active assigned work order never expires!
+  if (!isAssignedExecution && (isExpired || secondsRemaining <= 0)) {
     return null;
   }
 
@@ -185,10 +210,16 @@ export default function UpcomingJobCard({
               <span>{formattedDate}</span>
             </div>
 
-            <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200/80 text-[#F96176] text-[11px] font-black tracking-tight animate-pulse shadow-2xs">
-              <Clock size={12} />
-              <span>Time Remaining: {formatTimer(secondsRemaining)}</span>
-            </span>
+            {isAssignedExecution ? (
+              <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-black tracking-tight shadow-2xs">
+                {job.status === 3 ? "On-Site • Inspecting" : "En Route to Breakdown"}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200/80 text-[#F96176] text-[11px] font-black tracking-tight animate-pulse shadow-2xs">
+                <Clock size={12} />
+                <span>Time Remaining: {formatTimer(secondsRemaining)}</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -282,38 +313,63 @@ export default function UpcomingJobCard({
           </div>
         )}
 
-        {/* BOTTOM ACTION BUTTONS: Pending Member Acceptance VS Normal Open Job */}
-        {job.assignmentStatus === "pending_member_acceptance" ? (
-          <div className="flex items-center gap-2 pt-1 border-t border-gray-100 flex-wrap">
-            <button
-              type="button"
-              onClick={() => onAcceptAssignment?.(job)}
-              className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition active:scale-[0.99] cursor-pointer"
-            >
-              <CheckCircle2 size={16} />
-              <span>Accept Job Assignment</span>
-            </button>
-
-            {onDeclineAssignment && (
+        {/* BOTTOM ACTION BUTTONS: Assigned Execution vs Open Solicitation */}
+        {isAssignedExecution ? (
+          <div className="flex items-center justify-between w-full gap-2 pt-1 border-t border-gray-100 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              {job.userPhoneNumber && (
+                <a
+                  href={`tel:${job.userPhoneNumber}`}
+                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition"
+                >
+                  <Phone size={13} className="text-[#58BB87]" />
+                  <span>Call Driver</span>
+                </a>
+              )}
               <button
                 type="button"
-                onClick={() => onDeclineAssignment(job)}
-                className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-[#F96176] font-bold text-xs transition cursor-pointer"
-                title="Decline and return to workshop owner"
+                onClick={openDirections}
+                className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer"
+                title="Open GPS Navigation"
               >
-                <X size={14} />
-                <span>Decline</span>
+                <Navigation size={13} className="text-[#58BB87]" />
+                <span>Map Direction</span>
               </button>
-            )}
+            </div>
 
-            <button
-              onClick={openDirections}
-              className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer shrink-0"
-              title="Open GPS Navigation"
-            >
-              <Navigation size={14} className="text-[#58BB87]" />
-              <span className="hidden sm:inline">Directions</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {onHandoverClick && (
+                <button
+                  type="button"
+                  onClick={() => onHandoverClick(job)}
+                  className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition cursor-pointer"
+                  title="Request Emergency Handover"
+                >
+                  <AlertTriangle size={13} />
+                  <span>Handover</span>
+                </button>
+              )}
+
+              {job.status === 3 ? (
+                <button
+                  type="button"
+                  onClick={() => onInspectClick?.(job)}
+                  className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-[#58BB87] hover:bg-[#48a674] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
+                >
+                  <Wrench size={14} />
+                  <span>Vehicle Inspection & Quote</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onMarkArrived?.(job)}
+                  className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer"
+                >
+                  <MapPin size={14} />
+                  <span>Arrived at Destination</span>
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex items-center gap-2 pt-1 border-t border-gray-100">

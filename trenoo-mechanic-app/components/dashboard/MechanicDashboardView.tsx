@@ -639,10 +639,15 @@ export default function MechanicDashboardView() {
                         <UpcomingJobCard
                           key={job.id}
                           job={job}
-                          onInterested={(j) => setOfferJob(j)}
-                          onAcceptAssignment={(j) => acceptMemberAssignment(j.id, j.userId)}
-                          onDeclineAssignment={(j) => declineMemberAssignment(j.id, j.userId)}
+                          currentUId={currentUId}
                           isMember={mechanicProfile?.role === "member"}
+                          onInterested={(j) => setOfferJob(j)}
+                          onMarkArrived={(j) => {
+                            markArrivedAtSite(j.id, j.userId);
+                            setInspectModalJob(j);
+                          }}
+                          onInspectClick={(j) => setInspectModalJob(j)}
+                          onHandoverClick={(j) => setHandoverModalJob(j)}
                         />
                       ))}
                     </div>

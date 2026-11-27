@@ -82,6 +82,7 @@ export interface FirestoreJob {
   assignedMemberName?: string;
   assignedMemberCity?: string;
   assignedMemberPhone?: string;
+  isAssignedByOwner?: boolean;
   ownerId?: string;
   mechanicId?: string;
   mId?: string;

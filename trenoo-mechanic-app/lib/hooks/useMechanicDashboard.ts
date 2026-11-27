@@ -433,11 +433,7 @@ export function useMechanicDashboard() {
       const isAssigned =
         job.assignedMemberId === currentUId ||
         job.mechanicsOffer?.some((o) => o.assignedMemberId === currentUId);
-      return (
-        isAssigned &&
-        job.status === 2 &&
-        job.assignmentStatus === "pending_member_acceptance"
-      );
+      return isAssigned && job.status >= 2;
     });
 
     // 2. Open roadside emergency jobs (status == 0)
