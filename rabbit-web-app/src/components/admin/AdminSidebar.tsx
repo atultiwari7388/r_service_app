@@ -21,6 +21,7 @@ import {
   Sparkles,
   Inbox,
   Percent,
+  Tag,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContexts";
 
@@ -96,6 +97,12 @@ const navItems: NavItem[] = [
     icon: Percent,
     description: "Plan commissions & settlements",
   },
+  {
+    name: "Coupons",
+    href: "/admin/coupons",
+    icon: Tag,
+    description: "Promo codes & discounts",
+  },
 ];
 
 export default function AdminSidebar() {
@@ -140,6 +147,9 @@ export default function AdminSidebar() {
       return true;
     }
     if (href === "/admin/subscribers" && pathname?.startsWith("/admin/subscribers")) {
+      return true;
+    }
+    if (href === "/admin/coupons" && pathname?.startsWith("/admin/coupons")) {
       return true;
     }
     return pathname === href;
