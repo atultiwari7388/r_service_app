@@ -86,6 +86,8 @@ export default function MechanicDashboardView() {
     cancelJob,
     submitRating,
     startJobWithDuration,
+    acceptMemberAssignment,
+    declineMemberAssignment,
     markArrivedAtSite,
     submitInspectionAndQuote,
     markRepairFinished,
@@ -638,6 +640,9 @@ export default function MechanicDashboardView() {
                           key={job.id}
                           job={job}
                           onInterested={(j) => setOfferJob(j)}
+                          onAcceptAssignment={(j) => acceptMemberAssignment(j.id, j.userId)}
+                          onDeclineAssignment={(j) => declineMemberAssignment(j.id, j.userId)}
+                          isMember={mechanicProfile?.role === "member"}
                         />
                       ))}
                     </div>
@@ -672,7 +677,10 @@ export default function MechanicDashboardView() {
                             currentUId={currentUId}
                             isOwner={mechanicProfile?.role !== "member"}
                             onUpdateStatus={updateJobStatus}
-                            onMarkArrived={(j) => markArrivedAtSite(j.id, j.userId)}
+                            onMarkArrived={(j) => {
+                              markArrivedAtSite(j.id, j.userId);
+                              setInspectModalJob(j);
+                            }}
                             onInspectClick={(j) => setInspectModalJob(j)}
                             onMarkRepairFinished={(j) => markRepairFinished(j.id, j.userId)}
                             onStartJobClick={(j) => setDurationModalJob(j)}
@@ -729,7 +737,10 @@ export default function MechanicDashboardView() {
                             currentUId={currentUId}
                             isOwner={mechanicProfile?.role !== "member"}
                             onUpdateStatus={updateJobStatus}
-                            onMarkArrived={(j) => markArrivedAtSite(j.id, j.userId)}
+                            onMarkArrived={(j) => {
+                              markArrivedAtSite(j.id, j.userId);
+                              setInspectModalJob(j);
+                            }}
                             onInspectClick={(j) => setInspectModalJob(j)}
                             onMarkRepairFinished={(j) => markRepairFinished(j.id, j.userId)}
                             onStartJobClick={(j) => setDurationModalJob(j)}

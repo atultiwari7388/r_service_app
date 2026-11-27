@@ -197,10 +197,18 @@ export default function RequestAcceptHistoryCard({
             <div className="flex flex-col items-end gap-1.5 text-right bg-blue-50/80 border border-blue-200/80 p-3.5 rounded-2xl">
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-black shadow-xs">
                 <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
-                Technician Dispatched & En Route
+                {jobDetails.assignmentStatus === "pending_member_acceptance" ||
+                mechanic.assignmentStatus === "pending_member_acceptance"
+                  ? "Workshop Accepted • Assigning Technician..."
+                  : "Technician Dispatched • En Route"}
               </span>
               <p className="text-xs text-blue-900 font-semibold max-w-xs">
-                Technician is traveling to your breakdown location. Payment will unlock after on-site diagnostic inspection.
+                {jobDetails.assignmentStatus === "pending_member_acceptance" ||
+                mechanic.assignmentStatus === "pending_member_acceptance"
+                  ? `Workshop has assigned ${
+                      jobDetails.assignedMemberName || mechanic.assignedMemberName || "a team technician"
+                    }. Awaiting technician departure.`
+                  : "Technician is traveling to your breakdown location. Payment will unlock after on-site diagnostic inspection."}
               </p>
             </div>
           )}

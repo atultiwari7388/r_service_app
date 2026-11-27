@@ -234,7 +234,9 @@ export default function OngoingJobCard({
           )}
           {offerStatus === 2 && (
             <span className="mt-1 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-700 font-extrabold text-[11px]">
-              2/5 Dispatched • En Route
+              {job.assignmentStatus === "pending_member_acceptance"
+                ? "2/5 Awaiting Tech Acceptance"
+                : "2/5 Dispatched • En Route"}
             </span>
           )}
           {offerStatus === 3 && (
@@ -415,11 +417,17 @@ export default function OngoingJobCard({
               {offerStatus === 1
                 ? "Waiting for driver confirmation"
                 : offerStatus === 2
-                ? "Technician en route to vehicle site"
+                ? job.assignmentStatus === "pending_member_acceptance"
+                  ? `Assigned to ${effectiveAssignedMemberName} • Awaiting tech confirmation`
+                  : `Technician ${effectiveAssignedMemberName} en route to breakdown`
                 : offerStatus === 3
                 ? "Technician conducting on-site inspection"
                 : offerStatus === 4
-                ? "Repair execution in progress"
+                ? job.repairCompletedByTechnician || myOffer?.repairCompletedByTechnician
+                  ? "Repair finished • Awaiting customer sign-off"
+                  : job.isPaid || job.payMode
+                  ? "Repair execution in progress"
+                  : "Awaiting customer payment"
                 : "Work order completed"}
             </span>
             {offerStatus < 5 && (
@@ -490,7 +498,7 @@ export default function OngoingJobCard({
                   className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
                 >
                   <MapPin size={14} />
-                  <span>Arrived at Location</span>
+                  <span>Reached at Location</span>
                 </button>
               </div>
             </div>

@@ -23,6 +23,9 @@ export interface MechanicOffer {
   assignedMemberCity?: string;
   assignedMemberPhone?: string;
   isAssignedByOwner?: boolean;
+  assignmentStatus?: "pending_member_acceptance" | "en_route" | "arrived" | "inspecting" | "repairing" | "finished" | string;
+  memberAcceptedAt?: Timestamp | Date | any;
+  memberDeclinedAt?: Timestamp | Date | any;
   finalDiagnosedAmount?: number;
   inspectionNotes?: string;
   inspectionCompletedAt?: Timestamp | Date | any;
@@ -88,6 +91,11 @@ export interface FirestoreJob {
   handoverReason?: string;
   handoverRequestedAt?: Timestamp | Date | any;
   reassignedFromMemberId?: string;
+  assignmentStatus?: "pending_member_acceptance" | "en_route" | "arrived" | "inspecting" | "repairing" | "finished" | string;
+  memberAcceptedAt?: Timestamp | Date | any;
+  memberDeclinedAt?: Timestamp | Date | any;
+  arrivedAtLocation?: boolean;
+  arrivedAt?: Timestamp | Date | any;
 }
 
 export interface SubmitOfferParams {

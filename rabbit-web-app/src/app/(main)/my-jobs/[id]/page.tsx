@@ -212,15 +212,28 @@ export default function JobIdDetails({
         (offer) => offer.mId === mechanicId
       );
 
+      const isAssignedToMember = Boolean(
+        selectedOffer?.assignedMemberId &&
+        selectedOffer.assignedMemberId.trim() !== "" &&
+        selectedOffer.assignedMemberId !== "self"
+      );
+
+      const targetAssignmentStatus = isAssignedToMember
+        ? "pending_member_acceptance"
+        : "en_route";
+
       const updates: any = {
         status: 2,
+        assignmentStatus: targetAssignmentStatus,
         mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
           ...offer,
           status: offer.mId === mechanicId ? 2 : offer.status,
+          assignmentStatus:
+            offer.mId === mechanicId ? targetAssignmentStatus : offer.assignmentStatus,
         })),
       };
 
-      if (selectedOffer?.assignedMemberId) {
+      if (isAssignedToMember && selectedOffer) {
         updates.assignedMemberId = selectedOffer.assignedMemberId;
         updates.assignedMemberName = selectedOffer.assignedMemberName || "";
         updates.assignedMemberPhone = selectedOffer.assignedMemberPhone || "";
@@ -338,10 +351,13 @@ export default function JobIdDetails({
         isPaid: true,
         paidAmount: amount,
         paidAt: new Date().toISOString(),
+        assignmentStatus: "repairing",
+        activeJobStartedAt: new Date(),
         mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
           ...offer,
           isPaid: true,
           paidAmount: amount,
+          assignmentStatus: "repairing",
         })),
       };
 
@@ -388,6 +404,7 @@ export default function JobIdDetails({
       const now = new Date();
       const updates = {
         status: 5,
+        assignmentStatus: "completed",
         customerSignOff: true,
         customerSignOffAt: now,
         mechanicsOffer: (jobDetails.mechanicsOffer || []).map((offer: any) => ({
@@ -396,6 +413,7 @@ export default function JobIdDetails({
             offer.mId === mechanicId || offer.assignedMemberId === mechanicId
               ? 5
               : offer.status,
+          assignmentStatus: "completed",
           customerSignOff: true,
           customerSignOffAt: now,
         })),

@@ -315,6 +315,11 @@ export function useMechanicDashboard() {
             isPaid: data.isPaid,
             paidAmount: data.paidAmount,
             paidAt: data.paidAt,
+            assignmentStatus: data.assignmentStatus,
+            memberAcceptedAt: data.memberAcceptedAt,
+            memberDeclinedAt: data.memberDeclinedAt,
+            arrivedAtLocation: data.arrivedAtLocation,
+            arrivedAt: data.arrivedAt,
           });
         });
         setAllJobs(jobsList);
@@ -435,6 +440,21 @@ export function useMechanicDashboard() {
 
     const filtered = allJobs
       .filter((job) => {
+        // Special case: Member Assigned Jobs awaiting acceptance
+        // If current user is a team member, and this job is assigned to them with status === 2 and assignmentStatus === "pending_member_acceptance"
+        const isMyPendingAssignment =
+          isMember &&
+          job.status === 2 &&
+          (job.assignedMemberId === currentUId ||
+            job.mechanicsOffer?.some(
+              (o) => o.assignedMemberId === currentUId && o.status === 2
+            )) &&
+          job.assignmentStatus === "pending_member_acceptance";
+
+        if (isMyPendingAssignment) {
+          return true; // Show in Upcoming for the member to accept!
+        }
+
         // Status must be 0 (new)
         if (job.status !== 0) return false;
 
@@ -476,7 +496,7 @@ export function useMechanicDashboard() {
           jobTimeMs = new Date(job.orderDate).getTime();
         }
 
-        if (jobTimeMs > 0) {
+        if (jobTimeMs > 0 && !isMyPendingAssignment) {
           const elapsedSeconds = Math.floor((currentTime - jobTimeMs) / 1000);
           if (elapsedSeconds >= 300) {
             return false;
@@ -553,9 +573,25 @@ export function useMechanicDashboard() {
   const ongoingJobs = useMemo(() => {
     if (!currentUId) return [];
 
+    const isMember = mechanicProfile?.role === "member" || !!mechanicProfile?.ownerId;
+
     return allJobs
       .filter((job) => {
         if (job.status === 5 || job.status === -1) return false;
+
+        // If current user is the assigned member, but they haven't accepted the assignment yet,
+        // it lives in upcomingJobs until accepted!
+        const isMyPendingAssignment =
+          (job.assignedMemberId === currentUId ||
+            job.mechanicsOffer?.some(
+              (o) => o.assignedMemberId === currentUId && o.status === 2
+            )) &&
+          job.assignmentStatus === "pending_member_acceptance";
+
+        if (isMember && isMyPendingAssignment) {
+          return false;
+        }
+
         // Direct assignment match
         if (job.assignedMemberId === currentUId) return true;
 
@@ -577,7 +613,7 @@ export function useMechanicDashboard() {
           calculatedDistance: dist,
         };
       });
-  }, [allJobs, currentUId, currentLat, currentLng]);
+  }, [allJobs, currentUId, mechanicProfile, currentLat, currentLng]);
 
   // Completed / Cancelled Jobs (History)
   // Strictly matches Flutter rabbit_shop_app history_screen.dart & completed_history_screen.dart
@@ -885,6 +921,86 @@ export function useMechanicDashboard() {
     }
   };
 
+  // Step 2A -> 2B: Team Member Accepts Assignment Dispatched by Owner
+  const acceptMemberAssignment = async (jobId: string, userId: string) => {
+    try {
+      const rawId = jobId.replace(/^#/, "");
+      let jobSnap = await getDoc(doc(db, "jobs", jobId));
+      if (!jobSnap.exists()) {
+        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
+      }
+      const jobData = jobSnap.exists() ? jobSnap.data() : null;
+
+      const now = Timestamp.now();
+      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
+      const updatedOffers = offers.map((offer) => {
+        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
+          return {
+            ...offer,
+            status: 2,
+            assignmentStatus: "en_route",
+            memberAcceptedAt: now,
+          };
+        }
+        return offer;
+      });
+
+      const updates = {
+        status: 2,
+        assignmentStatus: "en_route",
+        memberAcceptedAt: now,
+        mechanicsOffer: updatedOffers,
+      };
+
+      await syncJobAndHistories(jobId, userId, jobData, updates);
+      toast.success("Assignment accepted! En route to vehicle breakdown site.");
+    } catch (err: any) {
+      console.error("Error accepting assignment:", err);
+      toast.error(err.message || "Failed to accept assignment");
+      throw err;
+    }
+  };
+
+  // Step 2A: Team Member Declines Assignment -> Returns to Owner for Reassignment
+  const declineMemberAssignment = async (jobId: string, userId: string, reason?: string) => {
+    try {
+      const rawId = jobId.replace(/^#/, "");
+      let jobSnap = await getDoc(doc(db, "jobs", jobId));
+      if (!jobSnap.exists()) {
+        jobSnap = await getDoc(doc(db, "jobs", `#${rawId}`));
+      }
+      const jobData = jobSnap.exists() ? jobSnap.data() : null;
+
+      const now = Timestamp.now();
+      const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
+      const updatedOffers = offers.map((offer) => {
+        if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
+          return {
+            ...offer,
+            handoverRequested: true,
+            handoverReason: reason || "Declined by technician",
+            memberDeclinedAt: now,
+          };
+        }
+        return offer;
+      });
+
+      const updates = {
+        handoverRequested: true,
+        handoverReason: reason || "Declined by technician",
+        memberDeclinedAt: now,
+        mechanicsOffer: updatedOffers,
+      };
+
+      await syncJobAndHistories(jobId, userId, jobData, updates);
+      toast.success("Assignment declined. Returned to workshop owner for reassignment.");
+    } catch (err: any) {
+      console.error("Error declining assignment:", err);
+      toast.error(err.message || "Failed to decline assignment");
+      throw err;
+    }
+  };
+
   // Step 2 -> 3: Mark Technician Arrived at Breakdown Site (Begins on-site diagnosis)
   const markArrivedAtSite = async (jobId: string, userId: string) => {
     try {
@@ -899,13 +1015,20 @@ export function useMechanicDashboard() {
       const offers = (jobData?.mechanicsOffer || []) as MechanicOffer[];
       const updatedOffers = offers.map((offer) => {
         if (offer.mId === currentUId || offer.assignedMemberId === currentUId) {
-          return { ...offer, status: 3, arrivedAt: now };
+          return {
+            ...offer,
+            status: 3,
+            assignmentStatus: "inspecting",
+            arrivedAtLocation: true,
+            arrivedAt: now,
+          };
         }
         return offer;
       });
 
       const updates = {
         status: 3,
+        assignmentStatus: "inspecting",
         arrivedAtLocation: true,
         arrivedAt: now,
         mechanicsOffer: updatedOffers,
@@ -946,6 +1069,7 @@ export function useMechanicDashboard() {
           return {
             ...offer,
             status: 4,
+            assignmentStatus: "awaiting_payment",
             finalDiagnosedAmount: finalAmount,
             inspectionNotes: inspectionNotes.trim(),
             inspectionCompletedAt: now,
@@ -956,6 +1080,7 @@ export function useMechanicDashboard() {
 
       const updates = {
         status: 4,
+        assignmentStatus: "awaiting_payment",
         finalDiagnosedAmount: finalAmount,
         inspectionNotes: inspectionNotes.trim(),
         inspectionCompletedAt: now,
@@ -1004,6 +1129,7 @@ export function useMechanicDashboard() {
           return {
             ...offer,
             repairCompletedByTechnician: true,
+            assignmentStatus: "finished",
             repairFinishedAt: now,
           };
         }
@@ -1012,6 +1138,7 @@ export function useMechanicDashboard() {
 
       const updates = {
         repairCompletedByTechnician: true,
+        assignmentStatus: "finished",
         repairFinishedAt: now,
         mechanicsOffer: updatedOffers,
       };
@@ -1338,6 +1465,8 @@ export function useMechanicDashboard() {
     cancelJob,
     submitRating,
     startJobWithDuration,
+    acceptMemberAssignment,
+    declineMemberAssignment,
     markArrivedAtSite,
     submitInspectionAndQuote,
     markRepairFinished,

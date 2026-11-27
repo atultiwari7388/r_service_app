@@ -183,6 +183,8 @@ export interface MechanicsOffer {
   assignedMemberPhone?: string;
   assignedMemberCity?: string;
   isAssignedByOwner?: boolean;
+  assignmentStatus?: "pending_member_acceptance" | "en_route" | "arrived" | "inspecting" | "repairing" | "finished" | string;
+  memberAcceptedAt?: Timestamp | Date | any;
 }
 
 export interface HistoryItem {
@@ -231,6 +233,8 @@ export interface HistoryItem {
   assignedMemberPhone?: string;
   assignedMemberCity?: string;
   isAssignedByOwner?: boolean;
+  assignmentStatus?: "pending_member_acceptance" | "en_route" | "arrived" | "inspecting" | "repairing" | "finished" | string;
+  memberAcceptedAt?: Timestamp | Date | any;
   isPaid?: boolean;
   paidAmount?: number;
   paidAt?: string | Timestamp | Date;
